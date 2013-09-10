@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  <link href="{{ STATIC_URL }}css/chosen.css" media="screen" rel="stylesheet" type="text/css">
+  <script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>
+  <script src="http://code.jquery.com/ui/1.9.2/jquery-ui.min.js"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="content-center">
+  <h1>Standard Courses</h1>
+
+  <form action="" method="post">
+    {% csrf_token %}
+    {% if form.errors %}
+      <p>Please correct the following fields:</p>
+    {% endif %}
+
+    <div class="updatesemester_div">
+      {% if form.courses.errors %}
+	<p class = "error">{{ form.courses.errors }}</p>
+      {% endif %}
+      <p><label form="courses" {% if form.courses.errors %} class ="error"{% endif %}>Courses:</label></p>
+
+      <p>Select a course to add to your four-year plan.</p>
+      <span>{{ form.courses }}</span>
+    </div>
+    <div class="alert alert-student-info">  
+  	<a class="close" data-dismiss="alert">×</a>  
+ 	 <strong>Hint:</strong> Start typing in the course search bar or click 			and use the dropdown.  
+    </div>  
+    <p>
+      <input type="submit" alt="register" value="Submit Courses" />
+    </p>
+  </form>
+  
+
+  <h1>Create Your Own Course</h1>
+
+  <p>
+    If a standard course doesn't fit your graduation requirements,
+    you can create your own course.
+    Here are some situations in which you should create your own course:
+    <ul>
+      <li>
+	You transferred, or plan to transfer, this course in from another institution.
+      </li>
+      <li>
+	A course is offered during the present semester,
+	but doesn't appear in the standard course list.
+      </li>
+    </ul>
+  </p>
+
+  <p>List of "create your own" type courses for the present semester:
+    <ul>
+      {% for course in sccdatablock %}
+	<li>
+	  {{course.cname}}
+	  ({{course.cnumber}},
+	  {{course.ccredithrs}} hrs
+	  {{course.equivalentcourse}}{{course.sp}}{{course.cc}})
+	  (<a class="other" href="{% url 'update_cyoc' instanceid course.courseid %}">Edit</a>,
+	   <a class="other" href="{% url 'delete_cyoc' 2 instanceid course.courseid %}">Delete</a>)
+	</li>
+      {% empty %}
+	<li>None</li>
+      {% endfor %}
+    </ul>
+  </p>
+
+  <p>To add a new "create your own" type course,
+    <a class="other" href="{% url 'add_cyoc' instanceid %}">click here</a>.
+  </p>
+
+  </form>
+  </div>
+
+   <script src="{{ STATIC_URL }}js/chosen.jquery.js" type="text/javascript"></script>
+  <script type="text/javascript"> $("#id_courses").chosen(); $(".chzn-select-deselect").chosen({allow_single_deselect:true}); </script>
+  <script type="text/javascript">
+              $(document).ready(function () {
+                $(".alert").alert()
+                });
+  </script>
+  <script>
+    $(window).load(function(){
+    $("#nav-plan").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Update Semester</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+  </script>
+{% endblock %}

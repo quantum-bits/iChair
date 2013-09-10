@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block sidebar %}
+  <div class="alert alert-student-info">
+    {% if isProfessor %}
+
+    <p>Advisee Name: {{ student.name }} (<a href="{% url 'update_advisee' 1 %}">Change</a>)</p>
+    {% else %}
+
+    <p>Name: {{ student.name }}</p>{% endif %}
+
+    <p>Major: {{ student.major }}</p>
+
+    <p>Total Number of Credit Hours for Plan: {% if credithrmaxreached %} <b style=
+    "color:red;">{{ totalhrsfouryears }}</b></p>
+
+    <div class="alert alert-error">
+      <p><b>Note:</b> Please consult with the Financial Aid Office regarding the 160
+      credit hour limit.</p>
+    </div>{% else %} {{ totalhrsfouryears }} {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div id="year-accordion" class="accordion">
+  {% for year in datablock %}
+    <div class="accordion-group">
+      <div class="accordion-heading">
+	<a class="accordion-toggle"
+	   data-toggle="collapse"
+	   data-parent="#year-accordion"
+	   href="#{% cycle 'pre' 'fr' 'so' 'jr' 'sr' 'ssr' %}">
+	   {% cycle 'Pre-TU' 'Freshman Year' 'Sophomore Year' 'Junior Year' 'Senior Year' 'Supersenior Year' %}
+	   {% if forloop.first %}
+	     [{{year.0.totalcredithours}}] hrs
+	   {% else %}
+	     [{{year.0.totalcredithours}},
+	      {{year.1.totalcredithours}},
+	      {{year.2.totalcredithours}},
+	      {{year.3.totalcredithours}}] hrs
+	   {% endif %}
+	</a>
+      </div> {# accordion-heading #}
+
+      <div id="{% cycle 'pre' 'fr' 'so' 'jr' 'sr' 'ssr' %}" class="accordion-body collapse">
+	<div class="accordion-inner">
+	  {% for row in year %}
+	    <p>
+	      {{ row.semestername }}, {{ row.year }}
+	      {% if not isProfessor %}
+		(<a href="{% url 'update_student_semester' row.semesterid %}">Add Course</a>)
+	      {% endif %}
+	    </p>
+	    <table class="table table-striped table-bordered table-hover table-condensed">
+	      <thead>
+		<tr>
+		  <th>Course Name</th>
+		  <th>Course #</th>
+		  <th>Credit Hrs</th>
+		  <th>SP/CC</th>
+		  {% if not isProfessor %}
+		    <th>Action</th>
+		  {% endif %}
+		</tr>
+	      </thead>
+	      <tbody>
+		{% for course in row.listofcourses %}
+		  <tr>
+		    <td>{{ course.cname }} {% if course.iscyoc %}*{% endif %}</td>
+		    <td>{{ course.cnumber }}</td>
+		    <td>{{ course.ccredithours }} hrs</td>
+		    <td>
+		      {% if course.sp and course.cc %}
+			SP/CC
+		      {% elif course.sp %}
+			SP
+		      {% elif course.cc %}
+			CC
+		      {% endif %}
+		    </td>
+
+		    <!-- In the following the 0 means that we are coming FROM the four year
+  		       plan page, {{row.semesterid}} gives the ssc object id and
+		       {{course.courseid}} gives the course id within the ssc object -->
+
+		    {% if not isProfessor %}
+		      <td>
+			<div class="btn-group">
+			  <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+			    Delete/Modify
+			    <span class="caret"></span>
+			  </a>
+			  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+			    <li>
+			      {% if course.iscyoc %}
+				<a href="{% url 'delete_cyoc' 0 row.semesterid course.courseid %}">delete</a>
+			      {% else %}
+				<a href="{% url 'delete_course' 0 row.semesterid course.courseid %}">delete</a>
+			      {% endif %}
+			    </li>
+			    <li class="divider"></li>
+			    {% for alternatesemester in course.othersemesters %}
+			      <li>
+				<a href="{% url 'move_course' 0 row.semesterid alternatesemester.courseid course.courseid %}">{{alternatesemester.semester}}; {{alternatesemester.numhrsthissem}} hrs</a>
+			      </li>
+			    {% endfor %} {# other semesters #}
+			  </ul>
+			</div> {# btn-group #}
+		      </td>
+		    {% endif %} {# not professor #}
+		  </tr>
+		{% endfor %} {# list of courses #}
+
+		{% ifnotequal row.totalcredithours 0 %}
+		  <tr>
+		    <td class="blank">
+		      {% if row.semestercontainscyoc %}
+			<p class = "margin">* User-created course</p>
+		      {% endif %}
+		    </td>
+		    <td class="blank"></td>
+		    <td class="thick">{{ row.totalcredithours }} hrs</td>
+		    <td class="blank"></td>
+		    {% if not isProfessor %}
+		      <td class="blank"></td>
+		    {% endif %}
+		  </tr>
+		{% endifnotequal %}
+	      </tbody>
+	    </table>
+
+	    {% for comment in row.precocommentlist %}
+              <p>
+		<span class="label label-warning">Warning</span>
+		{{comment}}
+	      </p>
+	    {% endfor %} {# comment list #}
+	  {% endfor %} {# year #}
+	</div> {# accordion-inner #}
+      </div> {# accordion-body #}
+    </div> {# accordion-group #}
+    {% endfor %}
+  </div> {# year-accordion #}
+
+  <script>
+    $(window).load(function(){
+    $("#nav-plan").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Four Year Plan</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+  </script>
+
+{% endblock %}
+

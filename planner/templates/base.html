@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>iChair Faculty Load Scheduler</title>
+    <script src="http://code.jquery.com/jquery.js"></script>
+    <link href="{{ STATIC_URL }}css/bootstrap.css" rel="stylesheet" media="screen">
+    <link href="{{ STATIC_URL }}css/igrad.css" rel="stylesheet" media="screen">
+    {% block extrahead %}
+    {% endblock %}
+  </head>
+
+  <body>
+   <div class="banner-head">
+    <div class="container-fluid">
+      <div class="hero-unit">
+	<h1>iChair</h1>
+      </div>
+    <div class="page-name">
+    <h1>Four Year Planner</h1>
+    </div>
+    </div>
+        </div>
+      <div class="navbar">
+	<div class="navbar-inner">
+	  <ul class="nav">
+	    <li id="nav-profile"><a href="{% url 'planner.views.profile' %}">Profile</a><i></i></li>
+	    <li id="nav-deptloadsummary"><a href="{% url 'planner.views.department_load_summary' %}">Faculty Load Summary</a><i></i></li>
+            <li id="nav-schedule" class="dropdown">
+	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+		Schedules
+		<b class="caret"></b>
+	      </a>
+	      <ul class="dropdown-menu">
+		<li><a href="{% url 'planner.views.weekly_schedule' %}">Faculty</a></li>
+		<li><a href="{% url 'planner.views.daily_schedule' %}">Daily</a></li>
+		<li><a href="{% url 'planner.views.room_schedule' %}">Room</a></li>
+		<li><a href="{% url 'planner.views.registrar_schedule' %}">Registrar</a></li>
+	      </ul>
+	    </li>
+	    <li id="nav-coursesummary"><a href="{% url 'planner.views.course_summary' %}">Course Summary</a><i></i></li>
+<li id="nav-profile"><a href="{% url 'planner.views.display_notes' %}">Notes</a><i></i></li>
+	    <li class="dropdown">
+	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+		About
+		<b class="caret"></b>
+	      </a>
+	      <ul class="dropdown-menu">
+		<li><a href="#">Getting Started</a></li>
+		<li><a href="#">Acknowledgements</a></li>
+	      </ul>
+	    </li>
+	    {% if user.is_authenticated %}
+	      <li><a href="{% url 'logout' %}?next={% url 'login' %}">Logout</a><i></i></li>
+	    {% else %}
+	      <li id="nav-login"><a href="{% url 'login' %}">Login</a><i></i></li>
+	    {% endif %}
+	  </ul>
+	</div> {# navbar-inner #}
+      </div> {# navbar #}
+
+      <div class="row-fluid">
+	<div class="span3">
+	  {% block sidebar %}{% endblock %}
+	</div>
+	<div class="span9">
+	  {% block content %}{% endblock %}
+	</div>
+      </div>
+    
+    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery.sticky.js"></script>
+    <script src="{{ STATIC_URL }}js/bootstrap.js"></script>
+     <script>
+    $(window).load(function(){
+      $(".navbar").sticky({ topSpacing: 0 });
+    });
+  </script>
+  </body>
+</html>

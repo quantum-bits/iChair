@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block sidebar %}
+  <div class="alert alert-student-info">
+    <table class="table table-striped table-bordered table-hover">
+      <tbody>
+	<tr>
+	  <th>Department</th>
+	  <td>{{ department }}</td>
+	</tr>
+	<tr>
+	  <th>Academic Year</th>
+	  <td>{{ academic_year }}</td>
+	</tr>
+	<tr>
+	  <th>Permission</th>
+	  <td>
+	    {% if permission_level == 0 %}
+	      Read-only
+	    {% elif permission_level == 1 %}
+	      Department Scheduler
+	    {% elif permission_level == 2 %}
+	      Superuser (oh my goodness!!!)
+	    {% else %}
+	      Unknown
+	    {% endif %}
+	  </td>
+	</tr>
+      </tbody>
+    </table>
+ </div>
+  <script>
+    $(window).load(function(){
+    $("#nav-profile").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Profile</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+  </script>
+
+{% endblock %}
