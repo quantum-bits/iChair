@@ -239,8 +239,16 @@ class EasyDaySchedulerForm(forms.Form):
     duration = forms.ChoiceField(label="Duration",choices=DURATION_OPTIONS)
     room = forms.ModelChoiceField(queryset = Room.objects.all())
 
+
 class AddCourseForm(forms.ModelForm):
 
     class Meta:
         model = Course
         exclude = ('prereqs','coreqs','attributes',)
+
+    def __init__(self, dept_id, *args, **kwargs):
+        print "got here"
+        department_id = dept_id
+        print "foo", dept_id
+        super (AddCourseForm,self).__init__(*args,**kwargs)
+        self.fields['subject'].queryset = Subject.objects.filter(Q(department__id = department_id))

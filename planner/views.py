@@ -4,7 +4,7 @@ from models import *
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.template import RequestContext
-from forms import *
+from .forms import *
 from django.forms.models import inlineformset_factory
 from django.utils import simplejson
 
@@ -2337,8 +2337,17 @@ def add_course(request):
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
 
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
+
+    print department_id
+
+    my_kwargs = dict(department_id=department_id)
+
     if request.method == 'POST':
-        form = AddCourseForm(request.POST)
+        form = AddCourseForm(request.POST,department_id)
         if form.is_valid():
             form.save()
             return redirect('course_summary')
@@ -2346,7 +2355,12 @@ def add_course(request):
             return render(request, 'add_course.html', {'form':form})
 
     else:
-        form = AddCourseForm
+        print "got here 0"
+        form = AddCourseForm(department_id)
+        print type(form)
+        import sys
+        print sys.path
+        print "got here 1"
         return render(request, 'add_course.html', {'form':form})
 
 @login_required
