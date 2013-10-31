@@ -126,12 +126,7 @@ class ScheduledClassForm(forms.ModelForm):
 
 #        return self.cleaned_data
 
-class BaseInstructorFormset(forms.models.BaseInlineFormSet):
-
-#    def __init__(self,*args,**kwargs):
-#        department_abbrev = kwargs.pop('department_abbrev')
-#        super (BaseInstructorFormset, self).__init__(*args,**kwargs)
-#        self.fields['instructor'].queryset = FacultyMember.objects.filter(department__abbrev=department_abbrev)
+class BaseInstructorFormSet(forms.models.BaseInlineFormSet):
 
     def clean(self):
         if any(self.errors):
@@ -149,6 +144,17 @@ class BaseInstructorFormset(forms.models.BaseInlineFormSet):
                 instructors.append(instructor)
             except KeyError:
                 pass
+
+
+class InstructorForm(forms.ModelForm):
+
+    def __init__(self, department_id, *args, **kwargs):
+        super (InstructorForm,self).__init__(*args,**kwargs)
+        self.fields['instructor'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
+
+    class Meta:
+        model = OfferingInstructor
+
 
 class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
 
@@ -247,8 +253,17 @@ class AddCourseForm(forms.ModelForm):
         exclude = ('prereqs','coreqs','attributes',)
 
     def __init__(self, dept_id, *args, **kwargs):
-        print "got here"
         department_id = dept_id
-        print "foo", dept_id
         super (AddCourseForm,self).__init__(*args,**kwargs)
         self.fields['subject'].queryset = Subject.objects.filter(Q(department__id = department_id))
+
+class AddOtherLoadForm(forms.ModelForm):
+
+    class Meta:
+        model = OtherLoad
+#        exclude = ('prereqs','coreqs','attributes',)
+
+#    def __init__(self, dept_id, *args, **kwargs):
+#        department_id = dept_id
+#        super (AddCourseForm,self).__init__(*args,**kwargs)
+#        self.fields['subject'].queryset = Subject.objects.filter(Q(department__id = department_id))

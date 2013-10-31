@@ -19,6 +19,9 @@ urlpatterns = patterns(
     url(r'^registrarschedule/$', 'registrar_schedule', name='registrar_schedule'),
     url(r'^roomschedule/$', 'room_schedule', name='room_schedule'),
     url(r'^addcourse/$', 'add_course', name='add_course'),
+    url(r'^updatecourse/(\d+)/$', 'update_course', name='update_course'),
+    url(r'^deletecourse/(\d+)/$', 'delete_course', name='delete_course'),
+    url(r'^deletecourseconfirmation/(\d+)/$', 'delete_course_confirmation', name='delete_course_confirmation'),
 
     url(r'^notes/', 'display_notes', name='display_notes'),
     url(r'^addnote/', 'add_new_note', name='add_new_note'),

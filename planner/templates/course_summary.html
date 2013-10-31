@@ -11,6 +11,7 @@
 	       <tr>
 	       <td> Number </td>
 	       <td> Name </td>
+	       <td style="text-align: center;"> Cr Hrs </td>
 		{% for year in year_list %}
 		   <td colspan={{number_semesters}} style="text-align: center;"> {{year}} </td>
 		{% endfor %}
@@ -20,8 +21,9 @@
 	     <tbody>
 {% for course in course_data_list %}
     <tr>
-      <td> {{course.number}}</td>
+      <td> <a href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">{{course.number}}</a></td>
       <td> {{course.name}}</td>
+      <td style="text-align: center;"> <a href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">{{course.credit_hrs}}</a></td>
       {% for load in course.offering_list %}
          {% for loadelement in load %}
             <td style="text-align: center;"> {% if loadelement > 0 %}
@@ -30,7 +32,8 @@
 	    </td>
 	 {% endfor %}
       {% endfor %}
-	    <td><a href="{% url 'manage_course_offerings' course.id %}">Manage Offerings</a> </td>
+	    <td><a href="{% url 'manage_course_offerings' course.id %}">Manage Offerings</a> | 
+	      <a href="{% url 'delete_course_confirmation' course.id %}">Delete</a> </td>
     </tr>
 {% endfor %}
 

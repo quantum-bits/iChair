@@ -23,9 +23,9 @@
 {% for course in registrar_data_list %}
     <tr>
       <td> {{course.semester}}</td>
-      <td> {{course.number}}</td>
+      <td> <a href="{% url 'update_course' course.course_id %}?next={{ request.path|urlencode }}">{{course.number}}</a></td>
       <td> {{course.name}}</td>
-      <td> {{course.credit_hours}}</td>
+      <td> <a href="{% url 'update_course' course.course_id %}?next={{ request.path|urlencode }}">{{course.credit_hours}}</a></td>
       <td> <a href="{% url 'update_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">
 	    {{course.cap}}</a></td>
       <td>
