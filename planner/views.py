@@ -4,7 +4,7 @@ from models import *
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.template import RequestContext
-from forms import *
+from .forms import *
 from django.forms.models import inlineformset_factory
 from django.utils import simplejson
 
@@ -1607,24 +1607,25 @@ def start_end_time_string(start_hour,start_minute,end_hour,end_minute):
         time = time+':'+str(end_minute)
     return time
 
+def instructor_form_for_dept(dept_id):
+    def make_instructor_form():
+        return InstructorForm(dept_id)
+    return make_instructor_form
+
 @login_required
 def update_course_offering(request,id):
     instance = CourseOffering.objects.get(pk = id)
     form = CourseOfferingForm(instance=instance)
     department_abbrev = instance.course.subject.department.abbrev
+    dept_id = instance.course.subject.department.id
 #    print department_abbrev
 # create the formset class
-    InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor, formset = BaseInstructorFormset)
+    InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
+                                              form = instructor_form_for_dept(dept_id),
+                                              formset = BaseInstructorFormSet)
 # create the formset
 
-    my_kwargs = dict(
-        instance=instance,
-        department_abbrev=department_abbrev
-        )
-#    formset = InstructorFormset(**my_kwargs)
     formset = InstructorFormset(instance = instance)
-
-# to put this back together, just replace **my_kwargs with instance=instance in 3 places
 
     errordict={}
     dict1 = {
@@ -1636,8 +1637,6 @@ def update_course_offering(request,id):
     }
 
     if request.method == 'POST':
-#        form = CourseOfferingForm(request.POST, **my_kwargs)
-#        formset = InstructorFormset(request.POST, **my_kwargs)
         form = CourseOfferingForm(request.POST, instance = instance)
         formset = InstructorFormset(request.POST, instance = instance)
 
@@ -2234,7 +2233,8 @@ def course_summary(request):
             data_list.append({'number':number, 
                               'name':course_name, 
                               'offering_list': offering_list,
-                              'id':course.id
+                              'id':course.id,
+                              'credit_hrs':course.credit_hours
                               })
 
 
@@ -2337,8 +2337,13 @@ def add_course(request):
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
 
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
+
     if request.method == 'POST':
-        form = AddCourseForm(request.POST)
+        form = AddCourseForm(department_id,request.POST)
         if form.is_valid():
             form.save()
             return redirect('course_summary')
@@ -2346,8 +2351,45 @@ def add_course(request):
             return render(request, 'add_course.html', {'form':form})
 
     else:
-        form = AddCourseForm
+        form = AddCourseForm(department_id)
         return render(request, 'add_course.html', {'form':form})
+
+@login_required
+def update_course(request, id):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
+
+    instance = Course.objects.get(pk = id)
+
+    if request.method == 'POST':
+        form = AddCourseForm(department_id, request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+#            return redirect('course_summary')
+        else:
+            return render(request, 'add_course.html', {'form': form})
+    else:
+        form = AddCourseForm(department_id, instance=instance)
+        context = {'form': form}
+        return render(request, 'add_course.html', context)
+
+@login_required
+def delete_course_confirmation(request, id):
+    course = Course.objects.get(pk = id)
+    context ={'course': course}
+    return render(request, 'delete_course_confirmation.html', context)
+
+@login_required
+def delete_course(request, id):
+    instance = Course.objects.get(pk = id)
+
+    instance.delete()
+    return redirect('course_summary')
 
 @login_required
 def registrar_schedule(request):
@@ -2406,3 +2448,32 @@ def registrar_schedule(request):
     context={'registrar_data_list':registrar_data_list, 'department': department, 'academic_year': academic_year_string}
     return render(request, 'registrar_schedule.html', context)
 
+
+###-------WORKING HERE---------
+### need to do the inline thing again, I think; pass dept and only show other loads of that type for that dept
+### don't know how to limit instructors in drop-down.....
+
+
+@login_required
+def update_other_load(request, id):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
+
+    instance = OtherLoad.objects.get(pk = id)
+
+    if request.method == 'POST':
+        form = AddOtherLoadForm(department_id, request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+#            return redirect('course_summary')
+        else:
+            return render(request, 'add_course.html', {'form': form})
+    else:
+        form = AddCourseForm(department_id, instance=instance)
+        context = {'form': form}
+        return render(request, 'add_course.html', context)
