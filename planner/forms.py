@@ -8,14 +8,14 @@ from django.forms.widgets import RadioSelect
 class RequirementForm(forms.ModelForm):
     class Meta:
         model = Requirement
-    
+
     def clean(self):
         courses = self.cleaned_data.get('courses')
         requirements = self.cleaned_data.get('requirements')
         print self.cleaned_data
         if bool(courses) == bool(requirements):
             raise forms.ValidationError("You need either courses or requirements but not both.")
-        
+
         return self.cleaned_data
 
 class RegistrationForm(forms.ModelForm):
@@ -23,7 +23,7 @@ class RegistrationForm(forms.ModelForm):
     email = forms.EmailField(label=(u'Email Address'))
     password = forms.CharField(label=(u'Password'),
                                widget=forms.PasswordInput(render_value=False))
-    
+
     password1 = forms.CharField(label=(u'Verify Password'),
                                 widget=forms.PasswordInput(render_value=False))
 
@@ -63,7 +63,7 @@ class AddStudentSemesterForm(forms.ModelForm):
         if sem == 0:
             self.fields['courses'].queryset = Course.objects.all()
         else:
-            self.fields['courses'].queryset = Course.objects.filter(Q(semester__actual_year=actyear) 
+            self.fields['courses'].queryset = Course.objects.filter(Q(semester__actual_year=actyear)
                                                                     & Q(semester__semester_of_acad_year = sem))
 
     def clean_student(self):
@@ -179,7 +179,7 @@ class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
 
                 for time_block in day_schedules[day]:
                     if (begin_time_decimal < time_block[1] and begin_time_decimal > time_block[0]
-                        ) or (end_time_decimal < time_block[1] and end_time_decimal > time_block[0] 
+                        ) or (end_time_decimal < time_block[1] and end_time_decimal > time_block[0]
                         ) or (begin_time_decimal < time_block[0] and end_time_decimal > time_block[1]):
                         raise forms.ValidationError("Time blocks for a given day within a course offering cannot overlap.")
 
@@ -188,7 +188,7 @@ class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
                 pass
 
 def convert_time_to_decimal(time):
-        
+
     decimal_time = time.hour+time.minute/60.0
     return decimal_time
 
