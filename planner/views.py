@@ -1,18 +1,18 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from models import *
-from django.contrib.auth.models import User
-from django.db.models import Q
-from django.template import RequestContext
-from .forms import *
-from django.forms.models import inlineformset_factory
-from django.utils import simplejson
-
-from django.contrib.auth.decorators import login_required
 from collections import namedtuple
 
 from django import forms
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.db.models import Q
+from django.forms.models import inlineformset_factory
+from django.shortcuts import render, redirect
+from django.template import RequestContext
+from django.utils import simplejson
+from django.utils.functional import curry
 
+from .models import *
+from .forms import *
 
 def home(request):
     return render(request, 'home.html')
@@ -105,7 +105,7 @@ def update_major(request, id):
         return render(request, 'updatemajor.html', context)
 
 
-# problems: 
+# problems:
 # --> I think the way that I have passed the object's id is not the best way to do it....
 # --> maybe look here:
 #     http://stackoverflow.com/questions/9013697/django-how-to-pass-object-object-id-to-another-template
@@ -447,7 +447,7 @@ class FourYearPlanCourses(object):
         self.collection = {}
         self.sp_list = []
         self.cc_list = []
-    
+
     def __contains__(self, course_number):
         """
         Returns True if course_number in collection.
@@ -484,7 +484,7 @@ class FourYearPlanCourses(object):
                 self.sp_list.append(sp_cc_info(course))
             if course.cc:
                 self.cc_list.append(sp_cc_info(course))
-    
+
     @property
     def courses(self):
         return [self.collection[course_number] for course_number in self.collection]
@@ -492,7 +492,7 @@ class FourYearPlanCourses(object):
     @property
     def num_sps(self):
         return len(self.sp_list)
-    
+
     @property
     def num_ccs(self):
         return len(self.cc_list)
@@ -509,13 +509,13 @@ def major_courses(major):
 
 @login_required
 def display_grad_audit(request):
-    # NOTES: 
+    # NOTES:
     #       1. In the current approach no double-counting of courses is allowed, since the course gets popped
     #          out of studentcourselist as soon as it meets a requirement.  Maybe this should be changed?  The problem
     #          could be that in some situations, maybe a course is not ALLOWED to double-count.  Maybe if one course
     #          is used to meet requirements in two requirement blocks, a flag could be set and a warning given, in case
     #          such double-counting is not allowed.
-    #       2. There is some redundancy between this function and display_four_year_plan.  Some methods/functions could 
+    #       2. There is some redundancy between this function and display_four_year_plan.  Some methods/functions could
     #          probably be written that would serve in both places
 
     if request.user.is_student():
@@ -552,17 +552,17 @@ def display_grad_audit(request):
 # aside from the reordering, these two lists are identical.
 # majordatablock2 is *the* main chunk of data that is sent to the graduationaudit template.
 #
-# each element in the list (majordatablock) is a "requirement block"; 
+# each element in the list (majordatablock) is a "requirement block";
 # the requirement blocks have the following keywords:
 #
 #  - listorder: an integer used to determine what order the requirements should be displayed in
 #  - blockname: the name of the requirement block; this will show up on the grad audit page
-#  - andorcomment: string that states whether all or only some of the courses need to be taken 
+#  - andorcomment: string that states whether all or only some of the courses need to be taken
 #  - mincredithours: minimum # of credit hours to satisfy the requirement
 #  - textforuser: optional text to display to the user
 #  - credithrs: total # credit hours in this block so far
 #  - creditsok: whether or not the # credit hours taken so far matches the required number
-#  - blockcontainscyoc: whether or not the requirement block currently contains a course that is 
+#  - blockcontainscyoc: whether or not the requirement block currently contains a course that is
 #                       of the "create your own" variety; if so, a not is put at the bottom
 #  - precocommentlist: list of comments about prereqs or coreqs not being met, if that is the case
 #  - courselist: list of dictionaries; each element in the list represents a course
@@ -570,15 +570,15 @@ def display_grad_audit(request):
 #      - cname: course name
 #      - cnumber: course number (e.g., PHY311)
 #      - ccredithrs': # credit hours required for this course requirement
-#      - sp: boolean 
-#      - cc: boolean 
+#      - sp: boolean
+#      - cc: boolean
 #      - comment: comment to be associated with the course
 #      - numcrhrstaken: # of credit hours taken for this requirement
 #      - courseid: course id in the database
 #      - sscid: id of the studentsemestercourse object associated with this course
 #      - iscyoc: boolean; TRUE if the course is of the "create your own" variety
 #      - othersemester: list of dictionaries; each element represents another
-#                       semester during which this course could be taken; 
+#                       semester during which this course could be taken;
 #                       keywords are the following:
 #           - semester: string that identifies the other semester (e.g., 'junior spring (2015)')
 #           - courseid: *poorly named*; actually the id of the studentsemestercourse object for the course in the other semester
@@ -608,7 +608,7 @@ def display_grad_audit(request):
         for course in ssc.courses.all():
             iscyoc = False
 
-            course_info = CourseInfo(name = course.name, 
+            course_info = CourseInfo(name = course.name,
                                      semester = ssc.semester,
                                      actual_year = ssc.actual_year,
                                      credit_hours = course.credit_hours,
@@ -644,7 +644,7 @@ def display_grad_audit(request):
 
         student_courses.add(course_info)
 
-    
+
     SPlist = student_courses.sp_list
     CClist = student_courses.cc_list
     numSPs = student_courses.num_sps
@@ -666,7 +666,7 @@ def display_grad_audit(request):
     # the general approach is the following:
     # - the outer loop cycles through each requirement block for the student's major
     #   - the next loop cycles through each course in the list of courses within the requirement block
-    #   - if a course in the student's plan ("studentcourselist") matches a course in a requirement block, it is 
+    #   - if a course in the student's plan ("studentcourselist") matches a course in a requirement block, it is
     #     popped out of the student's course list (Edit: not anymore.)
     #   - for most courses in the requirement block, a list of semesters is constructed, showing when the course
     #     could be taken (or moved to, if it is currently being taken during some semester)
@@ -712,7 +712,7 @@ def display_grad_audit(request):
                 actual_year = student_course.actual_year
                 sscid = student_course.id
                 iscyoc = student_course.iscyoc
-                
+
                 if semester == 0:
                     commentfirstpart = "Pre-TU"
                 else:
@@ -803,18 +803,18 @@ def display_grad_audit(request):
                                'blockcontainscyoc': requirementblockcontainscyoc,
                                'precocommentlist': precocommentlist})
 
-        # the following reorders majordatablock in the desired order 
+        # the following reorders majordatablock in the desired order
         # (this ordering is defined when the requirement blocks are defined in the first place)
         majordatablock = sorted(majordatablock, key=lambda rrow: (rrow['listorder']))
 
-        # anything remaining in the studentcourselist at this point has not been used to meet a 
+        # anything remaining in the studentcourselist at this point has not been used to meet a
         # course requirement in one of the requirement blocks;  unusedcourses keeps track of these courses
         unusedcourses=[]
         unusedcredithours=0
         for course in student_courses.courses:
-            # the last element in course is whether it was met. Earlier in the code this is 
+            # the last element in course is whether it was met. Earlier in the code this is
             # initialized to false, and set to true it is met.
-            if not course.met: 
+            if not course.met:
                 unusedcredithours=unusedcredithours+course[3]
                 if course.semester == 0:
                     comment = "Pre-TU"
@@ -1306,7 +1306,7 @@ def view_enrolled_students(request,course_id,semesterid):
 @login_required
 def department_load_summary(request):
     """Display loads for professors in the department"""
-    
+
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -1321,7 +1321,7 @@ def department_load_summary(request):
 # need to think about offering instructors...just from dept?  make dept many to many?
 # also, when picking out offering instructors, maybe queryset them so they are only from dept?!?!?!?!
 # also...we could do a queryset on instructors, most likely, in the form (see AddStudentSemesterForm for an example),
-# but would we want to change this by year or something...?  
+# but would we want to change this by year or something...?
 # right now it gags if there is a faculty member from outside of the dept...could fix by adding the extra names
 # in to instructordict, etc.
 #
@@ -1330,7 +1330,7 @@ def department_load_summary(request):
 # to include in the load list for a given department.  Then it could change year by year.  Easy-peasy.
 #----------------------
 #
-# NOTES:  
+# NOTES:
 # 1.  In the following code, it is assumed that each course offering can only correspond to one semester.  Accordingly,
 #     the load for each person in each row, can only be one number (for fall, J-term or spring...but only one of those)
 # 2.  Summer has been deleted from the load schedule.  If there is any load for summer, it is added to the spring.  This is HARDCODED (yech!)
@@ -1346,7 +1346,7 @@ def department_load_summary(request):
         instructor_list.append(faculty.last_name)
         instructor_integer_list.append(ii)
         ii=ii+1
-    
+
     number_faculty=ii
 
     ii = 0
@@ -1383,11 +1383,11 @@ def department_load_summary(request):
 #                    room_list = room_list_summary(scheduled_classes)
 
                 if course_offering.semester.year.begin_on.year == academic_year:
-                    number = u"{0} {1}".format(course_offering.course.subject, 
+                    number = u"{0} {1}".format(course_offering.course.subject,
                                                course_offering.course.number)
                     course_name = course_offering.course.title
                     available_load_hours = course_offering.load_available
-                    
+
                     if abs(round(available_load_hours)-available_load_hours)<0.01:
                         # if the load is close to an int, round it, then int it (adding 0.01 to be on the safe side)
                         available_load_hours = int(round(available_load_hours)+0.01)
@@ -1407,8 +1407,8 @@ def department_load_summary(request):
                         faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
 
                     load_diff = load_hour_rounder(course_offering.load_difference())
-                        
-                    data_list.append({'number':number, 
+
+                    data_list.append({'number':number,
                                       'name':course_name,
                                       'rooms':room_list,
                                       'load_hours': available_load_hours,
@@ -1435,7 +1435,7 @@ def department_load_summary(request):
                 jj = semesterdict[semester_name]
                 load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
                 faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
-        admin_data_list.append({'load_type': other_load_type.load_type, 
+        admin_data_list.append({'load_type': other_load_type.load_type,
                                 'load_hour_list': load_list,
                                 'id':other_load_type.id
                                 })
@@ -1454,40 +1454,40 @@ def department_load_summary(request):
             if row['load_hour_list'][instructordict[instructor]][0] >= 0:
                 instructor_data.append({'comment':row['comment'],
                                         'semester':row['semester'],
-                                        'meetings_scheduled': row['meetings_scheduled'], 
-                                        'name': row['name'], 
+                                        'meetings_scheduled': row['meetings_scheduled'],
+                                        'name': row['name'],
                                         'load_hour_list': [row['load_hour_list'][instructordict[instructor]][0],
                                                            row['load_hour_list'][instructordict[instructor]][1]],
                                         'id': row['id'],
-                                        'load_hours': row['load_hours'], 
+                                        'load_hours': row['load_hours'],
                                         'meeting_times': row['meeting_times'],
                                         'rooms': row['rooms'],
-                                        'number': row['number'], 
+                                        'number': row['number'],
                                         'load_difference': row['load_difference']
                                         })
         for row in admin_data_list:
-            element = row['load_hour_list'][instructordict[instructor]] 
+            element = row['load_hour_list'][instructordict[instructor]]
             if element[0] > 0 or element[1] > 0 or element[2] > 0:
                 admin_data.append({'load_type':row['load_type'],
                                    'load_hour_list':element,
                                    'id': row['id']
                                    })
-            
-        
+
+
         data_list_by_instructor.append({'instructor_id':instructordict[instructor],
                                         'course_info':instructor_data,
                                         'instructor':instructor,
                                         'admin_data_list':admin_data,
                                         'load_summary':faculty_summary_load_list[instructordict[instructor]],
                                         'total_load_hours':total_load_hours[instructordict[instructor]]
-                                        })    
+                                        })
 
-    context={'course_data_list':data_list, 
+    context={'course_data_list':data_list,
              'instructor_list':instructor_list,
-             'faculty_load_summary':faculty_summary_load_list, 
-             'admin_data_list':admin_data_list, 
-             'total_load_hours':total_load_hours, 
-             'department':department, 
+             'faculty_load_summary':faculty_summary_load_list,
+             'admin_data_list':admin_data_list,
+             'total_load_hours':total_load_hours,
+             'department':department,
              'academic_year':academic_year_string,
              'instructordict':instructordict,
              'instructorlist':instructor_list,
@@ -1520,7 +1520,7 @@ def room_list_summary(scheduled_classes):
             room_list.append(room)
 
     return room_list
-    
+
 
 def class_time_summary(scheduled_classes):
 # Returns a class time summary list, such as ['MWF 9-9:50','T 10-10:50']
@@ -1528,14 +1528,14 @@ def class_time_summary(scheduled_classes):
 
     day_list = ['M','T','W','R','F']
     time_dict = dict()
-    schedule_list = [] 
+    schedule_list = []
     for sc in scheduled_classes:
         time_string=start_end_time_string(sc.begin_at.hour, sc.begin_at.minute, sc.end_at.hour, sc.end_at.minute)
         schedule_list.append([sc.day, time_string])
         time_dict[time_string]=''
 
     schedule_sorted = sorted(schedule_list, key=lambda row: (row[0], row[1]))
-    
+
     for item in schedule_sorted:
         time_dict[item[1]]=time_dict[item[1]]+day_list[item[0]]
 
@@ -1567,7 +1567,7 @@ def class_time_and_room_summary(scheduled_classes):
     time_dict = dict()
     room_dict = dict()
     day_dict = dict()
-    schedule_list = [] 
+    schedule_list = []
     for sc in scheduled_classes:
         time_string=start_end_time_string(sc.begin_at.hour, sc.begin_at.minute, sc.end_at.hour, sc.end_at.minute)
         room = sc.room.building.abbrev+' '+sc.room.number
@@ -1577,7 +1577,7 @@ def class_time_and_room_summary(scheduled_classes):
         time_dict[time_string+room] = time_string
 
     schedule_sorted = sorted(schedule_list, key=lambda row: (row[0], row[1]))
-    
+
     for item in schedule_sorted:
         day_dict[item[1]+item[2]]=day_dict[item[1]+item[2]]+day_list[item[0]]
 
@@ -1618,13 +1618,14 @@ def update_course_offering(request,id):
     form = CourseOfferingForm(instance=instance)
     department_abbrev = instance.course.subject.department.abbrev
     dept_id = instance.course.subject.department.id
-#    print department_abbrev
-# create the formset class
-    InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
-                                              form = instructor_form_for_dept(dept_id),
-                                              formset = BaseInstructorFormSet)
-# create the formset
+    #    print department_abbrev
+    # create the formset class
 
+    InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
+                                              formset=BaseInstructorFormSet)
+    InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id))
+
+    # create the formset
     formset = InstructorFormset(instance = instance)
 
     errordict={}
@@ -1765,11 +1766,11 @@ def weekly_schedule(request):
                 for scheduled_class in course_offering.scheduled_classes.all():
                     if scheduled_class.end_at.hour > 16:
                         courses_after_five = True
-                    
+
             schedule = initialize_canvas_data(courses_after_five, num_data_columns)
 
             grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, weekdays, 'MWF')
-            table_text_list.append([schedule['width']/2,schedule['border']/2, 
+            table_text_list.append([schedule['width']/2,schedule['border']/2,
                                     table_title,
                                     schedule['table_title_font'],
                                     schedule['table_header_text_colour']])
@@ -1779,15 +1780,15 @@ def weekly_schedule(request):
 
             for course_offering in course_offering_list:
                 for scheduled_class in course_offering.scheduled_classes.all():
-                    box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, scheduled_class, 
+                    box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, scheduled_class,
                                                                                       scheduled_class.day)
                     box_list.append(box_data)
                     box_label_list.append(course_data)
                     box_label_list.append(room_data)
-            
+
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
-        # format for text is: [xcenter, ycenter, text_string, font, text_colour]   
+        # format for text is: [xcenter, ycenter, text_string, font, text_colour]
 
             json_box_list = simplejson.dumps(box_list)
             json_box_label_list = simplejson.dumps(box_label_list)
@@ -1798,10 +1799,10 @@ def weekly_schedule(request):
             id = 'id'+str(idnum)
             data_this_professor.append({'prof_id': prof_id,
                                         'faculty_name': faculty_member.last_name,
-                                        'json_box_list': json_box_list, 
+                                        'json_box_list': json_box_list,
                                         'json_box_label_list':json_box_label_list,
-                                        'json_grid_list': json_grid_list, 
-                                        'json_filled_row_list': json_filled_row_list, 
+                                        'json_grid_list': json_grid_list,
+                                        'json_filled_row_list': json_filled_row_list,
                                         'json_table_text_list': json_table_text_list,
                                         'id':id,
                                         'schedule':schedule})
@@ -1813,7 +1814,7 @@ def weekly_schedule(request):
 @login_required
 def daily_schedule(request):
     """Display daily schedules for the department"""
-    
+
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -1851,7 +1852,7 @@ def daily_schedule(request):
     day_dict = {'Monday':0, 'Tuesday':1, 'Wednesday':2, 'Thursday':3, 'Friday':4}
 
     chapel_dict = {'Monday':'every', 'Tuesday':'none', 'Wednesday':'every', 'Thursday':'none', 'Friday':'every'}
-    
+
     for day in day_list:
         data_this_day = []
         for semester_name in semester_list:
@@ -1873,7 +1874,7 @@ def daily_schedule(request):
             schedule = initialize_canvas_data(courses_after_five, num_data_columns)
 
             grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, professor_list, chapel_dict[day])
-            table_text_list.append([schedule['width']/2,schedule['border']/2, 
+            table_text_list.append([schedule['width']/2,schedule['border']/2,
                                     table_title,
                                     schedule['table_title_font'],
                                     schedule['table_header_text_colour']])
@@ -1891,10 +1892,10 @@ def daily_schedule(request):
                     box_list.append(box_data)
                     box_label_list.append(course_data)
                     box_label_list.append(room_data)
-            
+
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
-        # format for text is: [xcenter, ycenter, text_string, font, text_colour]   
+        # format for text is: [xcenter, ycenter, text_string, font, text_colour]
 
             json_box_list = simplejson.dumps(box_list)
             json_box_label_list = simplejson.dumps(box_label_list)
@@ -1904,10 +1905,10 @@ def daily_schedule(request):
 
             id = 'id'+str(idnum)
             data_this_day.append({'day_name': day,
-                                  'json_box_list': json_box_list, 
+                                  'json_box_list': json_box_list,
                                   'json_box_label_list':json_box_label_list,
-                                  'json_grid_list': json_grid_list, 
-                                  'json_filled_row_list': json_filled_row_list, 
+                                  'json_grid_list': json_grid_list,
+                                  'json_filled_row_list': json_filled_row_list,
                                   'json_table_text_list': json_table_text_list,
                                   'id':id,
                                   'schedule':schedule})
@@ -1970,7 +1971,7 @@ def room_schedule(request):
             schedule = initialize_canvas_data(courses_after_five, num_data_columns)
 
             grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, weekdays, 'MWF')
-            table_text_list.append([schedule['width']/2,schedule['border']/2, 
+            table_text_list.append([schedule['width']/2,schedule['border']/2,
                                     table_title,
                                     schedule['table_title_font'],
                                     schedule['table_header_text_colour']])
@@ -1984,10 +1985,10 @@ def room_schedule(request):
                 box_list.append(box_data)
                 box_label_list.append(course_data)
                 box_label_list.append(room_data)
-            
+
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
-        # format for text is: [xcenter, ycenter, text_string, font, text_colour]   
+        # format for text is: [xcenter, ycenter, text_string, font, text_colour]
 
             json_box_list = simplejson.dumps(box_list)
             json_box_label_list = simplejson.dumps(box_label_list)
@@ -1998,10 +1999,10 @@ def room_schedule(request):
             id = 'id'+str(idnum)
             data_this_room.append({'room_id':roomid,
                                    'room_name': room.building.abbrev+' '+room.number,
-                                  'json_box_list': json_box_list, 
+                                  'json_box_list': json_box_list,
                                   'json_box_label_list':json_box_label_list,
-                                  'json_grid_list': json_grid_list, 
-                                  'json_filled_row_list': json_filled_row_list, 
+                                  'json_grid_list': json_grid_list,
+                                  'json_filled_row_list': json_filled_row_list,
                                   'json_table_text_list': json_table_text_list,
                                   'id':id,
                                   'schedule':schedule})
@@ -2030,13 +2031,13 @@ def initialize_canvas_data(courses_after_five, num_data_columns):
         number_hour_blocks = 15
     else:
         number_hour_blocks = 10
-    
+
     canvas_height = 2*border+height_day_names+height_hour_block*number_hour_blocks
 
-    schedule = {'width':canvas_width, 
-                'height':canvas_height, 
+    schedule = {'width':canvas_width,
+                'height':canvas_height,
                 'width_day':width_day,
-                'width_hour_names':width_hour_names, 
+                'width_hour_names':width_hour_names,
                 'height_day_names':height_day_names,
                 'height_hour_block':height_hour_block,
                 'border':border,
@@ -2063,12 +2064,12 @@ def create_schedule_grid(schedule,column_titles,chapel):
     form [[xbegin, ybegin, xend, yend],[...],[...]]
     """
 
-# chapel can be "every" (every column), "none" (no columns) or "MWF" (1st, 3rd and 5th columns)    
+# chapel can be "every" (every column), "none" (no columns) or "MWF" (1st, 3rd and 5th columns)
 
     line_coordinates_array = []
     filled_row_array = []
     text_array = []
-    
+
     b = schedule['border']
     c_h = schedule['height']
     c_w = schedule['width']
@@ -2079,20 +2080,20 @@ def create_schedule_grid(schedule,column_titles,chapel):
     h_d_n = schedule['height_day_names']
 
     for ii in range(len(column_titles)):
-        text_array.append([b+w_h_n+ii*w_d+w_d/2,b+h_d_n/2, 
+        text_array.append([b+w_h_n+ii*w_d+w_d/2,b+h_d_n/2,
                            column_titles[ii],
                            schedule['table_header_font'],
                            schedule['table_header_text_colour']])
 
     if chapel == 'MWF':
         for ii in range(3):
-            text_array.append([b+w_h_n+2*ii*w_d+w_d/2,b+h_d_n+3*h_h_b+h_h_b/2, 
+            text_array.append([b+w_h_n+2*ii*w_d+w_d/2,b+h_d_n+3*h_h_b+h_h_b/2,
                                'chapel',
                                schedule['table_header_font'],
                                schedule['table_header_text_colour']])
     elif chapel == 'every':
         for ii in range(len(column_titles)):
-            text_array.append([b+w_h_n+ii*w_d+w_d/2,b+h_d_n+3*h_h_b+h_h_b/2, 
+            text_array.append([b+w_h_n+ii*w_d+w_d/2,b+h_d_n+3*h_h_b+h_h_b/2,
                                'chapel',
                                schedule['table_header_font'],
                                schedule['table_header_text_colour']])
@@ -2101,7 +2102,7 @@ def create_schedule_grid(schedule,column_titles,chapel):
     for ii in range(n_h_b):
         time_int = start_time+ii
         time = str(time_int)+':00'
-        text_array.append([b+w_h_n/2,b+h_d_n+ii*h_h_b+h_h_b/2, 
+        text_array.append([b+w_h_n/2,b+h_d_n+ii*h_h_b+h_h_b/2,
                            time,
                            schedule['table_header_font'],
                            schedule['table_header_text_colour']])
@@ -2120,7 +2121,7 @@ def create_schedule_grid(schedule,column_titles,chapel):
             filled_row_array.append([b,b+h_d_n+(ii-1)*h_h_b,c_w-2*b,h_h_b,
                                      schedule['row_background_fill_colour'],
                                      schedule['grid_line_width'],
-                                     schedule['row_background_fill_colour']])    
+                                     schedule['row_background_fill_colour']])
             colour_on = False
         else:
             colour_on = True
@@ -2131,7 +2132,7 @@ def create_schedule_grid(schedule,column_titles,chapel):
 
 def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column):
     """
-    returns the coordinates required (by the javascript in the template) 
+    returns the coordinates required (by the javascript in the template)
     to display a rectangular box for a single class meeting
     """
 
@@ -2157,7 +2158,7 @@ def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column
 
     xleft = b+w_h_n+data_column*w_d
     height = end_height_pixels-begin_height_pixels
-    
+
     subject = scheduled_class_object.course_offering.course.subject.abbrev
     course_number = scheduled_class_object.course_offering.course.number
     course_label = subject+course_number
@@ -2165,14 +2166,14 @@ def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column
 
     line_sep = schedule['box_text_line_sep_pixels']
 
-    box_data = [xleft, begin_height_pixels, w_d, height, schedule['box_fill_colour'], 
+    box_data = [xleft, begin_height_pixels, w_d, height, schedule['box_fill_colour'],
                 schedule['box_line_width'], schedule['box_border_colour']]
-    
-    course_data = [xleft+w_d/2, begin_height_pixels+height/2-line_sep/2, course_label, 
+
+    course_data = [xleft+w_d/2, begin_height_pixels+height/2-line_sep/2, course_label,
                  schedule['box_font'],
                  schedule['table_header_text_colour']]
 
-    room_data = [xleft+w_d/2, begin_height_pixels+height/2+line_sep/2, room_label, 
+    room_data = [xleft+w_d/2, begin_height_pixels+height/2+line_sep/2, room_label,
                  schedule['box_font'],
                  schedule['table_header_text_colour']]
 
@@ -2185,7 +2186,7 @@ def convert_time_to_pixels(height_hour_block, base_hour, time_hour, time_minute)
     """
 # note: in at least some versions of python, "/" does integer division, so need to be careful
     return (time_hour-base_hour)*height_hour_block+time_minute*height_hour_block/60
-    
+
 
 @login_required
 def course_summary(request):
@@ -2210,11 +2211,11 @@ def course_summary(request):
         year_list.append(str(year.begin_on.year)+'-'+str(year.begin_on.year + 1))
         academic_year_dict[year.begin_on.year] = ii
         ii=ii+1
-    
+
     data_list = []
     for subject in department.subjects.all():
         for course in subject.courses.all():
-            number = u"{0} {1}".format(course.subject, 
+            number = u"{0} {1}".format(course.subject,
                                        course.number)
             course_name = course.title
             offering_list = []
@@ -2230,8 +2231,8 @@ def course_summary(request):
                 except KeyError:
                     pass
 
-            data_list.append({'number':number, 
-                              'name':course_name, 
+            data_list.append({'number':number,
+                              'name':course_name,
                               'offering_list': offering_list,
                               'id':course.id,
                               'credit_hrs':course.credit_hours
@@ -2324,7 +2325,7 @@ def new_class_schedule(request,id):
                 new_class.room = room
                 # if the db hangs, try new_class.room_id = room.id
                 new_class.save()
-            
+
             return redirect('department_load_summary')
         else:
             return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'course':course_offering})
@@ -2432,8 +2433,8 @@ def registrar_schedule(request):
                         meetings_scheduled = True
                         meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
 
-                    registrar_data_list.append({'number':number, 
-                                                'name':course_name, 
+                    registrar_data_list.append({'number':number,
+                                                'name':course_name,
                                                 'room_list': room_list,
                                                 'meeting_times_list': meeting_times_list,
                                                 'instructor_list': instructor_list,

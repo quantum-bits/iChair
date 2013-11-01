@@ -5,3 +5,5 @@ syntax: glob
 *.orig
 *.*~
 foo*
+*.log
+.DS_Store
