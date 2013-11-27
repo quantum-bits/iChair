@@ -1607,11 +1607,6 @@ def start_end_time_string(start_hour,start_minute,end_hour,end_minute):
         time = time+':'+str(end_minute)
     return time
 
-def instructor_form_for_dept(dept_id):
-    def make_instructor_form():
-        return InstructorForm(dept_id)
-    return make_instructor_form
-
 @login_required
 def update_course_offering(request,id):
     instance = CourseOffering.objects.get(pk = id)
@@ -2451,30 +2446,128 @@ def registrar_schedule(request):
 
 
 ###-------WORKING HERE---------
-### need to do the inline thing again, I think; pass dept and only show other loads of that type for that dept
-### don't know how to limit instructors in drop-down.....
+### !!!!!!!!!!  Need to limit the semesters to semester of the year_to_view !!!!!!!!
+### ...right now it only finds objects that are from the right year, but it allows the user to put new objects in any year!!!
+### need to pass the correct "year to view" to OtherLoadForm (like dept_id)
 
 
 @login_required
 def update_other_load(request, id):
+    """Update amounts of load and/or professor for 'other' (administrative-type) loads."""
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
-    department_id = user_preferences.department_to_view.id
+    instance = OtherLoadType.objects.get(pk = id)
+    print instance
 
-    instance = OtherLoad.objects.get(pk = id)
+    dept_id = user_preferences.department_to_view.id
+    year_to_view = user_preferences.academic_year_to_view.begin_on.year
+
+    OtherLoadFormset = inlineformset_factory(OtherLoadType, OtherLoad, 
+                                             formset = BaseOtherLoadFormset,
+                                             extra = 2,
+                                             exclude = 'load_type')
+    OtherLoadFormset.form = staticmethod(curry(OtherLoadForm, department_id=dept_id, year_to_view=year_to_view))
+    formset = OtherLoadFormset(instance=instance,queryset=OtherLoad.objects.filter(Q(instructor__department__id=dept_id)
+                                                                                   & Q(semester__year__begin_on__year=year_to_view)))
+    
+    errordict={}
+    dict = {"formset": formset,
+            "instance": instance,
+            "other_load_type": instance,
+            "errordict": errordict
+            }
 
     if request.method == 'POST':
-        form = AddOtherLoadForm(department_id, request.POST, instance=instance)
-        if form.is_valid():
-            form.save()
+        formset = OtherLoadFormset(request.POST, instance=instance)
+        formset.is_valid()
+        formset_error=formset.non_form_errors()
+
+        if formset.is_valid() and not formset_error:
+            formset.save()
             next = request.GET.get('next', 'profile')
             return redirect(next)
-#            return redirect('course_summary')
         else:
-            return render(request, 'add_course.html', {'form': form})
+            if formset_error:
+                errordict.update({'formset_error':formset_error})
+            for subform in formset:
+                if subform.errors:
+                    errordict.update(subform.errors)
+
+            return render(request, 'update_other_load.html', dict)
+
     else:
-        form = AddCourseForm(department_id, instance=instance)
-        context = {'form': form}
-        return render(request, 'add_course.html', context)
+        return render(request, 'update_other_load.html', dict)
+
+
+#    OtherLoadFormset = inlineformset_factory(OtherLoadType, OtherLoad)
+#    OtherLoadFormset.form = staticmethod(curry(OtherLoadForm, department_id=department_id))
+
+# at this point, OtherLoadForm needs to use the dept id to limit the instructors; should also pass an argument
+# that will help limit the year to view!  Somehow....
+
+#    if request.method == 'POST':
+#        form = OtherLoadForm(request.POST, instance=instance)
+#        if form.is_valid():
+#            form.save()
+#            next = request.GET.get('next', 'profile')
+#            return redirect(next)
+#        else:
+#            return render(request, 'update_other_load.html', {'form': form})
+#    else:
+#        form = OtherLoadForm(instance=instance)
+#        context = {'form': form}
+#        return render(request, 'update_other_load.html', context)
+
+
+#    department_abbrev = instance.course.subject.department.abbrev
+#    dept_id = instance.course.subject.department.id
+#    #    print department_abbrev
+#    # create the formset class
+
+#    InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
+#                                              formset=BaseInstructorFormSet)
+#    InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id))
+
+#    # create the formset
+#    formset = InstructorFormset(instance = instance)
+
+#    errordict={}
+#    dict1 = {
+#        "form": form
+#        , "formset": formset
+#        , "instance": instance
+#        , "course": instance
+#        , "errordict": errordict
+#    }
+
+#    if request.method == 'POST':
+#        form = CourseOfferingForm(request.POST, instance = instance)
+#        formset = InstructorFormset(request.POST, instance = instance)
+
+#        formset.is_valid()
+#        prof_repeated_errors=formset.non_form_errors()
+
+#        if form.is_valid() and formset.is_valid() and not prof_repeated_errors:
+#            form.save()
+#            formset.save()
+#            next = request.GET.get('next', 'profile')
+#            return redirect(next)
+#            return redirect('department_load_summary')
+#        else:
+
+#            if prof_repeated_errors:
+#                errordict.update({'prof_repeated_error':prof_repeated_errors})
+#            if form.errors.has_key('__all__'):
+#                errordict.update({'over_all_form_errors':form.errors['__all__']})
+#            for subform in formset:
+#                if subform.errors:
+#                    errordict.update(subform.errors)
+
+#            return render(request, 'update_course_offering.html', dict1)
+#    else:
+#        # User is not submitting the form; show them the blank add create your own course form
+#        return render(request, 'update_course_offering.html', dict1)
+
+

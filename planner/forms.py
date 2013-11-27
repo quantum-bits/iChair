@@ -257,13 +257,31 @@ class AddCourseForm(forms.ModelForm):
         super (AddCourseForm,self).__init__(*args,**kwargs)
         self.fields['subject'].queryset = Subject.objects.filter(Q(department__id = department_id))
 
-class AddOtherLoadForm(forms.ModelForm):
+#class OtherLoadForm(forms.ModelForm):
 
-    class Meta:
-        model = OtherLoad
-#        exclude = ('prereqs','coreqs','attributes',)
+#    class Meta:
+#        model = OtherLoad
+#        exclude = ('load_type',)
 
 #    def __init__(self, dept_id, *args, **kwargs):
 #        department_id = dept_id
 #        super (AddCourseForm,self).__init__(*args,**kwargs)
 #        self.fields['subject'].queryset = Subject.objects.filter(Q(department__id = department_id))
+
+class BaseOtherLoadFormset(forms.models.BaseInlineFormSet):
+
+# This can be used for future expansion -- e.g., for error trapping on field entries.
+
+    def clean(self):
+        if any(self.errors):
+            return
+
+class OtherLoadForm(forms.ModelForm):
+
+    def __init__(self, department_id, year_to_view, *args, **kwargs):
+        super (OtherLoadForm,self).__init__(*args,**kwargs)
+        self.fields['instructor'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
+        self.fields['semester'].queryset = Semester.objects.filter(Q(year__begin_on__year=year_to_view))
+
+    class Meta:
+        model = OtherLoad
