@@ -109,7 +109,8 @@
 {% for data_element in admin_data_list %}
 <tr>
   <td> </td>
-  <td style="text-align: left;"> {{data_element.load_type}}</td>
+  <td style="text-align: left;"> 
+    <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a></td>
   <td> </td>
   <td> </td>
   <td> </td>
@@ -294,7 +295,8 @@
 {% for data_element in instructor_row.admin_data_list %}
 <tr>
   <td> </td>
-  <td style="text-align: left;"> {{data_element.load_type}}</td>
+  <td style="text-align: left;"> 
+    <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a></td>
   <td> </td>
   <td> </td>
   <td> </td>
