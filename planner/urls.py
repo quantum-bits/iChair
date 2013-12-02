@@ -23,6 +23,10 @@ urlpatterns = patterns(
     url(r'^deletecourse/(\d+)/$', 'delete_course', name='delete_course'),
     url(r'^deletecourseconfirmation/(\d+)/$', 'delete_course_confirmation', name='delete_course_confirmation'),
     url(r'^updateotherload/(\d+)/$', 'update_other_load', name='update_other_load'),
+    url(r'^updateroomstoview/(\d+)/$', 'update_rooms_to_view', name='update_rooms_to_view'),
+    url(r'^updatefacultytoview/(\d+)/$', 'update_faculty_to_view', name='update_faculty_to_view'),
+    url(r'^updateyeartoview/(\d+)/$', 'update_year_to_view', name='update_year_to_view'),
+    url(r'^updateloadstoview/(\d+)/$', 'update_loads_to_view', name='update_loads_to_view'),
 
     url(r'^notes/', 'display_notes', name='display_notes'),
     url(r'^addnote/', 'add_new_note', name='add_new_note'),

@@ -9,7 +9,7 @@
 	  <td>{{ department }}</td>
 	</tr>
 	<tr>
-	  <th>Academic Year</th>
+	  <th>Academic Year (<a href="{% url 'update_year_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
 	  <td>{{ academic_year }}</td>
 	</tr>
 	<tr>
@@ -24,6 +24,36 @@
 	    {% else %}
 	      Unknown
 	    {% endif %}
+	  </td>
+	</tr>
+	<tr>
+	  <th>Faculty (<a href="{% url 'update_faculty_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
+	  <td>
+	    {% for faculty in faculty_list %}
+	    <div>
+	      {{faculty}}
+	    </div>
+	    {% endfor %}
+	  </td>
+	</tr>
+	<tr>
+	  <th>Rooms (<a href="{% url 'update_rooms_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
+	  <td>
+	    {% for room in room_list %}
+	    <div>
+	      {{room}}
+	    </div>
+	    {% endfor %}
+	  </td>
+	</tr>
+	<tr>
+	  <th>Non-Teaching Loads (<a href="{% url 'update_loads_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
+	  <td>
+	    {% for load in other_load_types %}
+	    <div>
+	      {{load}}
+	    </div>
+	    {% endfor %}
 	  </td>
 	</tr>
       </tbody>

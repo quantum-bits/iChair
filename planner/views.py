@@ -75,9 +75,27 @@ def profile(request):
 
     # Note: to access the email address in the view, you could set it to
     # email = student.user.email
+
+    room_list = []
+    for room in user_preferences.rooms_to_view.all():
+        room_name = room.building.abbrev+' '+room.number
+        room_list.append(room_name)
+
+    faculty_list = []
+    for faculty in user_preferences.faculty_to_view.all():
+        faculty_list.append(faculty.first_name+' '+faculty.last_name)
+
+    other_load_types = []
+    for load in user_preferences.other_load_types_to_view.all():
+        other_load_types.append(load)
+
     context = { 'department': user_preferences.department_to_view,
                 'academic_year': user_preferences.academic_year_to_view,
-                'permission_level': user_preferences.permission_level
+                'permission_level': user_preferences.permission_level,
+                'room_list': room_list,
+                'other_load_types': other_load_types,
+                'faculty_list': faculty_list,
+                'id': user_preferences.id
                 }
     return render(request, 'profile.html', context)
 
@@ -2444,13 +2462,6 @@ def registrar_schedule(request):
     context={'registrar_data_list':registrar_data_list, 'department': department, 'academic_year': academic_year_string}
     return render(request, 'registrar_schedule.html', context)
 
-
-###-------WORKING HERE---------
-### !!!!!!!!!!  Need to limit the semesters to semester of the year_to_view !!!!!!!!
-### ...right now it only finds objects that are from the right year, but it allows the user to put new objects in any year!!!
-### need to pass the correct "year to view" to OtherLoadForm (like dept_id)
-
-
 @login_required
 def update_other_load(request, id):
     """Update amounts of load and/or professor for 'other' (administrative-type) loads."""
@@ -2500,74 +2511,95 @@ def update_other_load(request, id):
     else:
         return render(request, 'update_other_load.html', dict)
 
+@login_required
+def update_rooms_to_view(request, id):
 
-#    OtherLoadFormset = inlineformset_factory(OtherLoadType, OtherLoad)
-#    OtherLoadFormset.form = staticmethod(curry(OtherLoadForm, department_id=department_id))
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
 
-# at this point, OtherLoadForm needs to use the dept id to limit the instructors; should also pass an argument
-# that will help limit the year to view!  Somehow....
+    instance = UserPreferences.objects.get(pk = id)
 
-#    if request.method == 'POST':
-#        form = OtherLoadForm(request.POST, instance=instance)
-#        if form.is_valid():
-#            form.save()
-#            next = request.GET.get('next', 'profile')
-#            return redirect(next)
-#        else:
-#            return render(request, 'update_other_load.html', {'form': form})
-#    else:
-#        form = OtherLoadForm(instance=instance)
-#        context = {'form': form}
-#        return render(request, 'update_other_load.html', context)
+    if request.method == 'POST':
+        form = UpdateRoomsToViewForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+        else:
+            return render(request, 'update_rooms_to_view.html', {'form': form})
+    else:
+        form = UpdateRoomsToViewForm(instance=instance)
+        context = {'form': form}
+        return render(request, 'update_rooms_to_view.html', context)
 
+@login_required
+def update_faculty_to_view(request, id):
 
-#    department_abbrev = instance.course.subject.department.abbrev
-#    dept_id = instance.course.subject.department.id
-#    #    print department_abbrev
-#    # create the formset class
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
 
-#    InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
-#                                              formset=BaseInstructorFormSet)
-#    InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id))
+    instance = UserPreferences.objects.get(pk = id)
 
-#    # create the formset
-#    formset = InstructorFormset(instance = instance)
+    if request.method == 'POST':
+        form = UpdateFacultyToViewForm(department_id, request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+        else:
+            return render(request, 'update_faculty_to_view.html', {'form': form})
+    else:
+        form = UpdateFacultyToViewForm(department_id, instance=instance)
+        context = {'form': form}
+        return render(request, 'update_faculty_to_view.html', context)
 
-#    errordict={}
-#    dict1 = {
-#        "form": form
-#        , "formset": formset
-#        , "instance": instance
-#        , "course": instance
-#        , "errordict": errordict
-#    }
+@login_required
+def update_year_to_view(request, id):
 
-#    if request.method == 'POST':
-#        form = CourseOfferingForm(request.POST, instance = instance)
-#        formset = InstructorFormset(request.POST, instance = instance)
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
 
-#        formset.is_valid()
-#        prof_repeated_errors=formset.non_form_errors()
+    instance = UserPreferences.objects.get(pk = id)
 
-#        if form.is_valid() and formset.is_valid() and not prof_repeated_errors:
-#            form.save()
-#            formset.save()
-#            next = request.GET.get('next', 'profile')
-#            return redirect(next)
-#            return redirect('department_load_summary')
-#        else:
+    if request.method == 'POST':
+        form = UpdateYearToViewForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+        else:
+            return render(request, 'update_year_to_view.html', {'form': form})
+    else:
+        form = UpdateYearToViewForm(instance=instance)
+        context = {'form': form}
+        return render(request, 'update_year_to_view.html', context)
 
-#            if prof_repeated_errors:
-#                errordict.update({'prof_repeated_error':prof_repeated_errors})
-#            if form.errors.has_key('__all__'):
-#                errordict.update({'over_all_form_errors':form.errors['__all__']})
-#            for subform in formset:
-#                if subform.errors:
-#                    errordict.update(subform.errors)
+@login_required
+def update_loads_to_view(request, id):
 
-#            return render(request, 'update_course_offering.html', dict1)
-#    else:
-#        # User is not submitting the form; show them the blank add create your own course form
-#        return render(request, 'update_course_offering.html', dict1)
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
 
+    instance = UserPreferences.objects.get(pk = id)
+
+    if request.method == 'POST':
+        form = UpdateLoadsToViewForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+        else:
+            return render(request, 'update_loads_to_view.html', {'form': form})
+    else:
+        form = UpdateLoadsToViewForm(instance=instance)
+        context = {'form': form}
+        return render(request, 'update_loads_to_view.html', context)
 

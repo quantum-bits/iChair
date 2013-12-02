@@ -285,3 +285,38 @@ class OtherLoadForm(forms.ModelForm):
 
     class Meta:
         model = OtherLoad
+
+class UpdateRoomsToViewForm(forms.ModelForm):
+
+    class Meta:
+        model = UserPreferences
+        exclude = ('user','department_to_view','faculty_to_view','academic_year_to_view',
+                   'permission_level','other_load_types_to_view',)
+
+class UpdateYearToViewForm(forms.ModelForm):
+
+    class Meta:
+        model = UserPreferences
+        exclude = ('user','department_to_view','faculty_to_view','rooms_to_view',
+                   'permission_level','other_load_types_to_view',)
+
+class UpdateLoadsToViewForm(forms.ModelForm):
+
+    class Meta:
+        model = UserPreferences
+        exclude = ('user','department_to_view','faculty_to_view','rooms_to_view',
+                   'permission_level','academic_year_to_view',)
+
+
+
+class UpdateFacultyToViewForm(forms.ModelForm):
+
+    class Meta:
+        model = UserPreferences
+        exclude = ('user','department_to_view','rooms_to_view','academic_year_to_view',
+                   'permission_level','other_load_types_to_view',)
+
+    def __init__(self, dept_id, *args, **kwargs):
+        department_id = dept_id
+        super (UpdateFacultyToViewForm,self).__init__(*args,**kwargs)
+        self.fields['faculty_to_view'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
