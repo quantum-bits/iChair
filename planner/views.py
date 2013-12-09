@@ -1357,11 +1357,15 @@ def department_load_summary(request):
     ii = 0
     load_list_initial=[]
     instructordict=dict()
-    instructor_list=[]
+    instructor_id_list=[]
+    instructor_name_list=[]
+    instructor_name_dict=dict()
     instructor_integer_list=[]
-    for faculty in department.faculty.all():
-        instructordict[faculty.last_name] = ii
-        instructor_list.append(faculty.last_name)
+    for faculty in user_preferences.faculty_to_view.filter(department=department):
+        instructordict[faculty.id] = ii
+        instructor_name_list.append(faculty.first_name[0]+'. '+faculty.last_name)
+        instructor_name_dict[faculty.id] = faculty.first_name[0]+'. '+faculty.last_name
+        instructor_id_list.append(faculty.id)
         instructor_integer_list.append(ii)
         ii=ii+1
 
@@ -1416,13 +1420,14 @@ def department_load_summary(request):
                     # using _set.all() allows us to get the info in the intermediate ("through") table
 #                    for instructor in course_offering.offeringinstructor_set.all():
                     for instructor in course_offering.offering_instructors.all():
-                        instructor_load = load_hour_rounder(instructor.load_credit)
-                        instructor_name = instructor.instructor.last_name
-                        ii = instructordict[instructor_name]
-                        jj = semesterdict[semester_name]
-                        load_list[ii][0] = instructor_load
-                        load_list[ii][1] = jj
-                        faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
+                        if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
+                            instructor_load = load_hour_rounder(instructor.load_credit)
+                            instructor_id = instructor.instructor.id
+                            ii = instructordict[instructor_id]
+                            jj = semesterdict[semester_name]
+                            load_list[ii][0] = instructor_load
+                            load_list[ii][1] = jj
+                            faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
 
                     load_diff = load_hour_rounder(course_offering.load_difference())
 
@@ -1446,10 +1451,10 @@ def department_load_summary(request):
         for ii in range(number_faculty):
             load_list.append([0,0,0])
         for other_load in other_load_type.other_loads.all():
-            instructor_name = other_load.instructor.last_name
-            if other_load.semester.year.begin_on.year == academic_year and instructor_name in instructor_list:
+            instructor_id = other_load.instructor.id
+            if other_load.semester.year.begin_on.year == academic_year and instructor_id in instructor_id_list:
                 semester_name = other_load.semester.name.name
-                ii = instructordict[instructor_name]
+                ii = instructordict[instructor_id]
                 jj = semesterdict[semester_name]
                 load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
                 faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
@@ -1465,17 +1470,17 @@ def department_load_summary(request):
             faculty_summary_load_list[ii][jj]=load_hour_rounder(faculty_summary_load_list[ii][jj])
 
     data_list_by_instructor = []
-    for instructor in instructor_list:
+    for instructor_id in instructor_id_list:
         instructor_data = []
         admin_data = []
         for row in data_list:
-            if row['load_hour_list'][instructordict[instructor]][0] >= 0:
+            if row['load_hour_list'][instructordict[instructor_id]][0] >= 0:
                 instructor_data.append({'comment':row['comment'],
                                         'semester':row['semester'],
                                         'meetings_scheduled': row['meetings_scheduled'],
                                         'name': row['name'],
-                                        'load_hour_list': [row['load_hour_list'][instructordict[instructor]][0],
-                                                           row['load_hour_list'][instructordict[instructor]][1]],
+                                        'load_hour_list': [row['load_hour_list'][instructordict[instructor_id]][0],
+                                                           row['load_hour_list'][instructordict[instructor_id]][1]],
                                         'id': row['id'],
                                         'load_hours': row['load_hours'],
                                         'meeting_times': row['meeting_times'],
@@ -1484,7 +1489,7 @@ def department_load_summary(request):
                                         'load_difference': row['load_difference']
                                         })
         for row in admin_data_list:
-            element = row['load_hour_list'][instructordict[instructor]]
+            element = row['load_hour_list'][instructordict[instructor_id]]
             if element[0] > 0 or element[1] > 0 or element[2] > 0:
                 admin_data.append({'load_type':row['load_type'],
                                    'load_hour_list':element,
@@ -1492,23 +1497,23 @@ def department_load_summary(request):
                                    })
 
 
-        data_list_by_instructor.append({'instructor_id':instructordict[instructor],
+        data_list_by_instructor.append({'instructor_id':instructordict[instructor_id],
                                         'course_info':instructor_data,
-                                        'instructor':instructor,
+                                        'instructor':instructor_name_dict[instructor_id],
                                         'admin_data_list':admin_data,
-                                        'load_summary':faculty_summary_load_list[instructordict[instructor]],
-                                        'total_load_hours':total_load_hours[instructordict[instructor]]
+                                        'load_summary':faculty_summary_load_list[instructordict[instructor_id]],
+                                        'total_load_hours':total_load_hours[instructordict[instructor_id]]
                                         })
 
     context={'course_data_list':data_list,
-             'instructor_list':instructor_list,
+             'instructor_list':instructor_name_list,
              'faculty_load_summary':faculty_summary_load_list,
              'admin_data_list':admin_data_list,
              'total_load_hours':total_load_hours,
              'department':department,
              'academic_year':academic_year_string,
              'instructordict':instructordict,
-             'instructorlist':instructor_list,
+             'instructorlist':instructor_id_list,
              'instructor_integer_list':instructor_integer_list,
              'data_list_by_instructor':data_list_by_instructor
              }
@@ -1758,7 +1763,7 @@ def weekly_schedule(request):
     idnum = 0
     prof_id = 0
 
-    for faculty_member in department.faculty.all().order_by('last_name'):
+    for faculty_member in user_preferences.faculty_to_view.filter(department=department).order_by('last_name'):
         prof_id = prof_id + 1
         data_this_professor = []
         for semester_name in semester_list:
@@ -1770,9 +1775,9 @@ def weekly_schedule(request):
                     course_offering_list.append(co)
 
             if semester_name == semester_list[0]:
-                table_title = faculty_member.last_name+' ('+semester_name+', '+str(academic_year)+')'
+                table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+str(academic_year)+')'
             else:
-                table_title = faculty_member.last_name+' ('+semester_name+', '+str(academic_year+1)+')'
+                table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+str(academic_year+1)+')'
 
             courses_after_five = False
             for course_offering in course_offering_list:
@@ -1811,7 +1816,7 @@ def weekly_schedule(request):
 
             id = 'id'+str(idnum)
             data_this_professor.append({'prof_id': prof_id,
-                                        'faculty_name': faculty_member.last_name,
+                                        'faculty_name': faculty_member.first_name[0]+'. '+faculty_member.last_name,
                                         'json_box_list': json_box_list,
                                         'json_box_label_list':json_box_label_list,
                                         'json_grid_list': json_grid_list,
@@ -1852,9 +1857,9 @@ def daily_schedule(request):
     instructor_dict = {}
     ii = 0
     professor_list = []
-    for faculty_member in department.faculty.all():
-        instructor_dict[faculty_member.last_name] = ii
-        professor_list.append(faculty_member.last_name)
+    for faculty_member in user_preferences.faculty_to_view.filter(department=department):
+        instructor_dict[faculty_member.id] = ii
+        professor_list.append(faculty_member.first_name[0]+'. '+faculty_member.last_name)
         ii=ii+1
     num_data_columns = ii
 
@@ -1900,11 +1905,12 @@ def daily_schedule(request):
                                                     Q(course_offering__course__subject__department = department)):
 #                for instructor in sc.course_offering.offeringinstructor_set.all():
                 for instructor in sc.course_offering.offering_instructors.all():
-                    box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc,
-                                                                                      instructor_dict[instructor.instructor.last_name])
-                    box_list.append(box_data)
-                    box_label_list.append(course_data)
-                    box_label_list.append(room_data)
+                    if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
+                        box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc,
+                                                                                          instructor_dict[instructor.instructor.id])
+                        box_list.append(box_data)
+                        box_label_list.append(course_data)
+                        box_label_list.append(room_data)
 
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
@@ -2470,7 +2476,7 @@ def update_other_load(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     instance = OtherLoadType.objects.get(pk = id)
-    print instance
+#    print instance
 
     dept_id = user_preferences.department_to_view.id
     year_to_view = user_preferences.academic_year_to_view.begin_on.year
