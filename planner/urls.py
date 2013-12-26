@@ -28,6 +28,9 @@ urlpatterns = patterns(
     url(r'^updateyeartoview/(\d+)/$', 'update_year_to_view', name='update_year_to_view'),
     url(r'^updateloadstoview/(\d+)/$', 'update_loads_to_view', name='update_loads_to_view'),
 
+    url(r'^copycourses/(\d+)/$', 'copy_courses', name='copy_courses'),
+    url(r'^chooseyearforcoursecopy/$', 'choose_year_course_copy', name='choose_year_course_copy'),
+
     url(r'^notes/', 'display_notes', name='display_notes'),
     url(r'^addnote/', 'add_new_note', name='add_new_note'),
     url(r'^updateNote/(\d+)/$', 'update_note', name='update_note'),

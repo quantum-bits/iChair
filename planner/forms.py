@@ -180,7 +180,7 @@ class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
                 for time_block in day_schedules[day]:
                     if (begin_time_decimal < time_block[1] and begin_time_decimal > time_block[0]
                         ) or (end_time_decimal < time_block[1] and end_time_decimal > time_block[0]
-                        ) or (begin_time_decimal < time_block[0] and end_time_decimal > time_block[1]):
+                        ) or (begin_time_decimal <= time_block[0] and end_time_decimal >= time_block[1]):
                         raise forms.ValidationError("Time blocks for a given day within a course offering cannot overlap.")
 
                 day_schedules[day].append([begin_time_decimal, end_time_decimal])
@@ -320,3 +320,10 @@ class UpdateFacultyToViewForm(forms.ModelForm):
         department_id = dept_id
         super (UpdateFacultyToViewForm,self).__init__(*args,**kwargs)
         self.fields['faculty_to_view'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
+
+#class CoursesToCopyForm(forms.Form):
+#    copy_this_course = forms.CheckboxMultiSelect(choices=['one','two'], required = False)
+
+#    def __init__(self, name_list, *args, **kwargs):
+#        super (CoursesToCopyForm,self).__init__(*args,**kwargs)
+#        copy_this_course = forms.CheckboxMultiSelect(choices=choices, required = False)

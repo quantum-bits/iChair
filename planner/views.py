@@ -2609,3 +2609,181 @@ def update_loads_to_view(request, id):
         context = {'form': form}
         return render(request, 'update_loads_to_view.html', context)
 
+
+@login_required
+def copy_courses(request, id):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+
+    academic_year_copy_from = AcademicYear.objects.get(pk = id)
+    academic_year_copy_to = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+
+    print academic_year_copy_from
+    print academic_year_copy_to
+
+# NEED  TO ADD SOMETHING to check if there are duplicate or overlapping course offerings
+# in the db for the current academic year.
+
+    
+    if request.method == 'POST':
+        course_offerings_to_copy_id_list = request.POST.getlist('courses_to_copy')
+        for co_id in course_offerings_to_copy_id_list:
+            co = CourseOffering.objects.get(pk = co_id)
+
+            semester_name = co.semester.name
+            semester_object_copy_to = Semester.objects.get(Q(name=semester_name)&Q(year=academic_year_copy_to))
+
+            new_co = CourseOffering.objects.create(course = co.course,
+                                                   semester = semester_object_copy_to,
+                                                   load_available = co.load_available,
+                                                   max_enrollment = co.max_enrollment,
+                                                   comment = co.comment
+                                                   )
+            new_co.save()
+
+            for instructor in co.offering_instructors.all():
+                print instructor.instructor
+                print instructor.load_credit
+                # NOTE: instructors are only assigned to courses if they are currently listed as being "viewable"
+                if instructor.instructor in faculty_to_view:
+                    new_offering_instructor = OfferingInstructor.objects.create(course_offering = new_co,
+                                                                                instructor = instructor.instructor,
+                                                                                load_credit = instructor.load_credit
+                                                                                )
+                    new_offering_instructor.save()
+
+            for sc in co.scheduled_classes.all():
+                print sc
+
+                schedule_addition = ScheduledClass.objects.create(course_offering = new_co,
+                                                                  day = sc.day,
+                                                                  begin_at = sc.begin_at,
+                                                                  end_at = sc.end_at,
+                                                                  room = sc.room,
+                                                                  comment = sc.comment
+                                                                  )
+                schedule_addition.save()
+
+
+        next = request.GET.get('next', 'profile')
+        return redirect(next)
+    else:
+        missing_instructor = False
+        data_list = []
+        comment_list = []
+        for subject in department.subjects.all():
+            for course in subject.courses.all():
+                for course_offering in course.offerings.filter(semester__year = academic_year_copy_from):
+                    course_offerings_current_year = course.offerings.filter(Q(semester__year = academic_year_copy_to)&
+                                                                            Q(semester__name = course_offering.semester.name))
+                    instructor_list=[]
+                    note_list=[]
+                    missing_instructor_this_course = False
+                    for faculty in course_offering.offering_instructors.all():
+                        if faculty.instructor in faculty_to_view:
+                            instructor_list.append(faculty.instructor.last_name)
+                        else:
+                            instructor_list.append("("+faculty.instructor.last_name+")")
+                            missing_instructor = True
+                            missing_instructor_this_course = True
+                    if missing_instructor_this_course:
+                        note_list.append("missing instructor")
+
+                    scheduled_classes = course_offering.scheduled_classes.all()
+                    if len(scheduled_classes)==0:
+                        meetings_scheduled = False
+                        meeting_times_list = ["---"]
+                        room_list = ["---"]
+                    else:
+                        meetings_scheduled = True
+                        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+# now try to find "collisions" between current course offerings (in the "copy to" year) and
+# the course offerings in the year being copied from
+                    scheduled_classes_current_year=[]
+                    for cocy in course_offerings_current_year:
+                        for sc in cocy.scheduled_classes.all():
+                            scheduled_classes_current_year.append(sc)
+# at this point, scheduled_classes and scheduled_classes_current_year are both arrays of "ScheduledClass"
+# objects; one has the classes from the "copy from" year and one from the "copy to" year; now those need
+# to be compared to see if there is any overlap
+                    course_offering_already_exists = scheduled_classes_overlap(scheduled_classes, scheduled_classes_current_year)
+#                    if course_offering_already_exists:
+#                        note_list.append("similar schedule exists")
+
+                    data_list.append({'instructors':instructor_list,
+                                      'room_list': room_list,
+                                      'meeting_times': meeting_times_list,
+                                      'meetings_scheduled': meetings_scheduled,
+                                      'id':course_offering.id,
+                                      'note_list': note_list,
+                                      'exists':course_offering_already_exists,
+                                      'number':course_offering.course.subject.abbrev+' '+course_offering.course.number,
+                                      'name':course_offering.course.title,
+                                      'semester':course_offering.semester.name
+                                      })
+        if missing_instructor:
+            comment_list.append("One or more instructors is missing from the current academic year and will not be included in a course copy.  If this is unintentional, you can add instructors back in under Profile.")
+            
+#        form = CoursesToCopyForm(['heythere'])
+#        print 'got here'
+#        print(form.as_table())
+        context = {'data_list': data_list, 'comment_list': comment_list, 
+                   'academic_year_copy_from':academic_year_copy_from,
+                   'academic_year_copy_to':academic_year_copy_to}
+        return render(request, 'copy_courses.html', context)
+
+def scheduled_classes_overlap(sclist1, sclist2):
+    """
+    Compares sclist1 and sclist2, which are lists of ScheduledClass objects, 
+    to see if there is any overlap in the schedules.  If there is no overlap
+    or if one of the lists is empty, returns False; if there is an overlap,
+    returns True.
+    """
+    if len(sclist1) == 0 or len(sclist2) == 0:
+        return False
+
+    day_schedules1 = {0:[], 1:[], 2:[], 3:[], 4:[]}
+    for sc1 in sclist1:
+        day_schedules1[sc1.day].append([convert_military_time(sc1.begin_at),convert_military_time(sc1.end_at)])
+
+    for sc2 in sclist2:
+        begin2 = convert_military_time(sc2.begin_at)
+        end2 = convert_military_time(sc2.end_at)
+        for time_block in day_schedules1[sc2.day]:
+            begin1 = time_block[0]
+            end1 = time_block[1]
+            if ((begin1 < end2) and (begin1 > begin2)) or ((end1 < end2) and (end1 > begin2)) or ((begin1 <= begin2) and (end1 >= end2)):
+                return True
+    return False
+
+
+def convert_military_time(time_object):
+    return time_object.hour*100+time_object.minute
+
+
+@login_required
+def choose_year_course_copy(request):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+
+    academic_year_copy_to = user_preferences.academic_year_to_view
+    academic_years = AcademicYear.objects.all()
+    
+    year_list =[]
+    for year in academic_years:
+        if year.begin_on.year < academic_year_copy_to.begin_on.year:
+            year_list.append({
+                    'year_name':year,
+                    'year_id':year.id
+                    })
+
+    context = {'year_list': year_list}
+    return render(request, 'choose_year_course_copy.html', context)
+

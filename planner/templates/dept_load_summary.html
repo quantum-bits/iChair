@@ -2,7 +2,11 @@
 {% block extrahead %}
 {% endblock %}
 {% block content %}
-
+<div class="content-center">
+<p> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
+	    Copy</a> course(s) from previous year.
+</p>
+</div>
  <div id="year-accordion" class="accordion">
    <div class="accordion-group">
      <div class="accordion-heading">
