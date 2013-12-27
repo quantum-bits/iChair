@@ -2,7 +2,7 @@
 
 {% block content %}
   <div class="content-center">
-  <h1>Current Users</h1>
+  <h2>iChair Login</h2>
   <form action="" method="post">
     {% csrf_token %}
     {% if form.errors %}<p>Please correct the following fields:</p>{% endif %}
@@ -13,7 +13,7 @@
       {% endif %}
 
       <p>
-	<label form="username" {% if form.username.errors %} class ="error"{% endif %}>Student ID (e.g., @00551111):</label></p>
+	<label form="username" {% if form.username.errors %} class ="error"{% endif %}>Username:</label></p>
       <p>{{ form.username }}</p>
     </div>
 
@@ -25,10 +25,6 @@
 
     <p><input type="submit" alt="register" /></p>
   </form>
-<p>Forgot your password? <a href="/resetpassword/">Reset it!</a></p>
-
-<h1>New Users</h1>
-<p><a href="{% url 'register' %}">Sign up!</a></p>
 </div>
 <script>
 $(window).load(function(){

@@ -1826,7 +1826,7 @@ def weekly_schedule(request):
                                         'schedule':schedule})
         data_list.append(data_this_professor)
 
-    context={'data_list':data_list}
+    context={'data_list':data_list, 'year':academic_year_string}
     return render(request, 'weekly_schedule.html', context)
 
 @login_required
@@ -1933,7 +1933,7 @@ def daily_schedule(request):
                                   'schedule':schedule})
         data_list.append(data_this_day)
 
-    context={'data_list':data_list}
+    context={'data_list':data_list, 'year':academic_year_string}
     return render(request, 'daily_schedule.html', context)
 
 
@@ -2027,7 +2027,7 @@ def room_schedule(request):
                                   'schedule':schedule})
         data_list.append(data_this_room)
 
-    context={'data_list':data_list}
+    context={'data_list':data_list, 'year':academic_year_string}
     return render(request, 'room_schedule.html', context)
 
 
