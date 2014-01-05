@@ -17,6 +17,7 @@ urlpatterns = patterns(
     url(r'^dailyschedule/$', 'daily_schedule', name='daily_schedule'),
     url(r'^registrarschedule/$', 'registrar_schedule', name='registrar_schedule'),
     url(r'^roomschedule/$', 'room_schedule', name='room_schedule'),
+    url(r'^courseschedule/$', 'course_schedule', name='course_schedule'),
     url(r'^addcourse/$', 'add_course', name='add_course'),
     url(r'^updatecourse/(\d+)/$', 'update_course', name='update_course'),
     url(r'^deletecourse/(\d+)/$', 'delete_course', name='delete_course'),
