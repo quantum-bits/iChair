@@ -18,7 +18,14 @@
 	<div class="accordion-inner">
 
 {% for data in room_data %}
-
+{% if data.conflict %}
+   <p> 
+    <span class="label label-warning">Warning </span> There are overlapping course offerings.
+  </p>
+   {% for warning in data.conflict %}
+      <p> <b>{{warning.0}}:</b> {{warning.1}} </p>
+   {% endfor %}
+{% endif %}
 <canvas id="{{data.id}}" width="{{data.schedule.width}}" height="{{data.schedule.height}}"></canvas>
 
   <script>

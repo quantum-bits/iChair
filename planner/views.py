@@ -449,7 +449,6 @@ def update_course_offering(request,id):
     form = CourseOfferingForm(instance=instance)
     department_abbrev = instance.course.subject.department.abbrev
     dept_id = instance.course.subject.department.id
-    #    print department_abbrev
     # create the formset class
 
     InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
@@ -609,6 +608,7 @@ def weekly_schedule(request):
             box_list = []
             box_label_list = []
 
+            conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
             for course_offering in course_offering_list:
                 for scheduled_class in course_offering.scheduled_classes.all():
                     box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, scheduled_class,
@@ -616,6 +616,10 @@ def weekly_schedule(request):
                     box_list.append(box_data)
                     box_label_list.append(course_data)
                     box_label_list.append(room_data)
+                    conflict_check_dict[scheduled_class.day].append([scheduled_class.begin_at.hour*100+scheduled_class.begin_at.minute,
+                                                                     scheduled_class.end_at.hour*100+scheduled_class.end_at.minute,
+                                                                     course_offering.course.subject.abbrev+' '+course_offering.course.number])
+                                                 
 
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
@@ -627,6 +631,12 @@ def weekly_schedule(request):
             json_filled_row_list = simplejson.dumps(filled_row_list)
             json_table_text_list = simplejson.dumps(table_text_list)
 
+            overlap_dict = check_for_conflicts(conflict_check_dict)
+            error_messages=[]
+            for key in overlap_dict:
+                for row in overlap_dict[key]:
+                    error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
+            
             id = 'id'+str(idnum)
             data_this_professor.append({'prof_id': prof_id,
                                         'faculty_name': faculty_member.first_name[0]+'. '+faculty_member.last_name,
@@ -636,7 +646,8 @@ def weekly_schedule(request):
                                         'json_filled_row_list': json_filled_row_list,
                                         'json_table_text_list': json_table_text_list,
                                         'id':id,
-                                        'schedule':schedule})
+                                        'schedule':schedule,
+                                        'conflict':error_messages})
         data_list.append(data_this_professor)
 
     context={'data_list':data_list, 'year':academic_year_string}
@@ -808,6 +819,8 @@ def room_schedule(request):
                                     schedule['table_title_font'],
                                     schedule['table_header_text_colour']])
 
+
+            conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
             box_list = []
             box_label_list = []
             for sc in ScheduledClass.objects.filter(Q(room = room)&
@@ -817,6 +830,9 @@ def room_schedule(request):
                 box_list.append(box_data)
                 box_label_list.append(course_data)
                 box_label_list.append(room_data)
+                conflict_check_dict[sc.day].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                    sc.end_at.hour*100+sc.end_at.minute,
+                                                    sc.course_offering.course.subject.abbrev+' '+sc.course_offering.course.number])
 
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
@@ -828,16 +844,23 @@ def room_schedule(request):
             json_filled_row_list = simplejson.dumps(filled_row_list)
             json_table_text_list = simplejson.dumps(table_text_list)
 
+            overlap_dict = check_for_conflicts(conflict_check_dict)
+            error_messages=[]
+            for key in overlap_dict:
+                for row in overlap_dict[key]:
+                    error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
+
             id = 'id'+str(idnum)
             data_this_room.append({'room_id':roomid,
                                    'room_name': room.building.abbrev+' '+room.number,
-                                  'json_box_list': json_box_list,
-                                  'json_box_label_list':json_box_label_list,
-                                  'json_grid_list': json_grid_list,
-                                  'json_filled_row_list': json_filled_row_list,
-                                  'json_table_text_list': json_table_text_list,
-                                  'id':id,
-                                  'schedule':schedule})
+                                   'json_box_list': json_box_list,
+                                   'json_box_label_list':json_box_label_list,
+                                   'json_grid_list': json_grid_list,
+                                   'json_filled_row_list': json_filled_row_list,
+                                   'json_table_text_list': json_table_text_list,
+                                   'id':id,
+                                   'schedule':schedule,
+                                   'conflict':error_messages})
         data_list.append(data_this_room)
 
     context={'data_list':data_list, 'year':academic_year_string}
@@ -942,6 +965,43 @@ def course_schedule(request):
 
     context={'data_list':data_list, 'year':academic_year_string}
     return render(request, 'course_schedule.html', context)
+
+def check_for_conflicts(conflict_dict):
+    """
+    Checks for time conflicts in a dictionary of lists.
+    The lists are assumed to have the form:
+    {key1:[[begin,end,string],[begin,end,string]],key2:....}.
+    """
+    time_blocks = [[0,0],[0,0]]
+    return_dict={}
+    for key in conflict_dict:
+        return_dict[key]=[]
+        n = len(conflict_dict[key])
+        for i in range(0,n-1):
+            for j in range(i+1,n):
+                time_blocks[0][0] = conflict_dict[key][i][0]
+                time_blocks[0][1] = conflict_dict[key][i][1]
+                time_blocks[1][0] = conflict_dict[key][j][0]
+                time_blocks[1][1] = conflict_dict[key][j][1]
+                if time_blocks_overlap(time_blocks):
+                    return_dict[key].append([conflict_dict[key][i][2],conflict_dict[key][j][2]])
+
+    return return_dict
+    
+def time_blocks_overlap(time_blocks):
+    """
+    Compares two time blocks to see if they overlap.  If so, returns True; otherwise, False.
+    Blocks are of the form [[begin1,end1],[begin2,end2]].
+    """
+    begin1 = time_blocks[0][0]
+    end1 = time_blocks[0][1]
+    begin2 = time_blocks[1][0]
+    end2 = time_blocks[1][1]
+
+    if ((begin1 < end2) & (begin1 >= begin2)) or ((end1 <= end2) & (end1 > begin2)) or ((end1 > end2) & (begin1 < begin2)):
+        return True
+    else:
+        return False
 
 def initialize_canvas_data(courses_after_five, num_data_columns):
     """
