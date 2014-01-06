@@ -7,3 +7,4 @@ syntax: glob
 foo*
 *.log
 .DS_Store
+static_root/*
