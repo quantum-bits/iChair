@@ -61,6 +61,11 @@ def display_notes(request):
 
     temp_data = Note.objects.all().filter(Q(department__abbrev=department.abbrev)&Q(year__begin_on__year=academic_year))
 
+    can_edit = True
+    if user_preferences.permission_level == 0:
+        can_edit = False
+        
+
 #    print temp_data
 
     datablock = []
@@ -73,7 +78,8 @@ def display_notes(request):
 
     context = {
         'department': department,
-        'datablock': datablock
+        'datablock': datablock,
+        'can_edit': can_edit
         }
     return render(request, 'notes.html', context)
 
@@ -144,6 +150,9 @@ def department_load_summary(request):
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    can_edit = True
+    if user_preferences.permission_level == 0:
+        can_edit = False
 
 # the following lines select out semester objects for 2013...below we use a different approach
 #    year_object=AcademicYear.objects.filter(begin_on__year='2013')[0]
@@ -318,6 +327,8 @@ def department_load_summary(request):
                                         'total_load_hours':total_load_hours[instructordict[instructor_id]]
                                         })
 
+
+
     context={'course_data_list':data_list,
              'instructor_list':instructor_name_list,
              'faculty_load_summary':faculty_summary_load_list,
@@ -328,7 +339,8 @@ def department_load_summary(request):
              'instructordict':instructordict,
              'instructorlist':instructor_id_list,
              'instructor_integer_list':instructor_integer_list,
-             'data_list_by_instructor':data_list_by_instructor
+             'data_list_by_instructor':data_list_by_instructor,
+             'can_edit': can_edit
              }
     return render(request, 'dept_load_summary.html', context)
 
@@ -1188,6 +1200,10 @@ def course_summary(request):
 
     department = user_preferences.department_to_view
 
+    can_edit = True
+    if user_preferences.permission_level == 0:
+        can_edit = False
+
     ii = 0
     semesterdict=dict()
     for semester in SemesterName.objects.all():
@@ -1230,7 +1246,8 @@ def course_summary(request):
                               })
 
 
-    context={'course_data_list':data_list, 'year_list':year_list, 'number_semesters': number_semesters}
+    context={'course_data_list':data_list, 'year_list':year_list, 'number_semesters': number_semesters,
+             'can_edit': can_edit}
     return render(request, 'course_summary.html', context)
 
 
@@ -1395,6 +1412,10 @@ def registrar_schedule(request):
 
     academic_year_string = str(year_to_view)+'-'+str(year_to_view + 1)
 
+    can_edit = True
+    if user_preferences.permission_level == 0:
+        can_edit = False
+
     registrar_data_list = []
     for semester in SemesterName.objects.all():
         for subject in department.subjects.all():
@@ -1434,10 +1455,11 @@ def registrar_schedule(request):
                                                 'course_id':course.id,
                                                 'course_offering_id':co.id,
                                                 'meetings_scheduled':meetings_scheduled,
-                                                'semester':semester.name
+                                                'semester':semester.name                                                
                                                 })
 
-    context={'registrar_data_list':registrar_data_list, 'department': department, 'academic_year': academic_year_string}
+    context={'registrar_data_list':registrar_data_list, 'department': department, 
+             'academic_year': academic_year_string, 'can_edit': can_edit}
     return render(request, 'registrar_schedule.html', context)
 
 @login_required

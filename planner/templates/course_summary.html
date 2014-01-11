@@ -15,15 +15,24 @@
 		{% for year in year_list %}
 		   <td colspan={{number_semesters}} style="text-align: center;"> {{year}} </td>
 		{% endfor %}
+		{% if can_edit %}
 	       <td>  </td>
+	        {% endif %}
 	       </tr>
 	     </thead>
 	     <tbody>
 {% for course in course_data_list %}
     <tr>
-      <td> <a href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">{{course.number}}</a></td>
+      <td> {% if can_edit %}
+	<a href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">{{course.number}}</a>
+	   {% else %} {{course.number}} {% endif %} 
+      </td>
       <td> {{course.name}}</td>
-      <td style="text-align: center;"> <a href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">{{course.credit_hrs}}</a></td>
+      <td style="text-align: center;"> 
+	{% if can_edit %}
+	<a href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">{{course.credit_hrs}}</a>
+        {% else %} {{course.credit_hrs}} {% endif %}
+      </td>
       {% for load in course.offering_list %}
          {% for loadelement in load %}
             <td style="text-align: center;"> {% if loadelement > 0 %}
@@ -32,13 +41,16 @@
 	    </td>
 	 {% endfor %}
       {% endfor %}
+	    {% if can_edit %}
 	    <td><a href="{% url 'manage_course_offerings' course.id %}">Manage Offerings</a> | 
 	      <a href="{% url 'delete_course_confirmation' course.id %}">Delete</a> </td>
+	    {% endif %}
     </tr>
 {% endfor %}
 
+{% if can_edit %}
 <p> Add a <a href="{% url 'add_course' %}">new course</a>.</p>
-
+{% endif %}
 
   <script>
     $(window).load(function(){

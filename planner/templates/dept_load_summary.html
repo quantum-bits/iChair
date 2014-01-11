@@ -3,9 +3,12 @@
 {% endblock %}
 {% block content %}
 <div class="content-center">
+
+{% if can_edit %}
 <p> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
 	    Copy</a> course(s) from previous year.
 </p>
+{% endif %}
 </div>
  <div id="year-accordion" class="accordion">
    <div class="accordion-group">
@@ -48,11 +51,19 @@
 	{% for meeting in course.meeting_times %}
 	<div>
 	  {% if course.meetings_scheduled %}
+	  {% if can_edit %}
 	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
 	    {{meeting}}</a>
+	  {% else %} 
+	    {{meeting}}
+	  {% endif %}
 	  {% else %}
+	  {% if can_edit %}
 	  <a href="{% url 'new_class_schedule' course.id %}">
 	    {{meeting}}</a>
+	  {% else %}
+	    {{meeting}}
+	  {% endif %}
 	  {% endif %}
 	</div>
 	{% endfor %}
@@ -61,17 +72,27 @@
 	{% for room in course.rooms %}
 	<div>
 	  {% if course.meetings_scheduled %}
+	  {% if can_edit %}
 	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
 	    {{room}}</a>
 	  {% else %}
+	  {{room}}
+	  {% endif %}
+	  {% else %}
+	  {% if can_edit %}
 	  <a href="{% url 'new_class_schedule' course.id %}">
 	    {{room}}</a>
+	  {% else %}
+	  {{room}}
+	  {% endif %}
 	  {% endif %}
 	</div>
 	{% endfor %}
       </td>
       <td style="text-align: center;">
-	<a href="{% url 'update_course_offering' course.id %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a></td>
+	{% if can_edit %}
+	<a href="{% url 'update_course_offering' course.id %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a>
+        {% else %} {{course.load_hours}} {% endif %} </td>
 	{% if course.load_difference < 0 %}
           <td style="text-align: center; color: red"> 
 	  {{course.load_difference}}
@@ -114,7 +135,9 @@
 <tr>
   <td> </td>
   <td style="text-align: left;"> 
-    <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a></td>
+    {% if can_edit %}
+    <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a>
+    {% else %} {{data_element.load_type}} {% endif %} </td>
   <td> </td>
   <td> </td>
   <td> </td>
@@ -236,11 +259,15 @@
 	{% for meeting in course.meeting_times %}
 	<div>
 	  {% if course.meetings_scheduled %}
+	  {% if can_edit %}
 	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
 	    {{meeting}}</a>
+	  {% else %} {{meeting}} {% endif %}
 	  {% else %}
+	  {% if can_edit %}
 	  <a href="{% url 'new_class_schedule' course.id %}">
 	    {{meeting}}</a>
+	  {% else %} {{meeting}} {% endif %}
 	  {% endif %}
 	</div>
 	{% endfor %}
@@ -249,17 +276,23 @@
 	{% for room in course.rooms %}
 	<div>
 	  {% if course.meetings_scheduled %}
+	  {% if can_edit %}
 	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
 	    {{room}}</a>
+	  {% else %} {{room}} {% endif %}
 	  {% else %}
+	  {% if can_edit %}
 	  <a href="{% url 'new_class_schedule' course.id %}">
 	    {{room}}</a>
+	  {% else %} {{room}} {% endif %}
 	  {% endif %}
 	</div>
 	{% endfor %}
       </td>
       <td style="text-align: center;">
-	<a href="{% url 'update_course_offering' course.id %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a></td>
+	{% if can_edit %}
+	<a href="{% url 'update_course_offering' course.id %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a>
+        {% else %} {{course.load_hours}} {% endif %}</td>
 	{% if course.load_difference < 0 %}
           <td style="text-align: center; color: red"> 
 	  {{course.load_difference}}
@@ -300,7 +333,9 @@
 <tr>
   <td> </td>
   <td style="text-align: left;"> 
-    <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a></td>
+    {% if can_edit %}
+    <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a>
+    {% else %} {{data_element.load_type}} {% endif %} </td>
   <td> </td>
   <td> </td>
   <td> </td>
