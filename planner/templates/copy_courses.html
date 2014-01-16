@@ -23,7 +23,13 @@
 	<td style="text-align: center;"> Room </td>
 	<td style="text-align: center;"> Faculty </td>
 	<td style="text-align: center;"> Notes </td>
-	<td style="text-align: center;"> Copy </td>
+	<td style="text-align: center;"> <div> Copy </div> 
+	  <div>
+	    <a href="{% url 'copy_courses' year_id check_all_flag_table %}?next={% url 'department_load_summary' %}">
+	    {% if check_all %} (deselect all) {% else %} (select all) {% endif %}
+	  </a>
+	</div> 
+	</td>
       </tr>
     </thead>
     <tbody>
@@ -93,7 +99,7 @@
       {% endif %}
       <td style="text-align: center;">
 	{% if not course.exists %}
-	<input type="checkbox" name="courses_to_copy" id="option{{course.id}}" value={{course.id}} />
+	<input type="checkbox" {% if check_all %} checked = "yes" {% endif %} name="courses_to_copy" id="option{{course.id}}" value={{course.id}} />
         {% endif %} </td>
       </tr>
       {% endfor %}

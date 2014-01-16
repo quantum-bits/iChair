@@ -1605,7 +1605,7 @@ def update_loads_to_view(request, id):
 
 
 @login_required
-def copy_courses(request, id):
+def copy_courses(request, id, check_all_flag):
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -1618,6 +1618,12 @@ def copy_courses(request, id):
 
     print academic_year_copy_from
     print academic_year_copy_to
+    if check_all_flag == '0':
+        check_all = False
+        check_all_flag_table = 1
+    else:
+        check_all = True
+        check_all_flag_table = 0
 
 # NEED  TO ADD SOMETHING to check if there are duplicate or overlapping course offerings
 # in the db for the current academic year.
@@ -1727,7 +1733,8 @@ def copy_courses(request, id):
 #        print(form.as_table())
         context = {'data_list': data_list, 'comment_list': comment_list, 
                    'academic_year_copy_from':academic_year_copy_from,
-                   'academic_year_copy_to':academic_year_copy_to}
+                   'academic_year_copy_to':academic_year_copy_to, 
+                   'check_all': check_all, 'check_all_flag_table':check_all_flag_table, 'year_id': id}
         return render(request, 'copy_courses.html', context)
 
 def scheduled_classes_overlap(sclist1, sclist2):
