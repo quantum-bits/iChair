@@ -391,11 +391,11 @@ def export_data(request):
         if doc_type == u'actual':
             load_sheet_type = 'actual'
             due_date = 'March 12, '+str(academic_year.begin_on.year+1)
-            file_name = '/ActualLoads_'+year_string+'.xls'       
+            file_name = 'ActualLoads_'+year_string+'.xls'       
         else:
             load_sheet_type = 'projected'
             due_date = 'February 26, '+str(academic_year.begin_on.year)
-            file_name = '/ProjectedLoads_'+year_string+'.xls'
+            file_name = 'ProjectedLoads_'+year_string+'.xls'
 
         # the following list is used later on to check if there are two people with the same last name
         faculty_last_names = [] 
@@ -454,16 +454,26 @@ def export_data(request):
                     'faculty_last_names':faculty_last_names
                     }
         book = prepare_excel_workbook(faculty_data_list,data_dict)
+#        next = request.GET.get('next', 'profile')
+        response = HttpResponse(mimetype="application/ms-excel")
+        response['Content-Disposition'] = 'attachment; filename=%s' % file_name
+        book.save(response)
 
-        book.save(home+file_name)
+#        return redirect(next)
+        
+        return response
+    
+
+
+#        book.save(home+file_name)
 #    response = HttpResponse(content_type='text/csv')
 #    response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
 #    return response
 
 #        next = request.GET.get('next', 'profile')
 #        return redirect(next)
-        context = {'file_name': home+file_name, 'success': True}
-        return render(request, 'export_complete.html', context)
+#        context = {'file_name': home+file_name, 'success': True}
+#        return render(request, 'export_complete.html', context)
     else:
 #        context = {'data_list': data_list, 'comment_list': comment_list, 
 #                   'academic_year_copy_from':academic_year_copy_from,
