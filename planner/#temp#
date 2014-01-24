@@ -1,0 +1,12 @@
+
+    ii = 0
+    semesterdict=dict()
+    for semester in SemesterName.objects.all():
+        semesterdict[semester.name] = ii
+        ii=ii+1
+#
+# load for summer is added to the spring....
+#
+    semesterdict[u'Summer']=2
+
+    data_list = []
