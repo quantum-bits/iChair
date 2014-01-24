@@ -24,6 +24,15 @@
 	<div class="navbar-inner">
 	  <ul class="nav">
 	    <li id="nav-profile"><a href="{% url 'planner.views.profile' %}">Profile</a><i></i></li>
+	    <li id="nav-file" class="dropdown">
+	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+		File
+		<b class="caret"></b>
+	      </a>
+	      <ul class="dropdown-menu">
+		<li><a href="{% url 'planner.views.export_data' %}?next={% url 'department_load_summary' %}">Export Faculty Loads</a></li>
+	      </ul>
+	    </li>
 	    <li id="nav-deptloadsummary"><a href="{% url 'planner.views.department_load_summary' %}">Faculty Load Summary</a><i></i></li>
             <li id="nav-schedule" class="dropdown">
 	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">

@@ -14,6 +14,12 @@ from django.utils.functional import curry
 from .models import *
 from .forms import *
 
+import csv
+from django.http import HttpResponse
+import xlwt
+from os.path import expanduser
+from datetime import date
+
 def home(request):
     return render(request, 'home.html')
 
@@ -343,6 +349,317 @@ def department_load_summary(request):
              'can_edit': can_edit
              }
     return render(request, 'dept_load_summary.html', context)
+
+@login_required
+def export_data(request):
+    """
+    Exports data to an Excel file in 'actual load' or 'projected load' format.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    academic_year = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+
+    home = expanduser("~")
+    today = date.today()
+    date_string = str(today.month)+'/'+str(today.day)+'/'+str(today.year)
+
+    can_edit = True
+    if user_preferences.permission_level == 0:
+        can_edit = False
+
+    ii = 0
+    semesterdict=dict()
+    for semester in SemesterName.objects.all():
+        semesterdict[semester.name] = ii
+        ii=ii+1
+#
+# load for summer is added to the spring....
+#
+    semesterdict[u'Summer']=2
+
+    if request.method == 'POST':
+        faculty_export_list= request.POST.getlist('faculty_for_export')
+        if len(faculty_export_list)==0:
+            context = {'file_name': '', 'success': False}
+            return render(request, 'export_complete.html', context)
+        doc_type = request.POST.getlist('doc_type')[0]
+        name_preparer = request.POST.getlist('name_preparer')[0]
+        year_string = str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1))
+        if doc_type == u'actual':
+            load_sheet_type = 'actual'
+            due_date = 'March 12, '+str(academic_year.begin_on.year+1)
+            file_name = '/ActualLoads_'+year_string+'.xls'       
+        else:
+            load_sheet_type = 'projected'
+            due_date = 'February 26, '+str(academic_year.begin_on.year)
+            file_name = '/ProjectedLoads_'+year_string+'.xls'
+
+        # the following list is used later on to check if there are two people with the same last name
+        faculty_last_names = [] 
+        for faculty_id in faculty_export_list:
+            faculty = FacultyMember.objects.get(pk = faculty_id)
+            faculty_last_names.append(faculty.last_name)
+
+        faculty_data_list = []
+        for faculty_id in faculty_export_list:
+            faculty = FacultyMember.objects.get(pk = faculty_id)
+            course_load_dict=dict()
+            course_name_dict=dict()
+            course_number_dict=dict()
+            other_load_dict=dict()
+            other_load_name_dict=dict()
+            for semester in academic_year.semesters.all():
+# summer is still included...drop it?!?  Maybe just put a note in RED at the bottom of the spreadsheet if there is
+# any summer load in the database, which didn't make it into the Excel spreadsheet.
+                offering_instructors = faculty.offering_instructors.filter(course_offering__semester=semester)
+                for oi in offering_instructors:
+                    course_id = oi.course_offering.course.id
+                    if course_id not in course_load_dict:
+                        course_load_dict[course_id]=[0,0,0]
+                        course_name_dict[course_id]=oi.course_offering.course.title
+                        course_number_dict[course_id]=oi.course_offering.course.subject.abbrev+oi.course_offering.course.number
+
+                    course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] = course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] + oi.load_credit
+
+
+                other_loads = faculty.other_loads.filter(semester=semester)
+                for ol in other_loads:
+                    other_load_id = ol.load_type.id
+                    if other_load_id not in other_load_dict:
+                        other_load_dict[other_load_id]=[0,0,0]
+                        other_load_name_dict[other_load_id]=ol.load_type.load_type
+                    
+                    other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] = other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] + ol.load_credit
+
+
+            faculty_data_list.append({'last_name':faculty.last_name, 
+                                      'first_name':faculty.first_name, 
+                                      'course_load_dict':course_load_dict,
+                                      'course_name_dict':course_name_dict,
+                                      'course_number_dict':course_number_dict,
+                                      'other_load_dict':other_load_dict,
+                                      'other_load_name_dict':other_load_name_dict})
+        data_dict ={'school':department.school.name, 
+                    'load_sheet_type': load_sheet_type, 
+                    'department': department.name,
+                    'prepared_by': name_preparer,
+                    'date': date_string,
+                    'academic_year': str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1)),
+                    'due_date': due_date,
+                    'two_digit_year_fall': str(extract_two_digits(academic_year.begin_on.year)),
+                    'two_digit_year_spring': str(extract_two_digits(academic_year.begin_on.year+1)),
+                    'faculty_last_names':faculty_last_names
+                    }
+        book = prepare_excel_workbook(faculty_data_list,data_dict)
+
+        book.save(home+file_name)
+#    response = HttpResponse(content_type='text/csv')
+#    response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
+#    return response
+
+#        next = request.GET.get('next', 'profile')
+#        return redirect(next)
+        context = {'file_name': home+file_name, 'success': True}
+        return render(request, 'export_complete.html', context)
+    else:
+#        context = {'data_list': data_list, 'comment_list': comment_list, 
+#                   'academic_year_copy_from':academic_year_copy_from,
+#                   'academic_year_copy_to':academic_year_copy_to, 
+#                   'check_all': check_all, 'check_all_flag_table':check_all_flag_table, 'year_id': id}
+        faculty_list = []
+        for faculty in department.faculty.all().order_by('last_name'):
+            load = 0
+            for semester in academic_year.semesters.all():
+                offering_instructors = faculty.offering_instructors.filter(course_offering__semester=semester)
+                for oi in offering_instructors:
+                    load = load+oi.load_credit
+                other_loads = faculty.other_loads.filter(semester=semester)
+                for ol in other_loads:
+                    load = load + ol.load_credit
+
+            faculty_list.append({'name':faculty.first_name+' '+faculty.last_name,
+                                 'id':faculty.id,
+                                 'hrs': str(load_hour_rounder(load))+' hrs',
+                                 })
+        context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit}
+        return render(request, 'export_data.html', context)
+
+def extract_two_digits(year):
+    """
+    Extracts the last two digits from a year; e.g., 2014 -> 14.  year is an
+    int; returns an int.
+    """
+    return year-int(float(year)/100)*100
+
+def prepare_excel_workbook(faculty_list_dict, global_data):
+    """
+    Prepares some content for an Excel file based on data contained in two lists of dictionaries.
+    """
+
+    one_inch = 3333
+    styles = dict(
+        bold = 'font: bold 1',
+        italic = 'font: italic 1',
+        # Wrap text in the cell
+        wrap_bold = 'font: bold 1; align: wrap 1;',
+        # White text on a blue background
+        reversed = 'pattern: pattern solid, fore_color blue; font: color white;',
+        # Light orange checkered background
+        light_orange_bg = 'pattern: pattern fine_dots, fore_color white, back_color orange;',
+        # Heavy borders
+        bordered = 'border: top thick, right thick, bottom thick, left thick;',
+        # 16 pt red text
+        big_red = 'font: height 320, color red;',
+        calibri_font = 'font: height 220, color black, name Calibri;',
+        calibri_bold_bordered = 'font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bordered = 'font: height 220, color black, name Calibri;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bold_bordered_centered = 'alignment: horizontal center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_centered = 'font: height 220, color black, name Calibri; alignment:horizontal center;',
+        bold_title = 'alignment:horizontal center; font: height 240, color black, name Calibri, bold 1;',
+        bold_title_red = 'alignment:horizontal center; font: height 240, color red, name Calibri, bold 1;',
+        )
+
+    column_widths = [int(1.41*one_inch),
+                     int(0.81*one_inch),
+                     int(2.11*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(2.58*one_inch)]
+
+    # note: row heights are set automatically by the font size
+    
+    book = xlwt.Workbook()
+    style_calibri_bordered = xlwt.easyxf(styles['calibri_bordered'])
+    style_calibri_bordered_grey = xlwt.easyxf(styles['calibri_bordered']+'pattern: pattern solid, fore_color 22')
+    style_calibri_centered = xlwt.easyxf(styles['calibri_centered'])
+    style_calibri_bold_bordered = xlwt.easyxf(styles['calibri_bold_bordered'])
+
+    if global_data['load_sheet_type']=='actual':
+        type_text = 'ACTUAL Faculty Loads'
+        type_text2 = 'Actual Load for:'
+        table_title = 'This Year Actual Hours'
+    else:
+        type_text = 'PROJECTED Faculty Loads'
+        type_text2 = 'Projected Load for:'
+        table_title = 'Next Year Projected Hours'
+
+    for faculty in faculty_list_dict:
+        
+        number_names = global_data['faculty_last_names'].count(faculty['last_name'])
+        if number_names > 1:
+            sheet = book.add_sheet(faculty['first_name']+' '+faculty['last_name'])
+        else:
+            sheet = book.add_sheet(faculty['last_name'])
+
+        col = 0
+        for width in column_widths:
+            sheet.col(col).width = width
+            col = col+1
+        
+        sheet.write_merge(0,0,0,7,global_data['school'],xlwt.easyxf(styles['bold_title']))
+        sheet.write_merge(1,1,0,7,type_text,xlwt.easyxf(styles['bold_title_red']))
+        sheet.write_merge(3,3,0,7,'Department: '+global_data['department'],style_calibri_centered)
+        sheet.write_merge(5,5,0,7,'Prepared by (Dept Chair): '+global_data['prepared_by']+
+                          '                           Date: '+global_data['date'],style_calibri_centered)
+        sheet.write(7,4,type_text2,xlwt.easyxf(styles['calibri_font']))
+        sheet.write(7,6,global_data['academic_year'],xlwt.easyxf(styles['calibri_bold_bordered']))
+        sheet.write_merge(9,9,0,7,'Instructions:   Use one sheet per faculty member.  Include all assignments for which load credit is granted.  Non-teaching load (e.g. department',xlwt.easyxf(styles['calibri_font']+'border: top thin, right thin;'))
+        sheet.write_merge(10,10,0,7,'chair duties) should be included and clearly identified.  DO NOT include independent studies/practicums.  For adjuncts, use one sheet with a',xlwt.easyxf(styles['calibri_font']+'border: right thin;'))
+        sheet.write_merge(11,11,0,7,'combined total of load credit for each applicable term',xlwt.easyxf(styles['calibri_font']+'border: right thin;'))
+        sheet.write_merge(12,12,0,7,'Forms should be emailed to your School Administrative Assistant by '+global_data['due_date']+'.',xlwt.easyxf(styles['calibri_centered']+'border: bottom thin, right thin;'))
+        sheet.write_merge(13,13,2,5,table_title,xlwt.easyxf(styles['calibri_bold_bordered_centered']))
+        sheet.write(14,0,'Faculty Member',xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+        sheet.write_merge(15,16,0,0,faculty['first_name']+' '+faculty['last_name'],xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+        sheet.write(14,1,'Course No.',xlwt.easyxf(styles['calibri_font']+'border: top thin, right thin, bottom thin;'))
+        sheet.write(14,2,'Course Title',xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+        sheet.write(14,3,'Fall '+global_data['two_digit_year_fall'],xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+        sheet.write(14,4,'Jan '+global_data['two_digit_year_spring'],xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+        sheet.write(14,5,'Spring '+global_data['two_digit_year_spring'],xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+        sheet.write(14,6,'TOTAL',xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+        sheet.write(14,7,'Remarks',xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin;'))
+
+        row_data_start = 15
+        col_data_start = 3
+        i = 0
+        # add in load data for courses
+        for key in sorted(faculty['course_number_dict'],key=faculty['course_number_dict'].get):
+            if i>1:
+                sheet.write(row_data_start+i,0,'',style_calibri_bordered_grey)
+            sheet.write(row_data_start+i,1,faculty['course_number_dict'][key],style_calibri_bordered)
+            sheet.write(row_data_start+i,2,faculty['course_name_dict'][key],style_calibri_bordered)
+            for j, load in enumerate(faculty['course_load_dict'][key]):
+                if load > 0:
+                    sheet.write(row_data_start+i,col_data_start+j,load,style_calibri_bordered)
+                else:
+                    sheet.write(row_data_start+i,col_data_start+j,'',style_calibri_bordered)
+            sum_string = 'SUM(D'+str(row_data_start+1+i)+':F'+str(row_data_start+1+i)+')'
+            sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_calibri_bordered)
+            sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+            i=i+1
+
+        # add in "other" types of load
+        for key in sorted(faculty['other_load_name_dict'],key=faculty['other_load_name_dict'].get):
+            if i>1:
+                sheet.write(row_data_start+i,0,'',style_calibri_bordered_grey)
+            sheet.write(row_data_start+i,1,'',style_calibri_bordered)
+            sheet.write(row_data_start+i,2,faculty['other_load_name_dict'][key],style_calibri_bordered)
+            for j, load in enumerate(faculty['other_load_dict'][key]):
+                if load > 0:
+                    sheet.write(row_data_start+i,col_data_start+j,load,style_calibri_bordered)
+                else:
+                    sheet.write(row_data_start+i,col_data_start+j,'',style_calibri_bordered)
+            sum_string = 'SUM(D'+str(row_data_start+1+i)+':F'+str(row_data_start+1+i)+')'
+            sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_calibri_bordered)
+            sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+            i=i+1
+
+        # add in three blank rows for good measure
+        for k in range(3):
+            if i>1:
+                sheet.write(row_data_start+i,0,'',style_calibri_bordered_grey)
+            sheet.write(row_data_start+i,1,'',style_calibri_bordered)
+            sheet.write(row_data_start+i,2,'',style_calibri_bordered)
+            for j in range(3):
+                sheet.write(row_data_start+i,col_data_start+j,'',style_calibri_bordered)
+            sheet.write(row_data_start+i,6,'',style_calibri_bordered)
+            sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+            i=i+1
+        # Totals row
+        sheet.write(row_data_start+i,0,'Totals',xlwt.easyxf(styles['calibri_bold_bordered']))
+        sheet.write(row_data_start+i,1,'',style_calibri_bordered_grey)
+        sheet.write(row_data_start+i,2,'',style_calibri_bordered_grey)
+        sum_string = 'SUM(D'+str(row_data_start+1)+':D'+str(row_data_start+i)+')'
+        sheet.write(row_data_start+i,3,xlwt.Formula(sum_string),style_calibri_bold_bordered)
+        sum_string = 'SUM(E'+str(row_data_start+1)+':E'+str(row_data_start+i)+')'
+        sheet.write(row_data_start+i,4,xlwt.Formula(sum_string),style_calibri_bold_bordered)
+        sum_string = 'SUM(F'+str(row_data_start+1)+':F'+str(row_data_start+i)+')'
+        sheet.write(row_data_start+i,5,xlwt.Formula(sum_string),style_calibri_bold_bordered)
+        sum_string = 'SUM(G'+str(row_data_start+1)+':G'+str(row_data_start+i)+')'
+        sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_calibri_bold_bordered)
+        sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+        i=i+1
+
+        for k in range(7):
+            sheet.write(row_data_start+i,k,'',style_calibri_bordered_grey)
+        sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+        i=i+1
+
+        sheet.write(row_data_start+i,0,'Adjuncts (hrs only)',xlwt.easyxf(styles['calibri_bold_bordered']))
+        sheet.write(row_data_start+i,1,'',style_calibri_bordered_grey)
+        sheet.write(row_data_start+i,2,'',style_calibri_bordered_grey)
+        sheet.write(row_data_start+i,3,'',style_calibri_bold_bordered)
+        sheet.write(row_data_start+i,4,'',style_calibri_bold_bordered)
+        sheet.write(row_data_start+i,5,'',style_calibri_bold_bordered)
+        sheet.write(row_data_start+i,6,'',style_calibri_bold_bordered)
+        sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+        i=i+1
+
+    return book
 
 def load_hour_rounder(load):
     """Rounds load if the load is close to an int"""
@@ -1624,10 +1941,6 @@ def copy_courses(request, id, check_all_flag):
     else:
         check_all = True
         check_all_flag_table = 0
-
-# NEED  TO ADD SOMETHING to check if there are duplicate or overlapping course offerings
-# in the db for the current academic year.
-
     
     if request.method == 'POST':
         course_offerings_to_copy_id_list = request.POST.getlist('courses_to_copy')
