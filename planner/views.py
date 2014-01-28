@@ -471,8 +471,8 @@ def export_data(request):
                     }
         book = prepare_excel_workbook(faculty_data_list,data_dict)
 #        next = request.GET.get('next', 'profile')
-#        response = HttpResponse(mimetype="application/ms-excel")
-        response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
+        response = HttpResponse(mimetype="application/ms-excel")
+#        response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
         response['Content-Disposition'] = 'attachment; filename=%s' % file_name
         book.save(response)
 
