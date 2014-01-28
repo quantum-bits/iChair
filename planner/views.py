@@ -409,8 +409,10 @@ def export_data(request):
             course_load_dict=dict()
             course_name_dict=dict()
             course_number_dict=dict()
+            course_comment_dict=dict()
             other_load_dict=dict()
             other_load_name_dict=dict()
+            other_load_comment_dict=dict()
             for semester in academic_year.semesters.all():
 # summer is still included...drop it?!?  Maybe just put a note in RED at the bottom of the spreadsheet if there is
 # any summer load in the database, which didn't make it into the Excel spreadsheet.
@@ -421,6 +423,12 @@ def export_data(request):
                         course_load_dict[course_id]=[0,0,0]
                         course_name_dict[course_id]=oi.course_offering.course.title
                         course_number_dict[course_id]=oi.course_offering.course.subject.abbrev+oi.course_offering.course.number
+                        course_comment_dict[course_id]=oi.course_offering.comment
+                    else: 
+                        if course_comment_dict[course_id]=='':
+                            course_comment_dict[course_id]=oi.course_offering.comment
+                        else:
+                            course_comment_dict[course_id]=course_comment_dict[course_id]+'; '+oi.course_offering.comment
 
                     course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] = course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] + oi.load_credit
 
@@ -431,7 +439,13 @@ def export_data(request):
                     if other_load_id not in other_load_dict:
                         other_load_dict[other_load_id]=[0,0,0]
                         other_load_name_dict[other_load_id]=ol.load_type.load_type
-                    
+                        other_load_comment_dict[other_load_id]=ol.comments
+                    else: 
+                        if other_load_comment_dict[other_load_id]=='':
+                            other_load_comment_dict[other_load_id]=ol.comments
+                        else:
+                            other_load_comment_dict[other_load_id]=other_load_comment_dict[other_load_id]+'; '+ol.comments
+                        
                     other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] = other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] + ol.load_credit
 
 
@@ -440,8 +454,10 @@ def export_data(request):
                                       'course_load_dict':course_load_dict,
                                       'course_name_dict':course_name_dict,
                                       'course_number_dict':course_number_dict,
+                                      'course_comment_dict':course_comment_dict,
                                       'other_load_dict':other_load_dict,
-                                      'other_load_name_dict':other_load_name_dict})
+                                      'other_load_name_dict':other_load_name_dict,
+                                      'other_load_comment_dict':other_load_comment_dict})
         data_dict ={'school':department.school.name, 
                     'load_sheet_type': load_sheet_type, 
                     'department': department.name,
@@ -609,7 +625,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
                     sheet.write(row_data_start+i,col_data_start+j,'',style_calibri_bordered)
             sum_string = 'SUM(D'+str(row_data_start+1+i)+':F'+str(row_data_start+1+i)+')'
             sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_calibri_bordered)
-            sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+            sheet.write(row_data_start+i,7,faculty['course_comment_dict'][key],style_calibri_bordered)
             i=i+1
 
         # add in "other" types of load
@@ -625,7 +641,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
                     sheet.write(row_data_start+i,col_data_start+j,'',style_calibri_bordered)
             sum_string = 'SUM(D'+str(row_data_start+1+i)+':F'+str(row_data_start+1+i)+')'
             sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_calibri_bordered)
-            sheet.write(row_data_start+i,7,'',style_calibri_bordered)
+            sheet.write(row_data_start+i,7,faculty['other_load_comment_dict'][key],style_calibri_bordered)
             i=i+1
 
         # add in three blank rows for good measure
