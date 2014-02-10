@@ -67,9 +67,9 @@ def display_notes(request):
 
     temp_data = Note.objects.all().filter(Q(department__abbrev=department.abbrev)&Q(year__begin_on__year=academic_year))
 
-    can_edit = True
-    if user_preferences.permission_level == 0:
-        can_edit = False
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
         
 
 #    print temp_data
@@ -156,9 +156,9 @@ def department_load_summary(request):
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
-    can_edit = True
-    if user_preferences.permission_level == 0:
-        can_edit = False
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
 # the following lines select out semester objects for 2013...below we use a different approach
 #    year_object=AcademicYear.objects.filter(begin_on__year='2013')[0]
@@ -179,7 +179,8 @@ def department_load_summary(request):
 # NOTES:
 # 1.  In the following code, it is assumed that each course offering can only correspond to one semester.  Accordingly,
 #     the load for each person in each row, can only be one number (for fall, J-term or spring...but only one of those)
-# 2.  Summer has been deleted from the load schedule.  If there is any load for summer, it is added to the spring.  This is HARDCODED (yech!)
+# 2.  Summer has been deleted from the load schedule.  If there is any load for summer, it is added to the fall.  This is HARDCODED (yech!)  Also, the indexing in the array assumes that Fall will be "0", etc., and this is tied to "seq"
+# in the database.  UGLY!!!
 #
 
     ii = 0
@@ -198,16 +199,20 @@ def department_load_summary(request):
         ii=ii+1
 
     number_faculty=ii
-
-    ii = 0
+# the following assumes that semesters are returned in the order Summer, Fall, J-term, Spring, so that
+# Fall ends up being 0, J-term is 1 and Spring is 2.
+    ii = -1
     semesterdict=dict()
     for semester in SemesterName.objects.all():
         semesterdict[semester.name] = ii
         ii=ii+1
+
+    print semesterdict
+
 #
-# load for summer is added to the spring....
+# load for summer is added to the fall....
 #
-    semesterdict[u'Summer']=2
+    semesterdict[u'Summer']=0
 
     data_list = []
 
@@ -366,19 +371,22 @@ def export_data(request):
     today = date.today()
     date_string = str(today.month)+'/'+str(today.day)+'/'+str(today.year)
 
-    can_edit = True
-    if user_preferences.permission_level == 0:
-        can_edit = False
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
-    ii = 0
+# the following assumes that semesters are returned in the order Summer, Fall, J-term, Spring, so that
+# Fall ends up being 0, J-term is 1 and Spring is 2.
+    ii = -1
     semesterdict=dict()
     for semester in SemesterName.objects.all():
         semesterdict[semester.name] = ii
         ii=ii+1
+
 #
-# load for summer is added to the spring....
+# load for summer is added to the fall....
 #
-    semesterdict[u'Summer']=2
+    semesterdict[u'Summer']=0
 
     if request.method == 'POST':
         faculty_export_list= request.POST.getlist('faculty_for_export')
@@ -1543,10 +1551,9 @@ def course_summary(request):
     user_preferences = user.user_preferences.all()[0]
 
     department = user_preferences.department_to_view
-
-    can_edit = True
-    if user_preferences.permission_level == 0:
-        can_edit = False
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
     ii = 0
     semesterdict=dict()
@@ -1756,9 +1763,9 @@ def registrar_schedule(request):
 
     academic_year_string = str(year_to_view)+'-'+str(year_to_view + 1)
 
-    can_edit = True
-    if user_preferences.permission_level == 0:
-        can_edit = False
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
     registrar_data_list = []
     for semester in SemesterName.objects.all():
@@ -2127,4 +2134,101 @@ def choose_year_course_copy(request):
 
     context = {'year_list': year_list}
     return render(request, 'choose_year_course_copy.html', context)
+
+@login_required
+def search_form(request):
+    """
+    Allows the user to search for offerings of one or more courses.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    academic_year = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+    
+    current_year = academic_year.begin_on.year
+    academic_year_list = []
+    for ii in range(4):
+        ay = current_year-2+ii
+        year_name = str(ay)+'-'+str(ay+1)
+        academic_year_list.append({'year_name':year_name,
+                                   'id': ii,
+                                   'begin_on':ay})
+    
+    if request.method == 'POST':
+        search_term = request.POST.getlist('course_search')[0]
+        year_begin_on_list= request.POST.getlist('years_for_search')
+        academic_year_short_list = []
+        for year in year_begin_on_list:
+            academic_year_short_list.append(int(year))
+
+        # first, assume that the text is part of the course title....
+        if len(search_term)>0:
+            course_list_1 = Course.objects.filter(title__icontains =search_term)
+        else:
+            course_list_1 = []
+        # now assume that it might be of the form 'PHY 493'....
+        split_array = search_term.split()
+        if len(split_array) == 0:
+            course_list_2 = []
+        elif len(split_array) == 1:
+            # assume it is the subject....
+            subj = split_array[0]
+            course_list_2 = Course.objects.filter(subject__abbrev__icontains = subj)
+        else:
+            subj = split_array[0]
+            number = split_array[1]
+            course_list_2 = Course.objects.filter(Q(subject__abbrev__icontains = subj)&
+                                                  Q(number__icontains = number))
+        
+        # WORKING HERE -------- now, find all offerings for the courses for the given year, and list those
+
+        # create complete list of course objects
+        course_list = []
+        for course in course_list_1:
+            course_list.append(course)
+
+        for course in course_list_2:
+            course_list.append(course)
+
+        course_offering_list = []
+        for year in academic_year_short_list:
+            for course in course_list:
+                for course_offering in course.offerings.all():
+                    if course_offering.semester.year.begin_on.year == year:
+                        can_edit = False
+                        if user_preferences.permission_level == 1 and year == current_year and course.subject.department==department:
+                            can_edit = True
+                        elif user_preferences.permission_level == 2 and year == current_year:
+                            can_edit = True
+
+                        scheduled_classes = course_offering.scheduled_classes.all()
+                        if len(scheduled_classes)==0:
+                            meetings_scheduled = False
+                            meeting_times_list = ["---"]
+                            room_list = ["---"]
+                        else:
+                            meetings_scheduled = True
+                            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+
+                        course_offering_list.append({'name':course.title, 
+                                                     'number': course.subject.abbrev+' '+course.number,
+                                                     'course_id':course.id,
+                                                     'offering_id':course_offering.id,
+                                                     'semester':course_offering.semester,
+                                                     'rooms':room_list,
+                                                     'meeting_times':meeting_times_list,
+                                                     'meetings_scheduled':meetings_scheduled,
+                                                     'can_edit':can_edit
+                                                     })
+
+        context = {'search_term': search_term, 'course_offering_list':course_offering_list}
+        return render(request, 'search_results.html', context)
+    else:
+        context = {'academic_year': academic_year, 
+                   'academic_year_list':academic_year_list}
+        return render(request, 'search_form.html', context)
+
+
 
