@@ -25,6 +25,7 @@ urlpatterns = patterns(
     url(r'^updateotherload/(\d+)/$', 'update_other_load', name='update_other_load'),
     url(r'^updateroomstoview/(\d+)/$', 'update_rooms_to_view', name='update_rooms_to_view'),
     url(r'^updatefacultytoview/(\d+)/$', 'update_faculty_to_view', name='update_faculty_to_view'),
+    url(r'^updatedepartmenttoview/$', 'update_department_to_view', name='update_department_to_view'),
     url(r'^updateyeartoview/(\d+)/$', 'update_year_to_view', name='update_year_to_view'),
     url(r'^updateloadstoview/(\d+)/$', 'update_loads_to_view', name='update_loads_to_view'),
 
@@ -38,5 +39,6 @@ urlpatterns = patterns(
     url(r'^exportdata/$', 'export_data', name='export_data'),
 #    url(r'^exportcomplete/$', 'export_complete', name='export_complete')
     url(r'^search-form/$','search_form', name='search_form'),
+    url(r'^gettingstarted/$','getting_started', name='getting_started'),
 
 )

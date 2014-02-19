@@ -85,7 +85,8 @@ def display_notes(request):
     context = {
         'department': department,
         'datablock': datablock,
-        'can_edit': can_edit
+        'can_edit': can_edit,
+        'year': academic_year_string
         }
     return render(request, 'notes.html', context)
 
@@ -1909,6 +1910,44 @@ def update_faculty_to_view(request, id):
         return render(request, 'update_faculty_to_view.html', context)
 
 @login_required
+def update_department_to_view(request):
+    """
+    Allows a super-user (only) to change which department they are looking at.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
+
+    instance = user_preferences
+
+# only a superuser can change his/her department to view.
+    if user_preferences.permission_level != 2:
+        return redirect('profile')
+
+    if request.method == 'POST':
+        form = UpdateDepartmentToViewForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            user_preferences = user.user_preferences.all()[0]
+# update preferences to remove faculty members from old department and add in all faculty members from new dept
+            faculty_list = user_preferences.faculty_to_view.all()
+            for faculty in faculty_list:
+                user_preferences.faculty_to_view.remove(faculty)
+            new_dept = user_preferences.department_to_view
+            faculty_list = new_dept.faculty.all()
+            for faculty in faculty_list:
+                user_preferences.faculty_to_view.add(faculty)
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+        else:
+            return render(request, 'update_faculty_to_view.html', {'form': form})
+    else:
+        form = UpdateDepartmentToViewForm(instance=instance)
+        context = {'form': form}
+        return render(request, 'update_department_to_view.html', context)
+
+@login_required
 def update_year_to_view(request, id):
 
     user = request.user
@@ -2229,6 +2268,21 @@ def search_form(request):
         context = {'academic_year': academic_year, 
                    'academic_year_list':academic_year_list}
         return render(request, 'search_form.html', context)
+
+
+@login_required
+def getting_started(request):
+    """
+    Sends user to the help page.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    academic_year = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+
+    return render(request, 'getting_started.html')
 
 
 

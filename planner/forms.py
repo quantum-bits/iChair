@@ -321,6 +321,14 @@ class UpdateFacultyToViewForm(forms.ModelForm):
         super (UpdateFacultyToViewForm,self).__init__(*args,**kwargs)
         self.fields['faculty_to_view'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
 
+class UpdateDepartmentToViewForm(forms.ModelForm):
+
+    class Meta:
+        model = UserPreferences
+        exclude = ('user','faculty_to_view','rooms_to_view','academic_year_to_view',
+                   'permission_level','other_load_types_to_view',)
+
+
 #class CoursesToCopyForm(forms.Form):
 #    copy_this_course = forms.CheckboxMultiSelect(choices=['one','two'], required = False)
 

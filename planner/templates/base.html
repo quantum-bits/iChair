@@ -50,14 +50,14 @@
 	    </li>
 	    <li id="nav-coursesummary"><a href="{% url 'planner.views.course_summary' %}">Course Summary</a><i></i></li>
 <li id="nav-profile"><a href="{% url 'planner.views.display_notes' %}">Notes</a><i></i></li>
-	    <li class="dropdown">
+	    <li id="nav-help" class="dropdown">
 	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">
-		About
+		Help
 		<b class="caret"></b>
 	      </a>
 	      <ul class="dropdown-menu">
-		<li><a href="#">Getting Started</a></li>
-		<li><a href="#">Acknowledgements</a></li>
+		<li><a href="{% url 'planner.views.getting_started' %}">Getting Started</a></li>
+{#		<li><a href="#">Acknowledgements</a></li>#}
 	      </ul>
 	    </li>
 	    {% if user.is_authenticated %}
