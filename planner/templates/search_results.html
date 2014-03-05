@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="content-center">
-  <p> You searched for: <strong> {{search_term}}</strong> </p>
+  <p> You searched for {{search_term}} </p>
 </div>
 
 	<div class="accordion-inner">
@@ -29,7 +29,7 @@
 	<div>
 	  {% if course.meetings_scheduled %}
 	  {% if course.can_edit %}
-	  <a href="{% url 'update_class_schedule' course.offering_id %}?next=/planner/search-form/">
+	  <a href="{% url 'update_class_schedule' course.offering_id %}?next=/planner/{{next}}/">
 	    {{meeting}}</a>
 	  {% else %} 
 	    {{meeting}}

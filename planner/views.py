@@ -1711,11 +1711,13 @@ def add_course(request):
             form.save()
             return redirect('course_summary')
         else:
-            return render(request, 'add_course.html', {'form':form})
+            context = {'form': form, 'title': 'New Course'}
+            return render(request, 'add_course.html', context)
 
     else:
         form = AddCourseForm(department_id)
-        return render(request, 'add_course.html', {'form':form})
+        context = {'form': form, 'title': 'New Course'}
+        return render(request, 'add_course.html', context)
 
 @login_required
 def update_course(request, id):
@@ -1735,10 +1737,11 @@ def update_course(request, id):
             return redirect(next)
 #            return redirect('course_summary')
         else:
-            return render(request, 'add_course.html', {'form': form})
+            context = {'form': form, 'title': 'Edit Course'}
+            return render(request, 'add_course.html', context)
     else:
         form = AddCourseForm(department_id, instance=instance)
-        context = {'form': form}
+        context = {'form': form, 'title': 'Edit Course'}
         return render(request, 'add_course.html', context)
 
 @login_required
@@ -2264,12 +2267,124 @@ def search_form(request):
                                                      'can_edit':can_edit
                                                      })
 
-        context = {'search_term': search_term, 'course_offering_list':course_offering_list}
+        context = {'search_term': search_term, 'course_offering_list':course_offering_list,
+                   'next':'search-form'}
         return render(request, 'search_results.html', context)
     else:
         context = {'academic_year': academic_year, 
                    'academic_year_list':academic_year_list}
         return render(request, 'search_form.html', context)
+
+@login_required
+def search_form_time(request):
+    """
+    Allows the user to search for offerings of one or more courses.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    academic_year = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+
+    all_depts_list = []
+    for dept in Department.objects.all().order_by('name'):
+        all_depts_list.append({'name':dept.name,'id':dept.id})
+
+########### ----- on "you searched for", add in the day(s) of the week that were included
+
+    current_year = academic_year.begin_on.year
+
+    semesters_all = Semester.objects.all()
+    semester_list = []
+    ii = 0
+    for semester in semesters_all:
+        if (semester.year.begin_on.year >= current_year-2) and (semester.year.begin_on.year <= current_year+1):
+            ii = ii+1
+            semester_list.append({'name':semester.name.name+' '+str(semester.year.begin_on.year)+'-'+str(semester.year.end_on.year),
+                                  'id':semester.id})
+    
+    if request.method == 'POST':
+        depts_for_search= request.POST.getlist('depts_for_search')
+        start_hour_string= request.POST.getlist('start_time')[0]
+        time_interval= request.POST.getlist('time_interval')[0]
+        days_for_search = request.POST.getlist('days_for_search')
+        semester_id = int(request.POST.getlist('semester')[0])
+        semester = Semester.objects.get(pk = semester_id)
+        year_for_search = semester.year.begin_on.year
+        
+        day_dict={0:'M',1:'T',2:'W',3:'R',4:'F'}
+        day_string = ''
+        day_list=[]
+        for day in days_for_search:
+            day_list.append(int(day))
+            day_string=day_string+day_dict[int(day)]
+
+        start_time = int(start_hour_string)*100+0
+        num_hours=int(time_interval)/60
+        num_minutes=int(time_interval)-num_hours*60
+        end_time = start_time + num_hours*100+num_minutes
+
+        start_string = start_hour_string+':00'
+        end_string = str(int(start_hour_string)+num_hours)+':'+str(num_minutes)
+
+        course_offering_list=[]
+        for dept_id in depts_for_search:
+            course_list = Course.objects.filter(subject__department__id = int(dept_id))
+            for course in course_list:
+                for course_offering in course.offerings.filter(semester__id = semester_id):
+                    can_edit = False
+                    if user_preferences.permission_level == 1 and year_for_search == current_year and course.subject.department==department:
+                        can_edit = True
+                    elif user_preferences.permission_level == 2 and year_for_search == current_year:
+                        can_edit = True
+
+                    scheduled_classes = course_offering.scheduled_classes.all()
+                    meeting_in_interval = False
+                    day_in_list = False
+                    for meeting in scheduled_classes:
+                        if meeting.day in day_list:
+                            day_in_list = True
+                        meeting_start = meeting.begin_at.hour*100+meeting.begin_at.minute
+                        meeting_end = meeting.end_at.hour*100+meeting.end_at.minute
+                        if time_blocks_overlap([[meeting_start,meeting_end],[start_time,end_time]]):
+                            meeting_in_interval = True
+
+                        if meeting_in_interval and day_in_list:
+                            if len(scheduled_classes)==0:
+                                meetings_scheduled = False
+                                meeting_times_list = ["---"]
+                                room_list = ["---"]
+                            else:
+                                meetings_scheduled = True
+                                meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+
+                            course_offering_list.append({'name':course.title, 
+                                                         'number': course.subject.abbrev+' '+course.number,
+                                                         'course_id':course.id,
+                                                         'offering_id':course_offering.id,
+                                                         'semester':course_offering.semester,
+                                                         'rooms':room_list,
+                                                         'meeting_times':meeting_times_list,
+                                                         'meetings_scheduled':meetings_scheduled,
+                                                         'can_edit':can_edit
+                                                         })
+        
+        search_details = 'courses that occur between '+start_string+' and '+end_string+' on the following days: '+day_string
+        context = {'search_term': search_details, 'course_offering_list':course_offering_list,
+                   'next':'search-form-time'}
+        return render(request, 'search_results.html', context)
+    else:
+        start_time_list=[]
+        for time in range(7,20):
+            start_time_list.append(time)
+
+        context = {'academic_year': academic_year, 
+                   'semester_list':semester_list,
+                   'start_time_list':start_time_list,
+                   'dept_list':all_depts_list}
+        return render(request, 'search_form_time.html', context)
+
 
 
 @login_required
