@@ -31,6 +31,7 @@
 	      </a>
 	      <ul class="dropdown-menu">
 		<li><a href="{% url 'planner.views.export_data' %}?next={% url 'department_load_summary' %}">Export Faculty Loads</a></li>
+		<li><a href="{% url 'planner.views.export_summary_data' %}?next={% url 'department_load_summary' %}">Export Summary Data</a></li>
 		<li><a href="{% url 'planner.views.search_form' %}">Search by Course Name</a></li>
 		<li><a href="{% url 'planner.views.search_form_time' %}">Search by Course Time</a></li>
 	      </ul>

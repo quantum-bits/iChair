@@ -150,7 +150,11 @@ def delete_note(request, id):
 @login_required
 def department_load_summary(request):
     """Display loads for professors in the department"""
+    context = collect_data_for_summary(request)
+    return render(request, 'dept_load_summary.html', context)
 
+def collect_data_for_summary(request):
+    """Collects the data to be displayed in the dept load summary"""
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -354,7 +358,8 @@ def department_load_summary(request):
              'data_list_by_instructor':data_list_by_instructor,
              'can_edit': can_edit
              }
-    return render(request, 'dept_load_summary.html', context)
+
+    return context
 
 @login_required
 def export_data(request):
@@ -848,6 +853,8 @@ def update_course_offering(request,id):
             return redirect(next)
 #            return redirect('department_load_summary')
         else:
+            dict1["form"]=form
+            dict1["formset"]=formset
 
             if prof_repeated_errors:
                 errordict.update({'prof_repeated_error':prof_repeated_errors})
@@ -893,7 +900,7 @@ def update_class_schedule(request,id):
             return redirect(next)
 #            return redirect('department_load_summary')
         else:
-
+            dict["formset"]=formset
             if formset_error:
                 errordict.update({'formset_error':formset_error})
             for subform in formset:
@@ -1634,7 +1641,7 @@ def manage_course_offerings(request,id):
 
             return redirect('course_summary')
         else:
-
+            dict["formset"]=formset
             if formset_error:
                 errordict.update({'formset_error':formset_error})
             for subform in formset:
@@ -1857,6 +1864,7 @@ def update_other_load(request, id):
             next = request.GET.get('next', 'profile')
             return redirect(next)
         else:
+            dict["formset"]=formset
             if formset_error:
                 errordict.update({'formset_error':formset_error})
             for subform in formset:
@@ -2291,8 +2299,6 @@ def search_form_time(request):
     for dept in Department.objects.all().order_by('name'):
         all_depts_list.append({'name':dept.name,'id':dept.id})
 
-########### ----- on "you searched for", add in the day(s) of the week that were included
-
     current_year = academic_year.begin_on.year
 
     semesters_all = Semester.objects.all()
@@ -2340,37 +2346,34 @@ def search_form_time(request):
                         can_edit = True
 
                     scheduled_classes = course_offering.scheduled_classes.all()
-                    meeting_in_interval = False
-                    day_in_list = False
+                    meeting_in_interval_and_day_in_list = False
                     for meeting in scheduled_classes:
-                        if meeting.day in day_list:
-                            day_in_list = True
                         meeting_start = meeting.begin_at.hour*100+meeting.begin_at.minute
                         meeting_end = meeting.end_at.hour*100+meeting.end_at.minute
-                        if time_blocks_overlap([[meeting_start,meeting_end],[start_time,end_time]]):
-                            meeting_in_interval = True
+                        if (meeting.day in day_list) and (time_blocks_overlap([[meeting_start,meeting_end],[start_time,end_time]])):
+                            meeting_in_interval_and_day_in_list = True
 
-                        if meeting_in_interval and day_in_list:
-                            if len(scheduled_classes)==0:
-                                meetings_scheduled = False
-                                meeting_times_list = ["---"]
-                                room_list = ["---"]
-                            else:
-                                meetings_scheduled = True
-                                meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+                    if meeting_in_interval_and_day_in_list:
+                        if len(scheduled_classes)==0:
+                            meetings_scheduled = False
+                            meeting_times_list = ["---"]
+                            room_list = ["---"]
+                        else:
+                            meetings_scheduled = True
+                            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
 
-                            course_offering_list.append({'name':course.title, 
-                                                         'number': course.subject.abbrev+' '+course.number,
-                                                         'course_id':course.id,
-                                                         'offering_id':course_offering.id,
-                                                         'semester':course_offering.semester,
-                                                         'rooms':room_list,
-                                                         'meeting_times':meeting_times_list,
-                                                         'meetings_scheduled':meetings_scheduled,
-                                                         'can_edit':can_edit
-                                                         })
+                        course_offering_list.append({'name':course.title, 
+                                                     'number': course.subject.abbrev+' '+course.number,
+                                                     'course_id':course.id,
+                                                     'offering_id':course_offering.id,
+                                                     'semester':course_offering.semester,
+                                                     'rooms':room_list,
+                                                     'meeting_times':meeting_times_list,
+                                                     'meetings_scheduled':meetings_scheduled,
+                                                     'can_edit':can_edit
+                                                     })
         
-        search_details = 'courses that occur between '+start_string+' and '+end_string+' on the following days: '+day_string
+        search_details = 'courses in '+semester.name.name+' '+str(semester.year.begin_on.year)+'-'+str(extract_two_digits(semester.year.begin_on.year+1))+' that occur between '+start_string+' and '+end_string+' on the following day(s): '+day_string
         context = {'search_term': search_details, 'course_offering_list':course_offering_list,
                    'next':'search-form-time'}
         return render(request, 'search_results.html', context)
@@ -2384,6 +2387,268 @@ def search_form_time(request):
                    'start_time_list':start_time_list,
                    'dept_list':all_depts_list}
         return render(request, 'search_form_time.html', context)
+
+@login_required
+def export_summary_data(request):
+    """Exports a summary of teaching load data to an Excel file."""
+    context = collect_data_for_summary(request)
+
+    file_name = 'DepartmentLoadSummary.xls'
+
+    book = prepare_excel_summary(context)
+    response = HttpResponse(mimetype="application/ms-excel")
+    response['Content-Disposition'] = 'attachment; filename=%s' % file_name
+    book.save(response)
+    return response
+
+def prepare_excel_summary(context):
+    """
+    Prepares an Excel file containing a summary of department loads
+    """
+
+############ NEXT:  make grey a bit lighter somehow; add some boxes and lines
+
+    one_inch = 3333
+    styles = dict(
+        bold = 'font: bold 1',
+        italic = 'font: italic 1',
+        # Wrap text in the cell
+        wrap_bold = 'font: bold 1; align: wrap 1;',
+        # White text on a blue background
+        reversed = 'pattern: pattern solid, fore_color blue; font: color white;',
+        # Light orange checkered background
+        light_orange_bg = 'pattern: pattern fine_dots, fore_color white, back_color orange;',
+        # Heavy borders
+        bordered = 'border: top thick, right thick, bottom thick, left thick;',
+        # 16 pt red text
+        big_red = 'font: height 320, color red;',
+        calibri_font = 'font: height 220, color black, name Calibri;',
+        calibri_bold_bordered = 'font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bordered = 'font: height 220, color black, name Calibri;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bold_bordered_centered = 'alignment: horizontal center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bold_bordered_right = 'alignment: horizontal right; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_centered_left_line = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; border: left thin;',
+        calibri_centered_grey_left_line = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; pattern: pattern solid, fore_color 22; border: left thin;',
+        calibri_centered_right_line = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; border: right thin;',
+        calibri_centered_grey_right_line = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; pattern: pattern solid, fore_color 22; border: right thin;',
+        calibri_centered = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top;',
+        calibri_centered_grey = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; pattern: pattern solid, fore_color 22;',
+        calibri_left = 'font: height 220, color black, name Calibri; alignment:horizontal left, vertical top; border: left thin;',
+        calibri_left_grey = 'font: height 220, color black, name Calibri; alignment:horizontal left, vertical top; border: left thin; pattern: pattern solid, fore_color 22;',
+        calibri_right = 'font: height 220, color black, name Calibri; alignment:horizontal right;',
+        bold_title = 'alignment:horizontal left; font: height 240, color black, name Calibri, bold 1;',
+        bold_title_centered = 'alignment:horizontal center; font: height 240, color black, name Calibri, bold 1;',
+        bold_title_right = 'alignment:horizontal right; font: height 240, name Calibri, bold 1;',
+        calibri_centered_top_line = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; border: top thin;',
+        )
+
+
+    row_data_start = 3
+    col_data_start = 7
+
+    first_char_dict = {0:'',1:'A',2:'B',3:'C',4:'D',5:'E',6:'F'}
+    second_char_dict = dict()
+    for num in range(26):
+        second_char_dict[num]=chr(ord('A')+num)
+
+    num_profs = len(context['instructor_list'])
+    counter = 0
+    first_char_counter = 0
+    col_dict = dict()
+    for num in range(num_profs*3+col_data_start):
+        if counter == 26:
+            counter = 0
+            first_char_counter = first_char_counter+1
+            
+        col_dict[num]=first_char_dict[first_char_counter]+second_char_dict[counter]
+        counter = counter + 1
+
+    column_widths = [int(0.7*one_inch),
+                     int(2.3*one_inch),
+                     int(0.7*one_inch),
+                     int(1.3*one_inch),
+                     int(0.8*one_inch),
+                     int(0.4*one_inch),
+                     int(0.4*one_inch)]
+
+    # note: row heights are set automatically by the font size
+    
+    book = xlwt.Workbook()
+    style_calibri_bordered = xlwt.easyxf(styles['calibri_bordered'])
+    style_calibri_bordered_grey = xlwt.easyxf(styles['calibri_bordered']+'pattern: pattern solid, fore_color 22')
+    style_calibri_centered = xlwt.easyxf(styles['calibri_centered'])
+    style_calibri_centered_grey = xlwt.easyxf(styles['calibri_centered_grey'])
+    style_calibri_centered_left_line = xlwt.easyxf(styles['calibri_centered_left_line'])
+    style_calibri_centered_grey_left_line = xlwt.easyxf(styles['calibri_centered_grey_left_line'])
+    style_calibri_centered_right_line = xlwt.easyxf(styles['calibri_centered_right_line'])
+    style_calibri_centered_grey_right_line = xlwt.easyxf(styles['calibri_centered_grey_right_line'])
+    style_calibri_bold_bordered = xlwt.easyxf(styles['calibri_bold_bordered_centered'])
+    style_calibri_bold_bordered_right = xlwt.easyxf(styles['calibri_bold_bordered_right'])
+    style_calibri_left=xlwt.easyxf(styles['calibri_left'])
+    style_calibri_left_grey=xlwt.easyxf(styles['calibri_left_grey'])
+    style_calibri_right=xlwt.easyxf(styles['calibri_right'])
+    style_bold_right=xlwt.easyxf(styles['bold_title_right'])
+    style_top_line=xlwt.easyxf(styles['calibri_centered_top_line'])
+    
+    style_wrap=style_calibri_centered_left_line
+    style_wrap.alignment.wrap = 1
+
+    style_wrap_grey=style_calibri_centered_grey_left_line
+    style_wrap_grey.alignment.wrap = 1
+
+    sheet = book.add_sheet('dept load summary')
+
+    col = 0
+    for width in column_widths:
+        sheet.col(col).width = width
+        col = col+1
+        
+    sheet.write_merge(0,0,0,6,'Load Summary -- Department of '+context['department'].name+' ('+context['academic_year']+')',xlwt.easyxf(styles['bold_title']))
+    sheet.write(2,0,'Number',style_calibri_bold_bordered)
+    sheet.write(2,1,'Name',style_calibri_bold_bordered)
+    sheet.write(2,2,'Semester',style_calibri_bold_bordered)
+    sheet.write(2,3,'Time',style_calibri_bold_bordered)
+    sheet.write(2,4,'Room',style_calibri_bold_bordered)
+    sheet.write(2,5,'Load',style_calibri_bold_bordered)
+    sheet.write(2,6,'Diff',style_calibri_bold_bordered)
+
+    style_center_list=[style_calibri_centered,style_calibri_centered_grey]
+    style_center_left_line_list=[style_calibri_centered_left_line,style_calibri_centered_grey_left_line]
+    style_center_right_line_list=[style_calibri_centered_right_line,style_calibri_centered_grey_right_line]
+    style_left_list=[style_calibri_left,style_calibri_left_grey]
+    style_center_wrap_list=[style_wrap,style_wrap_grey]
+
+    j = 0
+    for instructor in context['instructor_list']:
+        sheet.col(col_data_start+3*j).width = int(0.4*one_inch)
+        sheet.col(col_data_start+3*j+1).width = int(0.4*one_inch)
+        sheet.col(col_data_start+3*j+2).width = int(0.4*one_inch)
+        sheet.write_merge(2,2,col_data_start+3*j,col_data_start+3*j+2,instructor,style_calibri_bold_bordered)
+        j = j+1
+
+    sheet.col(col_data_start+3*j).width = int(1.5*one_inch)
+    sheet.write(2,col_data_start+3*j,'Comments',style_calibri_bold_bordered)
+
+    i = 0
+    data_list = context['course_data_list']
+    for entry in data_list:
+        row=row_data_start+i
+        style_center = style_center_list[(i+1)%2]
+        style_center_left_line = style_center_left_line_list[(i+1)%2]
+        style_center_right_line = style_center_right_line_list[(i+1)%2]
+        style_center_wrap = style_center_wrap_list[(i+1)%2]
+        style_left = style_left_list[(i+1)%2]
+
+        sheet.write(row,0,entry['number'],style_left)
+        sheet.write(row,1,entry['name'],style_left)
+        sheet.write(row,2,entry['semester'],style_center_left_line)
+        sheet.write(row,5,entry['load_hours'],style_center_left_line)
+#        if entry['load_difference']<0:
+#            sheet.write(row,6,entry['load_difference'],style_bold_centered_red)
+#        elif entry['load_difference']>0:
+#            sheet.write(row,6,entry['load_difference'],style_calibri_centered)
+
+        time_list = ''
+        for time in entry['meeting_times']:
+            if time_list=='':
+                time_list = time
+            else:
+                time_list = time_list+'\n'+time
+        sheet.write(row,3,time_list,style_center_wrap)
+
+        room_list = ''
+        for room in entry['rooms']:
+            if room_list=='':
+                room_list = room
+            else:
+                room_list = room_list+'\n'+room
+        sheet.write(row,4,room_list,style_center_wrap)
+
+        j = 0
+        temp_list = entry['load_hour_list'][:]
+
+        for load in temp_list:
+            loads_to_write=['','','']
+            if load[0]>=0:
+                loads_to_write[load[1]] = load[0]
+            for kk in range(3):
+                if kk == 0:
+                    sheet.write(row,col_data_start+3*j+kk,loads_to_write[kk],style_center_left_line)
+                elif kk == 1:
+                    sheet.write(row,col_data_start+3*j+kk,loads_to_write[kk],style_center)
+                else:
+                    sheet.write(row,col_data_start+3*j+kk,loads_to_write[kk],style_center_right_line)
+            j=j+1
+
+        sheet.write(row,col_data_start+3*j,entry['comment'],style_center_right_line)
+
+        sum_string = 'F'+str(row+1)+'-SUM('+col_dict[col_data_start]+str(row+1)+':'+col_dict[col_data_start+3*num_profs-1]+str(row+1)+')'
+        sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_center_left_line)
+
+        i=i+1
+
+    data_list = context['admin_data_list']
+    for entry in data_list:
+        style_center = style_center_list[(i+1)%2]
+        style_center_left_line = style_center_left_line_list[(i+1)%2]
+        style_center_right_line = style_center_right_line_list[(i+1)%2]
+        style_center_wrap = style_center_wrap_list[(i+1)%2]
+        style_left = style_left_list[(i+1)%2]
+
+        row=row_data_start+i
+        sheet.write(row,0,'',style_left)
+        sheet.write(row,1,entry['load_type'],style_left)
+        sheet.write(row,2,'',style_left)
+        sheet.write(row,3,'',style_left)
+        sheet.write(row,4,'',style_left)
+        sheet.write(row,5,'',style_left)
+        sheet.write(row,6,'',style_left)
+        j = 0
+        temp_list = entry['load_hour_list'][:]
+        for load in temp_list:
+            kk = 0
+            for load_entry in load:
+                if load_entry > 0:
+                    load_to_write = load_entry
+                else:
+                    load_to_write = ''
+                if kk == 0:
+                    sheet.write(row,col_data_start+3*j+kk,load_to_write,style_center_left_line)
+                elif kk == 1:
+                    sheet.write(row,col_data_start+3*j+kk,load_to_write,style_center)
+                else:
+                    sheet.write(row,col_data_start+3*j+kk,load_to_write,style_center_right_line)
+                kk = kk+1
+            j=j+1
+        sheet.write(row,col_data_start+3*j,'',style_center_right_line)
+        i=i+1
+
+    for j in range(num_profs*3):
+        sum_string = 'SUM('+col_dict[col_data_start+j]+str(row_data_start+1)+':'+col_dict[col_data_start+j]+str(row_data_start+i)+')'
+        sheet.write(row_data_start+i,col_data_start+j,xlwt.Formula(sum_string),style_calibri_bold_bordered)
+
+    sheet.write_merge(row_data_start+i,row_data_start+i,0,6,'Load Summary',style_calibri_bold_bordered_right)
+    sheet.write(row_data_start+i,col_data_start+3*num_profs,'',style_top_line)
+
+    i=i+1
+
+    for j in range(num_profs):
+        sum_string = 'SUM('+col_dict[col_data_start+3*j]+str(row_data_start+i)+':'+col_dict[col_data_start+3*j+2]+str(row_data_start+i)+')'
+        sheet.write_merge(row_data_start+i,row_data_start+i,col_data_start+3*j,col_data_start+3*j+2,xlwt.Formula(sum_string),style_calibri_bold_bordered)
+
+    sheet.write_merge(row_data_start+i,row_data_start+i,0,6,'Total',style_calibri_bold_bordered_right)
+    i=i+1
+
+    j = 0
+    for instructor in context['instructor_list']:
+        sheet.write_merge(row_data_start+i,row_data_start+i,col_data_start+3*j,col_data_start+3*j+2,instructor,style_calibri_bold_bordered)
+        j = j+1
+
+    return book
+
+
+
+
 
 
 

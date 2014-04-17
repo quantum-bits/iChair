@@ -37,6 +37,7 @@ urlpatterns = patterns(
     url(r'^updateNote/(\d+)/$', 'update_note', name='update_note'),
     url(r'^deleteNote/(\d+)/$', 'delete_note', name='delete_note'),
     url(r'^exportdata/$', 'export_data', name='export_data'),
+    url(r'^exportsummarydata/$', 'export_summary_data', name='export_summary_data'),
 #    url(r'^exportcomplete/$', 'export_complete', name='export_complete')
     url(r'^search-form/$','search_form', name='search_form'),
     url(r'^search-form-time/$','search_form_time', name='search_form_time'),
