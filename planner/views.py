@@ -1414,6 +1414,7 @@ def initialize_canvas_data(courses_after_five, num_data_columns):
                 'box_border_colour':'#2f2f2f',
                 'box_text_line_sep_pixels': 16,
                 'box_font':'12pt Arial',
+                'box_bold_font':'bold 12pt Arial',
                 'grid_line_colour':'#b8b8b8',
                 'grid_line_width':1,
                 'table_header_font':'12pt Arial',
@@ -2666,5 +2667,344 @@ def getting_started(request):
 
     return render(request, 'getting_started.html')
 
+@login_required
+def weekly_course_schedule_entire_dept(request):
+    """Display weekly schedules for the entire department"""
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+
+    department = user_preferences.department_to_view
+    academic_year = user_preferences.academic_year_to_view.begin_on.year
+    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+
+# things that are currently hard-coded and could/should be fixed:
+# - earliest course is 7 a.m.
+# - hard-coded the semester "exclusion" list...could pass it instead
+#
+# NEED TO CHECK FOR COURSE TIME CONFLICTS!!!!!!!
+#
+
+    semester_names_to_exclude = [u'Summer']
+
+    semester_list = []
+    for semester in SemesterName.objects.all():
+        if semester.name not in semester_names_to_exclude:
+            semester_list.append(semester.name)
+
+    instructor_dict = {}
+    ii = 0
+    professor_list = []
+    for faculty_member in user_preferences.faculty_to_view.filter(department=department):
+        instructor_dict[faculty_member.id] = ii
+        professor_list.append(faculty_member.first_name[0]+'. '+faculty_member.last_name)
+        ii=ii+1
+
+    num_data_columns = 5
+
+    data_list =[]
+    idnum = 0
+
+    day_list = ['Monday','Tuesday','Wednesday','Thursday','Friday']
+    day_dict = {'Monday':0, 'Tuesday':1, 'Wednesday':2, 'Thursday':3, 'Friday':4}
+
+    chapel_dict = {'Monday':'every', 'Tuesday':'none', 'Wednesday':'every', 'Thursday':'none', 'Friday':'every'}
+    weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+    for semester_name in semester_list:
+        idnum = idnum+1
+        courses_after_five = False
+        if semester_name == semester_list[0]:
+            table_title = department.name +' ('+semester_name+', '+str(academic_year)+')'
+        else:
+            table_title = department.name +' ('+semester_name+', '+str(academic_year+1)+')'
+
+        master_dict={}
+        num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0}
+        num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0}
+        for day in day_list:
+            master_dict[day]={7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[],17:[],18:[],19:[],20:[],21:[]}
+
+# master_dict contains the text that will be displayed in the various boxes
+            for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
+                                                    Q(course_offering__semester__name__name=semester_name)&
+                                                    Q(course_offering__semester__year__begin_on__year = academic_year)&
+                                                    Q(course_offering__course__subject__department = department)):
+
+                data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+' - '+
+                                 sc.room.building.abbrev+sc.room.number]
+
+                if sc.end_at.hour > 16:
+                    courses_after_five = True
+                profs_this_class = ''
+                for instructor in sc.course_offering.instructor.all():
+                    if len(profs_this_class)>0:
+                        profs_this_class = profs_this_class+' / '+instructor.first_name[:1]+' '+instructor.last_name
+                    else:
+                        profs_this_class = instructor.first_name[:1]+' '+instructor.last_name
+                if len(profs_this_class)>0:
+                    data_this_class.append(profs_this_class)
+
+                begin_hour = sc.begin_at.hour
+                if(sc.end_at.minute==0):
+                    end_hour = sc.end_at.hour - 1
+                else:
+                    end_hour = sc.end_at.hour
+
+                hour_range=range(begin_hour,end_hour+1)
+                for ii in range(len(hour_range)):
+                    local_data=[]
+                    for line in data_this_class:
+                        local_data.append(line)
+                    if ii == 0:
+                        if sc.begin_at.minute != 0:
+                            if sc.begin_at.minute<10:
+                                local_data.append('(begins @ '+str(sc.begin_at.hour)+':0'+str(sc.begin_at.minute)+')')
+                            else:
+                                local_data.append('(begins @ '+str(sc.begin_at.hour)+':'+str(sc.begin_at.minute)+')')
+                    if ii == len(hour_range)-1:
+                        if sc.end_at.minute != 50:
+                            if sc.end_at.minute<10:
+                                local_data.append('(ends @ '+str(sc.end_at.hour)+':0'+str(sc.end_at.minute)+')')
+                            else:
+                                local_data.append('(ends @ '+str(sc.end_at.hour)+':'+str(sc.end_at.minute)+')')
+
+                    if len(master_dict[day][hour_range[ii]])>0:
+                        master_dict[day][hour_range[ii]].append('')
+                    for new_line in local_data:
+                        master_dict[day][hour_range[ii]].append(new_line)
+
+#        print master_dict
+        
+        for hour in num_lines_in_hour:
+            for day in master_dict:
+                if len(master_dict[day][hour])>num_lines_in_hour[hour]:
+                    num_lines_in_hour[hour]=len(master_dict[day][hour])
+                    num_lines_including_halves[hour]=num_lines_in_hour[hour]-1.0*(master_dict[day][hour].count(''))/2.0
+                    print master_dict[day][hour],num_lines_including_halves[hour]
+
+#        print num_lines_in_hour
+
+        schedule = initialize_canvas_data(courses_after_five, num_data_columns)
+#        print schedule['height']
+        
+        height_hour_blocks_dict={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0}
+        min_height_hour_block = 3*schedule['box_text_line_sep_pixels']
+
+        canvas_height=2*schedule['border']+schedule['height_day_names']
+        for hour in num_lines_in_hour:
+            height_this_block=(1+num_lines_including_halves[hour])*schedule['box_text_line_sep_pixels']
+            if height_this_block<min_height_hour_block:
+                height_hour_blocks_dict[hour]=min_height_hour_block
+            else:
+                height_hour_blocks_dict[hour]=height_this_block
+            if hour<17:
+                canvas_height=canvas_height+height_hour_blocks_dict[hour]
+            else:
+                if courses_after_five:
+                    canvas_height=canvas_height+height_hour_blocks_dict[hour]
+                    
+#        print height_hour_blocks_dict
+        # replace 'height_hour_block' by a dictionary of heights and 'height' by the recalculated canvas_height and width
+        # by a greater width than normal            
+        schedule['height_hour_block']=height_hour_blocks_dict
+        schedule['height']=canvas_height
+        schedule['width_day']=2*schedule['width_day']
+
+        print schedule
+
+        canvas_width = 2*schedule['border']+5*schedule['width_day']+schedule['width_hour_names']
+        schedule['width']=canvas_width
+        grid_list, filled_row_list, table_text_list = create_flexible_schedule_grid(schedule, weekdays, 'MWF')
+
+        table_text_list.append([schedule['width']/2,schedule['border']/2,
+                                table_title,
+                                schedule['table_title_font'],
+                                schedule['table_header_text_colour']])
+        
+        b = schedule['border']
+        h_h_b = schedule['height_hour_block']
+        h_d_n = schedule['height_day_names']
+        n_h_b = schedule['number_hour_blocks']
+        start_time = schedule['start_time'] 
+        vertical_edges = [b,b+h_d_n]
+        current_edge = b+h_d_n
+        for ii in range(n_h_b):
+            hour = start_time+ii
+            current_edge = current_edge+h_h_b[hour]
+            vertical_edges.append(current_edge)
+
+        box_list = []
+        box_label_list = []
+        # now loop over the text in the master_dict, etc.
+        for day in master_dict:
+            for ii in range(n_h_b):
+                hour = start_time+ii
+                text_list = master_dict[day][hour]
+                
+                if len(text_list)>0:
+                    box_data, text_data = rectangle_coordinates_flexible_schedule(schedule, vertical_edges,
+                                                                                       text_list, day_dict[day], hour)
+#                print box_data, text_data
+
+#        box_data = [xleft, begin_height_pixels, w_d, height, schedule['box_fill_colour'],
+#                schedule['box_line_width'], schedule['box_border_colour']]
+
+#        text_data = [
+#                     [xleft+w_d/2, row_height, line_of_text,
+#                      schedule['box_font'],
+#                      schedule['table_header_text_colour']],[...],...]
+
+                    box_list.append(box_data)
+                    for text_row in text_data:
+                        box_label_list.append(text_row)
+
+        # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
+        # format for text is: [xcenter, ycenter, text_string, font, text_colour]
+
+        json_box_list = simplejson.dumps(box_list)
+        json_box_label_list = simplejson.dumps(box_label_list)
+        json_grid_list = simplejson.dumps(grid_list)
+        json_filled_row_list = simplejson.dumps(filled_row_list)
+        json_table_text_list = simplejson.dumps(table_text_list)
+
+        id = 'id'+str(idnum)
+        data_this_term = {'day_name': day,
+                          'json_box_list': json_box_list,
+                          'json_box_label_list':json_box_label_list,
+                          'json_grid_list': json_grid_list,
+                          'json_filled_row_list': json_filled_row_list,
+                          'json_table_text_list': json_table_text_list,
+                          'id':id,
+                          'schedule':schedule}
+        data_list.append(data_this_term)
+
+    print data_list
+    context={'data_list':data_list, 'year':academic_year_string}
+    return render(request, 'weekly_schedule_dept_summary.html', context)
+
+def create_flexible_schedule_grid(schedule,column_titles,chapel):
+    """
+    returns the coordinates for the lines that form the schedule grid in the
+    form [[xbegin, ybegin, xend, yend],[...],[...]];
+    this function is very similar to create_schedule_grid, except it creates
+    a schedule where the cells for the various hours can be different heights.
+    yes...I should have done this all in one function :(
+    """
+
+# chapel can be "every" (every column), "none" (no columns) or "MWF" (1st, 3rd and 5th columns)
+
+    line_coordinates_array = []
+    filled_row_array = []
+    text_array = []
+
+    b = schedule['border']
+    c_h = schedule['height']
+    c_w = schedule['width']
+    w_h_n = schedule['width_hour_names']
+    w_d = schedule['width_day']
+    n_h_b = schedule['number_hour_blocks']
+    h_h_b = schedule['height_hour_block']
+    # h_h_b is actually a dictionary in this case!!!
+    h_d_n = schedule['height_day_names']
+
+    start_time = schedule['start_time'] 
+    vertical_edges = [b,b+h_d_n]
+    current_edge = b+h_d_n
+    for ii in range(n_h_b):
+        hour = start_time+ii
+        current_edge = current_edge+h_h_b[hour]
+        vertical_edges.append(current_edge)
+
+    for ii in range(len(column_titles)):
+        text_array.append([b+w_h_n+ii*w_d+w_d/2,b+h_d_n/2,
+                           column_titles[ii],
+                           schedule['table_header_font'],
+                           schedule['table_header_text_colour']])
+
+    if chapel == 'MWF':
+        for ii in range(3):
+            text_array.append([b+w_h_n+2*ii*w_d+w_d/2,vertical_edges[4]+h_h_b[10]/2,
+                               'chapel',
+                               schedule['table_header_font'],
+                               schedule['table_header_text_colour']])
+    elif chapel == 'every':
+        for ii in range(len(column_titles)):
+            text_array.append([b+w_h_n+ii*w_d+w_d/2,vertical_edges[4]+h_h_b[10]/2,
+                               'chapel',
+                               schedule['table_header_font'],
+                               schedule['table_header_text_colour']])
+
+    for ii in range(n_h_b):
+        time_int = start_time+ii
+        time = str(time_int)+':00'
+        text_array.append([b+w_h_n/2,vertical_edges[1+ii]+h_h_b[7+ii]/2,
+                           time,
+                           schedule['table_header_font'],
+                           schedule['table_header_text_colour']])
+
+
+    # coordinates for the vertical lines in the grid
+    line_coordinates_array.append([b,b,b,c_h-b])
+    for ii in range(len(column_titles)+1):
+        line_coordinates_array.append([b+w_h_n+ii*w_d,b,b+w_h_n+ii*w_d,c_h-b])
+    # coordinates for the horizontal lines in the grid
+    line_coordinates_array.append([b,b,c_w-b,b])
+    line_coordinates_array.append([b,c_h-b,c_w-b,c_h-b])
+
+    colour_on = True
+
+    for ii in range(n_h_b):
+        line_coordinates_array.append([b,vertical_edges[ii+1],c_w-b,vertical_edges[ii+1]])
+        if colour_on:
+            filled_row_array.append([b,vertical_edges[ii+1],c_w-2*b,h_h_b[7+ii],
+                                     schedule['row_background_fill_colour'],
+                                     schedule['grid_line_width'],
+                                     schedule['row_background_fill_colour']])
+            colour_on = False
+        else:
+            colour_on = True
+
+    return line_coordinates_array, filled_row_array, text_array
+
+def rectangle_coordinates_flexible_schedule(schedule, vertical_edges, text_list, day_int, hour):
+    """
+    returns the coordinates required (by the javascript in the template)
+    to display a rectangular box for a single class meeting
+    """
+    
+    b = schedule['border']
+    w_h_n = schedule['width_hour_names']
+    w_d = schedule['width_day']
+    h_h_b = schedule['height_hour_block']
+    h_d_n = schedule['height_day_names']
+
+    # base_hour is the earliest hour on the schedule
+                                                                              
+    base_hour = schedule['start_time']
+    xleft = b+w_h_n+day_int*w_d
+
+    begin_height = vertical_edges[hour-base_hour+1]
+    height = h_h_b[hour]
+    line_sep = schedule['box_text_line_sep_pixels']
+    
+# format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
+
+    box_data = [xleft, begin_height, w_d, height, schedule['box_fill_colour'],
+                schedule['box_line_width'], schedule['box_border_colour']]
+
+    text_data = []
+    
+    text_height = begin_height
+    for line in text_list:
+        if len(line)>0:
+            text_height = text_height+line_sep
+        else:
+            text_height = text_height+line_sep/2
+
+        text_data.append([xleft+w_d/2, text_height, line,
+                          schedule['box_font'],
+                          schedule['table_header_text_colour']])
+
+    return box_data, text_data
 
