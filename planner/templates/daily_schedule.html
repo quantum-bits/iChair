@@ -19,6 +19,17 @@
 
 {% for data in day_data %}
 
+<div>
+{% if data.error_messages %}
+   <p> 
+    <span class="label label-warning">Warning </span> <b>There are time conflicts in {{data.semester}}.</b>
+  </p>
+   {% for warning in data.error_messages %}
+      <b>{{warning.0}}</b> {{warning.1}} </p>
+   {% endfor %}
+{% endif %}
+</div>
+
 <canvas id="{{data.id}}" width="{{data.schedule.width}}" height="{{data.schedule.height}}"></canvas>
 
   <script>
