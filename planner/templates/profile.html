@@ -5,15 +5,9 @@
     <table class="table table-striped table-bordered table-hover">
       <tbody>
 	<tr>
-	  <th>Department 
-	    {% if permission_level == 2 %}
-	      (<a href="{% url 'update_department_to_view' %}?next={{request.path|urlencode }}">Edit</a>)
-	    {% endif %}</th>
-	  <td>{{ department }}</td>
-	</tr>
-	<tr>
-	  <th>Academic Year (<a href="{% url 'update_year_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
-	  <td>{{ academic_year }}</td>
+	  <th>Login
+	  </th>
+	  <td>{{ username }}</td>
 	</tr>
 	<tr>
 	  <th>Permission</th>
@@ -28,6 +22,17 @@
 	      Unknown
 	    {% endif %}
 	  </td>
+	</tr>
+	<tr>
+	  <th>Department 
+	    {% if permission_level == 2 %}
+	      (<a href="{% url 'update_department_to_view' %}?next={{request.path|urlencode }}">Edit</a>)
+	    {% endif %}</th>
+	  <td>{{ department }}</td>
+	</tr>
+	<tr>
+	  <th>Academic Year (<a href="{% url 'update_year_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
+	  <td>{{ academic_year }}</td>
 	</tr>
 	<tr>
 	  <th>Faculty (<a href="{% url 'update_faculty_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>

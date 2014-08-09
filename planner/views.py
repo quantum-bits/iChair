@@ -51,7 +51,8 @@ def profile(request):
                 'room_list': room_list,
                 'other_load_types': other_load_types,
                 'faculty_list': faculty_list,
-                'id': user_preferences.id
+                'id': user_preferences.id,
+                'username': user.username
                 }
     return render(request, 'profile.html', context)
 
@@ -1100,6 +1101,8 @@ def daily_schedule(request):
                     courses_after_five = True
 
                 for instructor in sc.course_offering.instructor.all():
+                    if instructor.id not in instructor_conflict_check_dict.keys():
+                        instructor_conflict_check_dict[instructor.id] = {'today':[]}
                     instructor_conflict_check_dict[instructor.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                                    sc.end_at.hour*100+sc.end_at.minute,
                                                                                    sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
@@ -1148,8 +1151,9 @@ def daily_schedule(request):
             json_table_text_list = simplejson.dumps(table_text_list)
 
             error_messages=[]
-            for faculty_member in user_preferences.faculty_to_view.filter(department=department):
-                overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member.id])
+            for faculty_member_id in instructor_conflict_check_dict.keys():
+                overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
+                faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
                 for key in overlap_dict:
                     for row in overlap_dict[key]:
                         error_messages.append([faculty_member.first_name[:1]+' '+
@@ -2781,6 +2785,8 @@ def weekly_course_schedule_entire_dept(request):
                                  sc.room.building.abbrev+sc.room.number]
 
                 for instructor in sc.course_offering.instructor.all():
+                    if instructor.id not in instructor_conflict_check_dict.keys():
+                        instructor_conflict_check_dict[instructor.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
                     instructor_conflict_check_dict[instructor.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                                   sc.end_at.hour*100+sc.end_at.minute,
                                                                                   sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
@@ -2930,8 +2936,9 @@ def weekly_course_schedule_entire_dept(request):
         json_table_text_list = simplejson.dumps(table_text_list)
 
         error_messages=[]
-        for faculty_member in user_preferences.faculty_to_view.filter(department=department):
-            overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member.id])
+        for faculty_member_id in instructor_conflict_check_dict.keys():
+            overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
+            faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
             for key in overlap_dict:
                 for row in overlap_dict[key]:
                     error_messages.append([faculty_member.first_name[:1]+' '+
