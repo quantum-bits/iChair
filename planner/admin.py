@@ -49,6 +49,7 @@ class OfferingInstructorAdmin(admin.ModelAdmin):
 
 class FacultyMemberAdmin(admin.ModelAdmin):
     inlines = (OfferingInstructorInline,)
+    search_fields = ('last_name',)
 
 class CourseOfferingAdmin(admin.ModelAdmin):
     inlines = (OfferingInstructorInline,)

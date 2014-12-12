@@ -8,6 +8,9 @@
 <p> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
 	    Copy</a> course(s) from previous year.
 </p>
+<p> <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
+	    Add</a> a new course offering.
+</p>
 {% endif %}
 </div>
  <div id="year-accordion" class="accordion">
@@ -30,6 +33,7 @@
 		</tr>
 	       <td> Number </td>
 	       <td> Name </td>
+	       <td style="text-align: center;"> Add | Delete </td>
 	       <td style="text-align: center;"> Semester </td>
 	       <td style="text-align: center;"> Time </td>
 	       <td style="text-align: center;"> Room </td>
@@ -46,6 +50,7 @@
     <tr>
       <td> {{course.number}}</td>
       <td> {{course.name}}</td>
+      <td title = "Add a new section of this course or delete the current one." style="text-align: center;"> [ <a href="{% url 'add_course_offering' course.course_id 1 %}?next={{ request.path|urlencode }}">+</a> | <a href="{% url 'delete_course_offering' course.id %}?next={{ request.path|urlencode }}">-</a> ] </td>
       <td style="text-align: center;"> {{course.semester}} </td>
       <td style="text-align: center;">      
 	{% for meeting in course.meeting_times %}
@@ -59,7 +64,7 @@
 	  {% endif %}
 	  {% else %}
 	  {% if can_edit %}
-	  <a href="{% url 'new_class_schedule' course.id %}">
+	  <a href="{% url 'new_class_schedule' course.id 0 %}">
 	    {{meeting}}</a>
 	  {% else %}
 	    {{meeting}}
@@ -80,7 +85,7 @@
 	  {% endif %}
 	  {% else %}
 	  {% if can_edit %}
-	  <a href="{% url 'new_class_schedule' course.id %}">
+	  <a href="{% url 'new_class_schedule' course.id 0 %}">
 	    {{room}}</a>
 	  {% else %}
 	  {{room}}
@@ -265,7 +270,7 @@
 	  {% else %} {{meeting}} {% endif %}
 	  {% else %}
 	  {% if can_edit %}
-	  <a href="{% url 'new_class_schedule' course.id %}">
+	  <a href="{% url 'new_class_schedule' course.id 0 %}">
 	    {{meeting}}</a>
 	  {% else %} {{meeting}} {% endif %}
 	  {% endif %}
@@ -282,7 +287,7 @@
 	  {% else %} {{room}} {% endif %}
 	  {% else %}
 	  {% if can_edit %}
-	  <a href="{% url 'new_class_schedule' course.id %}">
+	  <a href="{% url 'new_class_schedule' course.id 0 %}">
 	    {{room}}</a>
 	  {% else %} {{room}} {% endif %}
 	  {% endif %}

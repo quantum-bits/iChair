@@ -20,6 +20,49 @@ import xlwt
 from os.path import expanduser
 from datetime import date
 
+
+# to prevent accidental resubmission of a form after using the back button:
+# http://stackoverflow.com/questions/15671335/prevent-multiple-form-submissions-in-django
+# ...actually, maybe use HTTPResponseRedirect (?)
+# search on django prevent resubmit form back button
+
+# there is generally an issue with these forms if you use the "back"
+# button and then submit again; it makes a second copy!!!
+
+# in new_class_schedule.html -- fix the link with "skip" this step....
+
+# available load on course offering form can apparently be a negative number; need to do some error trapping on that!!!
+
+# check validation on the two new forms; compare against "manage course offerings" to see if there is anything else that needs to be done....
+
+# when trying to do a search on the admin, courseoffering page, it gives an error!
+
+# next: on manage course offering form:
+#       - only display semesters for the current AY
+#       - add a daisy_chain boolean as a second argument
+#       - check for return_to_page option, etc.
+
+# pass argument along with redirect.... return redirect('element_update', pk=element.id)
+
+#####-------------
+# 1. Under load summary page, make the Semesters clickable, so that you could change 
+#    Fall -> Spring, etc.; needs to take you to a form where that option (only) can be changed.
+# 2. Under load summary page, "Add" -- make a page that allows you to add a course offering
+#    of one course, and then, when you click submit, it should take you to the page where
+#    you can specify the times, etc.; then it should take you to the page where you can
+#    specify instructors.
+#    - needs to return to point of origin (easy(?): use request.GET.get('next','profile') to find the redirect path
+#      and then pass this string along to the target template; then paste it in after ?next=.....)
+#    - needs to allow you to bail on the "specifying times" and/or "instructors" option
+# 3. Under load summary/registrar views, use the "auto-return" thing so that when you create
+#    a new course schedule, it takes you back to where you came from.
+# 4. On #3, if you click the "more complicated" option, it should also take you back.
+
+# - request.session["return_to_page"] is the "source" page, to which a (possibly) daisy-chained sequence of forms should return
+
+####### MUST FIX where it says "AND OTHERWISE" below (under add_course(...))
+# >>> next step is to create a courseoffering object (?)
+
 def home(request):
     return render(request, 'home.html')
 
@@ -151,6 +194,8 @@ def delete_note(request, id):
 @login_required
 def department_load_summary(request):
     """Display loads for professors in the department"""
+    request.session["return_to_page"] = "/planner/deptloadsummary/"
+ 
     context = collect_data_for_summary(request)
     return render(request, 'dept_load_summary.html', context)
 
@@ -274,6 +319,7 @@ def collect_data_for_summary(request):
                                       'load_hours': available_load_hours,
                                       'load_difference': load_diff,
                                       'load_hour_list': load_list,
+                                      'course_id':course_offering.course.id,
                                       'id':course_offering.id,
                                       'comment':course_offering.comment,
                                       'semester':semester_name,
@@ -848,7 +894,13 @@ def update_course_offering(request,id):
         if form.is_valid() and formset.is_valid() and not prof_repeated_errors:
             form.save()
             formset.save()
-            next = request.GET.get('next', 'profile')
+#            next = request.GET.get('next', 'profile')
+            if "return_to_page" in request.session:
+                next = request.session["return_to_page"]
+            else:
+                next = "profile"
+                return redirect(next)
+
             return redirect(next)
 #            return redirect('department_load_summary')
         else:
@@ -1607,7 +1659,7 @@ def convert_time_to_pixels(height_hour_block, base_hour, time_hour, time_minute)
 @login_required
 def course_summary(request):
     """Display courses for the department and semesters in which they are taught"""
-
+    request.session["return_to_page"] = "course_summary"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -1712,9 +1764,17 @@ def manage_course_offerings(request,id):
 #   by first deleting everything and then hitting the new_class_schedule form (?) -> just check first thing
 #   and delete existing data....
 
-def new_class_schedule(request,id):
+def new_class_schedule(request,id, daisy_chain):
+# daisy_chain is "0" (False) or "1" (True) and says whether the page should advance to set up class schedules next, or just
+# return to the "return_to_page".
+
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
+
+    if int(daisy_chain):
+        daisy_chaining = True
+    else:
+        daisy_chaining = False
 
     course_offering = CourseOffering.objects.get(pk=id)
 
@@ -1746,17 +1806,29 @@ def new_class_schedule(request,id):
                 # if the db hangs, try new_class.room_id = room.id
                 new_class.save()
 
-            return redirect('department_load_summary')
+            if not int(daisy_chain):
+                if "return_to_page" in request.session:
+                    next = request.session["return_to_page"]
+                else:
+                    next = "profile"
+                return redirect(next)
+            else:
+                url_string = '/planner/updatecourseoffering/'+str(course_offering.id)+'/'
+                print url_string
+                return redirect(url_string)
         else:
-            return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'course':course_offering})
+            return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'daisy_chaining': daisy_chaining, 'course':course_offering})
 
     else:
         form = EasyDaySchedulerForm()
-        return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'course':course_offering })
+        return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'daisy_chaining': daisy_chaining, 'course':course_offering })
 
-def add_course(request):
+def add_course(request, daisy_chain):
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
+#
+# daisy_chain is "0" (False) or "1" (True) and says whether the page should advance to set up course offerings next, or just
+# return to the "return_to_page".
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -1766,8 +1838,17 @@ def add_course(request):
     if request.method == 'POST':
         form = AddCourseForm(department_id,request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('course_summary')
+            course = form.save()
+            if not int(daisy_chain):
+                if "return_to_page" in request.session:
+                    next = request.session["return_to_page"]
+                else:
+                    next = "profile"
+                return redirect('course_summary')
+            else:
+                url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
+                print url_string
+                return redirect(url_string)
         else:
             context = {'form': form, 'title': 'New Course'}
             return render(request, 'add_course.html', context)
@@ -1776,6 +1857,51 @@ def add_course(request):
         form = AddCourseForm(department_id)
         context = {'form': form, 'title': 'New Course'}
         return render(request, 'add_course.html', context)
+
+def add_course_offering(request, course_id, daisy_chain):
+# daisy_chain is "0" (False) or "1" (True) and says whether the page should advance to set up class schedules next, or just
+# return to the "return_to_page".
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+#    department_id = user_preferences.department_to_view.id
+    academic_year_id = user_preferences.academic_year_to_view.id
+    course = Course.objects.get(pk = course_id)
+
+    if request.method == 'POST':
+        form = CourseOfferingRestrictedByYearForm(academic_year_id, request.POST)
+        if form.is_valid():
+
+            semester = form.cleaned_data.get('semester')
+            load_available = form.cleaned_data.get('load_available')
+            max_enrollment = form.cleaned_data.get('max_enrollment')
+            comment = form.cleaned_data.get('comment')
+            new_course_offering = CourseOffering(course = course,
+                                                 semester = semester,
+                                                 load_available = load_available,
+                                                 max_enrollment = max_enrollment,
+                                                 comment = comment)
+            new_course_offering.save()
+            if not int(daisy_chain):
+                if "return_to_page" in request.session:
+                    next = request.session["return_to_page"]
+                else:
+                    next = "profile"
+                return redirect(next)
+            else:
+                url_string = '/planner/newclassschedule/'+str(new_course_offering.id)+'/1/'
+                print url_string
+                return redirect(url_string)
+        else:
+            context = {'form': form, 'course': course}
+            return render(request, 'add_course_offering.html', context)
+
+    else:
+        form = CourseOfferingRestrictedByYearForm(academic_year_id)
+        context = {'form': form, 'course': course}
+        return render(request, 'add_course_offering.html', context)
+
+
 
 @login_required
 def update_course(request, id):
@@ -1803,6 +1929,34 @@ def update_course(request, id):
         return render(request, 'add_course.html', context)
 
 @login_required
+def delete_course_offering(request, id):
+    instance = CourseOffering.objects.get(pk = id)
+    if request.method == 'POST':
+        instance.delete()
+        next = request.GET.get('next', 'department_load_summary')
+        return redirect(next)
+    else:
+        scheduled_classes = instance.scheduled_classes.all()
+        if len(scheduled_classes)==0:
+            meetings_scheduled = False
+            meeting_times_list = ["---"]
+            room_list = ["---"]
+        else:
+            meetings_scheduled = True
+            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+        counter = 0
+        meeting_info = []
+        for meeting_time in meeting_times_list:
+            meeting_info.append({'times': meeting_times_list[counter], 'room': room_list[counter]})
+            counter = counter+1
+
+        context = {'title': 'Delete Course Offering', 'course_offering': instance, 
+                   'meeting_info': meeting_info}
+        return render(request, 'delete_course_offering_confirmation.html', context)
+
+#    return redirect('dept_load_summary')
+
+@login_required
 def delete_course_confirmation(request, id):
     course = Course.objects.get(pk = id)
     context ={'course': course}
@@ -1819,6 +1973,11 @@ def delete_course(request, id):
 def registrar_schedule(request):
     """Display courses in roughly the format used by the registrar"""
 
+    if "return_to_page" in request.session:
+        print request.session["return_to_page"]
+        del request.session["return_to_page"]
+    else:
+        print "no return to page"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -3096,3 +3255,28 @@ def rectangle_coordinates_flexible_schedule(schedule, vertical_edges, text_list,
 
     return box_data, text_data
 
+@login_required
+def select_course(request):
+    """
+    Allows the user to select a course, as the first step in creating a new course offering.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+
+    if request.method == 'POST':
+        form = CourseSelectForm(department.id, request.POST)
+        if form.is_valid():
+            course = form.cleaned_data.get('course')
+            url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
+            print url_string
+            return redirect(url_string)
+        else:
+            return render(request, 'select_course.html', {'form': form})
+    else:
+        form = CourseSelectForm(department.id)
+        context = {'form': form}
+        return render(request, 'select_course.html', context)
+
+    

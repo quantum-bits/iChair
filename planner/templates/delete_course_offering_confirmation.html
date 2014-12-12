@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<form action="" method="post">
+      {% csrf_token %}
+
+<p> Are you sure that you want to <b> delete </b> the following course offering, including associated information about days, times, rooms and professors?</p> 
+<p> <b> {{course_offering}} </b> </p>
+{% for meeting in meeting_info %}
+<div>  {{meeting.times}} ({{meeting.room}}) </div>
+{% endfor %}
+
+<p></p>
+
+<p> This action is not reversible. (<a href="{% url 'department_load_summary' %}">No! It's all been a terrible mistake!</a>)</p>
+
+<p><input type="submit" value="Delete"></p>
+</form>
+
+
+   <script>
+    $(window).load(function(){
+    $("#nav-coursesummary").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Delete {{course_offering}}</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+   </script>
+
+{% endblock %}

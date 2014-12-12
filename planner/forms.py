@@ -97,6 +97,39 @@ class UpdateMajorForm(forms.ModelForm):
         model = Student
         exclude = ('user', 'name', 'entering_year')
 
+class CourseOfferingRestrictedByYearForm(forms.ModelForm):
+
+    def __init__(self, academic_year_id, *args, **kwargs):
+        super (CourseOfferingRestrictedByYearForm,self).__init__(*args,**kwargs)
+        self.fields['semester'].queryset = Semester.objects.filter(Q(year__id = academic_year_id))
+
+    class Meta:
+        model = CourseOffering
+        exclude = ('course','instructor',)
+
+    def clean(self):
+        max_enrollment = self.cleaned_data.get('max_enrollment')
+        if max_enrollment < 0:
+            raise forms.ValidationError("Maximum enrollment must be greater than or equal to zero.")
+
+        return self.cleaned_data
+
+class CourseSelectForm(forms.ModelForm):
+
+    def __init__(self, dept_id, *args, **kwargs):
+        department_id = dept_id
+        super (CourseSelectForm,self).__init__(*args,**kwargs)
+        self.fields['course'].queryset = Course.objects.filter(Q(subject__department__id = department_id))
+    
+    class Meta:
+        model = CourseOffering
+        exclude = ('semester','instructor','load_available','max_enrollment', 'comment',)
+
+    def clean(self):
+        return self.cleaned_data
+
+
+    
 class CourseOfferingForm(forms.ModelForm):
 
     class Meta:
@@ -250,7 +283,7 @@ class AddCourseForm(forms.ModelForm):
 
     class Meta:
         model = Course
-        exclude = ('prereqs','coreqs','attributes',)
+        exclude = ('prereqs','coreqs','attributes','schedule_semester', 'schedule_year', 'crn',)
 
     def __init__(self, dept_id, *args, **kwargs):
         department_id = dept_id

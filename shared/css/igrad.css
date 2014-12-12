@@ -3,7 +3,7 @@
 
 /********Body***********/
 
-h1,h2, .banner-head p { font-family: 'Proxima-Nova', Arial, sans-serif; }
+h1,h2,h3,h4 .banner-head p { font-family: 'Proxima-Nova', Arial, sans-serif; }
 @font-face {
     font-family: 'Proxima-Nova';
     src: url('../font/ProximaNova-Light.otf');
