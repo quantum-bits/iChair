@@ -10,10 +10,13 @@
 {% for meeting in meeting_info %}
 <div>  {{meeting.times}} ({{meeting.room}}) </div>
 {% endfor %}
+{% for instructor in course_offering.instructor.all %}
+<div>  {{instructor}} </div>
+{% endfor %}
 
 <p></p>
 
-<p> This action is not reversible. (<a href="{% url 'department_load_summary' %}">No! It's all been a terrible mistake!</a>)</p>
+<p> This action is not reversible. (<a href="{{sending_page}}">No! It's all been a terrible mistake!</a>)</p>
 
 <p><input type="submit" value="Delete"></p>
 </form>

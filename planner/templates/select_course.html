@@ -2,18 +2,93 @@
 
 {% block content %}
 
-   <div class="content-center">
-<p> <h2>First Step: Select a Course</h2></p>
+<style>
+div.container {
+    width: 770px;
+    margin: 0 auto;
+    background-color: #ffffff;
+}
 
+div.left {
+    float: left;
+    width: 160px;
+    margin: 0;
+}
+
+div.content {
+    float: left;
+    margin-left: 220px;
+    width: 330px;
+  padding: 8px 10px 8px 14px;
+  margin-bottom: 20px;
+  background-color: #ffffff;
+    border-color: gray;
+    border: 4px solid #C0E7FA;
+    -webkit-border-radius: 4px;
+       -moz-border-radius: 4px;
+            border-radius: 4px;
+}
+</style>
+
+<div class="content-center">
+<!--<h3> Use an existing course or create a new one. </h3>-->
+<div class="container">
+  <div class="left">
+    <div class="alert alert-student-info">
+      <p> <h3>Choose a Course from the Following List....</h3> </p>
+      <p>
      <form action=""  method="post">
       {% csrf_token %}
 
       {{ form.as_table }}
       <p><input type="submit" alt="register" /></p>
+      <p> (You probably want to do this.)</p>
      </form>
+     </p>
+     </div>
+</div>
+  <div class="content">
+    <!--<div class="alert alert-student-info">-->
+      <p> <h3>Course not in the List?  Create a New One....</h3> </p>
+<p> If the course does not appear in the list to the left, you may need to 
+create a new course first.</p>
+<p> <a class="btn" href="{% url 'add_course_confirmation' 1 %}">Create New Course</a></p> 
+<p>(You probably <strong>don't</strong> want to do this.)</p>
+<!--  </div>-->
+  </div>
 
-<p> If the course does not appear in the above list, you may need to 
-<a href="{% url 'add_course' 1 %}">create</a> a new course first.</p>
+<!--
+
+  <div class="right">
+<p>
+<div class="alert alert-student-info">
+<p> In the following screens you will set up the details
+for a new course offering.  
+</p>
+</div>
+</p>
+
+<p>
+<div class="alert alert-student-info">
+<p>
+First you will choose the <strong>course</strong>,
+then the <strong> semester </strong> and various details about <strong>where</strong> and <strong> when</strong>
+the course will be taught, as well as <strong>who</strong> will teach it.  </p>
+
+</div>
+</p>
+
+
+<div class="alert alert-student-info">
+<p>You will be given the option
+to skip some of the steps if you like. </p>
+</div>
+</p>
+</div>
+-->
+</div>
+
+<h3>In the next step you will choose the semester for this course offering. </h3>
 </div>
 
    <script>

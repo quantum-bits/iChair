@@ -2,24 +2,87 @@
 
 {% block content %}
 
-   <div class="content-center">
-<p> <h2>Choose Meeting Times, Room, Etc.</h2></p>
+<style>
+div.container {
+    width: 770px;
+    margin: 0 auto;
+    background-color: #ffffff;
+}
 
+div.left {
+    float: left;
+    width: 160px;
+    margin: 0;
+    padding: 1em;
+}
+
+div.content {
+    float: left;
+    margin-left: 200px;
+    width: 160px;
+    padding: 1em;
+}
+</style>
+
+<div class="content-center">
+
+{% if daisy_chaining %}
+<p>
+<!--<div class="alert alert-student-info">-->
+ <a class="btn" href="{% url 'update_course_offering' id 1 %}">Skip This Step</a>
+<!--</div>-->
+</p>
+{% endif %}
+
+
+<!--<h3> Choose meeting times from preset options or customize them.</h3>-->
+
+<!--
+{% if daisy_chaining %}
+<p>
+<div class="alert alert-student-info">
+ <a class="btn" href="{% url 'update_course_offering' id 1 %}">Skip This Step</a>
+</div>
+</p>
+{% endif %}
+-->
+
+<div class="container">
+  <div class="left">
+    <div class="alert alert-student-info">
+      <p> <h3>Choose from Preset Options...</h3> </p>
+      <p>
      <form action=""  method="post">
       {% csrf_token %}
 
-    {{ form.as_p }}
+      {{ form.as_table }}
       <p><input type="submit" alt="register" /></p>
      </form>
-
- <p> If the meeting schedule is more complicated than is allowed by the above possibilities,
-click <a href="{% url 'update_class_schedule' id %}">here</a>.</p>
-
+     </p>
+     </div>
+</div>
+  <div class="content">
+    <div class="alert alert-student-info">
+       <p> <h3>... or Customize</h3> </p>
+<p> If the custom options at the left don't work for this section
+of {{course.course.subject.abbrev}} {{course.course.number}}, you can customize the meeting times and rooms.</p>
 {% if daisy_chaining %}
-<p> If you like, you can 
-click <a href="{% url 'update_course_offering' id %}">skip</a> this step.</p>
+<p> <a class="btn" href="{% url 'update_class_schedule' id 1 %}">Customize Meeting Times and Rooms</a></p> 
+{% else %}
+<p> <a class="btn" href="{% url 'update_class_schedule' id 0 %}">Customize Meeting Times and Rooms</a></p> 
 {% endif %}
-
+  </div>
+  </div>
+</div>
+<!--
+{% if daisy_chaining %}
+<p>
+<div class="alert alert-student-info">
+ <a class="btn" href="{% url 'update_course_offering' id 1 %}">Skip This Step</a>
+</div>
+</p>
+{% endif %}
+-->
 </div>
 
    <script>

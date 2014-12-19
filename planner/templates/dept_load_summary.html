@@ -5,12 +5,19 @@
 <div class="content-center">
 
 {% if can_edit %}
-<p> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
-	    Copy</a> course(s) from previous year.
+<!--<p> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
+	    Copy</a> one or more course offerings from a previous year.
 </p>
 <p> <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
 	    Add</a> a new course offering.
+</p>-->
+<p> <a class="btn" href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
+	    Add a Section of a Course</a>
 </p>
+<p> <a class="btn" href="{% url 'choose_year_course_copy' %}">
+	    Copy Course Sections From a Previous Year</a>
+</p>
+
 {% endif %}
 </div>
  <div id="year-accordion" class="accordion">
@@ -33,7 +40,9 @@
 		</tr>
 	       <td> Number </td>
 	       <td> Name </td>
-	       <td style="text-align: center;"> Add | Delete </td>
+	       {% if can_edit %}
+	       <td style="text-align: center;">  </td>
+	       {% endif %}
 	       <td style="text-align: center;"> Semester </td>
 	       <td style="text-align: center;"> Time </td>
 	       <td style="text-align: center;"> Room </td>
@@ -50,14 +59,16 @@
     <tr>
       <td> {{course.number}}</td>
       <td> {{course.name}}</td>
-      <td title = "Add a new section of this course or delete the current one." style="text-align: center;"> [ <a href="{% url 'add_course_offering' course.course_id 1 %}?next={{ request.path|urlencode }}">+</a> | <a href="{% url 'delete_course_offering' course.id %}?next={{ request.path|urlencode }}">-</a> ] </td>
+      {% if can_edit %}
+      <td title = "Delete this section." style="text-align: center;"> <a class="btn" href="{% url 'delete_course_offering' course.id %}?next={{ request.path|urlencode }}">Delete</a>  </td>
+      {% endif %}
       <td style="text-align: center;"> {{course.semester}} </td>
       <td style="text-align: center;">      
 	{% for meeting in course.meeting_times %}
 	<div>
 	  {% if course.meetings_scheduled %}
 	  {% if can_edit %}
-	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
+	  <a href="{% url 'update_class_schedule' course.id 0 %}?next={{ request.path|urlencode }}">
 	    {{meeting}}</a>
 	  {% else %} 
 	    {{meeting}}
@@ -78,7 +89,7 @@
 	<div>
 	  {% if course.meetings_scheduled %}
 	  {% if can_edit %}
-	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
+	  <a href="{% url 'update_class_schedule' course.id 0 %}?next={{ request.path|urlencode }}">
 	    {{room}}</a>
 	  {% else %}
 	  {{room}}
@@ -96,7 +107,7 @@
       </td>
       <td style="text-align: center;">
 	{% if can_edit %}
-	<a href="{% url 'update_course_offering' course.id %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a>
+	<a href="{% url 'update_course_offering' course.id 0 %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a>
         {% else %} {{course.load_hours}} {% endif %} </td>
 	{% if course.load_difference < 0 %}
           <td style="text-align: center; color: red"> 
@@ -113,19 +124,31 @@
 	  {% if load.1 == 0 %}
 	    <td colspan="3" style="text-align: left;">
 	      {% if load.0 >= 0 %}
-	        {{load.0}} 
+	      {% if can_edit %}
+	<a href="{% url 'update_course_offering' course.id 0 %}?next={{ request.path|urlencode }}"> 
+	        {{load.0}} </a>
+	      {% else %} {{load.0}}
+	      {% endif %}
 	      {% endif %}
 	    </td>
           {% elif load.1 == 1 %}
 	    <td colspan="3" style="text-align: center;">
 	      {% if load.0 >= 0 %}
-	        {{load.0}} 
+	      {% if can_edit %}
+	<a href="{% url 'update_course_offering' course.id 0 %}?next={{ request.path|urlencode }}"> 
+	        {{load.0}} </a>
+	      {% else %} {{load.0}}
+	      {% endif %}
 	      {% endif %}
 	    </td>
 	  {% elif load.1 == 2 %}
 	    <td colspan="3" style="text-align: right;">
 	      {% if load.0 >= 0 %}
-	        {{load.0}} 
+{% if can_edit %}
+	<a href="{% url 'update_course_offering' course.id 0 %}?next={{ request.path|urlencode }}"> 
+	        {{load.0}} </a>
+	      {% else %} {{load.0}}
+	      {% endif %}
 	      {% endif %}
 	    </td>
 	  {% else %}
@@ -143,6 +166,7 @@
     {% if can_edit %}
     <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a>
     {% else %} {{data_element.load_type}} {% endif %} </td>
+      {% if can_edit %} <td> </td>{% endif %}
   <td> </td>
   <td> </td>
   <td> </td>
@@ -164,6 +188,7 @@
 <tr>
 	       <td> </td>
 	       <td style="text-align: right;"> Load Summary </td>
+	       {% if can_edit %}<td> </td>{% endif %}
 	       <td> </td>
 	       <td> </td>
 	       <td> </td>
@@ -183,6 +208,7 @@
 <tr>
 	       <td> </td>
 	       <td style="text-align: right;"> Total </td>
+	       {% if can_edit %}<td> </td>{% endif %}
 	       <td> </td>
 	       <td> </td>
 	       <td> </td>
@@ -200,6 +226,7 @@
 <tr>
 	       <td> </td>
 	       <td> </td>
+	       {% if can_edit %}<td> </td> {% endif %}
 	       <td> </td>
 	       <td> </td>
 	       <td> </td>
@@ -245,6 +272,9 @@
 		</tr>
 	       <td> Number </td>
 	       <td> Name </td>
+	       {% if can_edit %}
+	       <td style="text-align: center;">  </td>
+	       {% endif %}
 	       <td style="text-align: center;"> Semester </td>
 	       <td style="text-align: center;"> Time </td>
 	       <td style="text-align: center;"> Room </td>
@@ -259,13 +289,16 @@
     <tr>
       <td> {{course.number}}</td>
       <td> {{course.name}}</td>
+      {% if can_edit %}
+      <td title = "Delete this section." style="text-align: center;"> <a class="btn" href="{% url 'delete_course_offering' course.id %}?next={{ request.path|urlencode }}">Delete</a>  </td>
+      {% endif %}
       <td style="text-align: center;"> {{course.semester}} </td>
       <td style="text-align: center;">      
 	{% for meeting in course.meeting_times %}
 	<div>
 	  {% if course.meetings_scheduled %}
 	  {% if can_edit %}
-	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
+	  <a href="{% url 'update_class_schedule' course.id 0 %}?next={{ request.path|urlencode }}">
 	    {{meeting}}</a>
 	  {% else %} {{meeting}} {% endif %}
 	  {% else %}
@@ -282,7 +315,7 @@
 	<div>
 	  {% if course.meetings_scheduled %}
 	  {% if can_edit %}
-	  <a href="{% url 'update_class_schedule' course.id %}?next={{ request.path|urlencode }}">
+	  <a href="{% url 'update_class_schedule' course.id 0 %}?next={{ request.path|urlencode }}">
 	    {{room}}</a>
 	  {% else %} {{room}} {% endif %}
 	  {% else %}
@@ -296,7 +329,7 @@
       </td>
       <td style="text-align: center;">
 	{% if can_edit %}
-	<a href="{% url 'update_course_offering' course.id %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a>
+	<a href="{% url 'update_course_offering' course.id 0 %}?next={{ request.path|urlencode }}"> {{course.load_hours}}</a>
         {% else %} {{course.load_hours}} {% endif %}</td>
 	{% if course.load_difference < 0 %}
           <td style="text-align: center; color: red"> 
@@ -341,6 +374,7 @@
     {% if can_edit %}
     <a href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}"> {{data_element.load_type}}</a>
     {% else %} {{data_element.load_type}} {% endif %} </td>
+  {% if can_edit %}<td> </td> {% endif %}
   <td> </td>
   <td> </td>
   <td> </td>
@@ -360,6 +394,7 @@
 <tr>
 	       <td> </td>
 	       <td style="text-align: right;"> Load Summary </td>
+	       {% if can_edit %}<td> </td> {% endif %}
 	       <td> </td>
 	       <td> </td>
 	       <td> </td>
@@ -377,6 +412,7 @@
 <tr>
 	       <td> </td>
 	       <td style="text-align: right;"> Total </td>
+	       {% if can_edit %}<td> </td> {% endif %}
 	       <td> </td>
 	       <td> </td>
 	       <td> </td>
@@ -405,7 +441,7 @@
   <script>
     $(window).load(function(){
     $("#nav-deptloadsummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Faculty Load Summary ({{department}}, {{academic_year}})</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Faculty Load Summary</h1><h2>{{department}}, {{academic_year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
   </script>
 

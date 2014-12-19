@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+div.container {
+    width: 770px;
+    margin: 0 auto;
+    background-color: #ffffff;
+}
+
+div.left {
+    float: left;
+    width: 160px;
+    margin: 0;
+    padding: 1em;
+}
+
+div.content {
+    float: left;
+    margin-left: 200px;
+    width: 160px;
+    padding: 1em;
+}
+</style>
+
+<div class="content-center">
+<h3> Are you sure you want to create a new course? </h3>
+<div class="alert alert-student-info">
+      <p> <h3>If the course exists in the list below, you probably want to use that instead....</h3> </p>
+      <p>
+     <form action=""  method="post">
+      {% csrf_token %}
+
+      {{ form.as_table }}
+      <p><input type="submit" alt="register" /></p>
+     </form>
+     </p>
+     </div>
+<div class="container">
+<h3> If the course has never been taught before (or is not in the database for some reason), you will need to create it...</h3>
+</div>
+    <div class="alert alert-student-info">
+      <p></p>
+<p> <a class="btn" href="{% url 'add_course' 1 %}">Create New Course</a></p> 
+  </div>
+
+
+</div>
+
+   <script>
+    $(window).load(function(){
+    $("#nav-coursesummary").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Add a New Course Offering</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+   </script>
+
+{% endblock %}

@@ -2,14 +2,40 @@
 
 {% block content %}
 
-   <div class="content-center">
-<p> <h2>Select Semester and Load Available for Instructors</h2></p>
+<div class="content-center">
+<h3> Select the semester and other details for this section of {{course.subject.abbrev}} {{course.number}}. </h3>
+
+<!--
+<p>
+<div class="alert alert-student-info">
+<p> Here you select the <strong> semester </strong> during which <strong>{{course.subject.abbrev}} {{course.number}} </strong> will be taught.
+</p>
+</div>
+</p>
+<p>
+<div class="alert alert-student-info">
+<p> You also need to specify the <strong> total number of load hours</strong> available
+to the instructor(s) for the course.  (This can be changed later.)</p>
+</div>
+</p>
+-->
+
      <form action=""  method="post">
       {% csrf_token %}
 
       {{ form.as_table }}
+      <p></p> <p></p>
       <p><input type="submit" alt="register" /></p>
      </form>
+<p>
+<div class="alert alert-student-info">
+<p> <strong> Note:</strong> The "load available" is the total number of load
+hours that will be given to the instructor(s) for this course.  It can
+be edited later.
+</p>
+</div>
+</p>
+
    </div>
 
    <script>

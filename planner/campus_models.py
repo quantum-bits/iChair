@@ -360,9 +360,9 @@ class CourseOffering(StampedModel):
     instructor = models.ManyToManyField(FacultyMember, through='OfferingInstructor',
                                         blank=True, null=True,
                                         related_name='course_offerings')
-    load_available = models.FloatField()
+    load_available = models.FloatField(default=3)
     max_enrollment = models.PositiveIntegerField(default=10)
-    comment = models.CharField(max_length=20, blank=True, null=True)
+    comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
 
     def __unicode__(self):
         return "{0} ({1})".format(self.course, self.semester)

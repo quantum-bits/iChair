@@ -2,10 +2,17 @@
 
 {% block content %}
 
-<p> <h2> Choose one or more professors for this course offering </h2></p>
+<div class="content-center">
+
+{% if daisy_chaining %}
+<p>
+ <a class="btn" href="{{next}}">Skip This Step</a>
+</p>
+{% endif %}
+
+<p> <h3> Choose one or more instructors for this course offering </h3></p>
 <p> {{form.errors}} </p>
 
-   <div class="content-center">
      {% if errordict.prof_repeated_error %}
         <p class="error"> {{errordict.prof_repeated_error}} </p>
      {% endif %}
@@ -70,7 +77,21 @@
 
       <p><input type="submit" alt="register" /></p>
     </form>
+
+<!--
+{% if daisy_chaining %}
+<p>
+<div class="alert alert-student-info">
+ <a class="btn" href="{{next}}">Skip This Step</a>
+</div>
+</p>
+{% endif %}
+-->
+
   </div>
+
+
+
 
    <script>
     $(window).load(function(){
