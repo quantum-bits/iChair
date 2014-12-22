@@ -20,12 +20,9 @@ import xlwt
 from os.path import expanduser
 from datetime import date
 
+# add a Home page -- what should it say?!?
+
 # use AJAX and a session variable to keep track of which divs are open/closed
-
-
-# >>> NEXT: allow an "edit semester" option for course offerings
-
-
 
 # add another session variable "delete_on" for the course summary page;
 #  - if delete is off, have a page pop up that says you need to turn delete on
@@ -54,24 +51,7 @@ from datetime import date
 
 # pass argument along with redirect.... return redirect('element_update', pk=element.id)
 
-#####-------------
-# 1. Under load summary page, make the Semesters clickable, so that you could change 
-#    Fall -> Spring, etc.; needs to take you to a form where that option (only) can be changed.
-# 2. Under load summary page, "Add" -- make a page that allows you to add a course offering
-#    of one course, and then, when you click submit, it should take you to the page where
-#    you can specify the times, etc.; then it should take you to the page where you can
-#    specify instructors.
-#    - needs to return to point of origin (easy(?): use request.GET.get('next','profile') to find the redirect path
-#      and then pass this string along to the target template; then paste it in after ?next=.....)
-#    - needs to allow you to bail on the "specifying times" and/or "instructors" option
-# 3. Under load summary/registrar views, use the "auto-return" thing so that when you create
-#    a new course schedule, it takes you back to where you came from.
-# 4. On #3, if you click the "more complicated" option, it should also take you back.
-
 # - request.session["return_to_page"] is the "source" page, to which a (possibly) daisy-chained sequence of forms should return
-
-####### MUST FIX where it says "AND OTHERWISE" below (under add_course(...))
-# >>> next step is to create a courseoffering object (?)
 
 def home(request):
     return render(request, 'home.html')
@@ -341,6 +321,7 @@ def collect_data_for_summary(request):
 
     for other_load_type in user_preferences.other_load_types_to_view.all():
         load_list = []
+        total_other_load=0
         for ii in range(number_faculty):
             load_list.append([0,0,0])
         for other_load in other_load_type.other_loads.all():
@@ -351,9 +332,12 @@ def collect_data_for_summary(request):
                 jj = semesterdict[semester_name]
                 load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
                 faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
+        for ii in range(number_faculty):
+            total_other_load=total_other_load+sum(load_list[ii])
         admin_data_list.append({'load_type': other_load_type.load_type,
                                 'load_hour_list': load_list,
-                                'id':other_load_type.id
+                                'id':other_load_type.id,
+                                'total_load':load_hour_rounder(total_other_load)
                                 })
 
     total_load_hours=[]
@@ -382,11 +366,15 @@ def collect_data_for_summary(request):
                                         'load_difference': row['load_difference']
                                         })
         for row in admin_data_list:
+            total_other_load = 0
+            for key in instructordict:
+                total_other_load = total_other_load + sum(row['load_hour_list'][instructordict[key]])
             element = row['load_hour_list'][instructordict[instructor_id]]
             if element[0] > 0 or element[1] > 0 or element[2] > 0:
                 admin_data.append({'load_type':row['load_type'],
                                    'load_hour_list':element,
-                                   'id': row['id']
+                                   'id': row['id'],
+                                   'total_load':load_hour_rounder(total_other_load)
                                    })
 
 
@@ -411,7 +399,8 @@ def collect_data_for_summary(request):
              'instructorlist':instructor_id_list,
              'instructor_integer_list':instructor_integer_list,
              'data_list_by_instructor':data_list_by_instructor,
-             'can_edit': can_edit
+             'can_edit': can_edit,
+             'id': user_preferences.id,
              }
 
     return context
@@ -1383,7 +1372,7 @@ def room_schedule(request):
                                    'conflict':error_messages})
         data_list.append(data_this_room)
 
-    context={'data_list':data_list, 'year':academic_year_string}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id}
     return render(request, 'room_schedule.html', context)
 
 @login_required
@@ -3354,3 +3343,29 @@ def add_course_confirmation(request, daisy_chaining):
         context = {'form': form}
         return render(request, 'add_course_confirmation.html', context)
     
+@login_required
+def update_semester_for_course_offering(request, id):
+    """
+    Allows the user to update the semester for the given course offering.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    year_to_view = user_preferences.academic_year_to_view.begin_on.year
+    year = user_preferences.academic_year_to_view
+
+    instance = CourseOffering.objects.get(pk = id)
+#    print instance
+
+    if request.method == 'POST':
+        form = SemesterSelectForm(year, request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'profile')
+            return redirect(next)
+        else:
+            return render(request, 'update_semester.html', {'form':form, 'course_offering': instance})
+    else:
+        form = SemesterSelectForm(year, instance=instance)
+        return render(request, 'update_semester.html', {'form':form, 'course_offering': instance})

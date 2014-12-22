@@ -2,6 +2,11 @@
 {% block extrahead %}
 {% endblock %}
 {% block content %}
+
+<p>
+<a class="btn" href="{% url 'update_rooms_to_view' id %}?next={{ request.path|urlencode }}">Edit Rooms to View</a>
+</p>
+
  <div id="year-accordion" class="accordion">
 {% for room_data in data_list %}
    <div class="accordion-group">

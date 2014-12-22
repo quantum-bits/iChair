@@ -12,6 +12,7 @@ urlpatterns = patterns(
     url(r'^updatecourseoffering/(\d+)/(\d+)/$', 'update_course_offering', name='update_course_offering'),
     url(r'^managecourseofferings/(\d+)/$', 'manage_course_offerings', name='manage_course_offerings'),
     url(r'^updateclassschedule/(\d+)/(\d+)/$', 'update_class_schedule', name='update_class_schedule'),
+    url(r'^updatesemesterforcourseoffering/(\d+)/$', 'update_semester_for_course_offering', name='update_semester_for_course_offering'),
     url(r'^newclassschedule/(\d+)/(\d+)/$', 'new_class_schedule', name='new_class_schedule'),
     url(r'^weeklyschedule/$', 'weekly_schedule', name='weekly_schedule'),
     url(r'^weeklyscheduledeptsummary/$', 'weekly_course_schedule_entire_dept', name='weekly_course_schedule_entire_dept'),

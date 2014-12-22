@@ -1,15 +1,44 @@
 {% extends "base.html" %}
 
+{% block extrahead %}
+  <link href="{{ STATIC_URL }}css/chosen.css" media="screen" rel="stylesheet" type="text/css">
+  <script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>
+  <script src="http://code.jquery.com/ui/1.9.2/jquery-ui.min.js"></script>
+{% endblock %}
+
 {% block content %}
 
    <div class="content-center">
      <form action=""  method="post">
       {% csrf_token %}
 
-      {{ form.as_table }}
+<!--      {{ form.as_table }}-->
+
+<!--      <div class="updatesemester_div">-->
+      <div>
+      <p><label form="faculty_to_view" {% if form.faculty_to_view.errors %} class ="error"{% endif %}>Select Faculty Members to View:</label></p>
+
+<!--      <p>Select a course to add to your four-year plan.</p>-->
+      <span>{{ form.faculty_to_view }}</span>
+      </div>
+
+    <div class="alert alert-student-info">  
+  	<a class="close" data-dismiss="alert">×</a>  
+ 	 <div><strong>Hint:</strong> Start typing in the search bar or </div>
+	 <div> click and use the dropdown.</div>  
+    </div>        
+
       <p><input type="submit" alt="register" /></p>
      </form>
    </div>
+
+   <script src="{{ STATIC_URL }}js/chosen.jquery.js" type="text/javascript"></script>
+  <script type="text/javascript"> $("#id_faculty_to_view").chosen(); $(".chzn-select-deselect").chosen({allow_single_deselect:true}); </script>
+  <script type="text/javascript">
+              $(document).ready(function () {
+                $(".alert").alert()
+                });
+  </script>
 
    <script>
     $(window).load(function(){

@@ -368,3 +368,17 @@ class UpdateDepartmentToViewForm(forms.ModelForm):
 #    def __init__(self, name_list, *args, **kwargs):
 #        super (CoursesToCopyForm,self).__init__(*args,**kwargs)
 #        copy_this_course = forms.CheckboxMultiSelect(choices=choices, required = False)
+
+class SemesterSelectForm(forms.ModelForm):
+
+    def __init__(self, year, *args, **kwargs):
+        super (SemesterSelectForm,self).__init__(*args,**kwargs)
+        self.fields['semester'].queryset = Semester.objects.filter(year=year)
+#        self.fields['semester'].queryset = Semester.objects.filter(Q(year__begin_on__year=year_to_view))
+
+    class Meta:
+        model = CourseOffering
+        exclude = ('course','instructor','load_available','max_enrollment', 'comment',)
+
+    def clean(self):
+        return self.cleaned_data
