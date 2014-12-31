@@ -8,7 +8,8 @@ urlpatterns = patterns(
     url(r'^profile/$', 'profile', name='profile'),
 
     url(r'^deptloadsummary/$', 'department_load_summary', name='department_load_summary'),
-    url(r'^coursesummary/$', 'course_summary', name='course_summary'),
+    url(r'^coursesummary/(\d+)/$', 'course_summary', name='course_summary'),
+    url(r'^allowdeletecourseconfirmation/$', 'allow_delete_course_confirmation', name='allow_delete_course_confirmation'),
     url(r'^updatecourseoffering/(\d+)/(\d+)/$', 'update_course_offering', name='update_course_offering'),
     url(r'^managecourseofferings/(\d+)/$', 'manage_course_offerings', name='manage_course_offerings'),
     url(r'^updateclassschedule/(\d+)/(\d+)/$', 'update_class_schedule', name='update_class_schedule'),

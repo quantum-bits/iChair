@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="content-center">
+<h2> Are you sure? </h2>
+<div class="alert alert-student-info">  
+<!--  	<a class="close" data-dismiss="alert">×</a>  -->
+ 	 <div>Are you sure that you want to be able to <strong> delete
+	   courses?</strong>  This is different than deleting course sections.
+	   If you delete an entire <strong> course</strong>, all sections of that course
+	   from all years will be deleted. <br> <br> You most likely <strong> do not </strong>
+	   want to allow course deletion.
+    </div>   
+</div> 
+
+<p>
+<div class="alert alert-student-info">  
+  <a class="close" data-dismiss="alert">×</a>
+  <div><strong> Note:</strong> To delete a specific <strong> section</strong> of
+    a course, <br> go to the
+    <a href="{% url 'department_load_summary' %}"><b>Faculty Load Summary</b> </a> page <br>or the
+    <a href="{% url 'registrar_schedule' %}"><b>Master Schedule View</b></a> page.
+  </div>   
+</div>
+</p>
+
+<p><a class="btn btn-success" href="{% url 'course_summary' 0 %}"> Oops! You're Right: Do Not Allow Course Deletion</a>  </p>
+
+<p><a class="btn btn-warning" href="{% url 'course_summary' 1 %}"> Allow Course Deletion</a>  </p>
+
+
+</div>
+
+   <script>
+    $(window).load(function(){
+    $("#nav-coursesummary").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Allow Course Deletion</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+   </script>
+
+{% endblock %}

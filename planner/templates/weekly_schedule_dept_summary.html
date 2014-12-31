@@ -3,6 +3,10 @@
 {% endblock %}
 {% block content %}
 
+<p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
+	    Change Academic Year</a>
+</p>
+
 <div >
 
 {% for data in data_list %}
@@ -83,7 +87,7 @@
   <script>
     $(window).load(function(){
     $("#nav-schedule").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Summary Schedule ({{year}})</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Summary Schedule</h1><h2>{{department}}, {{year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
   </script>
 

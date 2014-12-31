@@ -2,6 +2,14 @@
 {% block extrahead %}
 {% endblock %}
 {% block content %}
+
+<p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
+	    Change Academic Year</a>
+</p>
+
+<p><a class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to View</a>
+</p>
+
  <div id="year-accordion" class="accordion">
 {% for prof_data in data_list %}
    <div class="accordion-group">
@@ -98,7 +106,7 @@
   <script>
     $(window).load(function(){
     $("#nav-schedule").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Faculty Schedules ({{year}})</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Faculty Schedules</h1><h2>{{department}}, {{year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
   </script>
 

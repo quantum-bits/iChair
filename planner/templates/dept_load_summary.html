@@ -2,7 +2,26 @@
 {% block extrahead %}
 {% endblock %}
 {% block content %}
+<p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
+	    Change Academic Year</a>
+</p>
+
+<p><a class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to View</a>
+</p>
+
 <div class="content-center">
+
+<!--
+Some buttons types in bootstrap:
+
+class="btn btn-default"
+class="btn btn-danger"
+class="btn btn-info"
+class="btn btn-primary"
+class="btn btn-success"
+class="btn btn-warning"
+-->
+
 
 {% if can_edit %}
 <!--<p> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
@@ -11,19 +30,37 @@
 <p> <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
 	    Add</a> a new course offering.
 </p>-->
-<p> <a class="btn" href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
+<!--
+<p> <a class="btn btn-info" href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
 	    Add a Section of a Course</a>
 </p>
-<p> <a class="btn" href="{% url 'choose_year_course_copy' %}">
+<p> <a class="btn btn-primary" href="{% url 'choose_year_course_copy' %}">
 	    Copy Course Sections From a Previous Year</a>
 </p>
+-->
+<p>
+<div class="btn-group">
+  <a class="btn-info btn dropdown-toggle" data-toggle="dropdown" href="#">
+    Add Section(s) of a Course
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+    <li>
+      <a href="{% url 'choose_year_course_copy' %}">
+	Copy From a Previous Year</a>
+    </li>
+<!--    <li class="divider"></li>-->
+    <li>
+      <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
+	Add Manually</a>
+    </li>
+  </ul>
+</div> {# btn-group #}
+</p>
+
 
 {% endif %}
 </div>
-
-<p> <a class="btn" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
-	    Edit Year to View</a>
-</p>
 
 <div class="content-center">
 </div>
@@ -45,10 +82,12 @@
 	       <tr>
 		{% if can_edit %}
 		<th colspan="6">Teaching Loads </th> 
-		<td colspan="5"> <a class="btn" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Faculty to View</a> </td>
+<!--		<td colspan="5"> <a class="btn" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Faculty to View</a> </td>
+-->
 		{% else %}
 		<th colspan="5">Teaching Loads </th>
-		<td colspan="4"> <a class="btn" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Faculty to View</a> </td>
+<!--		<td colspan="4"> <a class="btn" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Faculty to View</a> </td>
+-->
 		{% endif %}
 		</tr>
 	       <td> Number </td>
@@ -62,7 +101,7 @@
 	       <td style="text-align: center;"> Time </td>
 	       <td style="text-align: center;"> Room </td>
 	       {% if can_edit %} <td> </td> {% endif %}
-	        <td style="text-align: center;"> Load </td>
+	        <td style="text-align: center;"> Avail </td>
 	       <td style="text-align: center;"> Diff </td>
 		{% for prof in instructor_list %}
 		   <td colspan="3" style="text-align: center;"> {{prof}} </td>
@@ -180,7 +219,7 @@
 <tr>
 <td colspan="2"><p> <strong>Non-Teaching Loads  </strong></p>
 <p>
-<a class="btn" href="{% url 'update_loads_to_view' id %}?next={{ request.path|urlencode }}">Edit Types of Non-Teaching Load</a>
+<a class="btn btn-info" href="{% url 'update_loads_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Types of Non-Teaching Load to View</a>
 </p>
 </td>
 	       <td> </td>
@@ -284,7 +323,12 @@
 </div>
 </div>
 
+<!--
+<p>
+<a class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to View</a>
+</p>
 
+-->
  <div id="year-accordion2" class="accordion">
 {% for instructor_row in data_list_by_instructor %}
 
@@ -314,7 +358,7 @@
 	       {% if can_edit %}
 	       <td style="text-align: center;">  </td>
 	       {% endif %}
-	        <td style="text-align: center;"> Load </td>
+	        <td style="text-align: center;"> Available </td>
 	       <td style="text-align: center;"> Diff </td>
 	       <td colspan="3" style="text-align: center;"> {{instructor_row.instructor}} </td>
 	       <td style="text-align: center;"> Comments </td>
@@ -479,7 +523,7 @@
 </div>
 
 <p>
-<a class="btn" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Faculty to View</a>
+<a class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to View</a>
 </p>
 
   <script>

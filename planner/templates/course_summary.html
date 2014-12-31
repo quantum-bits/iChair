@@ -2,11 +2,26 @@
 {% block extrahead %}
 {% endblock %}
 {% block content %}
+<p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
+	    Change Academic Year</a>
+</p>
  <div class="content-center">
+
+{% if can_edit %}
+<p> <a class="btn btn-info" href="{% url 'add_course' 0 %}">Add a New Course</a></p>
+{% endif %}
+
+<div class="alert alert-student-info">  
+  	<a class="close" data-dismiss="alert">×</a>  
+ 	 <div>The following table shows the courses (and the <br> corresponding numbers of sections) taught by the <br> department over the years indicated.
+    </div>   
+</div>     
+
+
 <table class="table table-striped table-bordered table-hover">
 	     <thead>
 	       <tr>
-		<th colspan="6">Course Offerings ( Summer | Fall | J-term | Spring )</th>
+		<th colspan="3">Course Offerings ( Summer | Fall | J-term | Spring )</th>
 		</tr>
 	       <tr>
 	       <td> Number </td>
@@ -16,7 +31,13 @@
 		   <td colspan={{number_semesters}} style="text-align: center;"> {{year}} </td>
 		{% endfor %}
 		{% if can_edit %}
-	       <td>  </td>
+	       <td style="text-align: center"> 
+		 {% if not allow_delete %}
+		 <a class="btn btn-warning" href="{% url 'allow_delete_course_confirmation' %}"> Allow Course Deletion</a>  
+		 {% else %}
+		 <a class="btn btn-success" href="{% url 'course_summary' 0 %}"> Do Not Allow Course Deletion</a>  
+		 {% endif %}
+	       </td>
 	        {% endif %}
 	       </tr>
 	     </thead>
@@ -42,23 +63,31 @@
 	 {% endfor %}
       {% endfor %}
 	    {% if can_edit %}
-	    <td><a href="{% url 'manage_course_offerings' course.id %}">Manage Offerings</a> | 
-	      <a href="{% url 'delete_course_confirmation' course.id %}">Delete</a> </td>
+	    <td style="text-align: center"><a href="{% url 'manage_course_offerings' course.id %}">Manage Offerings</a> 
+	      {% if allow_delete %} | 
+	      <a href="{% url 'delete_course_confirmation' course.id %}">Delete Course</a> 
+	      {% endif %}
+	    </td>
 	    {% endif %}
     </tr>
 {% endfor %}
 
-{% if can_edit %}
-<p> Add a <a href="{% url 'add_course' 0 %}">new course</a>.</p>
-{% endif %}
+</div>
 
+<!-- <script>
+   document.getElementsByName("allow_delete_button").onmouseover = myAlertFunction();
+   function myAlertFunction(){
+     alert("Are you CRAZY?!?");
+   }
+ </script>
+-->
   <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Course Summary</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Course Summary</h1><h2>{{department}}, {{year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
   </script>
 
 
 {% endblock %}
-</div>
+

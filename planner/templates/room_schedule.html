@@ -3,8 +3,11 @@
 {% endblock %}
 {% block content %}
 
+<p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
+	    Change Academic Year</a>
+</p>
 <p>
-<a class="btn" href="{% url 'update_rooms_to_view' id %}?next={{ request.path|urlencode }}">Edit Rooms to View</a>
+<a class="btn btn-info" href="{% url 'update_rooms_to_view' id %}?next={{ request.path|urlencode }}">Edit Rooms to View</a>
 </p>
 
  <div id="year-accordion" class="accordion">
@@ -103,7 +106,7 @@
   <script>
     $(window).load(function(){
     $("#nav-schedule").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Room Schedules ({{year}})</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Room Schedules</h1><h2>{{department}}, {{year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
   </script>
 

@@ -24,9 +24,7 @@ from datetime import date
 
 # use AJAX and a session variable to keep track of which divs are open/closed
 
-# add another session variable "delete_on" for the course summary page;
-#  - if delete is off, have a page pop up that says you need to turn delete on
-# on the course summary page, only show the active year
+# on the manage course offerings page, only show the active year
 
 # remove the ?next= stuff where it's not being used anyways
 
@@ -43,11 +41,6 @@ from datetime import date
 # check validation on the two new forms; compare against "manage course offerings" to see if there is anything else that needs to be done....
 
 # when trying to do a search on the admin, courseoffering page, it gives an error!
-
-# next: on manage course offering form:
-#       - only display semesters for the current AY
-#       - add a daisy_chain boolean as a second argument
-#       - check for return_to_page option, etc.
 
 # pass argument along with redirect.... return redirect('element_update', pk=element.id)
 
@@ -1108,7 +1101,7 @@ def weekly_schedule(request):
                                         'conflict':error_messages})
         data_list.append(data_this_professor)
 
-    context={'data_list':data_list, 'year':academic_year_string}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'weekly_schedule.html', context)
 
 @login_required
@@ -1266,7 +1259,7 @@ def daily_schedule(request):
                                   'semester':current_semester_string})
         data_list.append(data_this_day)
 
-    context={'data_list':data_list, 'year':academic_year_string}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'daily_schedule.html', context)
 
 
@@ -1372,7 +1365,7 @@ def room_schedule(request):
                                    'conflict':error_messages})
         data_list.append(data_this_room)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'room_schedule.html', context)
 
 @login_required
@@ -1472,7 +1465,7 @@ def course_schedule(request):
                                                  'schedule':schedule})
                 data_list.append(data_this_course)
 
-    context={'data_list':data_list, 'year':academic_year_string}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'course_schedule.html', context)
 
 def check_for_conflicts(conflict_dict):
@@ -1690,11 +1683,15 @@ def convert_time_to_pixels(height_hour_block, base_hour, time_hour, time_minute)
 
 
 @login_required
-def course_summary(request):
+def course_summary(request, allow_delete):
     """Display courses for the department and semesters in which they are taught"""
-    request.session["return_to_page"] = "course_summary"
+# allow_delete == 0 => cannot delete courses
+# allow_delete == 1 => can delete courses
+    request.session["return_to_page"] = "/planner/coursesummary/0/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+    academic_year = user_preferences.academic_year_to_view.begin_on.year
+    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
 
     department = user_preferences.department_to_view
     can_edit = False
@@ -1743,8 +1740,13 @@ def course_summary(request):
                               })
 
 
-    context={'course_data_list':data_list, 'year_list':year_list, 'number_semesters': number_semesters,
-             'can_edit': can_edit}
+    context={'course_data_list':data_list, 'year_list':year_list, 
+             'number_semesters': number_semesters,
+             'can_edit': can_edit,
+             'year':academic_year_string, 
+             'id': user_preferences.id, 
+             'department': user_preferences.department_to_view,
+             'allow_delete': int(allow_delete)}
     return render(request, 'course_summary.html', context)
 
 
@@ -1774,8 +1776,8 @@ def manage_course_offerings(request,id):
         if formset.is_valid() and not formset_error:
 #            form.save()
             formset.save()
-
-            return redirect('course_summary')
+            url_string="/planner/coursesummary/0/"
+            return redirect(url_string)
         else:
             dict["formset"]=formset
             if formset_error:
@@ -1877,7 +1879,8 @@ def add_course(request, daisy_chain):
                     next = request.session["return_to_page"]
                 else:
                     next = "profile"
-                return redirect('course_summary')
+                print "next: ", next
+                return redirect(next)
             else:
                 url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
                 print url_string
@@ -2004,9 +2007,15 @@ def delete_course_confirmation(request, id):
 @login_required
 def delete_course(request, id):
     instance = Course.objects.get(pk = id)
-
     instance.delete()
-    return redirect('course_summary')
+    url_string = '/planner/coursesummary/0/'
+    return redirect(url_string)
+#    return redirect('course_summary')
+
+@login_required
+def allow_delete_course_confirmation(request):
+    context ={}
+    return render(request, 'allow_delete_course_confirmation.html', context)
 
 @login_required
 def registrar_schedule(request):
@@ -2068,7 +2077,7 @@ def registrar_schedule(request):
                                                 })
 
     context={'registrar_data_list':registrar_data_list, 'department': department, 
-             'academic_year': academic_year_string, 'can_edit': can_edit}
+             'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id}
     return render(request, 'registrar_schedule.html', context)
 
 @login_required
@@ -3166,7 +3175,7 @@ def weekly_course_schedule_entire_dept(request):
         data_list.append(data_this_term)
 
 #    print data_list
-    context={'data_list':data_list, 'year':academic_year_string}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'weekly_schedule_dept_summary.html', context)
 
 def create_flexible_schedule_grid(schedule,column_titles,chapel):

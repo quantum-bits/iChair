@@ -3,10 +3,24 @@
 {% block content %}
 
 
-<p> Are you sure that you want to <b> delete </b> the following course and all of its offerings? 
-This action is not reversible.</p> 
-<p> <b> {{course}} </b> (<a href="{% url 'course_summary' %}">No! It's all been a terrible mistake!</a>)</p>
-<p> <a href="{% url 'delete_course' course.id %}">Delete</a> </p>
+<div class="content-center">
+<h2> Are you sure? </h2>
+<p>
+<div class="alert alert-student-info">  
+  <div> Are you sure that you want to <b> delete </b> the following course and all of its sections for all years?  <br>
+    <b>This action is not reversible.</b></div> 
+</div>
+</p>
+<p>
+<div class="alert alert-student-info">  
+<div> <b> {{course}} </b> </div>
+</div>
+</p>
+
+<p><a class="btn btn-success" href="{% url 'course_summary' 0 %}">No! It's all been a terrible mistake!</a></p>
+<p> <a class="btn btn-warning" href="{% url 'delete_course' course.id %}">Delete</a> </p>
+
+</div>
 
 
    <script>
