@@ -13,9 +13,23 @@
 </p>
 <p>
 <div class="alert alert-student-info">  
-<div> <b> {{course}} </b> </div>
+<b> {{course}} </b>
+
+<br><br>
+{% if offering_list %}
+<strong> One or more section(s) exist: </strong><br>
+{% for offering in offering_list %}
+{{offering.semester}} <br>
+{% endfor %}
+<br>
+<strong> All sections will be deleted.... </strong>
+{% else %}
+<p>(There are no sections for this course, so deleting it 
+is probably safe.)</p>
+{% endif %}
 </div>
 </p>
+
 
 <p><a class="btn btn-success" href="{% url 'course_summary' 0 %}">No! It's all been a terrible mistake!</a></p>
 <p> <a class="btn btn-warning" href="{% url 'delete_course' course.id %}">Delete</a> </p>

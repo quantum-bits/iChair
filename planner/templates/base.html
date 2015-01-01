@@ -1,5 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
+
+<!--
+<style>
+div.utilitycontainer {
+    width: 770px;
+    margin: 0 auto;
+}
+
+div.utilityright {
+    float: right;
+    width: 160px;
+    margin: 0;
+}
+div.content {
+    float: left;
+    margin-left: 220px;
+    width: 330px;
+  padding: 8px 10px 8px 14px;
+  margin-bottom: 20px;
+  background-color: #ffffff;
+    border-color: gray;
+    border: 4px solid #C0E7FA;
+    -webkit-border-radius: 4px;
+       -moz-border-radius: 4px;
+            border-radius: 4px;
+}
+</style>
+-->
+
+<style>
+div.rightbox {
+   width: 19%;
+   float: left; 
+   padding: 99px 60px 0px 0px;
+}
+</style>
+
   <head>
     <title>iChair Faculty Load Scheduler</title>
     <script src="http://code.jquery.com/jquery.js"></script>
@@ -15,16 +52,39 @@
       <div class="hero-unit">
 	<h1>iChair</h1>
       </div>
-    <div class="page-name">
-    <h1>Four Year Planner</h1>
-    </div>
+      <div>{##}
+      <div class="page-name">
+	<h1>Four Year Planner</h1>
+      </div>
+      <div class="rightbox">
+
+<div class="row-fluid">
+<!--<div class="utilitycontainer">-->
+  <div style="text-align: right" class="span1">
+    <a href="{% url 'planner.views.profile' %}">Profile</a> | 
+    <a href="{% url 'planner.views.display_notes' %}">Notes</a> |
+    <a href="{% url 'planner.views.getting_started' %}">Help</a> | 
+    {% if user.is_authenticated %}
+    <a href="{% url 'logout' %}?next={% url 'login' %}">Logout</a>
+    {% else %}
+    <a href="{% url 'login' %}">Login</a>
+    {% endif %}
+  </div>
+<!--</div>-->
+</div>
+
+</div>{# rightbox #}
+</div> {##}
+
+
     </div>
         </div>
       <div class="navbar">
 	<div class="navbar-inner">
 	  <ul class="nav">
-	    <li id="nav-profile"><a href="{% url 'planner.views.profile' %}">Profile</a><i></i></li>
-	    <li id="nav-file" class="dropdown">
+<!--	    <li id="nav-profile"><a href="{% url 'planner.views.profile' %}">Profile</a><i></i></li>-->
+            <li id="nav-home"><a href="{% url 'planner.views.home' %}">Home</a><i></i></li>
+	    <li title = "Export data or search for courses" id="nav-file" class="dropdown">
 	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">
 		File
 		<b class="caret"></b>
@@ -36,9 +96,9 @@
 		<li><a href="{% url 'planner.views.search_form_time' %}">Search by Course Time</a></li>
 	      </ul>
 	    </li>
-	    <li id="nav-deptloadsummary"><a href="{% url 'planner.views.department_load_summary' %}">Faculty Load Summary</a><i></i></li>
+	    <li title = "View the loads assigned to faculty members" id="nav-deptloadsummary"><a href="{% url 'planner.views.department_load_summary' %}">Faculty Load Summary</a><i></i></li>
             <li id="nav-schedule" class="dropdown">
-	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+	      <a title = "View hourly schedules for faculty member, room, etc." class="dropdown-toggle" data-toggle="dropdown" href="#">
 		Schedules
 		<b class="caret"></b>
 	      </a>
@@ -50,9 +110,11 @@
 		<li><a href="{% url 'planner.views.course_schedule' %}">Course</a></li>
 	      </ul>
 	    </li>
-	    <li id="nav-registrarsummary"><a href="{% url 'planner.views.registrar_schedule' %}">Master Schedule View</a><i></i></li>
-	    <li id="nav-coursesummary"><a href="{% url 'planner.views.course_summary' 0 %}">Course Summary</a><i></i></li>
-<li id="nav-profile"><a href="{% url 'planner.views.display_notes' %}">Notes</a><i></i></li>
+	    <li title="View the course schedule in the Registrar's format" id="nav-registrarsummary"><a href="{% url 'planner.views.registrar_schedule' %}">Master Schedule View</a><i></i></li>
+	    <li title = "View an overall summary of courses offered during different years" id="nav-coursesummary"><a href="{% url 'planner.views.course_summary' 0 %}">Course Summary</a><i></i></li>
+<!--<li id="nav-profile"><a href="{% url 'planner.views.display_notes' %}">Notes</a><i></i></li>
+-->
+<!--
 	    <li id="nav-help" class="dropdown">
 	      <a class="dropdown-toggle" data-toggle="dropdown" href="#">
 		Help
@@ -63,14 +125,40 @@
 {#		<li><a href="#">Acknowledgements</a></li>#}
 	      </ul>
 	    </li>
+-->
+<!--
 	    {% if user.is_authenticated %}
 	      <li><a href="{% url 'logout' %}?next={% url 'login' %}">Logout</a><i></i></li>
 	    {% else %}
 	      <li id="nav-login"><a href="{% url 'login' %}">Login</a><i></i></li>
 	    {% endif %}
+-->
 	  </ul>
 	</div> {# navbar-inner #}
       </div> {# navbar #}
+
+<!--<div class="utilitycontainer">
+  <div class="utilityright">
+Profile | Help | Logout
+  </div>
+</div>
+-->
+
+<!--
+<div class="row-fluid">
+<div class="utilitycontainer">
+  <div style="text-align: right" class="span1">
+    <a href="{% url 'planner.views.profile' %}">Profile</a> | 
+    <a href="{% url 'planner.views.getting_started' %}">Help</a> | 
+    {% if user.is_authenticated %}
+    <a href="{% url 'logout' %}?next={% url 'login' %}">Logout</a>
+    {% else %}
+    <a href="{% url 'login' %}">Login</a>
+    {% endif %}
+  </div>
+</div>
+</div>
+-->
 
       <div class="row-fluid">
 	<div class="span3">
@@ -80,6 +168,7 @@
 	  {% block content %}{% endblock %}
 	</div>
       </div>
+
     
     <script type="text/javascript" src="{{ STATIC_URL }}js/jquery.sticky.js"></script>
     <script src="{{ STATIC_URL }}js/bootstrap.js"></script>

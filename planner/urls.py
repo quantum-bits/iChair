@@ -3,7 +3,7 @@ from django.conf.urls import patterns, include, url
 urlpatterns = patterns(
     'planner.views',
 
-    url(r'^home/$', 'home'),
+    url(r'^home/$', 'home', name='home'),
 
     url(r'^profile/$', 'profile', name='profile'),
 

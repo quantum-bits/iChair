@@ -3,17 +3,28 @@
 {% block content %}
 
    <div class="content-center">
+
+<p> <h3> Select meeting time(s) and room(s) for this section</h3></p>
+
      {% if errordict.formset_error %}
+<div class="alert alert-error">
         <p class="error"> {{errordict.formset_error}} </p>
+</div>
      {% endif %}
      {% if errordict.room %}
+<div class="alert alert-error">
         <p class="error"> A room needs to be specified for each class period. </p>
+</div>
      {% endif %}
      {% if errordict.begin_at %}
+<div class="alert alert-error">
         <p class="error"> A beginning time needs to be specified (e.g., 9:00). </p>
+</div>
      {% endif %}
      {% if errordict.end_at %}
+<div class="alert alert-error">
         <p class="error"> An ending time needs to be specified (e.g., 9:50). </p>
+</div>
      {% endif %}
     <form action="" method="post">
       {% csrf_token %}
@@ -45,7 +56,6 @@
 
    <script>
     $(window).load(function(){
-    $("#nav-deptloadsummary").addClass("current");
     $('.page-name').find('h1').replaceWith('<h1>{{course}}</h1>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>

@@ -54,8 +54,7 @@ be edited later.
 
    <script>
     $(window).load(function(){
-    $("#nav-coursesummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>New Course Offering for {{course}} </h1>');
+    $('.page-name').find('h1').replaceWith('<h1>New Section of {{course}} </h1><h2>- Select Semester -</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 

@@ -29,14 +29,14 @@
 	<div>
 	  {% if course.meetings_scheduled %}
 	  {% if course.can_edit %}
-	  <a href="{% url 'update_class_schedule' course.offering_id %}?next=/planner/{{next}}/">
+	  <a href="{% url 'update_class_schedule' course.offering_id 0 %}">
 	    {{meeting}}</a>
 	  {% else %} 
 	    {{meeting}}
 	  {% endif %}
 	  {% else %}
 	  {% if course.can_edit %}
-	  <a href="{% url 'new_class_schedule' course.offering_id %}">
+	  <a href="{% url 'new_class_schedule' course.offering_id 0 %}">
 	    {{meeting}}</a>
 	  {% else %}
 	    {{meeting}}
@@ -50,14 +50,14 @@
 	<div>
 	  {% if course.meetings_scheduled %}
 	  {% if course.can_edit %}
-	  <a href="{% url 'update_class_schedule' course.offering_id %}?next=/planner/search-form/">
+	  <a href="{% url 'update_class_schedule' course.offering_id 0 %}">
 	    {{room}}</a>
 	  {% else %}
 	  {{room}}
 	  {% endif %}
 	  {% else %}
 	  {% if course.can_edit %}
-	  <a href="{% url 'new_class_schedule' course.offering_id %}">
+	  <a href="{% url 'new_class_schedule' course.offering_id 0 %}">
 	    {{room}}</a>
 	  {% else %}
 	  {{room}}

@@ -87,8 +87,7 @@ of {{course.course.subject.abbrev}} {{course.course.number}}, you can customize 
 
    <script>
     $(window).load(function(){
-    $("#nav-deptloadsummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>{{course}}</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>{{course}}</h1><h2>- Select Meeting Time(s) and Room(s) -</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 

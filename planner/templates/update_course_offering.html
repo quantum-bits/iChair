@@ -10,20 +10,28 @@
 </p>
 {% endif %}
 
-<p> <h3> Choose one or more instructors for this course offering </h3></p>
+<p> <h3> Choose one or more instructors for this section </h3></p>
 <p> {{form.errors}} </p>
 
      {% if errordict.prof_repeated_error %}
+<div class="alert alert-error">
         <p class="error"> {{errordict.prof_repeated_error}} </p>
+</div>
      {% endif %}
      {% if errordict.load_credit %}
+<div class="alert alert-error">
         <p class="error"> {{errordict.load_credit}} </p>
+</div>
      {% endif %}
      {% if errordict.instructor %}
+<div class="alert alert-error">
         <p class="error"> {{errordict.instructor}} </p>
+</div>
      {% endif %}
      {% if errordict.over_all_form_errors %}
+<div class="alert alert-error">
         <p class="error"> {{errordict.over_all_form_errors}} </p>
+</div>
      {% endif %}
     <form action="" method="post">
       {% csrf_token %}
@@ -95,7 +103,6 @@
 
    <script>
     $(window).load(function(){
-    $("#nav-deptloadsummary").addClass("current");
     $('.page-name').find('h1').replaceWith('<h1>{{course}}</h1>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>

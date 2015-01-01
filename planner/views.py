@@ -20,7 +20,13 @@ import xlwt
 from os.path import expanduser
 from datetime import date
 
-# add a Home page -- what should it say?!?
+
+# update course offering form: be more specific on the errors for instructor and load (instead of "this field is required")
+
+# "utility" bar:
+#  - works OK, but it "slides" with the page-name, since it floats left
+#  - if try to float right, it doesn't seem to work as well
+#  - some of the page-names are only one line, and then there's extra blank space...arggh!
 
 # use AJAX and a session variable to keep track of which divs are open/closed
 
@@ -45,6 +51,9 @@ from datetime import date
 # pass argument along with redirect.... return redirect('element_update', pk=element.id)
 
 # - request.session["return_to_page"] is the "source" page, to which a (possibly) daisy-chained sequence of forms should return
+
+# NOTE: changed .page-name in bootstrap.css to have width: 51% (instead of 61%)...might want to change that back
+
 
 def home(request):
     return render(request, 'home.html')
@@ -865,7 +874,7 @@ def update_course_offering(request,id, daisy_chain):
     if "return_to_page" in request.session:
         next = request.session["return_to_page"]
     else:
-        next = "profile"
+        next = "home"
 
     instance = CourseOffering.objects.get(pk = id)
     form = CourseOfferingForm(instance=instance)
@@ -905,7 +914,7 @@ def update_course_offering(request,id, daisy_chain):
             if "return_to_page" in request.session:
                 next = request.session["return_to_page"]
             else:
-                next = "profile"
+                next = "home"
                 return redirect(next)
 
             return redirect(next)
@@ -970,7 +979,7 @@ def update_class_schedule(request,id, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "profile"
+                    next = "home"
                 return redirect(next)
             else:
                 url_string = '/planner/updatecourseoffering/'+str(instance.id)+'/1/'
@@ -1845,7 +1854,7 @@ def new_class_schedule(request,id, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "profile"
+                    next = "home"
                 return redirect(next)
             else:
                 url_string = '/planner/updatecourseoffering/'+str(course_offering.id)+'/1/'
@@ -1870,6 +1879,15 @@ def add_course(request, daisy_chain):
     user_preferences = user.user_preferences.all()[0]
     department_id = user_preferences.department_to_view.id
 
+    course_list=[]
+    if int(daisy_chain):
+        warning = False
+    else:
+        warning = True
+        for subject in Subject.objects.filter(Q(department__id = department_id)):
+            for course in Course.objects.filter(subject=subject):
+                course_list.append(course)
+
     if request.method == 'POST':
         form = AddCourseForm(department_id,request.POST)
         if form.is_valid():
@@ -1878,20 +1896,19 @@ def add_course(request, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "profile"
-                print "next: ", next
+                    next = "home"
                 return redirect(next)
             else:
                 url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
                 print url_string
                 return redirect(url_string)
         else:
-            context = {'form': form, 'title': 'New Course'}
+            context = {'form': form, 'title': 'Add New Course', 'course_list':course_list}
             return render(request, 'add_course.html', context)
 
     else:
         form = AddCourseForm(department_id)
-        context = {'form': form, 'title': 'New Course'}
+        context = {'form': form, 'title': 'Add New Course', 'course_list':course_list}
         return render(request, 'add_course.html', context)
 
 def add_course_offering(request, course_id, daisy_chain):
@@ -1922,7 +1939,7 @@ def add_course_offering(request, course_id, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "profile"
+                    next = "home"
                 return redirect(next)
             else:
                 url_string = '/planner/newclassschedule/'+str(new_course_offering.id)+'/1/'
@@ -1948,20 +1965,20 @@ def update_course(request, id):
     department_id = user_preferences.department_to_view.id
 
     instance = Course.objects.get(pk = id)
-
+    course_list=[]
     if request.method == 'POST':
         form = AddCourseForm(department_id, request.POST, instance=instance)
         if form.is_valid():
             form.save()
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
 #            return redirect('course_summary')
         else:
-            context = {'form': form, 'title': 'Edit Course'}
+            context = {'form': form, 'title': 'Edit Course', 'course_list':course_list}
             return render(request, 'add_course.html', context)
     else:
         form = AddCourseForm(department_id, instance=instance)
-        context = {'form': form, 'title': 'Edit Course'}
+        context = {'form': form, 'title': 'Edit Course', 'course_list':course_list}
         return render(request, 'add_course.html', context)
 
 @login_required
@@ -1970,7 +1987,7 @@ def delete_course_offering(request, id):
     if "return_to_page" in request.session:
         sending_page = request.session["return_to_page"]
     else:
-        sending_page = "profile"
+        sending_page = "home"
 
     instance = CourseOffering.objects.get(pk = id)
     if request.method == 'POST':
@@ -2001,7 +2018,12 @@ def delete_course_offering(request, id):
 @login_required
 def delete_course_confirmation(request, id):
     course = Course.objects.get(pk = id)
-    context ={'course': course}
+
+    offering_list=[]
+    for offering in course.offerings.all():
+        offering_list.append(offering)
+
+    context ={'course': course,'offering_list':offering_list}
     return render(request, 'delete_course_confirmation.html', context)
 
 @login_required
@@ -2115,7 +2137,7 @@ def update_other_load(request, id):
 
         if formset.is_valid() and not formset_error:
             formset.save()
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             dict["formset"]=formset
@@ -2144,7 +2166,7 @@ def update_rooms_to_view(request, id):
         form = UpdateRoomsToViewForm(request.POST, instance=instance)
         if form.is_valid():
             form.save()
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             return render(request, 'update_rooms_to_view.html', {'form': form})
@@ -2167,7 +2189,7 @@ def update_faculty_to_view(request, id):
         form = UpdateFacultyToViewForm(department_id, request.POST, instance=instance)
         if form.is_valid():
             form.save()
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             return render(request, 'update_faculty_to_view.html', {'form': form})
@@ -2190,7 +2212,7 @@ def update_department_to_view(request):
 
 # only a superuser can change his/her department to view.
     if user_preferences.permission_level != 2:
-        return redirect('profile')
+        return redirect('home')
 
     if request.method == 'POST':
         form = UpdateDepartmentToViewForm(request.POST, instance=instance)
@@ -2205,7 +2227,7 @@ def update_department_to_view(request):
             faculty_list = new_dept.faculty.all()
             for faculty in faculty_list:
                 user_preferences.faculty_to_view.add(faculty)
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             return render(request, 'update_faculty_to_view.html', {'form': form})
@@ -2228,7 +2250,7 @@ def update_year_to_view(request, id):
         form = UpdateYearToViewForm(request.POST, instance=instance)
         if form.is_valid():
             form.save()
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             return render(request, 'update_year_to_view.html', {'form': form})
@@ -2251,7 +2273,7 @@ def update_loads_to_view(request, id):
         form = UpdateLoadsToViewForm(request.POST, instance=instance)
         if form.is_valid():
             form.save()
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             return render(request, 'update_loads_to_view.html', {'form': form})
@@ -2267,7 +2289,7 @@ def copy_courses(request, id, check_all_flag):
     if "return_to_page" in request.session:
         next = request.session["return_to_page"]
     else:
-        next = "profile"
+        next = "home"
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -2453,6 +2475,8 @@ def search_form(request):
     academic_year = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all()
     
+    request.session["return_to_page"] = "/planner/search-form/"
+
     current_year = academic_year.begin_on.year
     academic_year_list = []
     for ii in range(4):
@@ -2548,6 +2572,8 @@ def search_form_time(request):
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all()
+
+    request.session["return_to_page"] = "/planner/search-form-time/"
 
     all_depts_list = []
     for dept in Department.objects.all().order_by('name'):
@@ -3371,7 +3397,7 @@ def update_semester_for_course_offering(request, id):
         form = SemesterSelectForm(year, request.POST, instance=instance)
         if form.is_valid():
             form.save()
-            next = request.GET.get('next', 'profile')
+            next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             return render(request, 'update_semester.html', {'form':form, 'course_offering': instance})

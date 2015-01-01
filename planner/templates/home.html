@@ -1,7 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div>
-  <p>Thank you for visiting our website.</p>
+
+<div class="content-center">
+<p> Click on <a href="{% url 'planner.views.department_load_summary' %}"> Faculty Load Summary</a> to get started.</p><br>
+<div class="alert alert-student-info">  
+  	<a class="close" data-dismiss="alert">×</a>  
+ 	 <div><strong>Note: </strong>You can hover over menu items<br> for quick tips.
+    </div>   
+</div>     
 </div>
+
+  <script>
+    $(window).load(function(){
+    $("#nav-home").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>...an aid for scheduling faculty loads</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+  </script>
+
 {% endblock %}

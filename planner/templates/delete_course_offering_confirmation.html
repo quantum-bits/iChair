@@ -5,20 +5,42 @@
 <form action="" method="post">
       {% csrf_token %}
 
-<p> Are you sure that you want to <b> delete </b> the following course offering, including associated information about days, times, rooms and professors?</p> 
+<div class="content-center">
+<h2> Are you sure? </h2>
+<p>
+<div class="alert alert-student-info">  
+  <div> 
+    Are you sure that you want to <b> delete </b> 
+    the following course section, including associated information about days, times, rooms and professors?<br> <br>
+    <b>This action is not reversible.</b>
+  </div> 
+</div>
+</p>
+
+<p>
+<div class="alert alert-student-info">  
+  <div>
+
 <p> <b> {{course_offering}} </b> </p>
 {% for meeting in meeting_info %}
 <div>  {{meeting.times}} ({{meeting.room}}) </div>
 {% endfor %}
+<br>
 {% for instructor in course_offering.instructor.all %}
 <div>  {{instructor}} </div>
 {% endfor %}
 
+
+  </div>
+</div>
+</p>
+
+
 <p></p>
 
-<p> This action is not reversible. (<a href="{{sending_page}}">No! It's all been a terrible mistake!</a>)</p>
+<p> <a class="btn btn-success" href="{{sending_page}}">No! It's all been a terrible mistake!</a></p>
 
-<p><input type="submit" value="Delete"></p>
+<p><input class="btn btn-warning" type="submit" value="Delete"></p>
 </form>
 
 
