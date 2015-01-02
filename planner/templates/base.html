@@ -61,13 +61,13 @@ div.rightbox {
 <div class="row-fluid">
 <!--<div class="utilitycontainer">-->
   <div style="text-align: right" class="span1">
-    <a href="{% url 'planner.views.profile' %}">Profile</a> | 
-    <a href="{% url 'planner.views.display_notes' %}">Notes</a> |
-    <a href="{% url 'planner.views.getting_started' %}">Help</a> | 
+    <a href="{% url 'planner.views.profile' %}">profile</a> | 
+    <a href="{% url 'planner.views.display_notes' %}">notes</a> |
+    <a href="{% url 'planner.views.getting_started' %}">help</a> | 
     {% if user.is_authenticated %}
-    <a href="{% url 'logout' %}?next={% url 'login' %}">Logout</a>
+    <a href="{% url 'logout' %}?next={% url 'login' %}">logout</a>
     {% else %}
-    <a href="{% url 'login' %}">Login</a>
+    <a href="{% url 'login' %}">login</a>
     {% endif %}
   </div>
 <!--</div>-->
@@ -111,7 +111,7 @@ div.rightbox {
 	      </ul>
 	    </li>
 	    <li title="View the course schedule in the Registrar's format" id="nav-registrarsummary"><a href="{% url 'planner.views.registrar_schedule' %}">Master Schedule View</a><i></i></li>
-	    <li title = "View an overall summary of courses offered during different years" id="nav-coursesummary"><a href="{% url 'planner.views.course_summary' 0 %}">Course Summary</a><i></i></li>
+	    <li title = "Edit course properties; view an overall summary of courses offered during different years" id="nav-coursesummary"><a href="{% url 'planner.views.course_summary' 0 %}">Course Summary</a><i></i></li>
 <!--<li id="nav-profile"><a href="{% url 'planner.views.display_notes' %}">Notes</a><i></i></li>
 -->
 <!--

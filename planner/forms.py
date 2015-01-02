@@ -189,6 +189,18 @@ class InstructorForm(forms.ModelForm):
         model = OfferingInstructor
 
 
+#class ManageCourseOfferingForm(forms.ModelForm):
+
+#    def __init__(self, year_id, *args, **kwargs):
+#        super (ManageCourseOfferingForm,self).__init__(*args,**kwargs)
+#        self.fields['semester'].queryset = Semester.objects.filter(Q(year__id = year_id))
+
+#    class Meta:
+#        model = CourseOffering
+#        exclude = ('instructor',)
+
+
+
 class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
 
     def clean(self):
@@ -228,7 +240,6 @@ def convert_time_to_decimal(time):
 class BaseCourseOfferingFormset(forms.models.BaseInlineFormSet):
 
 # This can be used for future expansion -- e.g., for error trapping on field entries.
-
 
     def clean(self):
         if any(self.errors):

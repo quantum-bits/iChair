@@ -20,19 +20,19 @@ import xlwt
 from os.path import expanduser
 from datetime import date
 
+# TO DO:
 
 # update course offering form: be more specific on the errors for instructor and load (instead of "this field is required")
 
-# "utility" bar:
-#  - works OK, but it "slides" with the page-name, since it floats left
-#  - if try to float right, it doesn't seem to work as well
-#  - some of the page-names are only one line, and then there's extra blank space...arggh!
+# check validation on the two new forms; compare against "manage course offerings" to see if there is anything else that needs to be done....
+
+# available load on course offering form can apparently be a negative number; need to do some error trapping on that!!!
 
 # use AJAX and a session variable to keep track of which divs are open/closed
 
-# on the manage course offerings page, only show the active year
-
 # remove the ?next= stuff where it's not being used anyways
+
+#---------
 
 # to prevent accidental resubmission of a form after using the back button:
 # http://stackoverflow.com/questions/15671335/prevent-multiple-form-submissions-in-django
@@ -42,17 +42,16 @@ from datetime import date
 # there is generally an issue with these forms if you use the "back"
 # button and then submit again; it makes a second copy!!!
 
-# available load on course offering form can apparently be a negative number; need to do some error trapping on that!!!
-
-# check validation on the two new forms; compare against "manage course offerings" to see if there is anything else that needs to be done....
-
 # when trying to do a search on the admin, courseoffering page, it gives an error!
 
-# pass argument along with redirect.... return redirect('element_update', pk=element.id)
 
-# - request.session["return_to_page"] is the "source" page, to which a (possibly) daisy-chained sequence of forms should return
 
 # NOTE: changed .page-name in bootstrap.css to have width: 51% (instead of 61%)...might want to change that back
+# "utility" bar:
+
+#  - works OK, but it "slides" with the page-name, since it floats left
+#  - if try to float right, it doesn't seem to work as well
+#  - some of the page-names are only one line, and then there's extra blank space...arggh!
 
 
 def home(request):
@@ -1762,10 +1761,24 @@ def course_summary(request, allow_delete):
 
 @login_required
 def manage_course_offerings(request,id):
+    """ 
+    this function was previously used to manage the semester, etc., for course offerings (from the Course Summary page);
+    that functionality has been moved to the Faculty Load Summary page.
+    """
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    year_id = user_preferences.academic_year_to_view.id
+
     instance = Course.objects.get(pk = id)
 # create the formset class
     CourseOfferingFormset = inlineformset_factory(Course, CourseOffering, formset = BaseCourseOfferingFormset, extra=2, exclude='instructor')
 # create the formset
+#------new
+
+#    CourseOfferingFormset.form = staticmethod(curry(ManageCourseOfferingForm, year_id=year_id))
+
+#------new
+
     formset = CourseOfferingFormset(instance=instance)
 
     errordict={}
