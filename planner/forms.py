@@ -108,9 +108,9 @@ class CourseOfferingRestrictedByYearForm(forms.ModelForm):
         exclude = ('course','instructor',)
 
     def clean(self):
-        max_enrollment = self.cleaned_data.get('max_enrollment')
-        if max_enrollment < 0:
-            raise forms.ValidationError("Maximum enrollment must be greater than or equal to zero.")
+        load_available = self.cleaned_data.get('load_available')
+        if load_available < 0:
+            raise forms.ValidationError("Load available must be greater than or equal to zero.")
 
         return self.cleaned_data
 
@@ -139,8 +139,11 @@ class CourseOfferingForm(forms.ModelForm):
     def clean(self):
         instructor = self.cleaned_data.get('instructor')
         max_enrollment = self.cleaned_data.get('max_enrollment')
-        if max_enrollment < 0:
-            raise forms.ValidationError("Maximum enrollment must be greater than or equal to zero.")
+        load_available = self.cleaned_data.get('load_available')
+#        if max_enrollment < 0:
+#            raise forms.ValidationError("Maximum enrollment must be greater than or equal to zero.")
+        if load_available < 0:
+            raise forms.ValidationError("Load available must be greater than or equal to zero.")
 
         return self.cleaned_data
 
@@ -260,21 +263,35 @@ class EasyDaySchedulerForm(forms.Form):
         )
 
     START_OPTIONS = (
-        (7, "7:00"),
-        (8, "8:00"),
-        (9, "9:00"),
-        (10, "10:00"),
-        (11, "11:00"),
-        (12, "12:00"),
-        (13, "13:00"),
-        (14, "14:00"),
-        (15, "15:00"),
-        (16, "16:00"),
-        (17, "17:00"),
-        (18, "18:00"),
-        (19, "19:00"),
-        (20, "20:00"),
-        (21, "21:00"),
+        (700, "7:00"),
+        (730, "7:30"),
+        (800, "8:00"),
+        (830, "8:30"),
+        (900, "9:00"),
+        (930, "9:30"),
+        (1000, "10:00"),
+        (1030, "10:30"),
+        (1100, "11:00"),
+        (1130, "11:30"),
+        (1200, "12:00"),
+        (1230, "12:30"),
+        (1300, "13:00"),
+        (1330, "13:30"),
+        (1400, "14:00"),
+        (1430, "14:30"),
+        (1500, "15:00"),
+        (1530, "15:30"),
+        (1600, "16:00"),
+        (1630, "16:30"),
+        (1700, "17:00"),
+        (1730, "17:30"),
+        (1800, "18:00"),
+        (1830, "18:30"),
+        (1900, "19:00"),
+        (1930, "19:30"),
+        (2000, "20:00"),
+        (2030, "20:30"),
+        (2100, "21:00"),
         )
 
     DURATION_OPTIONS = (

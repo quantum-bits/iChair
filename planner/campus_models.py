@@ -42,9 +42,11 @@ class Department(models.Model):
     chair = models.OneToOneField('FacultyMember', blank=True, null=True,
                                  related_name='department_chaired')
 
+    class Meta:
+        ordering = ['name']
+
     def __unicode__(self):
         return self.name
-
 
 class Major(models.Model):
     """Academic major"""

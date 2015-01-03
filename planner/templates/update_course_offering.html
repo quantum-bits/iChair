@@ -11,7 +11,20 @@
 {% endif %}
 
 <p> <h3> Choose one or more instructors for this section </h3></p>
-<p> {{form.errors}} </p>
+{#<p> {{form.errors}} </p>#}
+
+     {% if errordict.load_available %}
+<div class="alert alert-error">
+        <p class="error"> Load Available: {{errordict.load_available}} </p>
+</div>
+     {% endif %}
+
+     {% if errordict.max_enrollment %}
+<div class="alert alert-error">
+        <p class="error"> Max Enrollment: {{errordict.max_enrollment}} </p>
+</div>
+     {% endif %}
+
 
      {% if errordict.prof_repeated_error %}
 <div class="alert alert-error">
@@ -20,12 +33,12 @@
      {% endif %}
      {% if errordict.load_credit %}
 <div class="alert alert-error">
-        <p class="error"> {{errordict.load_credit}} </p>
+        <p class="error"> Load Hours: {{errordict.load_credit}}</p>
 </div>
      {% endif %}
      {% if errordict.instructor %}
 <div class="alert alert-error">
-        <p class="error"> {{errordict.instructor}} </p>
+        <p class="error"> Instuctor: {{errordict.instructor}}</p>
 </div>
      {% endif %}
      {% if errordict.over_all_form_errors %}

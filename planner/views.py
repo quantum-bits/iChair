@@ -22,15 +22,9 @@ from datetime import date
 
 # TO DO:
 
-# update course offering form: be more specific on the errors for instructor and load (instead of "this field is required")
-
-# check validation on the two new forms; compare against "manage course offerings" to see if there is anything else that needs to be done....
-
-# available load on course offering form can apparently be a negative number; need to do some error trapping on that!!!
-
-# use AJAX and a session variable to keep track of which divs are open/closed
-
-# remove the ?next= stuff where it's not being used anyways
+# 1. update help topics
+# 2. use AJAX and a session variable to keep track of which divs are open/closed
+# 3. (somewhat optional): remove the ?next= stuff where it's not being used anyways
 
 #---------
 
@@ -41,19 +35,18 @@ from datetime import date
 
 # there is generally an issue with these forms if you use the "back"
 # button and then submit again; it makes a second copy!!!
+#  -> I added an "alert" at the beginning of the "form" submission process.
 
 # when trying to do a search on the admin, courseoffering page, it gives an error!
 
-
-
 # NOTE: changed .page-name in bootstrap.css to have width: 51% (instead of 61%)...might want to change that back
-# "utility" bar:
 
+# "utility" bar:
 #  - works OK, but it "slides" with the page-name, since it floats left
 #  - if try to float right, it doesn't seem to work as well
 #  - some of the page-names are only one line, and then there's extra blank space...arggh!
 
-
+@login_required
 def home(request):
     return render(request, 'home.html')
 
@@ -921,6 +914,12 @@ def update_course_offering(request,id, daisy_chain):
         else:
             dict1["form"]=form
             dict1["formset"]=formset
+
+            if form.errors.has_key('load_available'):
+                errordict.update({'load_available': form.errors['load_available']})
+            if form.errors.has_key('max_enrollment'):
+                errordict.update({'max_enrollment': form.errors['max_enrollment']})
+
 
             if prof_repeated_errors:
                 errordict.update({'prof_repeated_error':prof_repeated_errors})
@@ -1840,25 +1839,32 @@ def new_class_schedule(request,id, daisy_chain):
         if form.is_valid():
             day_dict = {'M':0, 'T':1, 'W':2, 'R':3, 'F':4}
 
-            # Note: days will be something like u'MWF', start will be something like u'7' and duration will be something like u'50'
+            # Note: days will be something like u'MWF', start will be something like u'700' or u'730' and duration will be something like u'50'
             days = form.cleaned_data.get('days')
-            start = form.cleaned_data.get('start')
-            duration = form.cleaned_data.get('duration')
+            start = int(form.cleaned_data.get('start'))
+            duration = int(form.cleaned_data.get('duration'))
             room = form.cleaned_data.get('room')
 
             for day in days:
                 new_class = ScheduledClass(course_offering = course_offering)
                 new_class.day = day_dict[day]
-                new_class.begin_at = start+':00'
-                end_hour = str(int(start)+int(int(duration)/60))
-                minute = int(duration)%60
-                if minute == 0:
-                    end_minute = ':00'
-                elif minute < 10:
-                    end_minute = ':0'+str(minute)
+
+                start_hour=(start-start%100)/100
+                start_minute=start%100
+                end_hour = start_hour + (start_minute+duration)/60
+                end_minute = (start_minute+duration)%60 
+                
+                if start_minute<10:
+                    start_minute_string = '0'+str(start_minute)
                 else:
-                    end_minute = ':'+str(minute)
-                new_class.end_at = end_hour+end_minute
+                    start_minute_string = str(start_minute)
+                if end_minute<10:
+                    end_minute_string = '0'+str(end_minute)
+                else:
+                    end_minute_string = str(end_minute)
+                new_class.begin_at = str(start_hour)+':'+start_minute_string
+                new_class.end_at = str(end_hour)+':'+end_minute_string
+                
                 new_class.room = room
                 # if the db hangs, try new_class.room_id = room.id
                 new_class.save()
