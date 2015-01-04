@@ -2,6 +2,8 @@
 {% block extrahead %}
 {% endblock %}
 {% block content %}
+
+
 <p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
 	    Change Academic Year</a>
 </p>
@@ -72,12 +74,14 @@ class="btn btn-warning"
        <a class="accordion-toggle"
 	   data-toggle="collapse"
 	   data-parent="#year-accordion"
-	   href="#1001">
+	   href="#{{all_faculty_div_id}}"
+	   onclick="divRegister({{all_faculty_div_id}})">
+	  <!--onclick="divRegister()"-->
 	 All Faculty
 	</a>
        </div>{# accordion-heading #}
 
-      <div id="1001" class="accordion-body collapse">
+      <div id="100001" class="accordion-body collapse">
 	<div class="accordion-inner">
 
 <p><a class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to View</a>
@@ -343,7 +347,8 @@ class="btn btn-warning"
        <a class="accordion-toggle"
 	   data-toggle="collapse"
 	   data-parent="#year-accordion2"
-	   href="#{{instructor_row.instructor_id}}">
+	   href="#{{instructor_row.instructor_id}}"
+	  onclick="divRegister({{instructor_row.instructor_id}})">
 	 {{instructor_row.instructor}}
 	</a>
        </div>{# accordion-heading #}
@@ -531,6 +536,51 @@ class="btn btn-warning"
 <p>
 <a class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to View</a>
 </p>
+
+<!-- the following is some AJAX that keeps track of which divs are open and which are shut -->
+
+<script>
+function divRegister(id)
+{
+var xmlhttp;
+if (window.XMLHttpRequest)
+  {// code for IE7+, Firefox, Chrome, Opera, Safari
+  xmlhttp=new XMLHttpRequest();
+  }
+else
+  {// code for IE6, IE5
+  xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+xmlhttp.onreadystatechange=function()
+  {
+  if (xmlhttp.readyState==4 && xmlhttp.status==200)
+    {
+    document.getElementById("myDiv").innerHTML=xmlhttp.responseText;
+    }
+  }
+xmlhttp.open("GET","/planner/divtracker/"+id+"/",true);
+xmlhttp.send();
+}
+</script>
+
+<!--
+<div id="myDiv"><h2>Let AJAX change this text</h2></div>
+-->
+<!--<button type="button" onclick="divRegister()">Change Content</button>-->
+
+<!--
+<button type="button" onclick="divRegister({{close_all_divs}})">Toggle</button>
+-->
+
+<script>
+    $(window).load(function(){
+    var id_list = {{open_div_id_list|safe}};
+    for (var n=0; n < id_list.length; n++) {
+      $('#'+id_list[n]).collapse("show");
+    }		      
+    });
+</script>
+
 
   <script>
     $(window).load(function(){

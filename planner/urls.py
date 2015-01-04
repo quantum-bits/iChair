@@ -49,5 +49,6 @@ urlpatterns = patterns(
     url(r'^search-form/$','search_form', name='search_form'),
     url(r'^search-form-time/$','search_form_time', name='search_form_time'),
     url(r'^gettingstarted/$','getting_started', name='getting_started'),
+    url(r'^divtracker/(\d+)/$','open_close_div_tracker', name='open_close_div_tracker'),
 
 )

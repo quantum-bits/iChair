@@ -23,8 +23,7 @@ from datetime import date
 # TO DO:
 
 # 1. update help topics
-# 2. use AJAX and a session variable to keep track of which divs are open/closed
-# 3. (somewhat optional): remove the ?next= stuff where it's not being used anyways
+# 2. (somewhat optional): remove the ?next= stuff where it's not being used anyways
 
 #---------
 
@@ -46,12 +45,17 @@ from datetime import date
 #  - if try to float right, it doesn't seem to work as well
 #  - some of the page-names are only one line, and then there's extra blank space...arggh!
 
+
+ALL_FACULTY_DIV_ID = 100001
+
 @login_required
 def home(request):
+    close_all_divs(request)
     return render(request, 'home.html')
 
 @login_required
 def profile(request):
+    close_all_divs(request)
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
@@ -85,7 +89,7 @@ def profile(request):
 
 @login_required
 def display_notes(request):
-
+    close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -179,8 +183,11 @@ def delete_note(request, id):
 def department_load_summary(request):
     """Display loads for professors in the department"""
     request.session["return_to_page"] = "/planner/deptloadsummary/"
- 
+
     context = collect_data_for_summary(request)
+    context['all_faculty_div_id']=ALL_FACULTY_DIV_ID
+    json_open_div_id_list = construct_json_open_div_id_list(request)
+    context['open_div_id_list']=json_open_div_id_list
     return render(request, 'dept_load_summary.html', context)
 
 def collect_data_for_summary(request):
@@ -372,7 +379,7 @@ def collect_data_for_summary(request):
                                    })
 
 
-        data_list_by_instructor.append({'instructor_id':instructordict[instructor_id],
+        data_list_by_instructor.append({'instructor_id':instructor_id,
                                         'course_info':instructor_data,
                                         'instructor':instructor_name_dict[instructor_id],
                                         'admin_data_list':admin_data,
@@ -404,6 +411,7 @@ def export_data(request):
     """
     Exports data to an Excel file in 'actual load' or 'projected load' format.
     """
+    close_all_divs(request)
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
@@ -1007,7 +1015,7 @@ def weekly_schedule(request):
 #
 # NEED TO CHECK FOR COURSE TIME CONFLICTS!!!!!!!
 #
-
+    close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -1114,7 +1122,7 @@ def weekly_schedule(request):
 @login_required
 def daily_schedule(request):
     """Display daily schedules for the department"""
-
+    close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -1273,7 +1281,7 @@ def daily_schedule(request):
 @login_required
 def room_schedule(request):
     """Display daily schedules for the department"""
-
+    close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -1378,7 +1386,7 @@ def room_schedule(request):
 @login_required
 def course_schedule(request):
     """Display daily schedules for the department"""
-
+    close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -1695,6 +1703,7 @@ def course_summary(request, allow_delete):
 # allow_delete == 0 => cannot delete courses
 # allow_delete == 1 => can delete courses
     request.session["return_to_page"] = "/planner/coursesummary/0/"
+    close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -2062,6 +2071,7 @@ def allow_delete_course_confirmation(request):
 def registrar_schedule(request):
     """Display courses in roughly the format used by the registrar"""
     request.session["return_to_page"] = "/planner/registrarschedule/"
+    close_all_divs(request) # next time the dept load summary page is opened, all divs will be closed
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
@@ -2487,6 +2497,7 @@ def search_form(request):
     """
     Allows the user to search for offerings of one or more courses.
     """
+    close_all_divs(request)
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
@@ -2585,6 +2596,7 @@ def search_form_time(request):
     """
     Allows the user to search for offerings of one or more courses.
     """
+    close_all_divs(request)
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
@@ -2690,6 +2702,7 @@ def search_form_time(request):
 @login_required
 def export_summary_data(request):
     """Exports a summary of teaching load data to an Excel file."""
+    close_all_divs(request)
     context = collect_data_for_summary(request)
 
     file_name = 'DepartmentLoadSummary.xls'
@@ -2956,6 +2969,7 @@ def getting_started(request):
     """
     Sends user to the help page.
     """
+    close_all_divs(request)
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
@@ -2968,7 +2982,7 @@ def getting_started(request):
 @login_required
 def weekly_course_schedule_entire_dept(request):
     """Display weekly schedules for the entire department"""
-
+    close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
@@ -3423,3 +3437,78 @@ def update_semester_for_course_offering(request, id):
     else:
         form = SemesterSelectForm(year, instance=instance)
         return render(request, 'update_semester.html', {'form':form, 'course_offering': instance})
+
+def close_all_divs(request):
+    """
+    resests the sessions variables so that all divs on the faculty load summary page will be closed upon reload
+    """
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    key = "dept_load_summary-"+str(ALL_FACULTY_DIV_ID)
+    request.session[key] = 'closed'
+    for faculty in user_preferences.faculty_to_view.all():
+        key = "dept_load_summary-"+str(faculty.id)
+        request.session[key] = 'closed'
+    return
+
+@login_required
+def open_close_div_tracker(request,id):
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+# if the id is for one of the profs, first close divs for all faculty except the incoming one
+    if int(id) != ALL_FACULTY_DIV_ID:
+        for faculty in user_preferences.faculty_to_view.all():
+            if faculty.id != int(id):
+                key = "dept_load_summary-"+str(faculty.id)
+                request.session[key] = 'closed'
+# now deal with the one that came in        
+    key = "dept_load_summary-"+id
+    if key in request.session:
+        if request.session[key] == 'closed':
+            request.session[key] = 'open'
+        else:
+            request.session[key] = 'closed'
+    else:
+        request.session[key] = 'open'
+
+    return_string = "div #"+id+"is now "+request.session[key]
+#    print "list of keys:"
+#    for key in request.session.keys():
+#        print key, request.session[key]
+
+    return HttpResponse(return_string)
+
+def construct_json_open_div_id_list(request):
+    """
+    constructs a json-formatted list of ids for the divs that should be open upon loading the dept load summary page
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    open_div_list = []
+
+    all_prof_ids_closed = True
+    close_all_prof_ids = False
+    for faculty in user_preferences.faculty_to_view.all():
+        key = "dept_load_summary-"+str(faculty.id)
+        if key in request.session:
+            if request.session[key]=='open':
+                if all_prof_ids_closed == False: #apparently there are more than one that are marked as open; oops! close them all
+                    close_all_prof_ids = True
+                else:
+                    all_prof_ids_closed = False
+                    open_div_list.append(faculty.id)
+    if close_all_prof_ids: # there has been an irregularity; close all the prof divs; reset the session variables, too
+        open_div_list = []
+        for faculty in user_preferences.faculty_to_view.all():
+            key = "dept_load_summary-"+str(faculty.id)
+            request.session[key]='closed'
+
+    key = "dept_load_summary-"+str(ALL_FACULTY_DIV_ID)
+    if key in request.session:
+        if request.session[key]=='open':
+            open_div_list.append(ALL_FACULTY_DIV_ID)
+    json_open_div_id_list = simplejson.dumps(open_div_list)
+
+    return json_open_div_id_list
