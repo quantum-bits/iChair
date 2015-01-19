@@ -658,7 +658,9 @@ xmlhttp.send();
 	   { width: 60, align: 'center'},
 	   { width: 100, align: 'center' },
 	   { width: 100, align: 'center' },
-	   { width: 180, align: 'center' },
+           {% if can_edit %}
+              { width: 180, align: 'center' },
+           {% endif %}
 	   { width: 45, align: 'center' },
 	   { width: 45, align: 'center' }];
   for (var n=0; n< numInstructors; n++) {
@@ -671,7 +673,11 @@ xmlhttp.send();
 
 <script>
 $('#fixed_hdr1').fxdHdrCol({
-	fixedCols: 8,
+        {% if can_edit %}
+           fixedCols: 8,
+        {% else %}
+           fixedCols: 7,
+        {% endif %}
 	width:     "100%",
 	height:    400,
 	colModal: colModalInput	
