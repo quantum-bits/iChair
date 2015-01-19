@@ -177,7 +177,7 @@ class Room(StampedModel):
     capacity = models.PositiveIntegerField(default=20)
 
     class Meta:
-        ordering = ['building','number']
+        ordering = ['building__name','number']
 
     def __unicode__(self):
         return '{0} {1}'.format(self.building, self.number)

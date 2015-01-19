@@ -22,6 +22,10 @@ from datetime import date
 
 # TO DO:
 
+# 0. OOPS! ids (for html elements) are not supposed to start with #'s; should
+#    fix this, so my code does not get deprecated too quickly!  ACTUALLY: it 
+#    appears that it's OK on the html side, but CSS says that the ids need to 
+#    start with a letter.  Still, might be safest to fix it!
 # 1. update help topics
 # 2. (somewhat optional): remove the ?next= stuff where it's not being used anyways
 
@@ -184,10 +188,15 @@ def department_load_summary(request):
     """Display loads for professors in the department"""
     request.session["return_to_page"] = "/planner/deptloadsummary/"
 
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+
     context = collect_data_for_summary(request)
     context['all_faculty_div_id']=ALL_FACULTY_DIV_ID
     json_open_div_id_list = construct_json_open_div_id_list(request)
     context['open_div_id_list']=json_open_div_id_list
+    context['num_faculty']=simplejson.dumps(len(user_preferences.faculty_to_view.all()))
     return render(request, 'dept_load_summary.html', context)
 
 def collect_data_for_summary(request):
@@ -1310,7 +1319,7 @@ def room_schedule(request):
     idnum = 0
     roomid = 0
 
-    for room in user_preferences.rooms_to_view.all().order_by('building','number'):
+    for room in user_preferences.rooms_to_view.all().order_by('building__name','number'):
         data_this_room = []
         roomid=roomid+1
         for semester_name in semester_list:

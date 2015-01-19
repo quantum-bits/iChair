@@ -24,7 +24,7 @@ of a course.
   
 </div>   
 
-      <h3>If the course does not exist in the list above,<br>
+      <h3>If the course does not exist in the above list,<br>
 go ahead and create the course:</h3>  
 {% endif %}
 
@@ -34,7 +34,7 @@ go ahead and create the course:</h3>
       {% csrf_token %}
 
       {{ form.as_table }}
-      <p><input type="submit" alt="register" /></p>
+      <p><input type="submit" value="Submit" /></p>
      </form>
 
 </div>

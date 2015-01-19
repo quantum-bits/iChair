@@ -24,7 +24,7 @@
 	    Copy Course Sections From a Previous Year</a>
 </p>
 -->
-
+<!--
 <p>
 <div class="btn-group">
   <a class="btn-info btn dropdown-toggle" data-toggle="dropdown" href="#">
@@ -36,7 +36,6 @@
       <a href="{% url 'choose_year_course_copy' %}">
 	Copy From a Previous Year</a>
     </li>
-<!--    <li class="divider"></li>-->
     <li>
       <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
 	Add Manually</a>
@@ -44,7 +43,7 @@
   </ul>
 </div> {# btn-group #}
 </p>
-
+-->
 
 {% endif %}
 
@@ -54,6 +53,15 @@
     </div>   
 </div>     
 
+{% if can_edit %}
+<div style="margin-top: -10px; padding: 0px 2px 2px 2px">
+    <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
+	Add </a> a course offering manually.
+</div>
+<div style="padding: 2px 2px 8px 2px"> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
+	    Copy</a> one or more course offerings from a previous year.
+</div>
+{% endif %}
 <!--
 <p> <strong>Note:</strong> This view is intended to mimic the Word document that the Registrar's office sends out.</p>
 -->
@@ -64,15 +72,15 @@
 		<th colspan="6">Courses</th>
 		</tr>
 	       <tr>
-	       <td> Semester </td>
-	       <td> Number </td>
-	       <td> Name </td>
-	       <td style="text-align: center"> Credit Hours </td>
-	       <td style="text-align: center"> Enrl Cap </td>
-	       <td style="text-align: center"> Times </td>
-	       <td style="text-align: center"> Room(s) </td>
-	       <td style="text-align: center"> Instructor(s) [load] </td>
-	       {% if can_edit %} <td></td> {% endif %}
+	       <th> Semester </th>
+	       <th> Number </th>
+	       <th> Name </th>
+	       <th style="text-align: center"> Credit Hours </th>
+	       <th style="text-align: center"> Enrl Cap </th>
+	       <th style="text-align: center"> Times </th>
+	       <th style="text-align: center"> Room(s) </th>
+	       <th style="text-align: center"> Instructor(s) [load] </th>
+	       {% if can_edit %} <th></th> {% endif %}
 	       </tr>
 	     </thead>
 	     <tbody>
