@@ -9,44 +9,6 @@
 
  <div class="content-center">
 
-{% if can_edit %}
-<!--<p> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
-	    Copy</a> one or more course offerings from a previous year.
-</p>
-<p> <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
-	    Add</a> a new course offering.
-</p>-->
-<!--
-<p> <a class="btn" href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
-	    Add a Section of a Course</a>
-</p>
-<p> <a class="btn" href="{% url 'choose_year_course_copy' %}">
-	    Copy Course Sections From a Previous Year</a>
-</p>
--->
-<!--
-<p>
-<div class="btn-group">
-  <a class="btn-info btn dropdown-toggle" data-toggle="dropdown" href="#">
-    Add Section(s) of a Course
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-    <li>
-      <a href="{% url 'choose_year_course_copy' %}">
-	Copy From a Previous Year</a>
-    </li>
-    <li>
-      <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
-	Add Manually</a>
-    </li>
-  </ul>
-</div> {# btn-group #}
-</p>
--->
-
-{% endif %}
-
 <div class="alert alert-student-info">  
   	<a class="close" data-dismiss="alert">×</a>  
  	 <div><strong>Note:</strong> This view is intended to mimic the Word document that the Registrar's office sends out.
@@ -144,7 +106,7 @@
 	{% endfor %}
       </td>
       {% if can_edit %}
-      <td title = "Delete this section." style="text-align: center;"> <a href="{% url 'delete_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Delete Section</a>  </td>
+      <td title = "Delete this course offering" style="text-align: center;"> <a href="{% url 'delete_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Delete</a>  </td>
       {% endif %}
     </tr>
 {% endfor %}

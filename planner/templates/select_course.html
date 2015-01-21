@@ -91,14 +91,40 @@ to skip some of the steps if you like. </p>
 <h3>In the next step you will choose the semester for this course offering. </h3>
 </div>
 
+<script>
+function alertRegister()
+{
+var xmlhttp;
+if (window.XMLHttpRequest)
+  {// code for IE7+, Firefox, Chrome, Opera, Safari
+  xmlhttp=new XMLHttpRequest();
+  }
+else
+  {// code for IE6, IE5
+  xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+xmlhttp.onreadystatechange=function()
+  {
+  if (xmlhttp.readyState==4 && xmlhttp.status==200)
+    {
+    /*document.getElementById("myDiv").innerHTML=xmlhttp.responseText;*/
+    }
+  }
+xmlhttp.open("GET","/planner/alertregister/",true);
+xmlhttp.send();
+}
+</script>
+
+
    <script>
     $(window).load(function(){
-    $('.page-name').find('h1').replaceWith('<h1>Add a New Section of a Course</h1><h2>- Select Course -</h2>');
+    alertRegister();
+    $('.page-name').find('h1').replaceWith('<h1>Add a New Offering of a Course</h1><h2>- Select Course -</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 
-
-<script> alert("The next few pages will step you through the process of setting up a section of a course.  \n\nPlease do not click on the 'back' button during this process, or a form could accidentally be submitted twice, leading to multiple entries in the database.")</script>
-
+{% if never_alerted_before %}
+<script> alert("The next few pages will step you through the process of setting up an offering of a course.  \n\nPlease do not click on the 'back' button during this process, or a form could accidentally be submitted twice, leading to multiple entries in the database.")</script>
+{% endif %}
 
 {% endblock %}

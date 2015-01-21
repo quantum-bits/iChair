@@ -7,7 +7,7 @@
 <h2> Are you sure? </h2>
 <p>
 <div class="alert alert-student-info">  
-  <div> Are you sure that you want to <b> delete </b> the following course and all of its sections for all years?  <br>
+  <div> Are you sure that you want to <b> delete </b> the following course and all of its offerings for all years?  <br>
     <b>This action is not reversible.</b></div> 
 </div>
 </p>
@@ -17,14 +17,14 @@
 
 <br><br>
 {% if offering_list %}
-<strong> One or more section(s) exist: </strong><br>
+<strong> One or more offering(s) exist: </strong><br>
 {% for offering in offering_list %}
 {{offering.semester}} <br>
 {% endfor %}
 <br>
-<strong> All sections will be deleted.... </strong>
+<strong> All offerings will be deleted.... </strong>
 {% else %}
-<p>(There are no sections for this course, so deleting it 
+<p>(There are no offerings for this course, so deleting it 
 is probably safe.)</p>
 {% endif %}
 </div>

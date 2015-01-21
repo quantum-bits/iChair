@@ -7,7 +7,7 @@
 	    Change Academic Year</a>
 </p>
 
-<p><a class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to Include</a>
+<p><a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to Display</a>
 </p>
 
  <div id="year-accordion" class="accordion">

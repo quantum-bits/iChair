@@ -44,13 +44,9 @@ from datetime import date
 
 # NOTE: changed .page-name in bootstrap.css to have width: 51% (instead of 61%)...might want to change that back
 
-# "utility" bar:
-#  - works OK, but it "slides" with the page-name, since it floats left
-#  - if try to float right, it doesn't seem to work as well
-#  - some of the page-names are only one line, and then there's extra blank space...arggh!
-
-
 ALL_FACULTY_DIV_ID = 100001
+UNDERASSIGNED_LOAD_DIV_ID = 100002
+
 
 @login_required
 def home(request):
@@ -194,6 +190,7 @@ def department_load_summary(request):
 
     context = collect_data_for_summary(request)
     context['all_faculty_div_id']=ALL_FACULTY_DIV_ID
+    context['underassigned_load_div_id']=UNDERASSIGNED_LOAD_DIV_ID
     json_open_div_id_list = construct_json_open_div_id_list(request)
     context['open_div_id_list']=json_open_div_id_list
     context['num_faculty']=simplejson.dumps(len(user_preferences.faculty_to_view.all()))
@@ -264,6 +261,7 @@ def collect_data_for_summary(request):
     semesterdict[u'Summer']=0
 
     data_list = []
+    unassigned_overassigned_data_list = []
 
     number_semesters = 4
 
@@ -326,8 +324,24 @@ def collect_data_for_summary(request):
                                       'meeting_times':meeting_times_list,
                                       'meetings_scheduled':meetings_scheduled
                                       })
+                    if ((meetings_scheduled == False) or (load_diff != 0)):
+                        unassigned_overassigned_data_list.append({
+                                'number':number,
+                                'name':course_name,
+                                'rooms':room_list,
+                                'load_hours': available_load_hours,
+                                'load_difference': load_diff,
+                                'load_hour_list': load_list,
+                                'course_id':course_offering.course.id,
+                                'id':course_offering.id,
+                                'comment':course_offering.comment,
+                                'semester':semester_name,
+                                'meeting_times':meeting_times_list,
+                                'meetings_scheduled':meetings_scheduled
+                                })
 
     admin_data_list=[]
+    unassigned_admin_data_list=[]
 
     for other_load_type in user_preferences.other_load_types_to_view.all():
         load_list = []
@@ -349,6 +363,13 @@ def collect_data_for_summary(request):
                                 'id':other_load_type.id,
                                 'total_load':load_hour_rounder(total_other_load)
                                 })
+        if load_hour_rounder(total_other_load)==0:
+            unassigned_admin_data_list.append({
+                    'load_type': other_load_type.load_type,
+                    'load_hour_list': load_list,
+                    'id':other_load_type.id,
+                    'total_load':load_hour_rounder(total_other_load)
+                    })
 
     total_load_hours=[]
     for ii in range(number_faculty):
@@ -411,6 +432,8 @@ def collect_data_for_summary(request):
              'data_list_by_instructor':data_list_by_instructor,
              'can_edit': can_edit,
              'id': user_preferences.id,
+             'unassigned_overassigned_data_list':unassigned_overassigned_data_list,
+             'unassigned_admin_data_list':unassigned_admin_data_list
              }
 
     return context
@@ -3393,6 +3416,10 @@ def select_course(request):
     else:
         form = CourseSelectForm(department.id)
         context = {'form': form}
+        if "never_alerted_before" in request.session:
+            context['never_alerted_before'] = False
+        else:
+            context['never_alerted_before'] = True
         return render(request, 'select_course.html', context)
 
 @login_required
@@ -3455,6 +3482,8 @@ def close_all_divs(request):
     user_preferences = user.user_preferences.all()[0]
     key = "dept_load_summary-"+str(ALL_FACULTY_DIV_ID)
     request.session[key] = 'closed'
+    key = "dept_load_summary-"+str(UNDERASSIGNED_LOAD_DIV_ID)
+    request.session[key] = 'closed'
     for faculty in user_preferences.faculty_to_view.all():
         key = "dept_load_summary-"+str(faculty.id)
         request.session[key] = 'closed'
@@ -3466,7 +3495,7 @@ def open_close_div_tracker(request,id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
 # if the id is for one of the profs, first close divs for all faculty except the incoming one
-    if int(id) != ALL_FACULTY_DIV_ID:
+    if ((int(id) != ALL_FACULTY_DIV_ID) and (int(id) != UNDERASSIGNED_LOAD_DIV_ID)):
         for faculty in user_preferences.faculty_to_view.all():
             if faculty.id != int(id):
                 key = "dept_load_summary-"+str(faculty.id)
@@ -3518,6 +3547,21 @@ def construct_json_open_div_id_list(request):
     if key in request.session:
         if request.session[key]=='open':
             open_div_list.append(ALL_FACULTY_DIV_ID)
+
+    key = "dept_load_summary-"+str(UNDERASSIGNED_LOAD_DIV_ID)
+    if key in request.session:
+        if request.session[key]=='open':
+            open_div_list.append(UNDERASSIGNED_LOAD_DIV_ID)
+
     json_open_div_id_list = simplejson.dumps(open_div_list)
 
     return json_open_div_id_list
+
+@login_required
+def alert_register(request):
+    """
+    sets the session variable never_alerted_before to false, which will
+    turn off future alerts during this session when adding a course section
+    """
+    request.session["never_alerted_before"] = False
+    return HttpResponse("")

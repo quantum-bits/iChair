@@ -12,27 +12,7 @@
 {% if can_edit %}
 <p> <a class="btn btn-info" href="{% url 'add_course' 0 %}">Add a New Course</a></p>
 {% endif %}
-<!--
-<div class="alert alert-student-info">  
-  	<a class="close" data-dismiss="alert">×</a>  
- 	 <div>The following table shows the courses taught by the department,
-along with the corresponding number of sections for each course.
-    </div>   
-</div>     
 
-<br>
-
-<div class="alert alert-student-info">  
-  	<a class="close" data-dismiss="alert">×</a>  
- 	<div>To edit <strong>sections</strong> of courses
-             (add/delete sections, change semester, etc.), go to the 
-             <a href="{% url 'planner.views.department_load_summary' %}"><b>Faculty Load
-             Summary</b></a> page or the 
-	     <a href="{% url 'planner.views.registrar_schedule' %}"><b>Master Schedule View
-	     </b></a> page. 
-    </div>   
-</div>     
--->
 
 <table class="table table-striped table-bordered table-hover">
 	     <thead>
@@ -74,7 +54,7 @@ along with the corresponding number of sections for each course.
 	 {% endfor %}
       {% endfor %}
 	    {% if can_edit %}
-	    <td style="text-align: center"><a href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">Edit Course Properties</a> 
+	    <td style="text-align: center"><a title="Edit properties of the course itself, such as the title, course number or number of credit hours" href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">Edit Course Properties</a> 
 	      {% if allow_delete %} | 
 	      <a href="{% url 'delete_course_confirmation' course.id %}">Delete Course</a> 
 	      {% endif %}

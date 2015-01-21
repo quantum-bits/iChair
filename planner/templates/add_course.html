@@ -7,12 +7,6 @@
 {% if course_list %}
 <h3> Are you sure you want to create a new course? </h3><br>
 <div class="alert alert-student-info">  
-<!-- 	 <div>  If the course exists in the list
-below, maybe you actually want to create a new <strong> section</strong>
-of a course.
-</div>
-<br>
--->
 <p> <strong> List of Existing Courses: </strong></p>
 <select>
 {% for course in course_list %}
@@ -20,7 +14,7 @@ of a course.
 {% endfor %}
 </select>
 
-<p> <strong>Note: </strong>To create a <strong> new section</strong> for a course in the above list, go to the <a href="{% url 'planner.views.department_load_summary' %}"><b>Faculty Load Summary</b></a> page.</p>
+<p> <strong>Note: </strong>To create a <strong> new offering</strong> for a course in the above list, go to the <a href="{% url 'planner.views.department_load_summary' %}"><b>Faculty Load Summary</b></a> page.</p>
   
 </div>   
 

@@ -15,7 +15,7 @@
 <!--      {{ form.as_table }}-->
 
       <div>
-      <p><label form="rooms_to_view" {% if form.rooms_to_view.errors %} class ="error"{% endif %}>Select Rooms to View:</label></p>
+      <p><label form="rooms_to_view" {% if form.rooms_to_view.errors %} class ="error"{% endif %}>Select Rooms to Display:</label></p>
 
 <!--      <p>Select a course to add to your four-year plan.</p>-->
       <span>{{ form.rooms_to_view }}</span>
@@ -45,7 +45,7 @@
    <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Rooms To View</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Rooms To Display</h1>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 

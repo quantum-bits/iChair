@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="content-center">
-<h3> Select the semester and other details for this section of {{course.subject.abbrev}} {{course.number}}. </h3>
+<h3> Select the semester and other details for this offering of {{course.subject.abbrev}} {{course.number}}. </h3>
 
 <!--
 <p>
@@ -54,7 +54,7 @@ be edited later.
 
    <script>
     $(window).load(function(){
-    $('.page-name').find('h1').replaceWith('<h1>New Section of {{course}} </h1><h2>- Select Semester -</h2>');
+    $('.page-name').find('h1').replaceWith('<h1>New Offering of {{course}} </h1><h2>- Select Semester -</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 

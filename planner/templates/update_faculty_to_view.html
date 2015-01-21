@@ -16,7 +16,7 @@
 
 <!--      <div class="updatesemester_div">-->
       <div>
-      <p><label form="faculty_to_view" {% if form.faculty_to_view.errors %} class ="error"{% endif %}>Select Faculty Members to Include in Views:</label></p>
+      <p><label form="faculty_to_view" {% if form.faculty_to_view.errors %} class ="error"{% endif %}>Select Faculty Members to Display in Views:</label></p>
 
 <!--      <p>Select a course to add to your four-year plan.</p>-->
       <span>{{ form.faculty_to_view }}</span>
@@ -43,7 +43,7 @@
    <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Faculty Members To Include</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Faculty Members To Display</h1>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 
