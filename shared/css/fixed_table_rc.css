@@ -3,7 +3,6 @@
     border-width: 0px; 
     margin: 0px; 
     border-collapse: collapse; 
-    margin-bottom: 20px; 
     outline-style: none; 
     font-size: 14px; 
     background-color: #fff; 
@@ -51,7 +50,7 @@
 .ft_rc { position: absolute; z-index: 1005; }
 .ft_r, .ft_c { position: relative; }
 
-.ft_rwrapper, .ft_cwrapper { overflow: hidden; position: absolute; z-index: 1001; border-width: 0px;  padding: 0px; margin: 0px; }
+.ft_rwrapper, .ft_cwrapper { overflow: hidden; position: absolute; z-index: 1001; border-width: 0px;  padding-right: 0px; margin: 0px; }
 /*.ft_rwrapper { width: 100%; padding-right: 17px; }*/
 
 .ft_scroller { overflow: auto; height: 100%; padding: 0px; margin: 0px;}

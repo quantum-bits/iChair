@@ -29,6 +29,14 @@ from datetime import date
 # 1. update help topics
 # 2. (somewhat optional): remove the ?next= stuff where it's not being used anyways
 
+# THINGS TO ADD EVENTUALLY(?):
+# 1. CRNs for course offerings
+# 2. office hours
+# 3. department meetings
+# 4. other types of meetings?
+# 5. maybe something on preferences about whether office hours/mtgs should show
+#    up in schedules?!?
+
 #---------
 
 # to prevent accidental resubmission of a form after using the back button:
