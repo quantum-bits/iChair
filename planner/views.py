@@ -22,6 +22,8 @@ from datetime import date
 
 # TO DO:
 
+# >>> check that the scrollbar fix works on PCs, etc.
+
 # 0. OOPS! ids (for html elements) are not supposed to start with #'s; should
 #    fix this, so my code does not get deprecated too quickly!  ACTUALLY: it 
 #    appears that it's OK on the html side, but CSS says that the ids need to 

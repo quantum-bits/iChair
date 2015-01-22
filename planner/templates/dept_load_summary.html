@@ -3,6 +3,9 @@
 {% endblock %}
 {% block content %}
 
+<style>
+* {outline}
+</style>
 
 <script type="text/javascript" src="{{ STATIC_URL }}js/fixed_table_rc.js"></script>
 <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/fixed_table_rc.css" />
@@ -36,8 +39,9 @@ class="btn btn-warning"
 {% else %}<br>
 {% endif %}
 
-</div>
+<div id="position-holder-message-div"><span id="position-holder-message1"></span> <a id="new-link-id" href="{% url 'planner.views.department_load_summary' %}"></a></div>
 
+</div>
  <div id="year-accordion" class="accordion">
    <div class="accordion-group">
      <div class="accordion-heading">
@@ -48,7 +52,7 @@ class="btn btn-warning"
 	   onclick="divRegister({{all_faculty_div_id}})">
 	  <!--onclick="divRegister()"-->
 	 All Faculty - All Course Offerings
-	</a>
+	</a> 
        </div>{# accordion-heading #}
 
       <div id="100001" class="accordion-body collapse">
@@ -343,9 +347,7 @@ class="btn btn-warning"
 </div>{# table-container #}
 
 <p></p>
-<p> <strong>Notes: </strong>(i) Any Summer loads are included with Fall. (ii) If you
-resize the browser window, you may need to reload the page in order
-for the above table to display properly.  </p>
+<p> <strong>Note: </strong>Any Summer loads are included with Fall.  </p>
 
 </div>
 </div>
@@ -615,9 +617,7 @@ for the above table to display properly.  </p>
 </table>
 </div>{# table-container #}
 <p></p>
-<p> <strong>Notes: </strong>(i) Any Summer loads are included with Fall. (ii) If you
-resize the browser window, you may need to reload the page in order
-for the above table to display properly.  </p>
+<p> <strong>Note: </strong>Any Summer loads are included with Fall. </p>
 
 </div>
 </div>
@@ -626,7 +626,7 @@ for the above table to display properly.  </p>
 
 
 
-
+<div class="content-center" id="position-holder-message-div-2"><span id="position-holder-message2"></span> <a id="new-link-id-2" href="{% url 'planner.views.department_load_summary' %}"></a></div>
 
 
 <!-- #########################################################-->
@@ -889,6 +889,12 @@ xmlhttp.send();
 
 <script>
     $(window).load(function(){
+    var windowWidth = window.innerWidth;
+    var windowHeight = window.innerHeight;
+    if (windowWidth < 1230 || windowHeight < 800) {
+     alert("For better viewing of tables on this page, you may wish to resize your browser window and/or decrease the font size (using 'control -' on a PC or 'command -' on a Mac). \n \nTo increase the font size later on, use 'control =' on a PC or 'command =' on a Mac.");
+    }		      
+
     var id_list = {{open_div_id_list|safe}};
     for (var n=0; n < id_list.length; n++) {
       $('#'+id_list[n]).collapse("show");
@@ -897,6 +903,7 @@ xmlhttp.send();
 </script>
 
 <script>
+function sizeTables(){
   numInstructors = {{num_faculty|safe}};
   var windowWidth = window.innerWidth;
   var windowHeight = window.innerHeight;
@@ -942,15 +949,80 @@ xmlhttp.send();
      }
   colModalInput.push({width: 150, align: 'center'});
   }
-  if (windowWidth < 1230 || windowHeight < 800) {
-     alert("For better viewing of tables on this page, you may wish to resize your browser window and/or decrease the font size (using 'control -' on a PC or 'command -' on a Mac).  After doing either of these, please refresh the page in order for the tables to display properly. \n \nTo increase the font size later on, use 'control =' on a PC or 'command =' on a Mac.")
-  }		      
 
+  $('#fixed_hdr1').fxdHdrCol({
+        {% if can_edit %}
+           fixedCols: 8,
+        {% else %}
+           fixedCols: 7,
+        {% endif %}
+	width:     "100%",
+	height: heightInput,
+	colModal: colModalInput	
+  });
+  $('#fixed_hdr2').fxdHdrCol({
+        {% if can_edit %}
+           fixedCols: 8,
+        {% else %}
+           fixedCols: 7,
+        {% endif %}
+	width:     "100%",
+	height: heightInput,
+	colModal: colModalInput	
+  });
+}
 
 </script>
 
 <script>
-$('#fixed_hdr1').fxdHdrCol({
+  function sizeTables(){
+  numInstructors = {{num_faculty|safe}};
+  var windowWidth = window.innerWidth;
+  var windowHeight = window.innerHeight;
+  if (windowHeight > 900) {
+     heightInput = 400
+  } else {
+     heightInput = 300
+  }
+  if (windowWidth > 1340) { 
+     colModalInput = [
+	   { width: 70, align: 'left' },
+	   { width: 220, align: 'left' },
+	   { width: 50, align: 'center'},
+	   { width: 100, align: 'center' },
+	   { width: 70, align: 'center' },
+           {% if can_edit %}
+              { width: 120, align: 'center' },
+           {% endif %}
+	   { width: 40, align: 'center' },
+	   { width: 40, align: 'center' }];
+     for (var n=0; n< numInstructors; n++) {
+           colModalInput.push({ width: 40, align: 'center' });
+           colModalInput.push({ width: 40, align: 'center' });
+           colModalInput.push({ width: 40, align: 'center' });
+     }
+  colModalInput.push({width: 150, align: 'center'});
+  } else {
+     colModalInput = [
+	   { width: 60, align: 'left' },
+	   { width: 220, align: 'left' },
+	   { width: 50, align: 'center'},
+	   { width: 100, align: 'center' },
+	   { width: 60, align: 'center' },
+           {% if can_edit %}
+              { width: 100, align: 'center' },
+           {% endif %}
+	   { width: 40, align: 'center' },
+	   { width: 40, align: 'center' }];
+     for (var n=0; n< numInstructors; n++) {
+           colModalInput.push({ width: 40, align: 'center' });
+           colModalInput.push({ width: 40, align: 'center' });
+           colModalInput.push({ width: 40, align: 'center' });
+     }
+  colModalInput.push({width: 150, align: 'center'});
+  }
+
+  $('#fixed_hdr1').fxdHdrCol({
         {% if can_edit %}
            fixedCols: 8,
         {% else %}
@@ -959,8 +1031,8 @@ $('#fixed_hdr1').fxdHdrCol({
 	width:     "100%",
 	height: heightInput,
 	colModal: colModalInput	
-});
-$('#fixed_hdr2').fxdHdrCol({
+  });
+  $('#fixed_hdr2').fxdHdrCol({
         {% if can_edit %}
            fixedCols: 8,
         {% else %}
@@ -969,13 +1041,39 @@ $('#fixed_hdr2').fxdHdrCol({
 	width:     "100%",
 	height: heightInput,
 	colModal: colModalInput	
-});
+  });
+}
+
+</script>
+
+<script>
+function alertMessage() {
+  var warningMessage = document.getElementById("position-holder-message1");
+  warningMessage.innerHTML = "It is recommended that you reload this page after resizing <br>the window so that the tables display properly: ";
+  warningMessage.style.color = "orange";
+  warningMessage.style.weight = "bold";
+  document.getElementById("new-link-id").innerHTML = "Reload Page";
+  var warningDiv = document.getElementById("position-holder-message-div");
+  warningDiv.style.marginBottom = "20px";
+
+  var warningMessage2 = document.getElementById("position-holder-message2");
+  warningMessage2.innerHTML = "It is recommended that you reload this page after resizing <br>the window so that the tables display properly: ";
+  warningMessage2.style.color = "orange";
+  warningMessage2.style.weight = "bold";
+  document.getElementById("new-link-id-2").innerHTML = "Reload Page";
+  var warningDiv2 = document.getElementById("position-holder-message-div-2");
+  warningDiv2.style.marginBottom = "20px";
+}
+
 </script>
 
 
 
   <script>
+    
+    window.addEventListener("resize",function(){alertMessage();},true);
     $(window).load(function(){
+    sizeTables();
     $("#nav-deptloadsummary").addClass("current");
     $('.page-name').find('h1').replaceWith('<h1>Faculty Load Summary</h1><h2>{{department}}, {{academic_year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
