@@ -22,7 +22,8 @@ from datetime import date
 
 # TO DO:
 
-# >>> check that the scrollbar fix works on PCs, etc.
+# WHY is Chrome giving the "resize window" message when you first log in?!?
+# maybe the variable should be set to null/false right away upon login or something?  maybe there's some junk there and it's triggering on that.
 
 # 0. OOPS! ids (for html elements) are not supposed to start with #'s; should
 #    fix this, so my code does not get deprecated too quickly!  ACTUALLY: it 
@@ -36,8 +37,24 @@ from datetime import date
 # 2. office hours
 # 3. department meetings
 # 4. other types of meetings?
-# 5. maybe something on preferences about whether office hours/mtgs should show
+# 5. should meetings have rooms associated with them?
+# 6. meetings should probably have a comments field; possibly a drop-down
+#    with "type" (dept, school, faculty, other); comments field could be
+#    something like (every other week; etc.)
+# 7. meetings need to have a semester field, too.
+# 8. maybe something on preferences about whether office hours/mtgs should show
 #    up in schedules?!?
+#
+# maybe there could be one object, which is something like Commitment;
+# its fields could be:
+# - faculty member
+# - start_at, end_at, day
+# - room (optional)
+# - type (office hour; dept mtg; school mtg; dept chair mtg; faculty mtg; (generic) mtg)
+# - comment box
+# - some of those other things could be objects in the db, too (dept mtg, etc.),
+#   they could be associated with depts...then they could be a bit more
+#   automatic, etc.  That's probably going a bit overboard.
 
 #---------
 
@@ -128,7 +145,8 @@ def display_notes(request):
         'department': department,
         'datablock': datablock,
         'can_edit': can_edit,
-        'year': academic_year_string
+        'year': academic_year_string,
+        'id': user_preferences.id,
         }
     return render(request, 'notes.html', context)
 
