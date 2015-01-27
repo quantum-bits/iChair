@@ -44,6 +44,9 @@ from datetime import date
 # 7. meetings need to have a semester field, too.
 # 8. maybe something on preferences about whether office hours/mtgs should show
 #    up in schedules?!?
+# 9. >>> IF OFFICE HOURS ARE ADDED...add a "custom" schedule thing that would
+#        merge together the schedules for ANY faculty member so that that could
+#        be used by Barb/Lara for scheduling meetings
 #
 # maybe there could be one object, which is something like Commitment;
 # its fields could be:
