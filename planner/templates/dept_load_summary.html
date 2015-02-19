@@ -846,11 +846,15 @@ class="btn btn-warning"
 </div>
 </div>
 {% endfor %}
+
 </div>
 
 <p>
 <a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Faculty to Display</a>
 </p>
+
+
+<div class="content-center" id="position-holder-small-font-message-div"><span id="position-holder-small-font-message"></span> </div>
 
 <!-- the following is some AJAX that keeps track of which divs are open and which are shut -->
 
@@ -892,7 +896,10 @@ xmlhttp.send();
     var windowWidth = window.innerWidth;
     var windowHeight = window.innerHeight;
     if (windowWidth < 1230 || windowHeight < 800) {
-     alert("For better viewing of tables on this page, you may wish to resize your browser window and/or decrease the font size (using 'control -' on a PC or 'command -' on a Mac). \n \nTo increase the font size later on, use 'control =' on a PC or 'command =' on a Mac.");
+     var smallFontMessage = document.getElementById("position-holder-small-font-message");
+     smallFontMessage.innerHTML = "For better viewing of tables on this page, you may wish to increase the size of your browser window and/or decrease the font size (using 'control -' on a PC or 'command -' on a Mac; to increase the font size later on, use 'control =' on a PC or 'command =' on a Mac).";
+     smallFontMessage.style.color = "orange";
+     smallFontMessage.style.weight = "bold";
     }		      
 
     var id_list = {{open_div_id_list|safe}};
