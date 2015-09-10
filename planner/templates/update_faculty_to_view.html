@@ -1,45 +1,267 @@
 {% extends "base.html" %}
 
 {% block extrahead %}
-  <link href="{{ STATIC_URL }}css/chosen.css" media="screen" rel="stylesheet" type="text/css">
-  <script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>
+<link href="{{ STATIC_URL }}css/chosen.css" media="screen" rel="stylesheet" type="text/css">
+<link href="{{ STATIC_URL }}css/ui.multiselect.css" media="screen" rel="stylesheet" type="text/css">
+<link href="{{ STATIC_URL }}css/ui_multiselect_KK_additions.css" media="screen" rel="stylesheet" type="text/css">
+<script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>
   <script src="http://code.jquery.com/ui/1.9.2/jquery-ui.min.js"></script>
+
+  <script type="text/javascript" src="{{ STATIC_URL }}js/ui.multiselect.js"></script>
+  <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.10/themes/smoothness/jquery-ui.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 
-   <div class="content-center">
-     <form action=""  method="post">
-      {% csrf_token %}
+  <style>
+  .warning-container {
+	  width: 300px;
+	  height: 40px;
+	  margin-left: auto;
+	  margin-right: auto;
+	  border-style: solid;
+	  border-width: 2px;
+	  color: #b94a48;
+	  background-color: #f2dede;
+	  border-color: #eed3d7;
+	  border-radius: 4px;
+	  padding: 15px;
+	  font-weight: normal;
+  }
+  </style>
+  
+<!--
 
-<!--      {{ form.as_table }}-->
+Code taken from:
 
-<!--      <div class="updatesemester_div">-->
-      <div>
-      <p><label form="faculty_to_view" {% if form.faculty_to_view.errors %} class ="error"{% endif %}>Select Faculty Members to Display in Views:</label></p>
+http://quasipartikel.at/multiselect_next/
 
-<!--      <p>Select a course to add to your four-year plan.</p>-->
-      <span>{{ form.faculty_to_view }}</span>
-      </div>
+(modifications made afterwards).
 
-    <div class="alert alert-student-info">  
-  	<a class="close" data-dismiss="alert">×</a>  
- 	 <div><strong>Hint:</strong> Start typing in the search bar or </div>
-	 <div> click and use the dropdown.</div>  
-    </div>        
+-->
+<!--
+<style>
+.header-container {
+width: 720px;
+height: 40px;
+margin-left: auto;
+margin-right: auto;
+border-style: solid;
+border-width: 2px;
+border-color: gray;
+border-radius: 4px;
+padding-top: 17px;
+font-size: 20px;
+background-color: #eee;
+font-weight: normal;
+}
+.header-box-left {
+width: 358px;
+/*height: 20px;*/
+/*border-style: solid;*/
+/*border-color: black;*/
+/*border-width: 2px;*/
+float: left;
+/*border: solid;*/
+border-right: solid 4px gray;
+}
+.header-box-right {
+width: 358px;
+/*height: 20px;*/
+/*border-style: solid;*/
+/*border-color: black;*/
+/*border-width: 2px;*/
+float: left;
+/*border: solid;*/
+}
+.header-center {
+width: 90px;
+margin-left: 0px;
+/*border-style: solid;*/
+/*border-color: black;*/
+/*border-width: 2px;*/
+float: left;
+}
+.instructions-container {
+width: 900px;
+height: 60px;
+margin-left: auto;
+margin-right: auto;
+border-style: solid;
+border-width: 2px;
+border-color: gray;
+border-radius: 4px;
+padding-top: 0px;
+color: #31708f;
+background-color: #d9edf7;
+border-color: #bce8f1;
+font-weight: normal;
+}
 
-      <p><input type="submit" value="Submit" /></p>
-     </form>
-   </div>
+</style>
+-->
 
-   <script src="{{ STATIC_URL }}js/chosen.jquery.js" type="text/javascript"></script>
-  <script type="text/javascript"> $("#id_faculty_to_view").chosen(); $(".chzn-select-deselect").chosen({allow_single_deselect:true}); </script>
-  <script type="text/javascript">
-              $(document).ready(function () {
-                $(".alert").alert()
-                });
+  <div class="content-center">
+	  <h3>
+		  Choose Which Faculty Members to Display in Views
+	  </h3>
+
+	  <div>
+		  
+		  <button class="btn btn-info" onmouseover="popFacultyWithLoads()" onmouseout="unPopFacultyWithLoads()" onclick="checkFacultyWithLoads()" id="selectFacultyWithLoads"> Select only faculty with loads </button> 
+	  </div>
+
+	  <br/>
+	  
+	  <!-- <div class="content-center">-->
+	  <form action=""  method="post">
+		  {% csrf_token %}
+		  <p><input type="submit" value="Submit"/></p>
+		  <div class="alert alert-student-info">
+		    
+			  <table class="table table-striped table-bordered table-hover">
+				  <thead>
+					  <tr>
+						  <th> Faculty Member </th>
+						  <th style="text-align: center;"> # Ld Hrs </th>
+						  <th style="text-align: center;"> Display </th>
+					  </tr>
+				  </thead>
+				  <tbody>
+					  {% for faculty in faculty_info %}
+					  <tr id="row{{faculty.faculty.id}}">
+						  <td id="faculty{{faculty.faculty.id}}">
+							  {{ faculty.faculty }}  
+						  </td>
+						  <td style="text-align: center;" id="load{{faculty.faculty.id}}">
+							  {{ faculty.load}}
+						  </td>
+						  <td id="cboxtd{{faculty.faculty.id}}" style="text-align: center;">
+							  <input  type="checkbox" {% if faculty.view_this_faculty %} checked = "yes" {% endif %} name="faculty_to_display" id="option{{faculty.faculty.id}}" value={{faculty.faculty.id}} />
+						  </td>
+					  </tr>
+					  {% endfor %}
+				  </tbody>
+			  </table>
+			  
+		  </div>
+		  <p><input type="submit" value="Submit"/></p>
+		
+	  </form>
+
+	  <div id="warningBox" class="warning-container"> Note: One or more faculty members
+		  have load assigned but will not be displayed.</div>
+  </div>
+
+  <script>
+  document.getElementById('warningBox').style.visibility = 'hidden';
+  var facultyWithLoadsNotSelected = false;
+  $(function() {
+	  var facultyWithLoads = {{json_faculty_with_loads|safe}};
+	  for (var n=0; n < facultyWithLoads.length; n++) {
+		  var checkbox = document.getElementById('option'+facultyWithLoads[n]);
+		  var load = document.getElementById('load'+facultyWithLoads[n]);
+		  var cBox = document.getElementById('cboxtd'+facultyWithLoads[n]);
+		  if (!checkbox.checked) {
+			  load.style.color = '#b94a48';
+			  cBox.style.backgroundColor = '#f2dede';
+		  }
+	  }
+  })
   </script>
+  
+<script>
+$(function() {
+	var facultyWithLoads = {{json_faculty_with_loads|safe}};
+	function handleElement(i) {
+		$('#option'+facultyWithLoads[i]).on('change', function(){
+			var checkbox = document.getElementById('option'+facultyWithLoads[i]);
+			var load = document.getElementById('load'+facultyWithLoads[i]);
+			var row = document.getElementById('row'+facultyWithLoads[i]);
+			var cBox = document.getElementById('cboxtd'+facultyWithLoads[i]);
+			if (!checkbox.checked) {
+				load.style.color = '#b94a48';
+				load.style.backgroundColor = '#f2dede';
+				cBox.style.backgroundColor = '#f2dede';
+				facultyWithLoadsNotSelected = true;
+				document.getElementById('warningBox').style.visibility = 'visible';
+//				document.getElementById('warningMessage').innerHTML = 'Note: One or more faculty members have load assigned but will not be displayed.';
+			} else {
+				load.style.color = row.style.color;
+				load.style.backgroundColor = row.style.backgroundColor;
+				cBox.style.backgroundColor = row.style.backgroundColor;
+				if (facultyWithLoadsOK()) {
+					document.getElementById('warningBox').style.visibility = 'hidden';
+				};
+			}
+		});
+	}
+	for (var n=0; n < facultyWithLoads.length; n++) {
+		handleElement(n);
+	}
+});
 
+function facultyWithLoadsOK() {
+	var facultyWithLoads = {{json_faculty_with_loads|safe}};
+	var facultyOK = true;
+	for (var n=0; n < facultyWithLoads.length; n++) {
+		if (!document.getElementById('option'+facultyWithLoads[n]).checked) {
+			facultyOK = false;
+		};
+	};
+	return facultyOK;
+};
+	
+function checkFacultyWithLoads() {
+	var facultyWithLoads = {{json_faculty_with_loads|safe}};
+	var facultyWithoutLoads = {{json_faculty_without_loads|safe}};
+	var row;
+	for (var n=0; n < facultyWithLoads.length; n++) {
+		document.getElementById('option'+facultyWithLoads[n]).checked = true;
+		row = document.getElementById('row'+facultyWithLoads[n]);
+		document.getElementById('cboxtd'+facultyWithLoads[n]).style.backgroundColor = row.style.backgroundColor;
+		document.getElementById('load'+facultyWithLoads[n]).style.backgroundColor = row.style.backgroundColor;
+		document.getElementById('load'+facultyWithLoads[n]).style.color = row.style.color;
+		document.getElementById('warningBox').style.visibility = 'hidden';
+	};
+	for (var n=0; n < facultyWithoutLoads.length; n++) {
+		document.getElementById('option'+facultyWithoutLoads[n]).checked = false;
+	}
+};
+
+function popFacultyWithLoads() {
+	var facultyWithLoads = {{json_faculty_with_loads|safe}};
+	for (var n=0; n < facultyWithLoads.length; n++) {
+		document.getElementById('cboxtd'+facultyWithLoads[n]).style.backgroundColor = '#dff0d8';
+		//document.getElementById('load'+facultyWithLoads[n]).style.color = '#468847';
+	};
+};
+
+function unPopFacultyWithLoads() {
+	var facultyWithLoads = {{json_faculty_with_loads|safe}};
+	var cBox;
+	var checkbox;
+	var load;
+	for (var n=0; n < facultyWithLoads.length; n++) {
+		cBox = document.getElementById('cboxtd'+facultyWithLoads[n]);
+		checkbox = document.getElementById('option'+facultyWithLoads[n]);
+		load = document.getElementById('load'+facultyWithLoads[n]);
+		if (!checkbox.checked) {
+			load.style.color = '#b94a48';
+			cBox.style.backgroundColor = '#f2dede';
+		} else {
+			cBox.style.backgroundColor = document.getElementById('row'+facultyWithLoads[n]).style.backgroundColor;
+		}
+		
+	};
+};
+
+	
+</script>
+
+
+
+   
    <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");

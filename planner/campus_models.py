@@ -3,7 +3,7 @@ from django.db import models
 from itertools import chain
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
-
+from django.db.models import Q
 
 import logging
 logger = logging.getLogger(__name__)
@@ -79,8 +79,22 @@ class FacultyMember(Person):
     class Meta:
         ordering = ['last_name','first_name']
 
+    def load(self, academic_year_object):
+        """Total load for this faculty member for a particular academic year"""
 
+        total_load = 0
+        for oi in OfferingInstructor.objects.filter(
+                Q(instructor = self)&
+                Q(course_offering__semester__year=academic_year_object)):
+            total_load += oi.load_credit
+        for ol in OtherLoad.objects.filter(
+                Q(instructor = self)&
+                Q(semester__year=academic_year_object)):
+            total_load += ol.load_credit
 
+        return total_load
+
+        
 #    def load(self, semester_id):
 #        """Total load for this faculty member for a particular semester"""
 
@@ -166,6 +180,9 @@ class Building(StampedModel):
     abbrev = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
 
+    class Meta:
+        ordering = ['abbrev']
+        
     def __unicode__(self):
         return self.name
 
@@ -182,7 +199,22 @@ class Room(StampedModel):
     def __unicode__(self):
         return '{0} {1}'.format(self.building, self.number)
 
+    def classes_scheduled(self, academic_year_object, department_object):
+        """True if classes scheduled for this room by this dept during this academic year"""
 
+        scheduled = False
+        scheduled_classes = ScheduledClass.objects.filter(
+            Q(course_offering__semester__year = academic_year_object) &
+            Q(room = self) &
+            Q(course_offering__course__subject__department = department_object)
+        )
+        if len(scheduled_classes) > 0:
+            scheduled = True
+
+        return scheduled
+
+
+    
 class Subject(StampedModel):
     """Subject areas such as COS, PHY, SYS, etc. Note that subject and department are not the
     same thing. A department usually offers courses in multiple subjects.

@@ -45,7 +45,7 @@ import subprocess
 #         - in the above example, we would be looking at J-Term of the 2013-14 academic year
 
 
-with open('ELT_courses_2013-15.csv', 'rU') as csvfile:
+with open('SPA_courses_2013-15.csv', 'rU') as csvfile:
     tempdata = csv.reader(csvfile)
     data=[]
     for row in tempdata:

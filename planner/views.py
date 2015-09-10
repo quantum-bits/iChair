@@ -14,6 +14,7 @@ from django.utils.functional import curry
 from .models import *
 from .forms import *
 
+import json
 import csv
 from django.http import HttpResponse, HttpResponseRedirect
 import xlwt
@@ -22,6 +23,12 @@ from datetime import date
 
 # TO DO:
 
+# !!! add something to the Faculty Load Summary page that checks
+#     if there are faculty members who are receiving load, but who are
+#     not being displayed; if so, put a warning of some sort on the faculty
+#     load page !!!
+# !!! shorten the KSAC names for rooms (too long to fit on room selector
+#     widget !!!
 # WHY is Chrome giving the "resize window" message when you first log in?!?
 # maybe the variable should be set to null/false right away upon login or something?  maybe there's some junk there and it's triggering on that.
 
@@ -233,34 +240,26 @@ def collect_data_for_summary(request):
     user_preferences = user.user_preferences.all()[0]
 
     department = user_preferences.department_to_view
+    academic_year_object = user_preferences.academic_year_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
 
-# the following lines select out semester objects for 2013...below we use a different approach
-#    year_object=AcademicYear.objects.filter(begin_on__year='2013')[0]
-#    semester_objects=year_object.semesters.all()
 
-# need to think about offering instructors...just from dept?  make dept many to many?
-# also, when picking out offering instructors, maybe queryset them so they are only from dept?!?!?!?!
-# also...we could do a queryset on instructors, most likely, in the form (see AddStudentSemesterForm for an example),
-# but would we want to change this by year or something...?
-# right now it gags if there is a faculty member from outside of the dept...could fix by adding the extra names
-# in to instructordict, etc.
 #
-#----------------------
-# ...ah...maybe there should be an object in the database for each academic year, listing exactly which instructors
-# to include in the load list for a given department.  Then it could change year by year.  Easy-peasy.
-#----------------------
+# NOTE:
+# 1.  Summer has been deleted from the load schedule.  If there is any load for summer,
+#     it is added to the fall.  This is HARDCODED (yech!)  Also, the indexing in the array
+#     assumes that Fall will be "0", etc., and this is tied to "seq" in the database.  UGLY!!!
 #
-# NOTES:
-# 1.  In the following code, it is assumed that each course offering can only correspond to one semester.  Accordingly,
-#     the load for each person in each row, can only be one number (for fall, J-term or spring...but only one of those)
-# 2.  Summer has been deleted from the load schedule.  If there is any load for summer, it is added to the fall.  This is HARDCODED (yech!)  Also, the indexing in the array assumes that Fall will be "0", etc., and this is tied to "seq"
-# in the database.  UGLY!!!
-#
+
+# TO DO:
+# 1. alphabetize by subject and then by course (or maybe just by course number...that should take care of it)
+# 2. load in current data from iChair and then do a comparison that all numbers are the same in load totals, etc.
+# 3. go to a completely different way of choosing faculty to display -- list them in a table, state # of load hours
+#    for this academic year; put a checkbox....easy-peasy
 
     ii = 0
     load_list_initial=[]
@@ -269,7 +268,8 @@ def collect_data_for_summary(request):
     instructor_name_list=[]
     instructor_name_dict=dict()
     instructor_integer_list=[]
-    for faculty in user_preferences.faculty_to_view.filter(department=department):
+    faculty_to_view = user_preferences.faculty_to_view.filter(department=department)
+    for faculty in faculty_to_view:
         instructordict[faculty.id] = ii
         instructor_name_list.append(faculty.first_name[0]+'. '+faculty.last_name)
         instructor_name_dict[faculty.id] = faculty.first_name[0]+'. '+faculty.last_name
@@ -300,107 +300,200 @@ def collect_data_for_summary(request):
     for ii in range(number_faculty):
         faculty_summary_load_list.append([0,0,0])
 
-    for subject in department.subjects.all():
-        for course in subject.courses.all():
-            for course_offering in course.offerings.all():
-                semester_name = course_offering.semester.name.name
+    course_offerings = CourseOffering.objects.filter(
+        Q(course__subject__department=department)&
+        Q(semester__year=academic_year_object)).select_related(
+            'semester__name__name',
+            'semester__year__begin_on__year',
+            'course__subject')
 
-                scheduled_classes = course_offering.scheduled_classes.all()
-                if len(scheduled_classes)==0:
-                    meetings_scheduled = False
-                    meeting_times_list = ["---"]
-                    room_list = ["---"]
-                else:
-                    meetings_scheduled = True
-                    meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
-#                    room_list = room_list_summary(scheduled_classes)
+    scheduled_classes = ScheduledClass.objects.filter(
+        Q(course_offering__course__subject__department=department)&
+        Q(course_offering__semester__year=academic_year_object)).select_related(
+            'room__building',
+            'course_offering__semester__name__name',
+            'course_offering__semester__year__begin_on__year',
+            'course_offering__course__subject')
 
-                if course_offering.semester.year.begin_on.year == academic_year:
-                    number = u"{0} {1}".format(course_offering.course.subject,
-                                               course_offering.course.number)
-                    course_name = course_offering.course.title
-                    available_load_hours = course_offering.load_available
 
-                    if abs(round(available_load_hours)-available_load_hours)<0.01:
-                        # if the load is close to an int, round it, then int it (adding 0.01 to be on the safe side)
-                        available_load_hours = int(round(available_load_hours)+0.01)
-                    # must be an easier way to do this....
-                    load_list = []
-                    for ii in range(number_faculty):
-                        load_list.append([-1,0])
-                    # using _set.all() allows us to get the info in the intermediate ("through") table
-#                    for instructor in course_offering.offeringinstructor_set.all():
-                    for instructor in course_offering.offering_instructors.all():
-                        if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
-                            instructor_load = load_hour_rounder(instructor.load_credit)
-                            instructor_id = instructor.instructor.id
-                            ii = instructordict[instructor_id]
-                            jj = semesterdict[semester_name]
-                            load_list[ii][0] = instructor_load
-                            load_list[ii][1] = jj
-                            faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
+    offering_instructors = OfferingInstructor.objects.filter(
+        Q(course_offering__course__subject__department=department)&
+        Q(course_offering__semester__year=academic_year_object)).select_related(
+            'course_offering',
+            'instructor__last_name',
+            'instructor__first_name')
+        
+    course_offering_dict = dict()
+    
+    for course_offering in course_offerings:
+        course_offering_dict[course_offering.id] = {
+            'course_offering': course_offering,
+            'scheduled_classes': [],
+            'offering_instructors': []
+            }
 
-                    load_diff = load_hour_rounder(course_offering.load_difference())
+    for scheduled_class in scheduled_classes:
+        co_id = scheduled_class.course_offering.id
+        course_offering_dict[co_id]['scheduled_classes'].append(scheduled_class)
 
-                    data_list.append({'number':number,
-                                      'name':course_name,
-                                      'rooms':room_list,
-                                      'load_hours': available_load_hours,
-                                      'load_difference': load_diff,
-                                      'load_hour_list': load_list,
-                                      'course_id':course_offering.course.id,
-                                      'id':course_offering.id,
-                                      'comment':course_offering.comment,
-                                      'semester':semester_name,
-                                      'meeting_times':meeting_times_list,
-                                      'meetings_scheduled':meetings_scheduled
-                                      })
-                    if ((meetings_scheduled == False) or (load_diff != 0)):
-                        unassigned_overassigned_data_list.append({
-                                'number':number,
-                                'name':course_name,
-                                'rooms':room_list,
-                                'load_hours': available_load_hours,
-                                'load_difference': load_diff,
-                                'load_hour_list': load_list,
-                                'course_id':course_offering.course.id,
-                                'id':course_offering.id,
-                                'comment':course_offering.comment,
-                                'semester':semester_name,
-                                'meeting_times':meeting_times_list,
-                                'meetings_scheduled':meetings_scheduled
-                                })
+    for offering_instructor in offering_instructors:
+        co_id = offering_instructor.course_offering.id
+        course_offering_dict[co_id]['offering_instructors'].append(offering_instructor)
+
+    for key in course_offering_dict:
+        semester_name = course_offering_dict[key]['course_offering'].semester.name.name
+        classes = course_offering_dict[key]['scheduled_classes']
+        if not classes:
+            meetings_scheduled = False
+            meeting_times_list = ["---"]
+            room_list = ["---"]
+        else:
+            meetings_scheduled = True
+            meeting_times_list, room_list = class_time_and_room_summary(classes)
+            
+        number = u"{0} {1}".format(course_offering_dict[key]['course_offering'].course.subject,
+                                   course_offering_dict[key]['course_offering'].course.number)
+        course_name = course_offering_dict[key]['course_offering'].course.title
+        available_load_hours = course_offering_dict[key]['course_offering'].load_available
+
+        if abs(round(available_load_hours)-available_load_hours)<0.01:
+            # if the load is close to an int, round it, then int it (adding 0.01 to be on the safe side)
+            available_load_hours = int(round(available_load_hours)+0.01)
+
+        load_list = []
+        load_assigned = 0
+        for ii in range(number_faculty):
+            load_list.append([-1,0])
+
+        for instructor in course_offering_dict[key]['offering_instructors']:
+            load_assigned+=instructor.load_credit
+            if instructor.instructor in faculty_to_view:
+                instructor_load = load_hour_rounder(instructor.load_credit)
+                instructor_id = instructor.instructor.id
+                ii = instructordict[instructor_id]
+                jj = semesterdict[semester_name]
+                load_list[ii][0] = instructor_load
+                load_list[ii][1] = jj
+                faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
+
+        load_diff = load_hour_rounder(course_offering_dict[key]['course_offering'].load_available - load_assigned)
+
+        data_list.append({'number':number,
+                          'name':course_name,
+                          'rooms':room_list,
+                          'load_hours': available_load_hours,
+                          'load_difference': load_diff,
+                          'load_hour_list': load_list,
+                          'course_id':course_offering_dict[key]['course_offering'].course.id,
+                          'id':course_offering_dict[key]['course_offering'].id,
+                          'comment':course_offering_dict[key]['course_offering'].comment,
+                          'semester':semester_name,
+                          'meeting_times':meeting_times_list,
+                          'meetings_scheduled':meetings_scheduled
+        })
+        if ((meetings_scheduled == False) or (load_diff != 0)):
+            unassigned_overassigned_data_list.append({
+                'number':number,
+                'name':course_name,
+                'rooms':room_list,
+                'load_hours': available_load_hours,
+                'load_difference': load_diff,
+                'load_hour_list': load_list,
+                'course_id':course_offering.course.id,
+                'id':course_offering.id,
+                'comment':course_offering.comment,
+                'semester':semester_name,
+                'meeting_times':meeting_times_list,
+                'meetings_scheduled':meetings_scheduled
+            })
+
+    data_list_unsorted = data_list
+    data_list = sorted(data_list_unsorted, key=lambda row: row['number'])
+#    assert False
 
     admin_data_list=[]
     unassigned_admin_data_list=[]
 
-    for other_load_type in user_preferences.other_load_types_to_view.all():
+    other_load_types = user_preferences.other_load_types_to_view.all()
+    other_loads = OtherLoad.objects.filter(
+        Q(semester__year=academic_year_object)&
+        Q(instructor__department=department)).select_related(
+            'load_type',
+            'instructor__last_name',
+            'instructor__first_name',
+            'semester__name__name')
+
+    other_load_type_dict = dict()
+    for other_load_type in other_load_types:
+        other_load_type_dict[other_load_type.id] = {
+            'load_type': other_load_type,
+            'loads': []
+        }
+
+    for load in other_loads:
+        if (load.load_type in other_load_types) and (load.instructor in faculty_to_view):
+            other_load_type_dict[load.load_type.id]['loads'].append(load)
+    
+#    assert False
+    for key in other_load_type_dict:
         load_list = []
         total_other_load=0
         for ii in range(number_faculty):
             load_list.append([0,0,0])
-        for other_load in other_load_type.other_loads.all():
+        for other_load in other_load_type_dict[key]['loads']:
             instructor_id = other_load.instructor.id
-            if other_load.semester.year.begin_on.year == academic_year and instructor_id in instructor_id_list:
-                semester_name = other_load.semester.name.name
-                ii = instructordict[instructor_id]
-                jj = semesterdict[semester_name]
-                load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
-                faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
+            semester_name = other_load.semester.name.name
+            ii = instructordict[instructor_id]
+            jj = semesterdict[semester_name]
+            load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
+            faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
         for ii in range(number_faculty):
             total_other_load=total_other_load+sum(load_list[ii])
-        admin_data_list.append({'load_type': other_load_type.load_type,
+        admin_data_list.append({'load_type': other_load_type_dict[key]['load_type'].load_type,
                                 'load_hour_list': load_list,
-                                'id':other_load_type.id,
+                                'id':other_load_type_dict[key]['load_type'].id,
                                 'total_load':load_hour_rounder(total_other_load)
                                 })
         if load_hour_rounder(total_other_load)==0:
+            print other_load_type_dict[key]
+            
             unassigned_admin_data_list.append({
-                    'load_type': other_load_type.load_type,
-                    'load_hour_list': load_list,
-                    'id':other_load_type.id,
-                    'total_load':load_hour_rounder(total_other_load)
-                    })
+                'load_type': other_load_type_dict[key]['load_type'].load_type,
+                'load_hour_list': load_list,
+                'id':other_load_type_dict[key]['load_type'].id,
+                'total_load':load_hour_rounder(total_other_load)
+            })
+
+    
+#    assert False
+            
+#    for other_load_type in user_preferences.other_load_types_to_view.all():
+#        load_list = []
+#        total_other_load=0
+#        for ii in range(number_faculty):
+#            load_list.append([0,0,0])
+#        for other_load in other_load_type.other_loads.all():
+#            instructor_id = other_load.instructor.id
+#            if other_load.semester.year.begin_on.year == academic_year and instructor_id in instructor_id_list:
+#                semester_name = other_load.semester.name.name
+#                ii = instructordict[instructor_id]
+#                jj = semesterdict[semester_name]
+#                load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
+#                faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
+#        for ii in range(number_faculty):
+#            total_other_load=total_other_load+sum(load_list[ii])
+#        admin_data_list.append({'load_type': other_load_type.load_type,
+#                                'load_hour_list': load_list,
+#                                'id':other_load_type.id,
+#                                'total_load':load_hour_rounder(total_other_load)
+#                                })
+#        if load_hour_rounder(total_other_load)==0:
+#            unassigned_admin_data_list.append({
+#                    'load_type': other_load_type.load_type,
+#                    'load_hour_list': load_list,
+#                    'id':other_load_type.id,
+#                    'total_load':load_hour_rounder(total_other_load)
+#                    })
 
     total_load_hours=[]
     for ii in range(number_faculty):
@@ -2245,7 +2338,7 @@ def update_other_load(request, id):
         return render(request, 'update_other_load.html', dict)
 
 @login_required
-def update_rooms_to_view(request, id):
+def update_rooms_to_view_old(request, id):
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -2261,14 +2354,65 @@ def update_rooms_to_view(request, id):
             next = request.GET.get('next', 'home')
             return redirect(next)
         else:
-            return render(request, 'update_rooms_to_view.html', {'form': form})
+            return render(request, 'update_rooms_to_view_old.html', {'form': form})
     else:
         form = UpdateRoomsToViewForm(instance=instance)
         context = {'form': form}
-        return render(request, 'update_rooms_to_view.html', context)
+        return render(request, 'update_rooms_to_view_old.html', context)
+
 
 @login_required
-def update_faculty_to_view(request, id):
+def update_rooms_to_view(request, id):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    year = user_preferences.academic_year_to_view
+    rooms_to_view = user_preferences.rooms_to_view.all()
+
+    if request.method == 'POST':
+        rooms_to_display_id_list = request.POST.getlist('rooms_to_display')
+        user_preferences.rooms_to_view.clear()
+        for room_id in rooms_to_display_id_list:
+            room = Room.objects.get(pk=room_id)
+            user_preferences.rooms_to_view.add(room)
+        next = request.GET.get('next', 'home')
+        return redirect(next)
+    else:
+        buildings=Building.objects.all()
+        room_info = []
+        rooms_in_use = []
+        rooms_not_in_use = []
+        for building in buildings:
+            room_list = []
+            for room in building.rooms.all():
+                in_use = room.classes_scheduled(year, department)
+                if in_use:
+                    rooms_in_use.append(room.id)
+                else:
+                    rooms_not_in_use.append(room.id)
+                if room in rooms_to_view:
+                    view_this_room = True
+                else:
+                    view_this_room = False
+                room_list.append({'room': room, 'in_use': in_use, 'view_this_room': view_this_room})
+            room_info.append({
+                'building': building,
+                'rooms': room_list,
+            })
+
+        json_rooms_in_use = json.dumps(rooms_in_use)
+        json_rooms_not_in_use = json.dumps(rooms_not_in_use)
+        context = {'room_info': room_info,
+                   'json_rooms_in_use': json_rooms_in_use,
+                   'json_rooms_not_in_use': json_rooms_not_in_use}
+        
+        return render(request, 'update_rooms_to_view.html', context)
+
+    
+@login_required
+def update_faculty_to_view_old(request, id):
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -2287,9 +2431,62 @@ def update_faculty_to_view(request, id):
             return render(request, 'update_faculty_to_view.html', {'form': form})
     else:
         form = UpdateFacultyToViewForm(department_id, instance=instance)
+        print form
         context = {'form': form}
+        return render(request, 'update_faculty_to_view_old.html', context)
+
+@login_required
+def update_faculty_to_view(request, id):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    year = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+
+    if request.method == 'POST':
+        faculty_to_display_id_list = request.POST.getlist('faculty_to_display')
+        user_preferences.faculty_to_view.clear()
+        for faculty_id in faculty_to_display_id_list:
+            faculty = FacultyMember.objects.get(pk=faculty_id)
+            user_preferences.faculty_to_view.add(faculty)
+        next = request.GET.get('next', 'home')
+        return redirect(next)
+    else:
+        all_faculty=FacultyMember.objects.filter(department=department)
+        
+        faculty_info = []
+        faculty_with_loads = []
+        faculty_without_loads = []
+        for faculty in all_faculty:
+            total_load = load_hour_rounder(faculty.load(year))
+            if total_load > 0:
+                has_load = True
+                faculty_with_loads.append(faculty.id)
+            else:
+                has_load = False
+                faculty_without_loads.append(faculty.id)
+#            json_bls = json.dumps(budget_lines_with_subaccounts)
+            if faculty in faculty_to_view:
+                view_this_faculty = True
+            else:
+                view_this_faculty = False
+            faculty_info.append({
+                'faculty': faculty,
+                'view_this_faculty': view_this_faculty,
+                'load': total_load,
+                'has_load': has_load
+            })
+
+        json_faculty_with_loads = json.dumps(faculty_with_loads)
+        json_faculty_without_loads = json.dumps(faculty_without_loads)
+        context = {'faculty_info': faculty_info,
+                   'json_faculty_with_loads': json_faculty_with_loads,
+                   'json_faculty_without_loads': json_faculty_without_loads}
         return render(request, 'update_faculty_to_view.html', context)
 
+    
 @login_required
 def update_department_to_view(request):
     """
