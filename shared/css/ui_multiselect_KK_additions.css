@@ -1,0 +1,59 @@
+/*
+Used for the styling of the ui.multiselect.js two-pane multiselect widget.
+*/
+.header-container {
+width: 720px;
+height: 40px;
+margin-left: auto;
+margin-right: auto;
+border-style: solid;
+border-width: 2px;
+border-color: gray;
+border-radius: 4px;
+padding-top: 17px;
+font-size: 20px;
+background-color: #eee;
+font-weight: normal;
+}
+.header-box-left {
+width: 358px;
+/*height: 20px;*/
+/*border-style: solid;*/
+/*border-color: black;*/
+/*border-width: 2px;*/
+float: left;
+/*border: solid;*/
+border-right: solid 4px gray;
+}
+.header-box-right {
+width: 358px;
+/*height: 20px;*/
+/*border-style: solid;*/
+/*border-color: black;*/
+/*border-width: 2px;*/
+float: left;
+/*border: solid;*/
+}
+.header-center {
+width: 90px;
+margin-left: 0px;
+/*border-style: solid;*/
+/*border-color: black;*/
+/*border-width: 2px;*/
+float: left;
+}
+.instructions-container {
+width: 900px;
+height: 60px;
+margin-left: auto;
+margin-right: auto;
+border-style: solid;
+border-width: 2px;
+border-color: gray;
+border-radius: 4px;
+padding-top: 0px;
+color: #31708f;
+background-color: #d9edf7;
+border-color: #bce8f1;
+font-weight: normal;
+}
