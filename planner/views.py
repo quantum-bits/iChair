@@ -409,8 +409,10 @@ def collect_data_for_summary(request):
 
     data_list_unsorted = data_list
     data_list = sorted(data_list_unsorted, key=lambda row: row['number'])
-#    assert False
 
+    unsorted_list = unassigned_overassigned_data_list
+    unassigned_overassigned_data_list = sorted(unsorted_list, key=lambda row: row['number'])
+    
     admin_data_list=[]
     unassigned_admin_data_list=[]
 
