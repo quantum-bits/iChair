@@ -399,9 +399,9 @@ def collect_data_for_summary(request):
                 'load_hours': available_load_hours,
                 'load_difference': load_diff,
                 'load_hour_list': load_list,
-                'course_id':course_offering.course.id,
-                'id':course_offering.id,
-                'comment':course_offering.comment,
+                'course_id':course_offering_dict[key]['course_offering'].course.id,
+                'id':course_offering_dict[key]['course_offering'].id,
+                'comment':course_offering_dict[key]['course_offering'].comment,
                 'semester':semester_name,
                 'meeting_times':meeting_times_list,
                 'meetings_scheduled':meetings_scheduled
