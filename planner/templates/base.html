@@ -151,7 +151,7 @@ div.page-name h1 {
 		<li><a href="{% url 'planner.views.weekly_course_schedule_entire_dept' %}">Summary</a></li>
 	      </ul>
 	    </li>
-	    <li title="View the course schedule in the Registrar's format" id="nav-registrarsummary"><a href="{% url 'planner.views.registrar_schedule' %}">Master Schedule View</a><i></i></li>
+	    <li title="View the course schedule in the Registrar's format" id="nav-registrarsummary"><a href="{% url 'planner.views.registrar_schedule' 0 %}">Master Schedule View</a><i></i></li>
 	    <li title = "Edit course properties; view an overall summary of courses offered during different years" id="nav-coursesummary"><a href="{% url 'planner.views.course_summary' 0 %}">Course Summary</a><i></i></li>
 <!--<li id="nav-profile"><a href="{% url 'planner.views.display_notes' %}">Notes</a><i></i></li>
 -->

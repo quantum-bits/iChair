@@ -21,8 +21,34 @@ import xlwt
 from os.path import expanduser
 from datetime import date
 
+from reportlab.pdfgen import canvas
+
+import cStringIO as StringIO
+from xhtml2pdf import pisa
+from django.template.loader import get_template
+from django.template import Context
+from django.http import HttpResponse
+from cgi import escape
+
+
+def render_to_pdf(template_src, context_dict):
+    template = get_template(template_src)
+    context = Context(context_dict)
+    html  = template.render(context)
+    result = StringIO.StringIO()
+
+    pdf = pisa.pisaDocument(StringIO.StringIO(html.encode("ISO-8859-1")), result)
+    if not pdf.err:
+        return HttpResponse(result.getvalue(), content_type='application/pdf')
+    return HttpResponse('We had some errors<pre>%s</pre>' % escape(html))
+
+
+
 # TO DO:
 
+# Idea from Art White: State total # of hours being taught on the fac ld summary
+# Another idea from Art: Make columns hide-able in faculty load summary page; need some way to indicate
+#                        which columns are hidden, though...!
 # !!! add something to the Faculty Load Summary page that checks
 #     if there are faculty members who are receiving load, but who are
 #     not being displayed; if so, put a warning of some sort on the faculty
@@ -123,6 +149,28 @@ def profile(request):
                 'username': user.username
                 }
     return render(request, 'profile.html', context)
+
+
+
+
+
+def generate_pdf(request):
+    # Create the HttpResponse object with the appropriate PDF headers.
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="somefilename.pdf"'
+
+    # Create the PDF object, using the response object as its "file."
+    p = canvas.Canvas(response)
+
+    # Draw things on the PDF. Here's where the PDF generation happens.
+    # See the ReportLab documentation for the full list of functionality.
+    p.drawString(100, 100, "Hello world.")
+
+    # Close the PDF object cleanly, and we're done.
+    p.showPage()
+    p.save()
+    return response
+
 
 @login_required
 def display_notes(request):
@@ -255,12 +303,6 @@ def collect_data_for_summary(request):
 #     assumes that Fall will be "0", etc., and this is tied to "seq" in the database.  UGLY!!!
 #
 
-# TO DO:
-# 1. alphabetize by subject and then by course (or maybe just by course number...that should take care of it)
-# 2. load in current data from iChair and then do a comparison that all numbers are the same in load totals, etc.
-# 3. go to a completely different way of choosing faculty to display -- list them in a table, state # of load hours
-#    for this academic year; put a checkbox....easy-peasy
-
     ii = 0
     load_list_initial=[]
     instructordict=dict()
@@ -365,8 +407,15 @@ def collect_data_for_summary(request):
         for ii in range(number_faculty):
             load_list.append([-1,0])
 
+        instructor_list = []  
         for instructor in course_offering_dict[key]['offering_instructors']:
             load_assigned+=instructor.load_credit
+
+            instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name+
+                                   ' ['+str(load_hour_rounder(instructor.load_credit))+'/'
+                                   +str(load_hour_rounder(available_load_hours))+']'
+            )
+            
             if instructor.instructor in faculty_to_view:
                 instructor_load = load_hour_rounder(instructor.load_credit)
                 instructor_id = instructor.instructor.id
@@ -376,6 +425,9 @@ def collect_data_for_summary(request):
                 load_list[ii][1] = jj
                 faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
 
+        if len(instructor_list)==0:
+            instructor_list = ['TBA']
+            
         load_diff = load_hour_rounder(course_offering_dict[key]['course_offering'].load_available - load_assigned)
 
         data_list.append({'number':number,
@@ -384,6 +436,7 @@ def collect_data_for_summary(request):
                           'load_hours': available_load_hours,
                           'load_difference': load_diff,
                           'load_hour_list': load_list,
+                          'instructor_list': instructor_list,
                           'course_id':course_offering_dict[key]['course_offering'].course.id,
                           'id':course_offering_dict[key]['course_offering'].id,
                           'comment':course_offering_dict[key]['course_offering'].comment,
@@ -399,6 +452,7 @@ def collect_data_for_summary(request):
                 'load_hours': available_load_hours,
                 'load_difference': load_diff,
                 'load_hour_list': load_list,
+                'instructor_list': instructor_list,
                 'course_id':course_offering_dict[key]['course_offering'].course.id,
                 'id':course_offering_dict[key]['course_offering'].id,
                 'comment':course_offering_dict[key]['course_offering'].comment,
@@ -442,6 +496,9 @@ def collect_data_for_summary(request):
         total_other_load=0
         for ii in range(number_faculty):
             load_list.append([0,0,0])
+
+        instructor_loads_abbrev = []  
+            
         for other_load in other_load_type_dict[key]['loads']:
             instructor_id = other_load.instructor.id
             semester_name = other_load.semester.name.name
@@ -449,10 +506,18 @@ def collect_data_for_summary(request):
             jj = semesterdict[semester_name]
             load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
             faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
+
+            instructor_loads_abbrev.append(other_load.instructor.first_name[:1]+
+                                           ' '+other_load.instructor.last_name+
+                                           ' ['+str(load_hour_rounder(other_load.load_credit))+' - '
+                                           +semester_name+']'
+            )
+            
         for ii in range(number_faculty):
             total_other_load=total_other_load+sum(load_list[ii])
         admin_data_list.append({'load_type': other_load_type_dict[key]['load_type'].load_type,
                                 'load_hour_list': load_list,
+                                'instructor_loads_abbrev': instructor_loads_abbrev,
                                 'id':other_load_type_dict[key]['load_type'].id,
                                 'total_load':load_hour_rounder(total_other_load)
                                 })
@@ -462,6 +527,7 @@ def collect_data_for_summary(request):
             unassigned_admin_data_list.append({
                 'load_type': other_load_type_dict[key]['load_type'].load_type,
                 'load_hour_list': load_list,
+                'instructor_loads_abbrev': instructor_loads_abbrev,
                 'id':other_load_type_dict[key]['load_type'].id,
                 'total_load':load_hour_rounder(total_other_load)
             })
@@ -2226,8 +2292,22 @@ def allow_delete_course_confirmation(request):
     return render(request, 'allow_delete_course_confirmation.html', context)
 
 @login_required
-def registrar_schedule(request):
+def registrar_schedule(request, printer_friendly_flag):
     """Display courses in roughly the format used by the registrar"""
+    # printer_friendly_flag == 0 => display the usual page
+    # printer_friendly_flag == 1 => display the printer-friendly version in a new tab with small font
+    # printer_friendly_flag == 2 => display the printer-friendly version in a new tab with larger font
+
+    if int(printer_friendly_flag)==0:
+        printer_friendly = False
+        font_size_large = False
+    else:
+        printer_friendly = True
+        if int(printer_friendly_flag)==2:
+            font_size_large = True
+        else:
+            font_size_large = False
+
     request.session["return_to_page"] = "/planner/registrarschedule/"
     close_all_divs(request) # next time the dept load summary page is opened, all divs will be closed
 
@@ -2286,8 +2366,19 @@ def registrar_schedule(request):
                                                 })
 
     context={'registrar_data_list':registrar_data_list, 'department': department, 
-             'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id}
-    return render(request, 'registrar_schedule.html', context)
+             'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id,
+             'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large
+    }
+
+    if printer_friendly:
+        context['base_html']='emptybase.html'
+        return render_to_pdf(
+            'registrar_schedule.html',
+            context
+        )
+    else:
+        context['base_html']='base.html'
+        return render(request, 'registrar_schedule.html', context)
 
 @login_required
 def update_other_load(request, id):

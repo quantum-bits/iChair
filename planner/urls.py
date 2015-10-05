@@ -18,7 +18,7 @@ urlpatterns = patterns(
     url(r'^weeklyschedule/$', 'weekly_schedule', name='weekly_schedule'),
     url(r'^weeklyscheduledeptsummary/$', 'weekly_course_schedule_entire_dept', name='weekly_course_schedule_entire_dept'),
     url(r'^dailyschedule/$', 'daily_schedule', name='daily_schedule'),
-    url(r'^registrarschedule/$', 'registrar_schedule', name='registrar_schedule'),
+    url(r'^registrarschedule/(\d+)/$', 'registrar_schedule', name='registrar_schedule'),
     url(r'^roomschedule/$', 'room_schedule', name='room_schedule'),
     url(r'^courseschedule/$', 'course_schedule', name='course_schedule'),
     url(r'^selectcourse/$', 'select_course', name='select_course'),
@@ -39,6 +39,8 @@ urlpatterns = patterns(
     url(r'^copycourses/(\d+)/(\d+)/$', 'copy_courses', name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', 'choose_year_course_copy', name='choose_year_course_copy'),
 
+    url(r'^generatepdf/$', 'generate_pdf', name='generate_pdf'),
+    
     url(r'^notes/', 'display_notes', name='display_notes'),
     url(r'^addnote/', 'add_new_note', name='add_new_note'),
     url(r'^updateNote/(\d+)/$', 'update_note', name='update_note'),
