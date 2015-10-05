@@ -1,0 +1,42 @@
+{% extends base_html %}
+
+{% block content %}
+
+<style type="text/css">
+            @page {
+                size: {{ pagesize }};
+                margin: 1cm;
+                @frame footer {
+                    -pdf-frame-content: footerContent;
+                    bottom: 0cm;
+                    margin-left: 9cm;
+                    margin-right: 9cm;
+                    height: 1cm;
+                }
+            }
+</style>
+
+<div>
+Department: {{mylist.department}}
+</div>
+
+        <div>
+            {% for item in mylist.datablock %}
+                {{item}}
+            {% endfor %}
+        </div>
+        <div id="footerContent">
+            {%block page_foot%}
+                Page <pdf:pagenumber>
+            {%endblock%}
+        </div>
+    </body>
+
+  <script>
+    $(window).load(function(){
+    $("#nav-home").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>...a tool for planning faculty loads</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+  </script>
+
+{% endblock %}
