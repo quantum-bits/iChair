@@ -2308,7 +2308,7 @@ def registrar_schedule(request, printer_friendly_flag):
         else:
             font_size_large = False
 
-    request.session["return_to_page"] = "/planner/registrarschedule/"
+    request.session["return_to_page"] = "/planner/registrarschedule/0/"
     close_all_divs(request) # next time the dept load summary page is opened, all divs will be closed
 
     user = request.user
