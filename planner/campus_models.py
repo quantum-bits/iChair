@@ -345,7 +345,7 @@ class Course(StampedModel):
 
     attributes = models.ManyToManyField(CourseAttribute, related_name='courses', blank=True)
 
-    schedule_semester = models.ManyToManyField(SemesterName, blank=True, null=True, help_text='Semester(s) offered')
+    schedule_semester = models.ManyToManyField(SemesterName, blank=True, help_text='Semester(s) offered')
     schedule_year = models.CharField(max_length=1, choices=SCHEDULE_YEAR_CHOICES, default = 'B')
 
     crn = models.CharField(max_length=10, blank=True, null=True)
@@ -368,8 +368,8 @@ class Student(Person):
                                       help_text='Year student entered university')
     catalog_year = models.ForeignKey(AcademicYear, related_name='+',
                                      help_text='Catalog year for graduation plan')
-    majors = models.ManyToManyField(Major, related_name='students', blank=True, null=True)
-    minors = models.ManyToManyField(Minor, related_name='students', blank=True, null=True)
+    majors = models.ManyToManyField(Major, related_name='students', blank=True)
+    minors = models.ManyToManyField(Minor, related_name='students', blank=True)
 
 class OtherLoadType(models.Model):
     """Types of load other than for teaching course (e.g., administrative load, sabbatical, etc.)"""
@@ -392,7 +392,7 @@ class CourseOffering(StampedModel):
     course = models.ForeignKey(Course, related_name='offerings')
     semester = models.ForeignKey(Semester, related_name='offerings')
     instructor = models.ManyToManyField(FacultyMember, through='OfferingInstructor',
-                                        blank=True, null=True,
+                                        blank=True,
                                         related_name='course_offerings')
     load_available = models.FloatField(default=3)
     max_enrollment = models.PositiveIntegerField(default=10)
@@ -514,18 +514,18 @@ class UserPreferences(models.Model):
     user = models.ForeignKey(User, related_name = 'user_preferences')
     department_to_view = models.ForeignKey(Department, related_name = 'user_preferences')
     faculty_to_view = models.ManyToManyField(FacultyMember,
-                                        blank=True, null=True,
+                                        blank=True,
                                         related_name='user_preferences')
     academic_year_to_view = models.ForeignKey(AcademicYear, related_name = 'user_preferences')
 
     permission_level = models.IntegerField(choices = PERMISSION_CHOICES, default = VIEW_ONLY)
 
     rooms_to_view = models.ManyToManyField(Room,
-                                           blank=True, null=True,
+                                           blank=True,
                                            related_name='user_preferences')
 
     other_load_types_to_view = models.ManyToManyField(OtherLoadType,
-                                                      blank=True, null=True,
+                                                      blank=True,
                                                       related_name='user_preferences')
 
     def __unicode__(self):
