@@ -8,7 +8,8 @@ from django.db.models import Q
 from django.forms.models import inlineformset_factory
 from django.shortcuts import render, redirect
 from django.template import RequestContext
-from django.utils import simplejson
+#from django.utils import simplejson
+import json as simplejson
 from django.utils.functional import curry
 
 from .models import *
@@ -346,7 +347,7 @@ def collect_data_for_summary(request):
         Q(course__subject__department=department)&
         Q(semester__year=academic_year_object)).select_related(
             'semester__name__name',
-            'semester__year__begin_on__year',
+            'semester__year__begin_on',
             'course__subject')
 
     scheduled_classes = ScheduledClass.objects.filter(
@@ -354,7 +355,7 @@ def collect_data_for_summary(request):
         Q(course_offering__semester__year=academic_year_object)).select_related(
             'room__building',
             'course_offering__semester__name__name',
-            'course_offering__semester__year__begin_on__year',
+            'course_offering__semester__year__begin_on',
             'course_offering__course__subject')
 
 

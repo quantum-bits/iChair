@@ -8,6 +8,7 @@ from django.forms.widgets import RadioSelect
 class RequirementForm(forms.ModelForm):
     class Meta:
         model = Requirement
+        fields = "__all__"
 
     def clean(self):
         courses = self.cleaned_data.get('courses')
@@ -190,6 +191,7 @@ class InstructorForm(forms.ModelForm):
 
     class Meta:
         model = OfferingInstructor
+        fields = "__all__"
 
 
 #class ManageCourseOfferingForm(forms.ModelForm):
@@ -346,6 +348,7 @@ class OtherLoadForm(forms.ModelForm):
 
     class Meta:
         model = OtherLoad
+        fields = "__all__"
 
 class UpdateRoomsToViewForm(forms.ModelForm):
 

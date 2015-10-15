@@ -343,7 +343,7 @@ class Course(StampedModel):
     prereqs = models.ManyToManyField('Requirement', blank=True, related_name='prereq_for')
     coreqs  = models.ManyToManyField('Requirement', blank=True, related_name='coreq_for')
 
-    attributes = models.ManyToManyField(CourseAttribute, related_name='courses', blank=True, null=True)
+    attributes = models.ManyToManyField(CourseAttribute, related_name='courses', blank=True)
 
     schedule_semester = models.ManyToManyField(SemesterName, blank=True, null=True, help_text='Semester(s) offered')
     schedule_year = models.CharField(max_length=1, choices=SCHEDULE_YEAR_CHOICES, default = 'B')
