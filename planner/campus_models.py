@@ -65,6 +65,17 @@ class Minor(models.Model):
     def __unicode__(self):
         return self.name
 
+class AcademicYear(models.Model):
+    begin_on = models.DateField()
+    end_on = models.DateField()
+
+    class Meta:
+        ordering = [ 'begin_on' ]
+
+    def __unicode__(self):
+        return '{0}-{1}'.format(self.begin_on.year, self.end_on.year)
+
+    
 class FacultyMember(Person):
     RANK_CHOICES = (('Inst', 'Instructor'),
                     ('Adj', 'Adjunct Professor'),
@@ -75,7 +86,8 @@ class FacultyMember(Person):
     faculty_id = models.CharField(max_length=25)
     department = models.ForeignKey(Department, related_name='faculty')
     rank = models.CharField(max_length=8, choices=RANK_CHOICES)
-
+    inactive_starting = models.ForeignKey(AcademicYear, related_name='faculty', blank=True, null=True)
+    
     class Meta:
         ordering = ['last_name','first_name']
 
@@ -114,18 +126,6 @@ class StaffMember(Person):
     university = models.ForeignKey(University, related_name='staff')
     staff_id = models.CharField(max_length=25)
     department = models.ForeignKey(Department, related_name='staff')
-
-
-class AcademicYear(models.Model):
-    begin_on = models.DateField()
-    end_on = models.DateField()
-
-    class Meta:
-        ordering = [ 'begin_on' ]
-
-    def __unicode__(self):
-        return '{0}-{1}'.format(self.begin_on.year, self.end_on.year)
-
 
 class SemesterName(models.Model):
     """Name for a semester. Using model here may be overkill, but it provides a nice way in
