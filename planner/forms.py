@@ -13,7 +13,6 @@ class RequirementForm(forms.ModelForm):
     def clean(self):
         courses = self.cleaned_data.get('courses')
         requirements = self.cleaned_data.get('requirements')
-        print self.cleaned_data
         if bool(courses) == bool(requirements):
             raise forms.ValidationError("You need either courses or requirements but not both.")
 
@@ -185,9 +184,13 @@ class BaseInstructorFormSet(forms.models.BaseInlineFormSet):
 
 class InstructorForm(forms.ModelForm):
 
-    def __init__(self, department_id, *args, **kwargs):
+    def __init__(self, department_id, year, *args, **kwargs):
         super (InstructorForm,self).__init__(*args,**kwargs)
-        self.fields['instructor'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
+        active_fm_ids = [fm.id
+                         for fm in FacultyMember.objects.filter(department__id=department_id)
+                         if fm.is_active(year)]
+        fm_objects = FacultyMember.objects.filter(id__in=active_fm_ids)
+        self.fields['instructor'].queryset = fm_objects
 
     class Meta:
         model = OfferingInstructor
@@ -208,6 +211,8 @@ class InstructorForm(forms.ModelForm):
 
 class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
 
+    class Meta:
+        fields = "__all__"
     def clean(self):
         if any(self.errors):
             return
@@ -393,12 +398,40 @@ class UpdateDepartmentToViewForm(forms.ModelForm):
                    'permission_level','other_load_types_to_view',)
 
 
-#class CoursesToCopyForm(forms.Form):
-#    copy_this_course = forms.CheckboxMultiSelect(choices=['one','two'], required = False)
+class UpdateFacultyMemberForm(forms.ModelForm):
 
-#    def __init__(self, name_list, *args, **kwargs):
-#        super (CoursesToCopyForm,self).__init__(*args,**kwargs)
-#        copy_this_course = forms.CheckboxMultiSelect(choices=choices, required = False)
+#    def __init__(self, faculty_id, *args, **kwargs):
+#        super (UpdateFacultyMemberForm, self).__init__(*args,**kwargs)
+#        self.faculty_id = faculty_id
+
+    class Meta:
+        model = FacultyMember
+        exclude = ('university', 'faculty_id', 'department',
+                   'first_name', 'last_name', 'nickname', 'home_phone',
+                   'cell_phone', 'work_phone', 'photo',)
+
+    def clean(self):
+        inactive_starting_year = self.cleaned_data.get('inactive_starting')
+        if inactive_starting_year == None:
+            return self.cleaned_data
+        else:
+            years_with_nonzero_load = []
+            have_problem = False
+            for year in AcademicYear.objects.all():
+                if ((self.instance.load(year)>0) and (year.begin_on >= inactive_starting_year.begin_on)):
+                    have_problem = True
+                    years_with_nonzero_load.append('{0}-{1}'.format(year.begin_on.year, year.end_on.year))
+            if have_problem:
+                year_string = ''
+                for year in years_with_nonzero_load:
+                    year_string+=year+', '
+                if len(year_string)>2:
+                    year_string=year_string[:-2]
+                
+                error_message = 'This faculty member is carrying load during one or more academic years (' + year_string + ') that prevent him or her from being listed as inactive during '+'{0}-{1}'.format(inactive_starting_year.begin_on.year, inactive_starting_year.end_on.year) + '.  Please reassign the load for the years in question before listing the faculty member as inactive.'                          
+                raise forms.ValidationError(error_message)
+
+        return self.cleaned_data
 
 class SemesterSelectForm(forms.ModelForm):
 

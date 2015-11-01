@@ -28,6 +28,10 @@
 	  padding: 15px;
 	  font-weight: normal;
   }
+
+  div.alert.alert-student-info {
+  width: 600px!important;
+  }
   </style>
   
 <!--
@@ -117,12 +121,14 @@ font-weight: normal;
 	  <form action=""  method="post">
 		  {% csrf_token %}
 		  <p><input type="submit" value="Submit"/></p>
-		  <div class="alert alert-student-info">
+		  <div class="alert alert-student-info wide">
 		    
 			  <table class="table table-striped table-bordered table-hover">
 				  <thead>
 					  <tr>
-						  <th> Faculty Member </th>
+					    <th> Faculty Member </th>
+					    <th style="text-align: center;"> Rank/Inactive </th>
+					    <th></th>
 						  <th style="text-align: center;"> # Ld Hrs </th>
 						  <th style="text-align: center;"> Display </th>
 					  </tr>
@@ -130,9 +136,20 @@ font-weight: normal;
 				  <tbody>
 					  {% for faculty in faculty_info %}
 					  <tr id="row{{faculty.faculty.id}}">
-						  <td id="faculty{{faculty.faculty.id}}">
-							  {{ faculty.faculty }}  
-						  </td>
+					    <td id="faculty{{faculty.faculty.id}}">
+							  {{ faculty.faculty }}
+					    </td>
+					    
+					    <td style="text-align: center;" >
+					      {% if faculty.faculty.inactive_starting %}
+					      Inactive as of {{faculty.faculty.inactive_starting}}
+					      {% else %}
+					      {{faculty.faculty.rank}}
+					      {% endif %}
+					    </td>
+					    <td style="text-align: center;" >
+					      <a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit Rank/Inactive</a>
+					    </td>
 						  <td style="text-align: center;" id="load{{faculty.faculty.id}}">
 							  {{ faculty.load}}
 						  </td>

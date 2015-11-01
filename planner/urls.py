@@ -35,6 +35,7 @@ urlpatterns = patterns(
     url(r'^updatedepartmenttoview/$', 'update_department_to_view', name='update_department_to_view'),
     url(r'^updateyeartoview/(\d+)/$', 'update_year_to_view', name='update_year_to_view'),
     url(r'^updateloadstoview/(\d+)/$', 'update_loads_to_view', name='update_loads_to_view'),
+    url(r'^updatefacultymember/(\d+)/$', 'update_faculty_member', name='update_faculty_member'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', 'copy_courses', name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', 'choose_year_course_copy', name='choose_year_course_copy'),

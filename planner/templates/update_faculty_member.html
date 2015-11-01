@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+   <div class="content-center">
+
+     <h2> Name: {{faculty_member.first_name}} {{faculty_member.last_name}} </h2>
+
+     {% if form.non_field_errors %}
+     <div class="alert alert-error">
+      {{form.non_field_errors}}
+    </div>
+     {% endif %}
+     
+     <form action=""  method="post">
+      {% csrf_token %}
+
+      <div >Rank: </div> <div>{{ form.rank }} </div>
+
+      <div >Inactive Starting: </div><div>{{ form.inactive_starting }} </div>
+      <p><input type="submit" value="Submit" /></p>
+     </form>
+
+</div>
+
+   <script>
+    $(window).load(function(){
+    $('.page-name').find('h1').replaceWith('<h1>Update Data for Faculty Member</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+   </script>
+
+{% endblock %}

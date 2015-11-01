@@ -74,7 +74,7 @@ class AcademicYear(models.Model):
 
     def __unicode__(self):
         return '{0}-{1}'.format(self.begin_on.year, self.end_on.year)
-
+ 
     
 class FacultyMember(Person):
     RANK_CHOICES = (('Inst', 'Instructor'),
@@ -106,21 +106,22 @@ class FacultyMember(Person):
 
         return total_load
 
+    def is_active(self, academic_year_object):
+        """
+        Returns True if the person is still active in the given academic year
+        """
+        active = True
+        if not self.inactive_starting:
+            return active
+        else:
+            if self.inactive_starting.begin_on.year <= academic_year_object.begin_on.year:
+                # this person is currently inactive
+                active = False
+                return active
+            else:
+                # this person is inactive, but in a later year
+                return active
         
-#    def load(self, semester_id):
-#        """Total load for this faculty member for a particular semester"""
-
-#        for instructor in self.offeringinstructor_set.all():
-#            load_assigned = load_assigned + instructor.load_credit
-
-#for c in KK.offering_instructors.all():
-#...    c.load_credit
-#...    c.course_offering
-#Semester.objects.get(pk=1)
-#for s in Semester.objects.all():
-#...    s.id
-#        return self.load_available-load_assigned
-
 
 class StaffMember(Person):
     university = models.ForeignKey(University, related_name='staff')

@@ -47,6 +47,9 @@ def render_to_pdf(template_src, context_dict):
 
 # TO DO:
 
+# ==> drop "Display" checkbox on updatefacultytoview page for inactive faculty members
+#
+
 # Idea from Art White: State total # of hours being taught on the fac ld summary
 # Another idea from Art: Make columns hide-able in faculty load summary page; need some way to indicate
 #                        which columns are hidden, though...!
@@ -523,7 +526,7 @@ def collect_data_for_summary(request):
                                 'total_load':load_hour_rounder(total_other_load)
                                 })
         if load_hour_rounder(total_other_load)==0:
-            print other_load_type_dict[key]
+#            print other_load_type_dict[key]
             
             unassigned_admin_data_list.append({
                 'load_type': other_load_type_dict[key]['load_type'].load_type,
@@ -1105,11 +1108,13 @@ def update_course_offering(request,id, daisy_chain):
     form = CourseOfferingForm(instance=instance)
     department_abbrev = instance.course.subject.department.abbrev
     dept_id = instance.course.subject.department.id
+    year = instance.semester.year
     # create the formset class
 
     InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
-                                              formset=BaseInstructorFormSet)
-    InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id))
+                                              formset=BaseInstructorFormSet,
+                                              exclude = [])
+    InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id, year = year))
 
     # create the formset
     formset = InstructorFormset(instance = instance)
@@ -1184,7 +1189,7 @@ def update_class_schedule(request,id, daisy_chain):
 
 #    form = CourseOfferingForm(instance=instance)
 # create the formset class
-    ClassScheduleFormset = inlineformset_factory(CourseOffering, ScheduledClass, formset = BaseClassScheduleFormset, extra=4)
+    ClassScheduleFormset = inlineformset_factory(CourseOffering, ScheduledClass, formset = BaseClassScheduleFormset, exclude = [], extra=4)
 # create the formset
     formset = ClassScheduleFormset(instance=instance)
 
@@ -1214,7 +1219,7 @@ def update_class_schedule(request,id, daisy_chain):
                 return redirect(next)
             else:
                 url_string = '/planner/updatecourseoffering/'+str(instance.id)+'/1/'
-                print url_string
+#                print url_string
                 return redirect(url_string)
         else:
             dict["formset"]=formset
@@ -2004,7 +2009,7 @@ def manage_course_offerings(request,id):
 
     instance = Course.objects.get(pk = id)
 # create the formset class
-    CourseOfferingFormset = inlineformset_factory(Course, CourseOffering, formset = BaseCourseOfferingFormset, extra=2, exclude='instructor')
+    CourseOfferingFormset = inlineformset_factory(Course, CourseOffering, formset = BaseCourseOfferingFormset, extra=2, exclude=['instructor'])
 # create the formset
 #------new
 
@@ -2111,7 +2116,7 @@ def new_class_schedule(request,id, daisy_chain):
                 return redirect(next)
             else:
                 url_string = '/planner/updatecourseoffering/'+str(course_offering.id)+'/1/'
-                print url_string
+#                print url_string
                 return redirect(url_string)
         else:
             return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'daisy_chaining': daisy_chaining, 'course':course_offering})
@@ -2153,7 +2158,7 @@ def add_course(request, daisy_chain):
                 return redirect(next)
             else:
                 url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
-                print url_string
+#                print url_string
                 return redirect(url_string)
         else:
             context = {'form': form, 'title': 'Add New Course', 'course_list':course_list}
@@ -2196,7 +2201,7 @@ def add_course_offering(request, course_id, daisy_chain):
                 return redirect(next)
             else:
                 url_string = '/planner/newclassschedule/'+str(new_course_offering.id)+'/1/'
-                print url_string
+#                print url_string
                 return redirect(url_string)
         else:
             context = {'form': form, 'course': course}
@@ -2397,7 +2402,7 @@ def update_other_load(request, id):
     OtherLoadFormset = inlineformset_factory(OtherLoadType, OtherLoad, 
                                              formset = BaseOtherLoadFormset,
                                              extra = 2,
-                                             exclude = 'load_type')
+                                             exclude = ['load_type'])
     OtherLoadFormset.form = staticmethod(curry(OtherLoadForm, department_id=dept_id, year_to_view=year_to_view))
     formset = OtherLoadFormset(instance=instance,queryset=OtherLoad.objects.filter(Q(instructor__department__id=dept_id)
                                                                                    & Q(semester__year__begin_on__year=year_to_view)))
@@ -2525,7 +2530,7 @@ def update_faculty_to_view_old(request, id):
             return render(request, 'update_faculty_to_view.html', {'form': form})
     else:
         form = UpdateFacultyToViewForm(department_id, instance=instance)
-        print form
+#        print form
         context = {'form': form}
         return render(request, 'update_faculty_to_view_old.html', context)
 
@@ -2619,6 +2624,33 @@ def update_department_to_view(request):
         context = {'form': form}
         return render(request, 'update_department_to_view.html', context)
 
+@login_required
+def update_faculty_member(request, id):
+    """
+    Allows a user to edit properties of a faculty member (rank and inactive_starting)
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
+
+    instance = FacultyMember.objects.get(pk = id)
+
+    if request.method == 'POST':
+        form = UpdateFacultyMemberForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'home')
+            return redirect(next)
+        else:
+            return render(request, 'update_faculty_member.html',
+                          {'form': form, 'faculty_member': instance})
+    else:
+        form = UpdateFacultyMemberForm(instance=instance)
+        context = {'form': form, 'faculty_member': instance}
+        return render(request, 'update_faculty_member.html', context)
+
+    
 @login_required
 def update_year_to_view(request, id):
 
@@ -3731,7 +3763,7 @@ def select_course(request):
         if form.is_valid():
             course = form.cleaned_data.get('course')
             url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
-            print url_string
+#            print url_string
             return redirect(url_string)
         else:
             return render(request, 'select_course.html', {'form': form})
@@ -3759,7 +3791,7 @@ def add_course_confirmation(request, daisy_chaining):
         if form.is_valid():
             course = form.cleaned_data.get('course')
             url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
-            print url_string
+#            print url_string
             return redirect(url_string)
         else:
             url_string = '/planner/addcourseconfirmation/1/'
