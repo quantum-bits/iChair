@@ -127,7 +127,7 @@ font-weight: normal;
 				  <thead>
 					  <tr>
 					    <th> Faculty Member </th>
-					    <th style="text-align: center;"> Rank/Inactive </th>
+					    <th style="text-align: center;"> Rank/Status </th>
 					    <th></th>
 						  <th style="text-align: center;"> # Ld Hrs </th>
 						  <th style="text-align: center;"> Display </th>
@@ -148,14 +148,18 @@ font-weight: normal;
 					      {% endif %}
 					    </td>
 					    <td style="text-align: center;" >
-					      <a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit Rank/Inactive</a>
+					      <a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit Rank/Status</a>
 					    </td>
-						  <td style="text-align: center;" id="load{{faculty.faculty.id}}">
-							  {{ faculty.load}}
-						  </td>
-						  <td id="cboxtd{{faculty.faculty.id}}" style="text-align: center;">
-							  <input  type="checkbox" {% if faculty.view_this_faculty %} checked = "yes" {% endif %} name="faculty_to_display" id="option{{faculty.faculty.id}}" value={{faculty.faculty.id}} />
-						  </td>
+					    <td style="text-align: center;" id="load{{faculty.faculty.id}}">
+					      {% if faculty.is_active %}
+					      {{ faculty.load}}
+					      {% endif %}
+					    </td>
+					    <td id="cboxtd{{faculty.faculty.id}}" style="text-align: center;">
+					      {% if faculty.is_active %}
+					      <input  type="checkbox" {% if faculty.view_this_faculty %} checked = "yes" {% endif %} name="faculty_to_display" id="option{{faculty.faculty.id}}" value={{faculty.faculty.id}} />
+					      {% endif %}
+					    </td>
 					  </tr>
 					  {% endfor %}
 				  </tbody>
@@ -282,7 +286,7 @@ function unPopFacultyWithLoads() {
    <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Faculty Members To Display</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Faculty Members To Display</h1><h2>{{department}}, {{academic_year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 

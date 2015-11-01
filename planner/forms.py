@@ -186,6 +186,7 @@ class InstructorForm(forms.ModelForm):
 
     def __init__(self, department_id, year, *args, **kwargs):
         super (InstructorForm,self).__init__(*args,**kwargs)
+        # following code from Tom Nurkkala
         active_fm_ids = [fm.id
                          for fm in FacultyMember.objects.filter(department__id=department_id)
                          if fm.is_active(year)]

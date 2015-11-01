@@ -2556,6 +2556,7 @@ def update_faculty_to_view(request, id):
         all_faculty=FacultyMember.objects.filter(department=department)
         
         faculty_info = []
+        inactive_faculty_info = []
         faculty_with_loads = []
         faculty_without_loads = []
         for faculty in all_faculty:
@@ -2571,18 +2572,35 @@ def update_faculty_to_view(request, id):
                 view_this_faculty = True
             else:
                 view_this_faculty = False
-            faculty_info.append({
-                'faculty': faculty,
-                'view_this_faculty': view_this_faculty,
-                'load': total_load,
-                'has_load': has_load
-            })
-
+            if faculty.is_active(year):
+                faculty_info.append({
+                    'faculty': faculty,
+                    'view_this_faculty': view_this_faculty,
+                    'load': total_load,
+                    'has_load': has_load,
+                    'is_active': True
+                })
+            else:
+                if faculty in faculty_to_view:
+                    # apparently this faculty member has recently become 'inactive' and so should no longer be viewed in displays
+                    user_preferences.faculty_to_view.remove(faculty)
+                inactive_faculty_info.append({
+                    'faculty': faculty,
+                    'view_this_faculty': False,
+                    'load': total_load,
+                    'has_load': has_load,
+                    'is_active': False
+                })
+                
+        faculty_info = faculty_info + inactive_faculty_info
         json_faculty_with_loads = json.dumps(faculty_with_loads)
         json_faculty_without_loads = json.dumps(faculty_without_loads)
         context = {'faculty_info': faculty_info,
                    'json_faculty_with_loads': json_faculty_with_loads,
-                   'json_faculty_without_loads': json_faculty_without_loads}
+                   'json_faculty_without_loads': json_faculty_without_loads,
+                   'department': department,
+                   'academic_year': year
+        }
         return render(request, 'update_faculty_to_view.html', context)
 
     
