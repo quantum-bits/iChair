@@ -2736,13 +2736,21 @@ def update_year_to_view(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     department_id = user_preferences.department_to_view.id
-
     instance = UserPreferences.objects.get(pk = id)
 
     if request.method == 'POST':
         form = UpdateYearToViewForm(request.POST, instance=instance)
         if form.is_valid():
             form.save()
+            user_preferences = user.user_preferences.all()[0]
+            # after saving the form, user preferences is pointing at the new academic year
+            faculty_to_view = user_preferences.faculty_to_view
+            year = user_preferences.academic_year_to_view
+            for faculty in faculty_to_view.all():
+                if not faculty.is_active(year):
+                    # this faculty is not active in the new year that is being viewed, so should not be viewable
+                    user_preferences.faculty_to_view.remove(faculty)
+            
             next = request.GET.get('next', 'home')
             return redirect(next)
         else:
