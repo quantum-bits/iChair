@@ -685,12 +685,6 @@ def export_data(request):
             due_date = 'February 26, '+str(academic_year.begin_on.year)
             file_name = 'ProjectedLoads_'+year_string+'.xls'
 
-        # the following list is used later on to check if there are two people with the same last name
-        faculty_last_names = [] 
-        for faculty_id in faculty_export_list:
-            faculty = FacultyMember.objects.get(pk = faculty_id)
-            faculty_last_names.append(faculty.last_name)
-
         faculty_data_list = []
         for faculty_id in faculty_export_list:
             faculty = FacultyMember.objects.get(pk = faculty_id)
@@ -745,7 +739,63 @@ def export_data(request):
                                       'course_comment_dict':course_comment_dict,
                                       'other_load_dict':other_load_dict,
                                       'other_load_name_dict':other_load_name_dict,
-                                      'other_load_comment_dict':other_load_comment_dict})
+                                      'other_load_comment_dict':other_load_comment_dict,
+                                      'is_adjunct': faculty.is_adjunct(),
+                                      'id': faculty.id})
+        # now go through the list and group the adjuncts together, deleting their separate entries...not the prettiest approach, but OK....
+        adjunct_data = [data_row for data_row in faculty_data_list
+                            if data_row['is_adjunct']==True]
+        non_adjunct_data = [data_row for data_row in faculty_data_list
+                            if not data_row['is_adjunct']==True]
+        combined_adjunct_dict = {'last_name': 'Adjunct(s)',
+                                 'first_name': '',
+                                 'is_adjunct': True}
+        course_load_dict = dict()
+        course_name_dict = dict()
+        course_number_dict = dict()
+        course_comment_dict = dict()
+        other_load_dict = dict()
+        other_load_name_dict = dict()
+        other_load_comment_dict = dict()
+        
+        for adjunct in adjunct_data:
+            # want to put together all of the adjunct data, but need to disambiguate the keys;
+            # the keys have been course ids, now we stringify them and make them course ids
+            # and then underscore and faculty id; this will then be unique
+            # str(int)
+            for key in adjunct['course_load_dict']:
+                new_key = str(key)+'_'+str(adjunct['id'])
+                course_load_dict[new_key]=adjunct['course_load_dict'][key]
+                course_name_dict[new_key]=adjunct['course_name_dict'][key]
+                course_number_dict[new_key]=adjunct['course_number_dict'][key]
+                old_comment = adjunct['course_comment_dict'][key]
+                comment = adjunct['first_name']+' '+adjunct['last_name']
+                if old_comment != '':
+                    comment = comment+'; '+old_comment                    
+                course_comment_dict[new_key]=comment
+            for key in adjunct['other_load_dict']:
+                new_key = str(key)+'_'+str(adjunct['id'])
+                other_load_dict[new_key]=adjunct['other_load_dict'][key]
+                other_load_name_dict[new_key]=adjunct['other_load_name_dict'][key]
+                old_comment = adjunct['other_load_comment_dict'][key]
+                comment = adjunct['first_name']+' '+adjunct['last_name']
+                if old_comment != '':
+                    comment = comment+'; '+old_comment                    
+                other_load_comment_dict[new_key]=comment
+        combined_adjunct_dict['course_load_dict'] = course_load_dict
+        combined_adjunct_dict['course_name_dict'] = course_name_dict
+        combined_adjunct_dict['course_number_dict'] = course_number_dict
+        combined_adjunct_dict['course_comment_dict'] = course_comment_dict
+        combined_adjunct_dict['other_load_dict'] = other_load_dict
+        combined_adjunct_dict['other_load_name_dict'] = other_load_name_dict
+        combined_adjunct_dict['other_load_comment_dict'] = other_load_comment_dict
+        # and now...recombine....
+        faculty_data_list = non_adjunct_data
+        faculty_data_list.append(combined_adjunct_dict)
+        # the following list is used later on to check if there are two people with the same last name
+        faculty_last_names = [faculty_data['last_name'] for faculty_data in faculty_data_list]
+
+            
         data_dict ={'school':department.school.name, 
                     'load_sheet_type': load_sheet_type, 
                     'department': department.name,
@@ -759,7 +809,7 @@ def export_data(request):
                     }
         book = prepare_excel_workbook(faculty_data_list,data_dict)
 #        next = request.GET.get('next', 'profile')
-        response = HttpResponse(mimetype="application/ms-excel")
+        response = HttpResponse(content_type="application/ms-excel")
 #        response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
         response['Content-Disposition'] = 'attachment; filename=%s' % file_name
         book.save(response)
@@ -768,24 +818,13 @@ def export_data(request):
         
         return response
     
-
-
-#        book.save(home+file_name)
-#    response = HttpResponse(content_type='text/csv')
-#    response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
-#    return response
-
-#        next = request.GET.get('next', 'profile')
-#        return redirect(next)
-#        context = {'file_name': home+file_name, 'success': True}
-#        return render(request, 'export_complete.html', context)
     else:
-#        context = {'data_list': data_list, 'comment_list': comment_list, 
-#                   'academic_year_copy_from':academic_year_copy_from,
-#                   'academic_year_copy_to':academic_year_copy_to, 
-#                   'check_all': check_all, 'check_all_flag_table':check_all_flag_table, 'year_id': id}
         faculty_list = []
-        for faculty in department.faculty.all().order_by('last_name'):
+        active_fm_ids = [fm.id
+                         for fm in department.faculty.all().order_by('last_name')
+                         if fm.is_active(academic_year)]
+        fm_objects = FacultyMember.objects.filter(id__in=active_fm_ids)
+        for faculty in fm_objects:
             load = 0
             for semester in academic_year.semesters.all():
                 offering_instructors = faculty.offering_instructors.filter(course_offering__semester=semester)
@@ -795,9 +834,15 @@ def export_data(request):
                 for ol in other_loads:
                     load = load + ol.load_credit
 
+            total_load = load_hour_rounder(load)
+            if total_load > 0:
+                has_load = True
+            else:
+                has_load = False
             faculty_list.append({'name':faculty.first_name+' '+faculty.last_name,
                                  'id':faculty.id,
-                                 'hrs': str(load_hour_rounder(load))+' hrs',
+                                 'hrs': str(total_load)+' hrs',
+                                 'has_load': has_load
                                  })
         context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit}
         return render(request, 'export_data.html', context)
@@ -950,6 +995,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
         sheet.write(row_data_start+i,0,'Totals',xlwt.easyxf(styles['calibri_bold_bordered']))
         sheet.write(row_data_start+i,1,'',style_calibri_bordered_grey)
         sheet.write(row_data_start+i,2,'',style_calibri_bordered_grey)
+        totals_row = row_data_start+i+1
         sum_string = 'SUM(D'+str(row_data_start+1)+':D'+str(row_data_start+i)+')'
         sheet.write(row_data_start+i,3,xlwt.Formula(sum_string),style_calibri_bold_bordered)
         sum_string = 'SUM(E'+str(row_data_start+1)+':E'+str(row_data_start+i)+')'
@@ -969,10 +1015,20 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
         sheet.write(row_data_start+i,0,'Adjuncts (hrs only)',xlwt.easyxf(styles['calibri_bold_bordered']))
         sheet.write(row_data_start+i,1,'',style_calibri_bordered_grey)
         sheet.write(row_data_start+i,2,'',style_calibri_bordered_grey)
-        sheet.write(row_data_start+i,3,'',style_calibri_bold_bordered)
-        sheet.write(row_data_start+i,4,'',style_calibri_bold_bordered)
-        sheet.write(row_data_start+i,5,'',style_calibri_bold_bordered)
-        sheet.write(row_data_start+i,6,'',style_calibri_bold_bordered)
+        if faculty['is_adjunct']:
+            equals_string = 'D'+str(totals_row)
+            sheet.write(row_data_start+i,3,xlwt.Formula(equals_string),style_calibri_bold_bordered)
+            equals_string = 'E'+str(totals_row)
+            sheet.write(row_data_start+i,4,xlwt.Formula(equals_string),style_calibri_bold_bordered)
+            equals_string = 'F'+str(totals_row)
+            sheet.write(row_data_start+i,5,xlwt.Formula(equals_string),style_calibri_bold_bordered)
+            equals_string = 'G'+str(totals_row)
+            sheet.write(row_data_start+i,6,xlwt.Formula(equals_string),style_calibri_bold_bordered)
+        else:
+            sheet.write(row_data_start+i,3,'',style_calibri_bold_bordered)
+            sheet.write(row_data_start+i,4,'',style_calibri_bold_bordered)
+            sheet.write(row_data_start+i,5,'',style_calibri_bold_bordered)
+            sheet.write(row_data_start+i,6,'',style_calibri_bold_bordered)
         sheet.write(row_data_start+i,7,'',style_calibri_bordered)
         i=i+1
 
@@ -3112,7 +3168,7 @@ def export_summary_data(request):
     file_name = 'DepartmentLoadSummary.xls'
 
     book = prepare_excel_summary(context)
-    response = HttpResponse(mimetype="application/ms-excel")
+    response = HttpResponse(content_type="application/ms-excel")
     response['Content-Disposition'] = 'attachment; filename=%s' % file_name
     book.save(response)
     return response

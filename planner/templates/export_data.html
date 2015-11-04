@@ -37,7 +37,7 @@
 	    </th>
 	    <td> <div align="center">{{faculty.hrs}}</div> </td>
 	    <td>
-	<input type="checkbox" checked = "yes" name="faculty_for_export" id="option{{faculty.id}}" value={{faculty.id}} />
+	<input type="checkbox" {% if faculty.has_load %} checked = "yes" {% endif %} name="faculty_for_export" id="option{{faculty.id}}" value={{faculty.id}} />
 	    </td>
 	    </tr>
 	    {% endfor %}

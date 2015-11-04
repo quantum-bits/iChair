@@ -122,7 +122,13 @@ class FacultyMember(Person):
                 # this person is inactive, but in a later year
                 return active
         
-
+    def is_adjunct(self):
+        """Returns True if the person is an adjunct."""
+        if self.rank == 'Adj':
+            return True
+        else:
+            return False
+            
 class StaffMember(Person):
     university = models.ForeignKey(University, related_name='staff')
     staff_id = models.CharField(max_length=25)
