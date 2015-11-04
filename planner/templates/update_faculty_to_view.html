@@ -235,7 +235,7 @@ function facultyWithLoadsOK() {
 	
 function checkFacultyWithLoads() {
 	var facultyWithLoads = {{json_faculty_with_loads|safe}};
-	var facultyWithoutLoads = {{json_faculty_without_loads|safe}};
+        var facultyWithoutLoads = {{json_faculty_without_loads|safe}};
 	var row;
 	for (var n=0; n < facultyWithLoads.length; n++) {
 		document.getElementById('option'+facultyWithLoads[n]).checked = true;

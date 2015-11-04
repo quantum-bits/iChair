@@ -2622,7 +2622,8 @@ def update_faculty_to_view(request, id):
                 faculty_with_loads.append(faculty.id)
             else:
                 has_load = False
-                faculty_without_loads.append(faculty.id)
+                if faculty.is_active(year):
+                    faculty_without_loads.append(faculty.id)
 #            json_bls = json.dumps(budget_lines_with_subaccounts)
             if faculty in faculty_to_view:
                 view_this_faculty = True
@@ -2649,6 +2650,9 @@ def update_faculty_to_view(request, id):
                 })
                 
         faculty_info = faculty_info + inactive_faculty_info
+        print 'faculty with loads: ',faculty_with_loads
+        print 'faculty without loads: ', faculty_without_loads
+        
         json_faculty_with_loads = json.dumps(faculty_with_loads)
         json_faculty_without_loads = json.dumps(faculty_without_loads)
         context = {'faculty_info': faculty_info,
