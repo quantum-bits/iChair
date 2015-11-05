@@ -128,7 +128,9 @@ font-weight: normal;
 					  <tr>
 					    <th> Faculty Member </th>
 					    <th style="text-align: center;"> Rank/Status </th>
+					    {% if can_edit %}
 					    <th></th>
+					    {% endif %}
 						  <th style="text-align: center;"> # Ld Hrs </th>
 						  <th style="text-align: center;"> Display </th>
 					  </tr>
@@ -139,7 +141,6 @@ font-weight: normal;
 					    <td id="faculty{{faculty.faculty.id}}">
 							  {{ faculty.faculty }}
 					    </td>
-					    
 					    <td style="text-align: center;" >
 					      {% if faculty.faculty.inactive_starting %}
 					      Inactive as of {{faculty.faculty.inactive_starting}}
@@ -147,9 +148,11 @@ font-weight: normal;
 					      {{faculty.faculty.rank}}
 					      {% endif %}
 					    </td>
+					    {% if can_edit %}
 					    <td style="text-align: center;" >
 					      <a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit Rank/Status</a>
 					    </td>
+					    {% endif %}
 					    <td style="text-align: center;" id="load{{faculty.faculty.id}}">
 					      {% if faculty.is_active %}
 					      {{ faculty.load}}

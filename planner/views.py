@@ -118,6 +118,16 @@ UNDERASSIGNED_LOAD_DIV_ID = 100002
 @login_required
 def home(request):
     close_all_divs(request)
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    faculty_to_view = user_preferences.faculty_to_view
+    year = user_preferences.academic_year_to_view
+    for faculty in faculty_to_view.all():
+        if not faculty.is_active(year):
+            # this faculty is not active in the year that is being viewed, so should not be viewable;
+            # this helps fix things up if a change has been made by someone else since the last time
+            # the current user logged in
+            user_preferences.faculty_to_view.remove(faculty)
     return render(request, 'home.html')
 
 @login_required
@@ -2576,6 +2586,10 @@ def update_faculty_to_view_old(request, id):
 
     instance = UserPreferences.objects.get(pk = id)
 
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
+    print can_edit
     if request.method == 'POST':
         form = UpdateFacultyToViewForm(department_id, request.POST, instance=instance)
         if form.is_valid():
@@ -2583,11 +2597,11 @@ def update_faculty_to_view_old(request, id):
             next = request.GET.get('next', 'home')
             return redirect(next)
         else:
-            return render(request, 'update_faculty_to_view.html', {'form': form})
+            return render(request, 'update_faculty_to_view.html', {'form': form, 'can_edit': can_edit})
     else:
         form = UpdateFacultyToViewForm(department_id, instance=instance)
 #        print form
-        context = {'form': form}
+        context = {'form': form, 'can_edit': can_edit}
         return render(request, 'update_faculty_to_view_old.html', context)
 
 @login_required
@@ -2599,6 +2613,9 @@ def update_faculty_to_view(request, id):
     department = user_preferences.department_to_view
     year = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all()
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
     if request.method == 'POST':
         faculty_to_display_id_list = request.POST.getlist('faculty_to_display')
@@ -2650,8 +2667,6 @@ def update_faculty_to_view(request, id):
                 })
                 
         faculty_info = faculty_info + inactive_faculty_info
-        print 'faculty with loads: ',faculty_with_loads
-        print 'faculty without loads: ', faculty_without_loads
         
         json_faculty_with_loads = json.dumps(faculty_with_loads)
         json_faculty_without_loads = json.dumps(faculty_without_loads)
@@ -2659,7 +2674,8 @@ def update_faculty_to_view(request, id):
                    'json_faculty_with_loads': json_faculty_with_loads,
                    'json_faculty_without_loads': json_faculty_without_loads,
                    'department': department,
-                   'academic_year': year
+                   'academic_year': year,
+                   'can_edit': can_edit
         }
         return render(request, 'update_faculty_to_view.html', context)
 
