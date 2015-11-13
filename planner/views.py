@@ -47,7 +47,6 @@ def render_to_pdf(template_src, context_dict):
 
 # TO DO:
 
-# ==> drop "Display" checkbox on updatefacultytoview page for inactive faculty members
 #
 
 # Idea from Art White: State total # of hours being taught on the fac ld summary
@@ -59,8 +58,6 @@ def render_to_pdf(template_src, context_dict):
 #     load page !!!
 # !!! shorten the KSAC names for rooms (too long to fit on room selector
 #     widget !!!
-# WHY is Chrome giving the "resize window" message when you first log in?!?
-# maybe the variable should be set to null/false right away upon login or something?  maybe there's some junk there and it's triggering on that.
 
 # 0. OOPS! ids (for html elements) are not supposed to start with #'s; should
 #    fix this, so my code does not get deprecated too quickly!  ACTUALLY: it 
@@ -767,12 +764,13 @@ def export_data(request):
         other_load_dict = dict()
         other_load_name_dict = dict()
         other_load_comment_dict = dict()
+        actual_name_dict = dict()
+        other_load_adj_name_dict = dict()
         
         for adjunct in adjunct_data:
             # want to put together all of the adjunct data, but need to disambiguate the keys;
             # the keys have been course ids, now we stringify them and make them course ids
             # and then underscore and faculty id; this will then be unique
-            # str(int)
             for key in adjunct['course_load_dict']:
                 new_key = str(key)+'_'+str(adjunct['id'])
                 course_load_dict[new_key]=adjunct['course_load_dict'][key]
@@ -783,6 +781,7 @@ def export_data(request):
                 if old_comment != '':
                     comment = comment+'; '+old_comment                    
                 course_comment_dict[new_key]=comment
+                actual_name_dict[new_key] = adjunct['last_name']
             for key in adjunct['other_load_dict']:
                 new_key = str(key)+'_'+str(adjunct['id'])
                 other_load_dict[new_key]=adjunct['other_load_dict'][key]
@@ -792,6 +791,7 @@ def export_data(request):
                 if old_comment != '':
                     comment = comment+'; '+old_comment                    
                 other_load_comment_dict[new_key]=comment
+                other_load_adj_name_dict[new_key]=adjunct['last_name']
         combined_adjunct_dict['course_load_dict'] = course_load_dict
         combined_adjunct_dict['course_name_dict'] = course_name_dict
         combined_adjunct_dict['course_number_dict'] = course_number_dict
@@ -799,9 +799,12 @@ def export_data(request):
         combined_adjunct_dict['other_load_dict'] = other_load_dict
         combined_adjunct_dict['other_load_name_dict'] = other_load_name_dict
         combined_adjunct_dict['other_load_comment_dict'] = other_load_comment_dict
+        combined_adjunct_dict['actual_name_dict'] = actual_name_dict
+        combined_adjunct_dict['other_load_adj_name_dict'] = other_load_adj_name_dict
         # and now...recombine....
         faculty_data_list = non_adjunct_data
         faculty_data_list.append(combined_adjunct_dict)
+        
         # the following list is used later on to check if there are two people with the same last name
         faculty_last_names = [faculty_data['last_name'] for faculty_data in faculty_data_list]
 
@@ -958,36 +961,65 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
         row_data_start = 15
         col_data_start = 3
         i = 0
-        # add in load data for courses
+        # add in load data for courses; need to do some special ordering for the "adjunct(s)" page....
+        data_array=[]
         for key in sorted(faculty['course_number_dict'],key=faculty['course_number_dict'].get):
+            new_dict = {'course_number': faculty['course_number_dict'][key],
+                        'course_name': faculty['course_name_dict'][key],
+                        'course_load': faculty['course_load_dict'][key],
+                        'course_comment': faculty['course_comment_dict'][key]
+            }
+            if faculty['is_adjunct']:
+                new_dict['actual_name'] = faculty['actual_name_dict'][key]
+                
+            data_array.append(new_dict)
+
+        if faculty['is_adjunct']:
+            data_array = sorted(data_array, key=lambda d: (d['actual_name'], d['course_number']))
+        
+        for row in data_array:
             if i>1:
                 sheet.write(row_data_start+i,0,'',style_calibri_bordered_grey)
-            sheet.write(row_data_start+i,1,faculty['course_number_dict'][key],style_calibri_bordered)
-            sheet.write(row_data_start+i,2,faculty['course_name_dict'][key],style_calibri_bordered)
-            for j, load in enumerate(faculty['course_load_dict'][key]):
+            sheet.write(row_data_start+i,1,row['course_number'],style_calibri_bordered)
+            sheet.write(row_data_start+i,2,row['course_name'],style_calibri_bordered)
+            for j, load in enumerate(row['course_load']):
                 if load > 0:
                     sheet.write(row_data_start+i,col_data_start+j,load,style_calibri_bordered)
                 else:
                     sheet.write(row_data_start+i,col_data_start+j,'',style_calibri_bordered)
             sum_string = 'SUM(D'+str(row_data_start+1+i)+':F'+str(row_data_start+1+i)+')'
             sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_calibri_bordered)
-            sheet.write(row_data_start+i,7,faculty['course_comment_dict'][key],style_calibri_bordered)
+            sheet.write(row_data_start+i,7,row['course_comment'],style_calibri_bordered)
             i=i+1
 
         # add in "other" types of load
+        data_array=[]
         for key in sorted(faculty['other_load_name_dict'],key=faculty['other_load_name_dict'].get):
+            new_dict = {'load_name': faculty['other_load_name_dict'][key],
+                        'other_load': faculty['other_load_dict'][key],
+                        'other_load_comment': faculty['other_load_comment_dict'][key]
+            }
+            if faculty['is_adjunct']:
+                new_dict['actual_name'] = faculty['other_load_adj_name_dict'][key]
+                
+            data_array.append(new_dict)
+
+        if faculty['is_adjunct']:
+            data_array = sorted(data_array, key=lambda d: (d['actual_name'], d['load_name']))
+        
+        for row in data_array:
             if i>1:
                 sheet.write(row_data_start+i,0,'',style_calibri_bordered_grey)
             sheet.write(row_data_start+i,1,'',style_calibri_bordered)
-            sheet.write(row_data_start+i,2,faculty['other_load_name_dict'][key],style_calibri_bordered)
-            for j, load in enumerate(faculty['other_load_dict'][key]):
+            sheet.write(row_data_start+i,2,row['load_name'],style_calibri_bordered)
+            for j, load in enumerate(row['other_load']):
                 if load > 0:
                     sheet.write(row_data_start+i,col_data_start+j,load,style_calibri_bordered)
                 else:
                     sheet.write(row_data_start+i,col_data_start+j,'',style_calibri_bordered)
             sum_string = 'SUM(D'+str(row_data_start+1+i)+':F'+str(row_data_start+1+i)+')'
             sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_calibri_bordered)
-            sheet.write(row_data_start+i,7,faculty['other_load_comment_dict'][key],style_calibri_bordered)
+            sheet.write(row_data_start+i,7,row['other_load_comment'],style_calibri_bordered)
             i=i+1
 
         # add in three blank rows for good measure
