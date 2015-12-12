@@ -35,6 +35,19 @@
       <p> <b>{{warning.0}}:</b> {{warning.1}} </p>
    {% endfor %}
 {% endif %}
+      
+{% if data.offerings and can_edit %}
+  <div class="dropdown">
+    <button class="btn btn-info dropdown-toggle" type="button" data-toggle="dropdown">Edit Days, Times & Rooms
+    <span class="caret"></span></button>
+    <ul class="dropdown-menu">
+      {% for course in data.offerings %}
+      <li><a href="{% url 'update_class_schedule' course.id 0 %}?next={{ request.path|urlencode }}">{{course.name}}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+      
 <canvas id="{{data.id}}" width="{{data.schedule.width}}" height="{{data.schedule.height}}"></canvas>
 
   <script>

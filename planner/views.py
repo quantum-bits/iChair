@@ -1344,13 +1344,16 @@ def weekly_schedule(request):
 # NEED TO CHECK FOR COURSE TIME CONFLICTS!!!!!!!
 #
     close_all_divs(request)
+    request.session["return_to_page"] = "/planner/weeklyschedule/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
-
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
 #    department = Department.objects.filter(abbrev=u'PEN')[0]
 #    academic_year = 2013
@@ -1368,7 +1371,7 @@ def weekly_schedule(request):
     data_list =[]
     idnum = 0
     prof_id = 0
-
+    
     for faculty_member in user_preferences.faculty_to_view.filter(department=department).order_by('last_name'):
         prof_id = prof_id + 1
         data_this_professor = []
@@ -1403,7 +1406,9 @@ def weekly_schedule(request):
             box_label_list = []
 
             conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
+            offering_dict = {}
             for course_offering in course_offering_list:
+                co_id = str(course_offering.id)
                 for scheduled_class in course_offering.scheduled_classes.all():
                     box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, scheduled_class,
                                                                                       scheduled_class.day)
@@ -1413,8 +1418,14 @@ def weekly_schedule(request):
                     conflict_check_dict[scheduled_class.day].append([scheduled_class.begin_at.hour*100+scheduled_class.begin_at.minute,
                                                                      scheduled_class.end_at.hour*100+scheduled_class.end_at.minute,
                                                                      course_offering.course.subject.abbrev+' '+course_offering.course.number])
-                                                 
-
+                # the following is used to create a drop-down in the page
+                if co_id in offering_dict:
+                    offering_dict[co_id]["scheduled_class_info"].append(scheduled_class)
+                else:
+                    offering_dict[co_id] = {
+                        "name": course_offering.course.subject.abbrev+course_offering.course.number,
+                        "scheduled_class_info": [scheduled_class]
+                    }
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
         # format for text is: [xcenter, ycenter, text_string, font, text_colour]
@@ -1432,6 +1443,7 @@ def weekly_schedule(request):
                     error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
             
             id = 'id'+str(idnum)
+            offering_list = construct_dropdown_list(offering_dict)
             data_this_professor.append({'prof_id': prof_id,
                                         'faculty_name': faculty_member.first_name[0]+'. '+faculty_member.last_name,
                                         'json_box_list': json_box_list,
@@ -1441,18 +1453,23 @@ def weekly_schedule(request):
                                         'json_table_text_list': json_table_text_list,
                                         'id':id,
                                         'schedule':schedule,
-                                        'conflict':error_messages})
+                                        'conflict':error_messages,
+                                        'offerings': offering_list})
         data_list.append(data_this_professor)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
     return render(request, 'weekly_schedule.html', context)
 
 @login_required
 def daily_schedule(request):
     """Display daily schedules for the department"""
     close_all_divs(request)
+    request.session["return_to_page"] = "/planner/dailyschedule/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -1518,6 +1535,7 @@ def daily_schedule(request):
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
                                                     Q(course_offering__course__subject__department = department)):
+
                 if sc.end_at.hour > 16:
                     courses_after_five = True
 
@@ -1548,11 +1566,26 @@ def daily_schedule(request):
 
             box_list = []
             box_label_list = []
-            for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
+            offering_dict = {}
+            scheduled_classes = ScheduledClass.objects.filter(Q(day=day_dict[day])&
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
-                                                    Q(course_offering__course__subject__department = department)):
-#                for instructor in sc.course_offering.offeringinstructor_set.all():
+                                                    Q(course_offering__course__subject__department = department)).select_related(
+                                                        'room__building',
+                                                        'course_offering__semester__name__name',
+                                                        'course_offering__semester__year__begin_on',
+                                                        'course_offering__course__subject')
+
+            for sc in scheduled_classes:
+                co_id = str(sc.course_offering.id)
+                if co_id in offering_dict:
+                    offering_dict[co_id]["scheduled_class_info"].append(sc)
+                else:
+                    offering_dict[co_id] = {
+                        "name": sc.course_offering.course.subject.abbrev+sc.course_offering.course.number,
+                        "scheduled_class_info": [sc]
+                    }
+                                                            
                 for instructor in sc.course_offering.offering_instructors.all():
                     if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
                         box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc,
@@ -1590,6 +1623,8 @@ def daily_schedule(request):
                                                row[0]+' conflicts with '+row[1]])
 
             id = 'id'+str(idnum)
+            offering_list = construct_dropdown_list(offering_dict)
+
             data_this_day.append({'day_name': day,
                                   'json_box_list': json_box_list,
                                   'json_box_label_list':json_box_label_list,
@@ -1599,19 +1634,63 @@ def daily_schedule(request):
                                   'id':id,
                                   'schedule':schedule,
                                   'error_messages':error_messages,
-                                  'semester':current_semester_string})
+                                  'semester':current_semester_string,
+                                  'offerings': offering_list})
         data_list.append(data_this_day)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
     return render(request, 'daily_schedule.html', context)
+
+def construct_dropdown_list(offering_dict):
+    """
+    takes a dictionary containing offering information for various
+    courses, and constructs a list that can be used to construct a
+    drop-down menu for a schedule (room, day, prof, etc.); one thing
+    that needs to be done is to disambiguate course offerings if there
+    are multiple ones that have the same name
+    """
+    # offering_dict has the following form:
+    # {id_string: {
+    #               'name':                 name_string,
+    #               'scheduled_class_info': list of ScheduledClass object(s)
+    #             }
+    # }
+    
+    repeated_items=[]
+    list_items=[]
+    for key, value in offering_dict.iteritems():
+        if value['name'] not in list_items:
+            list_items.append(value['name'])
+        else:
+            repeated_items.append(value['name']) # we will need to disambiguate these items 
+    offering_list = []
+    for key, value in offering_dict.iteritems():
+        if value['name'] not in repeated_items:
+            offering_list.append({'id': key, 'name': value["name"]})
+        else:
+            meeting_times_list, room_list = class_time_and_room_summary(value['scheduled_class_info'])
+            if len(meeting_times_list)==0:
+                offering_list.append({'id': key, 'name': value["name"]})
+            elif len(meeting_times_list)==1:
+                temp = value["name"]+': '+meeting_times_list[0]+ ' ('+room_list[0]+')'
+                offering_list.append({'id': key, 'name': temp})
+            else:
+                offering_list.append({'id': key, 'name': value["name"]+': '+meeting_times_list[0]+ ' ('+room_list[0]+'),...'})
+                
+    offering_list = sorted(offering_list, key=lambda row: row['name'])
+    return offering_list
 
 
 @login_required
 def room_schedule(request):
     """Display daily schedules for the department"""
     close_all_divs(request)
+    request.session["return_to_page"] = "/planner/roomschedule/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -1668,6 +1747,7 @@ def room_schedule(request):
             conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
             box_list = []
             box_label_list = []
+            offering_dict = {}
             for sc in ScheduledClass.objects.filter(Q(room = room)&
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)):
@@ -1678,11 +1758,19 @@ def room_schedule(request):
                 conflict_check_dict[sc.day].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                     sc.end_at.hour*100+sc.end_at.minute,
                                                     sc.course_offering.course.subject.abbrev+' '+sc.course_offering.course.number])
-
-
-        # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
-        # format for text is: [xcenter, ycenter, text_string, font, text_colour]
-
+ 
+                if sc.course_offering.course.subject.department == department:
+                    co_id = str(sc.course_offering.id)
+                    if co_id in offering_dict:
+                        offering_dict[co_id]["scheduled_class_info"].append(sc)
+                    else:
+                        offering_dict[co_id] = {
+                            "name": sc.course_offering.course.subject.abbrev+sc.course_offering.course.number,
+                            "scheduled_class_info": [sc]
+                        }
+            # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
+            # format for text is: [xcenter, ycenter, text_string, font, text_colour]
+   
             json_box_list = simplejson.dumps(box_list)
             json_box_label_list = simplejson.dumps(box_label_list)
             json_grid_list = simplejson.dumps(grid_list)
@@ -1696,6 +1784,7 @@ def room_schedule(request):
                     error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
 
             id = 'id'+str(idnum)
+            offering_list = construct_dropdown_list(offering_dict)
             data_this_room.append({'room_id':roomid,
                                    'room_name': room.building.abbrev+' '+room.number,
                                    'json_box_list': json_box_list,
@@ -1705,18 +1794,23 @@ def room_schedule(request):
                                    'json_table_text_list': json_table_text_list,
                                    'id':id,
                                    'schedule':schedule,
-                                   'conflict':error_messages})
+                                   'conflict':error_messages,
+                                   'offerings': offering_list})
         data_list.append(data_this_room)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
     return render(request, 'room_schedule.html', context)
 
 @login_required
 def course_schedule(request):
     """Display daily schedules for the department"""
     close_all_divs(request)
+    request.session["return_to_page"] = "/planner/coursechedule/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -1778,6 +1872,7 @@ def course_schedule(request):
 
                         box_list = []
                         box_label_list = []
+                        offering_dict = {}
                         for sc in ScheduledClass.objects.filter(Q(course_offering__course = course)&
                                                                 Q(course_offering__semester__name__name=semester_name)&
                                                                 Q(course_offering__semester__year__begin_on__year = academic_year)):
@@ -1785,7 +1880,15 @@ def course_schedule(request):
                             box_list.append(box_data)
                             box_label_list.append(course_data)
                             box_label_list.append(room_data)
-
+                            
+                            co_id = str(sc.course_offering.id)
+                            if co_id in offering_dict:
+                                offering_dict[co_id]["scheduled_class_info"].append(sc)
+                            else:
+                                offering_dict[co_id] = {
+                                    "name": sc.course_offering.course.subject.abbrev+sc.course_offering.course.number,
+                                    "scheduled_class_info": [sc]
+                                }
 
                             # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
                             # format for text is: [xcenter, ycenter, text_string, font, text_colour]
@@ -1797,6 +1900,7 @@ def course_schedule(request):
                         json_table_text_list = simplejson.dumps(table_text_list)
 
                         id = 'id'+str(idnum)
+                        offering_list = construct_dropdown_list(offering_dict)
                         data_this_course.append({'course_id':courseid,
                                                  'course_name': course.subject.abbrev+' '+course.number+': '+course.title,
                                                  'json_box_list': json_box_list,
@@ -1805,10 +1909,11 @@ def course_schedule(request):
                                                  'json_filled_row_list': json_filled_row_list,
                                                  'json_table_text_list': json_table_text_list,
                                                  'id':id,
-                                                 'schedule':schedule})
+                                                 'schedule':schedule,
+                                                 'offerings': offering_list})
                 data_list.append(data_this_course)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
     return render(request, 'course_schedule.html', context)
 
 def check_for_conflicts(conflict_dict):
