@@ -385,6 +385,23 @@ class OtherLoadType(models.Model):
     def __unicode__(self):
         return self.load_type
 
+    class Meta:
+        ordering = ['load_type']
+    
+    def in_use(self, academic_year_object, department_object):
+        """True if this type of load is in use by this dept during this academic year"""
+
+        used = False
+        loads = OtherLoad.objects.filter(
+            Q(semester__year = academic_year_object) &
+            Q(load_type = self) &
+            Q(instructor__department = department_object)
+        )
+        if len(loads) > 0:
+            used = True
+
+        return used    
+
 class OtherLoad(models.Model):
     """Instances of other load types for a given instructor in a given semester of a given academic year."""
     load_type = models.ForeignKey(OtherLoadType, related_name='other_loads')

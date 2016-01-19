@@ -1418,14 +1418,14 @@ def weekly_schedule(request):
                     conflict_check_dict[scheduled_class.day].append([scheduled_class.begin_at.hour*100+scheduled_class.begin_at.minute,
                                                                      scheduled_class.end_at.hour*100+scheduled_class.end_at.minute,
                                                                      course_offering.course.subject.abbrev+' '+course_offering.course.number])
-                # the following is used to create a drop-down in the page
-                if co_id in offering_dict:
-                    offering_dict[co_id]["scheduled_class_info"].append(scheduled_class)
-                else:
-                    offering_dict[co_id] = {
-                        "name": course_offering.course.subject.abbrev+course_offering.course.number,
-                        "scheduled_class_info": [scheduled_class]
-                    }
+                    # the following is used to create a drop-down in the page
+                    if co_id in offering_dict:
+                        offering_dict[co_id]["scheduled_class_info"].append(scheduled_class)
+                    else:
+                        offering_dict[co_id] = {
+                            "name": course_offering.course.subject.abbrev+course_offering.course.number,
+                            "scheduled_class_info": [scheduled_class]
+                        }
 
         # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
         # format for text is: [xcenter, ycenter, text_string, font, text_colour]
@@ -1805,7 +1805,7 @@ def room_schedule(request):
 def course_schedule(request):
     """Display daily schedules for the department"""
     close_all_divs(request)
-    request.session["return_to_page"] = "/planner/coursechedule/"
+    request.session["return_to_page"] = "/planner/courseschedule/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     can_edit = False
@@ -2919,6 +2919,49 @@ def update_loads_to_view(request, id):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    year = user_preferences.academic_year_to_view
+    loads_to_view = user_preferences.other_load_types_to_view.all()
+
+    if request.method == 'POST':
+        loads_to_display_id_list = request.POST.getlist('loads_to_display')
+        user_preferences.other_load_types_to_view.clear()
+        for load_id in loads_to_display_id_list:
+            load = OtherLoadType.objects.get(pk=load_id)
+            user_preferences.other_load_types_to_view.add(load)
+        next = request.GET.get('next', 'home')
+        return redirect(next)
+    else:
+        load_types = OtherLoadType.objects.all()
+        loads_in_use = []
+        loads_not_in_use = []
+        load_list = []
+        for load_type in load_types:
+            in_use = load_type.in_use(year, department)
+            if in_use:
+                loads_in_use.append(load_type.id)
+            else:
+                loads_not_in_use.append(load_type.id)
+            if load_type in loads_to_view:
+                view_this_load = True
+            else:
+                view_this_load = False
+            load_list.append({'load': load_type, 'in_use': in_use, 'view_this_load': view_this_load})
+
+        json_loads_in_use = json.dumps(loads_in_use)
+        json_loads_not_in_use = json.dumps(loads_not_in_use)
+        context = {'loads': load_list,
+                   'json_loads_in_use': json_loads_in_use,
+                   'json_loads_not_in_use': json_loads_not_in_use}
+        
+        return render(request, 'update_loads_to_view.html', context)
+
+@login_required
+def update_loads_to_view_old(request, id):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
     department_id = user_preferences.department_to_view.id
 
     instance = UserPreferences.objects.get(pk = id)
@@ -2935,7 +2978,7 @@ def update_loads_to_view(request, id):
         form = UpdateLoadsToViewForm(instance=instance)
         context = {'form': form}
         return render(request, 'update_loads_to_view.html', context)
-
+    
 
 @login_required
 def copy_courses(request, id, check_all_flag):
