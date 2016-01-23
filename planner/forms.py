@@ -349,12 +349,20 @@ class OtherLoadForm(forms.ModelForm):
 
     def __init__(self, department_id, year_to_view, *args, **kwargs):
         super (OtherLoadForm,self).__init__(*args,**kwargs)
-        self.fields['instructor'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
-        self.fields['semester'].queryset = Semester.objects.filter(Q(year__begin_on__year=year_to_view))
+        # following code from Tom Nurkkala
+        active_fm_ids = [fm.id
+                         for fm in FacultyMember.objects.filter(department__id=department_id)
+                         if fm.is_active(year_to_view)]
+        fm_objects = FacultyMember.objects.filter(id__in=active_fm_ids)
+        self.fields['instructor'].queryset = fm_objects
+        #        self.fields['instructor'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
+        #        self.fields['semester'].queryset = Semester.objects.filter(Q(year__begin_on__year=year_to_view))
+        self.fields['semester'].queryset = Semester.objects.filter(Q(year = year_to_view))
 
     class Meta:
         model = OtherLoad
         fields = "__all__"
+        
 
 class UpdateRoomsToViewForm(forms.ModelForm):
 

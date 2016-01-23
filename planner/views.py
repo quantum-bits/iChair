@@ -2600,7 +2600,7 @@ def update_other_load(request, id):
 #    print instance
 
     dept_id = user_preferences.department_to_view.id
-    year_to_view = user_preferences.academic_year_to_view.begin_on.year
+    year_to_view = user_preferences.academic_year_to_view
 
     OtherLoadFormset = inlineformset_factory(OtherLoadType, OtherLoad, 
                                              formset = BaseOtherLoadFormset,
@@ -2608,7 +2608,7 @@ def update_other_load(request, id):
                                              exclude = ['load_type'])
     OtherLoadFormset.form = staticmethod(curry(OtherLoadForm, department_id=dept_id, year_to_view=year_to_view))
     formset = OtherLoadFormset(instance=instance,queryset=OtherLoad.objects.filter(Q(instructor__department__id=dept_id)
-                                                                                   & Q(semester__year__begin_on__year=year_to_view)))
+                                                                                   & Q(semester__year = year_to_view)))
     
     errordict={}
     dict = {"formset": formset,
