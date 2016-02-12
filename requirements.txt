@@ -2,11 +2,12 @@ Django==1.8.5
 PIL==1.1.7
 Pillow==2.6.0
 PyPDF2==1.25.1
-django-debug-toolbar==0.9.4
+django-debug-toolbar==1.4
 gunicorn==18.0
 html5lib==0.9999999
 reportlab==2.7
 six==1.9.0
+sqlparse==0.1.18
 wsgiref==0.1.2
 xhtml2pdf==0.0.6
 xlwt==0.7.5
