@@ -15,7 +15,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         building_abbrev, number, capacity = args
 
-        print "processing: ", building_abbrev, number, capacity
+        print("processing: ", building_abbrev, number, capacity)
 
         try:
             building_object = Building.objects.get(abbrev = building_abbrev)

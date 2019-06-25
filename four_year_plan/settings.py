@@ -1,6 +1,6 @@
 # Django settings for iGrad project.
 
-from run_mode import RunMode
+from .run_mode import RunMode
 from django.conf import global_settings
 run_mode = RunMode('dev', debug_toolbar=False)
 

@@ -34,7 +34,7 @@ class Command(BaseCommand):
 # - checks that the days are M, T, W, R or F
 # - checks that the begin_time and end_time strings are 4 characters and that they make sense, to some extent
 
-        print "processing: ", subject_abbrev, course_number, semester, actual_year, instructor_first_name, instructor_last_name, days, begin_time, end_time, building_abbrev, room_number
+        print("processing: ", subject_abbrev, course_number, semester, actual_year, instructor_first_name, instructor_last_name, days, begin_time, end_time, building_abbrev, room_number)
 
         weekday_dict={'M':0,'T':1,'W':2,'R':3,'F':4}
         day_list = []
@@ -88,7 +88,7 @@ class Command(BaseCommand):
         except FacultyMember.MultipleObjectsReturned:
             try:
                 instructor = FacultyMember.objects.get(Q(last_name=instructor_last_name)&Q(first_name=instructor_first_name))
-                print 'There is more than one',instructor_last_name,'in the database, but the ambiguity was resolved by the first name.'
+                print('There is more than one',instructor_last_name,'in the database, but the ambiguity was resolved by the first name.')
             except FacultyMember.MultipleObjectsReturned:
                 raise CommandError('Ambiguity: there are multiple versions of '+instructor_first_name+' '+instructor_last_name+'; exiting....')
             except FacultyMember.DoesNotExist:

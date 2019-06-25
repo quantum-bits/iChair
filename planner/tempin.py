@@ -2,7 +2,7 @@ from collections import namedtuple
 
 CourseOfferingInfo = namedtuple("CourseOfferingInfo","number, name, load_hours, load_hour_list")
 
-department = Department.objects.filter(abbrev=u'PEN')[0]
+department = Department.objects.filter(abbrev='PEN')[0]
 academic_year = 2013
 #    acad_year = u'...............'
 #    -> make sorted list of all courseofferings for this academic year
@@ -25,7 +25,7 @@ for faculty in department.faculty.all():
     for course_offering in faculty.course_offerings.all():
         if course_offering.semester.year.begin_on.year == academic_year:
             course_offering_info = CourseOfferingInfo(
-                number = u"{0} {1}".format(course_offering.course.subject, 
+                number = "{0} {1}".format(course_offering.course.subject, 
                                                course_offering.course.number),
                 name = course_offering.course.title,
                 load_hours = course_offering.load_available,

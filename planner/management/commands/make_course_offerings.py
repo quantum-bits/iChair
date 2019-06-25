@@ -20,7 +20,7 @@ class Command(BaseCommand):
         semesterNames = SemesterName.objects.all()
         semesters = Semester.objects.filter(year = academicYear)
 
-        semesterName_to_semester = dict(zip(semesterNames, semesters))
+        semesterName_to_semester = dict(list(zip(semesterNames, semesters)))
 
         for course in Course.objects.all():
             semesterNames = course.schedule_semester.all()

@@ -15,7 +15,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         instructor_first_name,instructor_last_name, university, department_abbrev, faculty_id, rank = args
 
-        print "processing: ", instructor_first_name,instructor_last_name, university, department_abbrev, faculty_id, rank 
+        print("processing: ", instructor_first_name,instructor_last_name, university, department_abbrev, faculty_id, rank) 
 
         try:
             university_object = University.objects.get(name = university)

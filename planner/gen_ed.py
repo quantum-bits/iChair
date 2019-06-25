@@ -17,19 +17,19 @@ def meet_one_of(courses, reqs, courses_meeting_reqs, req_name):
     need_message = "Need a {} requirement.".format(req_name)
     course_reqs = list(set(reqs).intersection(courses))
     if not course_reqs:
-        print need_message
+        print(need_message)
     else:
         course_reqs = list(course_reqs)
         # remove reqs that are already meeting some other course req. 
         num_courses_meeting_reqs = len(courses_meeting_reqs)
 
-        for req in filter(lambda req: req not in courses_meeting_reqs, course_reqs):
+        for req in [req for req in course_reqs if req not in courses_meeting_reqs]:
             courses_meeting_reqs.append(req)
 
         if len(courses_meeting_reqs) == num_courses_meeting_reqs: 
-            print need_message
+            print(need_message)
         else:
-            print "{} requirement met.".format(req_name)
+            print("{} requirement met.".format(req_name))
 
 def course_prefix(course_name):
     match = re.search(r'^(?P<prefix>.+?)\d+$', course_name)
@@ -91,10 +91,10 @@ if __name__ == '__main__':
     courses_meeting_reqs = []
 
     if unmet_courses:
-        print "Missing required courses."
-        print "Unmet courses:\n{}".format("\n".join(unmet_courses))
+        print("Missing required courses.")
+        print("Unmet courses:\n{}".format("\n".join(unmet_courses)))
     else:
-        print "All required courses met."
+        print("All required courses met.")
 
 
     meet_one_of(courses, MATH_ONE_OF, courses_meeting_reqs, "Math")
@@ -119,11 +119,11 @@ if __name__ == '__main__':
         # should remove them. This is for when one class meets multiple reqs. 
         all_sci = set(meet_life_sci + meet_phy_sci + meet_earth_sci)
         if len(all_sci) >= 2:
-            print "Science Requirement met."
+            print("Science Requirement met.")
         else:
-            print "Does not meet science requirement."
+            print("Does not meet science requirement.")
     else:
-        print "Does not meet science requirement."
+        print("Does not meet science requirement.")
 
 
     meet_civic_eng   = []
@@ -139,8 +139,8 @@ if __name__ == '__main__':
 
         prefixes = [course_prefix(course) for course in soc_courses]
         if len(set(prefixes)) >= 2:
-            print "Meets Social Science Requirement."
+            print("Meets Social Science Requirement.")
         else:
-            print "Does not meet social science requirement."
+            print("Does not meet social science requirement.")
     else:
-        print "Does not meet social science requirement."
+        print("Does not meet social science requirement.")

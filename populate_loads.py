@@ -72,8 +72,8 @@ for course in data[1:]:
     elif course[0][-2:]=='90':
         semester = 'Fall'
     else:
-        print "Huh?!?  Can not figure out the semester!!!!"
-        print subject, number, title
+        print("Huh?!?  Can not figure out the semester!!!!")
+        print(subject, number, title)
     normal_year = 'B'
     year = course[0][:4]
     max_enrollment = course[17]
@@ -105,22 +105,22 @@ for course in data[1:]:
 # another dictionary with parallel keys.... (probably a bad idea!!!)
     course_offerings_dict[subject+number+semester_key] = [subject, number, semester, year, max_enrollment]
 
-for key in course_loads_dict.keys():
+for key in list(course_loads_dict.keys()):
     course_loads_dict[key] = course_loads_dict[key][:-1]+']'
 
-for key in instructors_dict.keys():
+for key in list(instructors_dict.keys()):
     command_string0 = './manage.py create_instructor '+instructors_dict[key][0]+' '+instructors_dict[key][1]+""" 'Taylor University' """+instructors_dict[key][2]+' 0001 Full'
     os.system(command_string0)
 
-for key in rooms_dict.keys():
+for key in list(rooms_dict.keys()):
     command_string0a = './manage.py create_room '+rooms_dict[key][0]+' '+rooms_dict[key][1]+' '+rooms_dict[key][2]
     os.system(command_string0a)
 
-for key in courses_dict.keys():
+for key in list(courses_dict.keys()):
     command_string = './manage.py create_course '+courses_dict[key][0]+' '+courses_dict[key][1]+' '+courses_dict[key][2]+' '+courses_dict[key][3]+' '+courses_dict[key][4]+' '+courses_dict[key][5]
     os.system(command_string)
 
-for key in course_loads_dict.keys():
+for key in list(course_loads_dict.keys()):
     command_string2 = './manage.py create_course_offerings '+course_offerings_dict[key][0]+' '+course_offerings_dict[key][1]+' '+course_offerings_dict[key][2]+' '+course_offerings_dict[key][3]+' '+course_loads_dict[key]+' '+course_offerings_dict[key][4]
     os.system(command_string2)
 
@@ -144,8 +144,8 @@ for course in data[1:]:
     elif course[0][-2:]=='90':
         semester = 'Fall'
     else:
-        print "Huh?!?  Can not figure out the semester!!!!"
-        print subject, number, title
+        print("Huh?!?  Can not figure out the semester!!!!")
+        print(subject, number, title)
     normal_year = 'B'
     year = course[0][:4]
 
@@ -176,6 +176,6 @@ for course in data[1:]:
 #    os.system(command_string2)
 
     command_string3 = './manage.py add_instructor_schedule '+subject+' '+number+' '+semester+' '+year+' '+professor_first_name+' '+professor_last_name+' '+days+' '+begin_time+' '+end_time+' '+building+' '+ room
-    print command_string3
+    print(command_string3)
     os.system(command_string3)
 

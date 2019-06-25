@@ -28,16 +28,16 @@ class Command(BaseCommand):
 # - checks db to see how many course offerings already exist for this course, semester and actual year.  If more
 #   are requested than exist, those are created
 
-        print "processing: ", subject_abbrev, course_number, semester, actual_year, loads, max_enrollment
+        print("processing: ", subject_abbrev, course_number, semester, actual_year, loads, max_enrollment)
 
         load_list = convert_loads_to_list(loads)
 
         number_offerings = len(load_list)
-        print load_list, number_offerings
+        print(load_list, number_offerings)
 
         try:
             course = Course.objects.get(Q(subject__abbrev = subject_abbrev)&Q(number = course_number))
-            print "Found: ", course
+            print("Found: ", course)
         except Course.DoesNotExist:
             raise CommandError(subject_abbrev+' '+course_number+' does not exist.')
         except Course.MultipleObjectsReturned:
@@ -53,7 +53,7 @@ class Command(BaseCommand):
 
         if len(current_offerings) < int(number_offerings):
             number_sections_to_create = int(number_offerings) - len(current_offerings)
-            print len(current_offerings), 'section(s) exist(s); attempting to create', number_sections_to_create, 'more....'
+            print(len(current_offerings), 'section(s) exist(s); attempting to create', number_sections_to_create, 'more....')
         else:
             raise CommandError('Enough sections of this course already exist for this semester.')
 

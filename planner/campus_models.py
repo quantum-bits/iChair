@@ -1,4 +1,4 @@
-from common_models import *
+from .common_models import *
 from django.db import models
 from itertools import chain
 from django.core.validators import MaxValueValidator, MinValueValidator

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.db.models import Q
-from models import *
+from .models import *
 from django.forms.widgets import RadioSelect
 
 
@@ -19,12 +19,12 @@ class RequirementForm(forms.ModelForm):
         return self.cleaned_data
 
 class RegistrationForm(forms.ModelForm):
-    username = forms.CharField(label=(u'User Name'))
-    email = forms.EmailField(label=(u'Email Address'))
-    password = forms.CharField(label=(u'Password'),
+    username = forms.CharField(label=('User Name'))
+    email = forms.EmailField(label=('Email Address'))
+    password = forms.CharField(label=('Password'),
                                widget=forms.PasswordInput(render_value=False))
 
-    password1 = forms.CharField(label=(u'Verify Password'),
+    password1 = forms.CharField(label=('Verify Password'),
                                 widget=forms.PasswordInput(render_value=False))
 
     class Meta:

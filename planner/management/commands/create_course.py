@@ -14,11 +14,11 @@ class Command(BaseCommand):
     
     def handle(self, *args, **options):
         subject_abbrev, course_number, title, credit_hours, schedule_semester, schedule_year = args
-        print "processing: ", subject_abbrev, course_number, title, credit_hours, schedule_semester, schedule_year
+        print("processing: ", subject_abbrev, course_number, title, credit_hours, schedule_semester, schedule_year)
 
         try:
             semester_name = SemesterName.objects.get(name = schedule_semester)
-            print semester_name
+            print(semester_name)
         except SemesterName.DoesNotExist:
             raise CommandError(schedule_semester+' semester does not exist.')
 
@@ -42,7 +42,7 @@ class Command(BaseCommand):
 
         course = Course.objects.filter(Q(subject__abbrev=subject_abbrev)&Q(number=course_number))
         if len(course)==0:
-            print 'creating course....'
+            print('creating course....')
             co, created = Course.objects.get_or_create(subject = subject[0],
                                                        number = course_number,
                                                        title = title,

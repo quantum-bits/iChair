@@ -24,7 +24,7 @@ from datetime import date
 
 from reportlab.pdfgen import canvas
 
-import cStringIO as StringIO
+import io as StringIO
 from xhtml2pdf import pisa
 from django.template.loader import get_template
 from django.template import Context
@@ -342,7 +342,7 @@ def collect_data_for_summary(request):
 #
 # load for summer is added to the fall....
 #
-    semesterdict[u'Summer']=0
+    semesterdict['Summer']=0
 
     data_list = []
     unassigned_overassigned_data_list = []
@@ -404,7 +404,7 @@ def collect_data_for_summary(request):
             meetings_scheduled = True
             meeting_times_list, room_list = class_time_and_room_summary(classes)
             
-        number = u"{0} {1}".format(course_offering_dict[key]['course_offering'].course.subject,
+        number = "{0} {1}".format(course_offering_dict[key]['course_offering'].course.subject,
                                    course_offering_dict[key]['course_offering'].course.number)
         course_name = course_offering_dict[key]['course_offering'].course.title
         available_load_hours = course_offering_dict[key]['course_offering'].load_available
@@ -673,7 +673,7 @@ def export_data(request):
 #
 # load for summer is added to the fall....
 #
-    semesterdict[u'Summer']=0
+    semesterdict['Summer']=0
 
     if request.method == 'POST':
         faculty_export_list= request.POST.getlist('faculty_for_export')
@@ -683,7 +683,7 @@ def export_data(request):
         doc_type = request.POST.getlist('doc_type')[0]
         name_preparer = request.POST.getlist('name_preparer')[0]
         year_string = str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1))
-        if doc_type == u'actual':
+        if doc_type == 'actual':
             load_sheet_type = 'actual'
             due_date = 'March 12, '+str(academic_year.begin_on.year+1)
             file_name = 'ActualLoads_'+year_string+'.xls'       
@@ -1122,15 +1122,15 @@ def class_time_summary(scheduled_classes):
 #    print time_dict
 
     class_times = ''
-    ii = len(time_dict.keys())
-    for key in time_dict.keys():
+    ii = len(list(time_dict.keys()))
+    for key in list(time_dict.keys()):
         class_times = class_times+time_dict[key]+' '+key
         ii = ii-1
         if ii > 0:
             class_times = class_times + "; "
 
     class_times_list = []
-    for key in time_dict.keys():
+    for key in list(time_dict.keys()):
         class_times_list.append(time_dict[key]+' '+key)
 
 #    print class_times_list
@@ -1163,7 +1163,7 @@ def class_time_and_room_summary(scheduled_classes):
 
     class_times_list = []
     room_list = []
-    for key in day_dict.keys():
+    for key in list(day_dict.keys()):
         class_times_list.append(day_dict[key]+' '+time_dict[key])
         room_list.append(room_dict[key])
 
@@ -1251,15 +1251,15 @@ def update_course_offering(request,id, daisy_chain):
             dict1["form"]=form
             dict1["formset"]=formset
 
-            if form.errors.has_key('load_available'):
+            if 'load_available' in form.errors:
                 errordict.update({'load_available': form.errors['load_available']})
-            if form.errors.has_key('max_enrollment'):
+            if 'max_enrollment' in form.errors:
                 errordict.update({'max_enrollment': form.errors['max_enrollment']})
 
 
             if prof_repeated_errors:
                 errordict.update({'prof_repeated_error':prof_repeated_errors})
-            if form.errors.has_key('__all__'):
+            if '__all__' in form.errors:
                 errordict.update({'over_all_form_errors':form.errors['__all__']})
             for subform in formset:
                 if subform.errors:
@@ -1358,7 +1358,7 @@ def weekly_schedule(request):
 #    department = Department.objects.filter(abbrev=u'PEN')[0]
 #    academic_year = 2013
 
-    semester_names_to_exclude = [u'Summer']
+    semester_names_to_exclude = ['Summer']
 
     semester_list = []
     for semester in SemesterName.objects.all():
@@ -1482,7 +1482,7 @@ def daily_schedule(request):
 # NEED TO CHECK FOR COURSE TIME CONFLICTS!!!!!!!
 #
 
-    semester_names_to_exclude = [u'Summer']
+    semester_names_to_exclude = ['Summer']
 
     semester_list = []
     for semester in SemesterName.objects.all():
@@ -1540,7 +1540,7 @@ def daily_schedule(request):
                     courses_after_five = True
 
                 for instructor in sc.course_offering.instructor.all():
-                    if instructor.id not in instructor_conflict_check_dict.keys():
+                    if instructor.id not in list(instructor_conflict_check_dict.keys()):
                         instructor_conflict_check_dict[instructor.id] = {'today':[]}
                     instructor_conflict_check_dict[instructor.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                                    sc.end_at.hour*100+sc.end_at.minute,
@@ -1548,7 +1548,7 @@ def daily_schedule(request):
                                                                                    ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                               sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
 
-                if sc.room.id not in room_conflict_check_dict.keys():
+                if sc.room.id not in list(room_conflict_check_dict.keys()):
                     room_conflict_check_dict[sc.room.id] = {'today':[]}
                 room_conflict_check_dict[sc.room.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                       sc.end_at.hour*100+sc.end_at.minute,
@@ -1605,7 +1605,7 @@ def daily_schedule(request):
             json_table_text_list = simplejson.dumps(table_text_list)
 
             error_messages=[]
-            for faculty_member_id in instructor_conflict_check_dict.keys():
+            for faculty_member_id in list(instructor_conflict_check_dict.keys()):
                 overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
                 faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
                 for key in overlap_dict:
@@ -1614,7 +1614,7 @@ def daily_schedule(request):
                                                faculty_member.last_name+' has a conflict:',
                                                row[0]+' conflicts with '+row[1]])
 
-            for room_id in room_conflict_check_dict.keys():
+            for room_id in list(room_conflict_check_dict.keys()):
                 overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id])
                 room = Room.objects.get(pk = room_id)
                 for key in overlap_dict:
@@ -1658,13 +1658,13 @@ def construct_dropdown_list(offering_dict):
     
     repeated_items=[]
     list_items=[]
-    for key, value in offering_dict.iteritems():
+    for key, value in offering_dict.items():
         if value['name'] not in list_items:
             list_items.append(value['name'])
         else:
             repeated_items.append(value['name']) # we will need to disambiguate these items 
     offering_list = []
-    for key, value in offering_dict.iteritems():
+    for key, value in offering_dict.items():
         if value['name'] not in repeated_items:
             offering_list.append({'id': key, 'name': value["name"]})
         else:
@@ -1703,7 +1703,7 @@ def room_schedule(request):
 # NEED TO CHECK FOR COURSE TIME CONFLICTS!!!!!!!
 #
 
-    semester_names_to_exclude = [u'Summer']
+    semester_names_to_exclude = ['Summer']
 
     semester_list = []
     for semester in SemesterName.objects.all():
@@ -1823,7 +1823,7 @@ def course_schedule(request):
 # NEED TO CHECK FOR COURSE TIME CONFLICTS!!!!!!!
 #
 
-    semester_names_to_exclude = [u'Summer']
+    semester_names_to_exclude = ['Summer']
 
     semester_list = []
     for semester in SemesterName.objects.all():
@@ -2165,7 +2165,7 @@ def course_summary(request, allow_delete):
     data_list = []
     for subject in department.subjects.all():
         for course in subject.courses.all():
-            number = u"{0} {1}".format(course.subject,
+            number = "{0} {1}".format(course.subject,
                                        course.number)
             course_name = course.title
             offering_list = []
@@ -2536,7 +2536,7 @@ def registrar_schedule(request, printer_friendly_flag):
     for semester in SemesterName.objects.all():
         for subject in department.subjects.all():
             for course in subject.courses.all():
-                number = u"{0} {1}".format(course.subject, course.number)
+                number = "{0} {1}".format(course.subject, course.number)
                 course_name = course.title
 
                 for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view)):
@@ -2726,7 +2726,7 @@ def update_faculty_to_view_old(request, id):
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
-    print can_edit
+    print(can_edit)
     if request.method == 'POST':
         form = UpdateFacultyToViewForm(department_id, request.POST, instance=instance)
         if form.is_valid():
@@ -3665,7 +3665,7 @@ def weekly_course_schedule_entire_dept(request):
 # NEED TO CHECK FOR COURSE TIME CONFLICTS!!!!!!!
 #
 
-    semester_names_to_exclude = [u'Summer']
+    semester_names_to_exclude = ['Summer']
 
     semester_list = []
     for semester in SemesterName.objects.all():
@@ -3719,14 +3719,14 @@ def weekly_course_schedule_entire_dept(request):
                                  sc.room.building.abbrev+sc.room.number]
 
                 for instructor in sc.course_offering.instructor.all():
-                    if instructor.id not in instructor_conflict_check_dict.keys():
+                    if instructor.id not in list(instructor_conflict_check_dict.keys()):
                         instructor_conflict_check_dict[instructor.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
                     instructor_conflict_check_dict[instructor.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                                   sc.end_at.hour*100+sc.end_at.minute,
                                                                                   sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
                                                                                             ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                                        sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-                if sc.room.id not in room_conflict_check_dict.keys():
+                if sc.room.id not in list(room_conflict_check_dict.keys()):
                     room_conflict_check_dict[sc.room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
 
                 room_conflict_check_dict[sc.room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
@@ -3752,7 +3752,7 @@ def weekly_course_schedule_entire_dept(request):
                 else:
                     end_hour = sc.end_at.hour
 
-                hour_range=range(begin_hour,end_hour+1)
+                hour_range=list(range(begin_hour,end_hour+1))
                 for ii in range(len(hour_range)):
                     local_data=[]
                     for line in data_this_class:
@@ -3870,7 +3870,7 @@ def weekly_course_schedule_entire_dept(request):
         json_table_text_list = simplejson.dumps(table_text_list)
 
         error_messages=[]
-        for faculty_member_id in instructor_conflict_check_dict.keys():
+        for faculty_member_id in list(instructor_conflict_check_dict.keys()):
             overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
             faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
             for key in overlap_dict:
@@ -3879,7 +3879,7 @@ def weekly_course_schedule_entire_dept(request):
                                            faculty_member.last_name+' has a conflict on '+key+'s:',
                                            row[0]+' conflicts with '+row[1]])
 
-        for room_id in room_conflict_check_dict.keys():
+        for room_id in list(room_conflict_check_dict.keys()):
             overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id])
             room = Room.objects.get(pk = room_id)
             for key in overlap_dict:
