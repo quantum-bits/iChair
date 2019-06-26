@@ -2292,10 +2292,10 @@ def new_class_schedule(request,id, daisy_chain):
                 new_class = ScheduledClass(course_offering = course_offering)
                 new_class.day = day_dict[day]
 
-                start_hour=(start-start%100)/100
+                start_hour=(start-start%100)//100 # // is floor division
                 start_minute=start%100
-                end_hour = start_hour + (start_minute+duration)/60
-                end_minute = (start_minute+duration)%60 
+                end_hour = start_hour + (start_minute+duration)//60
+                end_minute = (start_minute+duration)%60
                 
                 if start_minute<10:
                     start_minute_string = '0'+str(start_minute)
@@ -2727,7 +2727,7 @@ def update_faculty_to_view_old(request, id):
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
-    print(can_edit)
+    #print(can_edit)
     if request.method == 'POST':
         form = UpdateFacultyToViewForm(department_id, request.POST, instance=instance)
         if form.is_valid():
@@ -3307,7 +3307,7 @@ def search_form_time(request):
             day_string=day_string+day_dict[int(day)]
 
         start_time = int(start_hour_string)*100+0
-        num_hours=int(time_interval)/60
+        num_hours=int(time_interval)//60
         num_minutes=int(time_interval)-num_hours*60
         end_time = start_time + num_hours*100+num_minutes
 
