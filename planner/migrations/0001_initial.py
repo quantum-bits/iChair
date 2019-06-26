@@ -120,7 +120,7 @@ class Migration(migrations.Migration):
                 ('load_available', models.FloatField(default=3)),
                 ('max_enrollment', models.PositiveIntegerField(default=10)),
                 ('comment', models.CharField(help_text=b'(optional)', max_length=20, null=True, blank=True)),
-                ('course', models.ForeignKey(related_name='offerings', to='planner.Course')),
+                ('course', models.ForeignKey(related_name='offerings', to='planner.Course', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -132,7 +132,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('course_offering', models.ForeignKey(to='planner.CourseOffering')),
+                ('course_offering', models.ForeignKey(to='planner.CourseOffering', on_delete=models.CASCADE), ),
             ],
             options={
                 'abstract': False,
@@ -157,9 +157,9 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('class_standing', models.ForeignKey(to='planner.ClassStanding')),
-                ('course', models.ForeignKey(to='planner.Course')),
-                ('degree_program', models.ForeignKey(to='planner.DegreeProgram')),
+                ('class_standing', models.ForeignKey(to='planner.ClassStanding', on_delete=models.CASCADE)),
+                ('course', models.ForeignKey(to='planner.Course', on_delete=models.CASCADE)),
+                ('degree_program', models.ForeignKey(to='planner.DegreeProgram', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -201,7 +201,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=80)),
-                ('department', models.ForeignKey(related_name='majors', to='planner.Department')),
+                ('department', models.ForeignKey(related_name='majors', to='planner.Department', on_delete=models.CASCADE)),
             ],
         ),
         migrations.CreateModel(
@@ -209,7 +209,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=80)),
-                ('department', models.ForeignKey(related_name='minors', to='planner.Department')),
+                ('department', models.ForeignKey(related_name='minors', to='planner.Department', on_delete=models.CASCADE)),
             ],
         ),
         migrations.CreateModel(
@@ -219,8 +219,8 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('note', models.TextField()),
-                ('department', models.ForeignKey(related_name='notes', to='planner.Department')),
-                ('year', models.ForeignKey(related_name='notes', blank=True, to='planner.AcademicYear', null=True)),
+                ('department', models.ForeignKey(related_name='notes', to='planner.Department', on_delete=models.CASCADE)),
+                ('year', models.ForeignKey(related_name='notes', blank=True, to='planner.AcademicYear', null=True, on_delete=models.SET_NULL)),
             ],
             options={
                 'abstract': False,
@@ -233,7 +233,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('load_credit', models.FloatField(validators=[django.core.validators.MinValueValidator(0.0), django.core.validators.MaxValueValidator(100.0)])),
-                ('course_offering', models.ForeignKey(related_name='offering_instructors', to='planner.CourseOffering')),
+                ('course_offering', models.ForeignKey(related_name='offering_instructors', to='planner.CourseOffering', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -307,7 +307,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('number', models.CharField(max_length=20)),
                 ('capacity', models.PositiveIntegerField(default=20)),
-                ('building', models.ForeignKey(related_name='rooms', to='planner.Building')),
+                ('building', models.ForeignKey(related_name='rooms', to='planner.Building', on_delete=models.CASCADE)),
             ],
             options={
                 'ordering': ['building__name', 'number'],
@@ -323,8 +323,8 @@ class Migration(migrations.Migration):
                 ('begin_at', models.TimeField()),
                 ('end_at', models.TimeField()),
                 ('comment', models.CharField(help_text=b'optional brief comment', max_length=40, null=True, blank=True)),
-                ('course_offering', models.ForeignKey(related_name='scheduled_classes', to='planner.CourseOffering')),
-                ('room', models.ForeignKey(related_name='scheduled_classes', to='planner.Room')),
+                ('course_offering', models.ForeignKey(related_name='scheduled_classes', to='planner.CourseOffering', on_delete=models.CASCADE)),
+                ('room', models.ForeignKey(related_name='scheduled_classes', to='planner.Room', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -372,7 +372,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('abbrev', models.CharField(max_length=10)),
                 ('name', models.CharField(max_length=80)),
-                ('department', models.ForeignKey(related_name='subjects', to='planner.Department')),
+                ('department', models.ForeignKey(related_name='subjects', to='planner.Department', on_delete=models.CASCADE)),
             ],
             options={
                 'ordering': ['abbrev'],
@@ -384,8 +384,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('title', models.CharField(max_length=80)),
                 ('credit_hours', models.PositiveIntegerField(default=3)),
-                ('equivalent_course', models.ForeignKey(related_name='transfer_courses', to='planner.Course')),
-                ('semester', models.ForeignKey(to='planner.Semester')),
+                ('equivalent_course', models.ForeignKey(related_name='transfer_courses', to='planner.Course', on_delete=models.CASCADE)),
+                ('semester', models.ForeignKey(to='planner.Semester', on_delete=models.CASCADE)),
             ],
         ),
         migrations.CreateModel(
@@ -406,17 +406,17 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('permission_level', models.IntegerField(default=0, choices=[(0, b'view only'), (1, b'department scheduler'), (2, b'super-user')])),
-                ('academic_year_to_view', models.ForeignKey(related_name='user_preferences', to='planner.AcademicYear')),
-                ('department_to_view', models.ForeignKey(related_name='user_preferences', to='planner.Department')),
+                ('academic_year_to_view', models.ForeignKey(related_name='user_preferences', to='planner.AcademicYear', on_delete=models.CASCADE)),
+                ('department_to_view', models.ForeignKey(related_name='user_preferences', to='planner.Department', on_delete=models.CASCADE)),
                 ('other_load_types_to_view', models.ManyToManyField(related_name='user_preferences', null=True, to='planner.OtherLoadType', blank=True)),
                 ('rooms_to_view', models.ManyToManyField(related_name='user_preferences', null=True, to='planner.Room', blank=True)),
-                ('user', models.ForeignKey(related_name='user_preferences', to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(related_name='user_preferences', to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
         ),
         migrations.CreateModel(
             name='FacultyMember',
             fields=[
-                ('person_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='planner.Person')),
+                ('person_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='planner.Person', on_delete=models.CASCADE)),
                 ('faculty_id', models.CharField(max_length=25)),
                 ('rank', models.CharField(max_length=8, choices=[(b'Inst', b'Instructor'), (b'Adj', b'Adjunct Professor'), (b'Asst', b'Assistant Professor'), (b'Assoc', b'Associate Professor'), (b'Full', b'Professor')])),
             ],
@@ -428,7 +428,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='StaffMember',
             fields=[
-                ('person_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='planner.Person')),
+                ('person_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='planner.Person', on_delete=models.CASCADE)),
                 ('staff_id', models.CharField(max_length=25)),
             ],
             options={
@@ -439,13 +439,13 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Student',
             fields=[
-                ('person_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='planner.Person')),
+                ('person_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='planner.Person', on_delete=models.CASCADE)),
                 ('student_id', models.CharField(max_length=25)),
-                ('catalog_year', models.ForeignKey(related_name='+', to='planner.AcademicYear', help_text=b'Catalog year for graduation plan')),
-                ('entering_year', models.ForeignKey(related_name='+', to='planner.AcademicYear', help_text=b'Year student entered university')),
+                ('catalog_year', models.ForeignKey(related_name='+', to='planner.AcademicYear', help_text=b'Catalog year for graduation plan', on_delete=models.CASCADE)),
+                ('entering_year', models.ForeignKey(related_name='+', to='planner.AcademicYear', help_text=b'Year student entered university', on_delete=models.CASCADE)),
                 ('majors', models.ManyToManyField(related_name='students', null=True, to='planner.Major', blank=True)),
                 ('minors', models.ManyToManyField(related_name='students', null=True, to='planner.Minor', blank=True)),
-                ('university', models.ForeignKey(related_name='students', to='planner.University')),
+                ('university', models.ForeignKey(related_name='students', to='planner.University', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -455,62 +455,62 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='transfercourse',
             name='university',
-            field=models.ForeignKey(related_name='transfer_courses', to='planner.University'),
+            field=models.ForeignKey(related_name='transfer_courses', to='planner.University', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='semester',
             name='name',
-            field=models.ForeignKey(to='planner.SemesterName'),
+            field=models.ForeignKey(to='planner.SemesterName', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='semester',
             name='year',
-            field=models.ForeignKey(related_name='semesters', to='planner.AcademicYear'),
+            field=models.ForeignKey(related_name='semesters', to='planner.AcademicYear', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='school',
             name='university',
-            field=models.ForeignKey(related_name='schools', to='planner.University'),
+            field=models.ForeignKey(related_name='schools', to='planner.University', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='otherload',
             name='load_type',
-            field=models.ForeignKey(related_name='other_loads', to='planner.OtherLoadType'),
+            field=models.ForeignKey(related_name='other_loads', to='planner.OtherLoadType', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='otherload',
             name='semester',
-            field=models.ForeignKey(to='planner.Semester'),
+            field=models.ForeignKey(to='planner.Semester', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='holiday',
             name='semester',
-            field=models.ForeignKey(related_name='holidays', to='planner.Semester'),
+            field=models.ForeignKey(related_name='holidays', to='planner.Semester', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='department',
             name='school',
-            field=models.ForeignKey(related_name='departments', to='planner.School'),
+            field=models.ForeignKey(related_name='departments', to='planner.School', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='degreeprogramcourse',
             name='semester_name',
-            field=models.ForeignKey(to='planner.SemesterName'),
+            field=models.ForeignKey(to='planner.SemesterName', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='degreeprogram',
             name='major',
-            field=models.ForeignKey(related_name='degree_programs', to='planner.Major'),
+            field=models.ForeignKey(related_name='degree_programs', to='planner.Major', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='coursetaken',
             name='final_grade',
-            field=models.ForeignKey(to='planner.Grade', blank=True),
+            field=models.ForeignKey(to='planner.Grade', blank=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='courseoffering',
             name='semester',
-            field=models.ForeignKey(related_name='offerings', to='planner.Semester'),
+            field=models.ForeignKey(related_name='offerings', to='planner.Semester', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='course',
@@ -535,17 +535,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='course',
             name='subject',
-            field=models.ForeignKey(related_name='courses', to='planner.Subject'),
+            field=models.ForeignKey(related_name='courses', to='planner.Subject', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='classmeeting',
             name='course_offering',
-            field=models.ForeignKey(related_name='class_meetings', to='planner.CourseOffering'),
+            field=models.ForeignKey(related_name='class_meetings', to='planner.CourseOffering', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='classmeeting',
             name='room',
-            field=models.ForeignKey(to='planner.Room'),
+            field=models.ForeignKey(to='planner.Room', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='userpreferences',
@@ -555,52 +555,52 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='transfercourse',
             name='student',
-            field=models.ForeignKey(related_name='transfer_courses', to='planner.Student'),
+            field=models.ForeignKey(related_name='transfer_courses', to='planner.Student', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='staffmember',
             name='department',
-            field=models.ForeignKey(related_name='staff', to='planner.Department'),
+            field=models.ForeignKey(related_name='staff', to='planner.Department', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='staffmember',
             name='university',
-            field=models.ForeignKey(related_name='staff', to='planner.University'),
+            field=models.ForeignKey(related_name='staff', to='planner.University', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='school',
             name='dean',
-            field=models.OneToOneField(null=True, blank=True, to='planner.FacultyMember'),
+            field=models.OneToOneField(null=True, blank=True, to='planner.FacultyMember', on_delete=models.SET_NULL),
         ),
         migrations.AddField(
             model_name='otherload',
             name='instructor',
-            field=models.ForeignKey(related_name='other_loads', to='planner.FacultyMember'),
+            field=models.ForeignKey(related_name='other_loads', to='planner.FacultyMember', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='offeringinstructor',
             name='instructor',
-            field=models.ForeignKey(related_name='offering_instructors', to='planner.FacultyMember'),
+            field=models.ForeignKey(related_name='offering_instructors', to='planner.FacultyMember', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='facultymember',
             name='department',
-            field=models.ForeignKey(related_name='faculty', to='planner.Department'),
+            field=models.ForeignKey(related_name='faculty', to='planner.Department', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='facultymember',
             name='university',
-            field=models.ForeignKey(related_name='faculty', to='planner.University'),
+            field=models.ForeignKey(related_name='faculty', to='planner.University', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='department',
             name='chair',
-            field=models.OneToOneField(related_name='department_chaired', null=True, blank=True, to='planner.FacultyMember'),
+            field=models.OneToOneField(related_name='department_chaired', null=True, blank=True, to='planner.FacultyMember', on_delete=models.SET_NULL),
         ),
         migrations.AddField(
             model_name='coursetaken',
             name='student',
-            field=models.ForeignKey(related_name='courses_taken', to='planner.Student'),
+            field=models.ForeignKey(related_name='courses_taken', to='planner.Student', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='courseoffering',
@@ -610,11 +610,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='classmeeting',
             name='instructor',
-            field=models.ForeignKey(related_name='class_meetings', to='planner.FacultyMember'),
+            field=models.ForeignKey(related_name='class_meetings', to='planner.FacultyMember', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='advisingnote',
             name='student',
-            field=models.ForeignKey(related_name='advising_notes', to='planner.Student'),
+            field=models.ForeignKey(related_name='advising_notes', to='planner.Student', on_delete=models.CASCADE),
         ),
     ]

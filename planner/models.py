@@ -62,19 +62,19 @@ class RequirementBlock(models.Model):
 
 class TransferCourse(models.Model):
     """Course transferred from another institution."""
-    university = models.ForeignKey(University, related_name='transfer_courses')
+    university = models.ForeignKey(University, related_name='transfer_courses', on_delete=models.CASCADE)
     title = models.CharField(max_length=80)
     credit_hours = models.PositiveIntegerField(default=3)
-    semester = models.ForeignKey(Semester)
-    equivalent_course = models.ForeignKey(Course, related_name='transfer_courses')
-    student = models.ForeignKey(Student, related_name='transfer_courses')
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
+    equivalent_course = models.ForeignKey(Course, related_name='transfer_courses', on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, related_name='transfer_courses', on_delete=models.CASCADE)
 
     def __str__(self):
         return self.title
 
 
 class AdvisingNote(StampedModel):
-    student = models.ForeignKey(Student, related_name='advising_notes')
+    student = models.ForeignKey(Student, related_name='advising_notes', on_delete=models.CASCADE)
     note = models.TextField()
 
     def __str__(self):
@@ -98,7 +98,7 @@ class DegreeProgram(StampedModel):
     """Courses in a degree program"""
     name = models.CharField(max_length=100, help_text="e.g., Physics BS, entering odd years")
     entering_year = models.CharField(max_length=1, choices=Course.SCHEDULE_YEAR_CHOICES)
-    major = models.ForeignKey(Major, related_name='degree_programs')
+    major = models.ForeignKey(Major, related_name='degree_programs', on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -106,8 +106,8 @@ class DegreeProgram(StampedModel):
 
 class DegreeProgramCourse(StampedModel):
     """Single course in a degree program"""
-    degree_program = models.ForeignKey(DegreeProgram)
-    course = models.ForeignKey(Course)
-    class_standing = models.ForeignKey(ClassStanding)
-    semester_name = models.ForeignKey(SemesterName)
+    degree_program = models.ForeignKey(DegreeProgram, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    class_standing = models.ForeignKey(ClassStanding, on_delete=models.CASCADE)
+    semester_name = models.ForeignKey(SemesterName, on_delete=models.CASCADE)
 

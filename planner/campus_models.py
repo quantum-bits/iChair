@@ -26,8 +26,8 @@ class University(StampedModel):
 class School(StampedModel):
     """School within university. Some institutions refer to this as a 'college' or 'division'."""
     name = models.CharField(max_length=100)
-    university = models.ForeignKey(University, related_name='schools')
-    dean = models.OneToOneField('FacultyMember', blank=True, null=True)
+    university = models.ForeignKey(University, related_name='schools', on_delete=models.CASCADE)
+    dean = models.OneToOneField('FacultyMember', blank=True, null=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         return self.name
@@ -38,9 +38,9 @@ class Department(models.Model):
     # not every department has a convient abbreviation.
     abbrev = models.CharField(max_length=10, blank=True)
     name = models.CharField(max_length=100)
-    school = models.ForeignKey(School, related_name='departments')
+    school = models.ForeignKey(School, related_name='departments', on_delete=models.CASCADE)
     chair = models.OneToOneField('FacultyMember', blank=True, null=True,
-                                 related_name='department_chaired')
+                                 related_name='department_chaired', on_delete=models.SET_NULL)
 
     class Meta:
         ordering = ['name']
@@ -51,7 +51,7 @@ class Department(models.Model):
 class Major(models.Model):
     """Academic major"""
     name = models.CharField(max_length=80)
-    department = models.ForeignKey(Department, related_name='majors')
+    department = models.ForeignKey(Department, related_name='majors', on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -60,7 +60,7 @@ class Major(models.Model):
 class Minor(models.Model):
     """Academic minor"""
     name = models.CharField(max_length=80)
-    department = models.ForeignKey(Department, related_name='minors')
+    department = models.ForeignKey(Department, related_name='minors', on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -82,11 +82,11 @@ class FacultyMember(Person):
                     ('Asst', 'Assistant Professor'),
                     ('Assoc', 'Associate Professor'),
                     ('Full', 'Professor'))
-    university = models.ForeignKey(University, related_name='faculty')
+    university = models.ForeignKey(University, related_name='faculty', on_delete=models.CASCADE)
     faculty_id = models.CharField(max_length=25)
-    department = models.ForeignKey(Department, related_name='faculty')
+    department = models.ForeignKey(Department, related_name='faculty', on_delete=models.CASCADE)
     rank = models.CharField(max_length=8, choices=RANK_CHOICES)
-    inactive_starting = models.ForeignKey(AcademicYear, related_name='faculty', blank=True, null=True)
+    inactive_starting = models.ForeignKey(AcademicYear, related_name='faculty', blank=True, null=True, on_delete=models.SET_NULL)
     
     class Meta:
         ordering = ['last_name','first_name']
@@ -130,9 +130,9 @@ class FacultyMember(Person):
             return False
             
 class StaffMember(Person):
-    university = models.ForeignKey(University, related_name='staff')
+    university = models.ForeignKey(University, related_name='staff', on_delete=models.CASCADE)
     staff_id = models.CharField(max_length=25)
-    department = models.ForeignKey(Department, related_name='staff')
+    department = models.ForeignKey(Department, related_name='staff', on_delete=models.CASCADE)
 
 class SemesterName(models.Model):
     """Name for a semester. Using model here may be overkill, but it provides a nice way in
@@ -150,8 +150,8 @@ class SemesterName(models.Model):
 
 class Semester(models.Model):
     """Instance of a single semester in a given academic year."""
-    name = models.ForeignKey(SemesterName)
-    year = models.ForeignKey(AcademicYear, related_name='semesters')
+    name = models.ForeignKey(SemesterName, on_delete=models.CASCADE)
+    year = models.ForeignKey(AcademicYear, related_name='semesters', on_delete=models.CASCADE)
     begin_on = models.DateField()
     end_on = models.DateField()
 
@@ -169,7 +169,7 @@ class Holiday(models.Model):
     name = models.CharField(max_length=30)
     begin_on = models.DateField()
     end_on = models.DateField()
-    semester = models.ForeignKey(Semester, related_name='holidays')
+    semester = models.ForeignKey(Semester, related_name='holidays', on_delete=models.CASCADE)
 
     class Meta:
         ordering = [ 'begin_on' ]
@@ -197,7 +197,7 @@ class Building(StampedModel):
 class Room(StampedModel):
     """Room within a building."""
     number = models.CharField(max_length=20)
-    building = models.ForeignKey(Building, related_name='rooms')
+    building = models.ForeignKey(Building, related_name='rooms', on_delete=models.CASCADE)
     capacity = models.PositiveIntegerField(default=20)
 
     class Meta:
@@ -226,7 +226,7 @@ class Subject(StampedModel):
     """Subject areas such as COS, PHY, SYS, etc. Note that subject and department are not the
     same thing. A department usually offers courses in multiple subjects.
     """
-    department = models.ForeignKey(Department, related_name='subjects')
+    department = models.ForeignKey(Department, related_name='subjects', on_delete=models.CASCADE)
     abbrev = models.CharField(max_length=10) # EG: COS, SYS
     name = models.CharField(max_length=80)   # EG: Computer Science, Systems
 
@@ -343,7 +343,7 @@ class Course(StampedModel):
     """Course as listed in the catalog."""
     SCHEDULE_YEAR_CHOICES = (('E', 'Even'), ('O', 'Odd'), ('B', 'Both'))
 
-    subject = models.ForeignKey(Subject, related_name='courses')
+    subject = models.ForeignKey(Subject, related_name='courses', on_delete=models.CASCADE)
     number = models.CharField(max_length=10)
     title = models.CharField(max_length=80)
     credit_hours = models.PositiveIntegerField(default=3)
@@ -369,12 +369,12 @@ class Course(StampedModel):
 
 
 class Student(Person):
-    university = models.ForeignKey(University, related_name='students')
+    university = models.ForeignKey(University, related_name='students', on_delete=models.CASCADE)
     student_id = models.CharField(max_length=25)
     entering_year = models.ForeignKey(AcademicYear, related_name='+',
-                                      help_text='Year student entered university')
+                                      help_text='Year student entered university', on_delete=models.CASCADE)
     catalog_year = models.ForeignKey(AcademicYear, related_name='+',
-                                     help_text='Catalog year for graduation plan')
+                                     help_text='Catalog year for graduation plan', on_delete=models.CASCADE)
     majors = models.ManyToManyField(Major, related_name='students', blank=True)
     minors = models.ManyToManyField(Minor, related_name='students', blank=True)
 
@@ -404,17 +404,17 @@ class OtherLoadType(models.Model):
 
 class OtherLoad(models.Model):
     """Instances of other load types for a given instructor in a given semester of a given academic year."""
-    load_type = models.ForeignKey(OtherLoadType, related_name='other_loads')
-    semester = models.ForeignKey(Semester)
-    instructor = models.ForeignKey(FacultyMember, related_name='other_loads')
+    load_type = models.ForeignKey(OtherLoadType, related_name='other_loads', on_delete=models.CASCADE)
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
+    instructor = models.ForeignKey(FacultyMember, related_name='other_loads', on_delete=models.CASCADE)
     load_credit = models.FloatField()
     comments = models.CharField(max_length=100, blank=True, null=True,
                                 help_text='optional longer comments')
 
 class CourseOffering(StampedModel):
     """Course as listed in the course schedule (i.e., an offering of a course)."""
-    course = models.ForeignKey(Course, related_name='offerings')
-    semester = models.ForeignKey(Semester, related_name='offerings')
+    course = models.ForeignKey(Course, related_name='offerings', on_delete=models.CASCADE)
+    semester = models.ForeignKey(Semester, related_name='offerings', on_delete=models.CASCADE)
     instructor = models.ManyToManyField(FacultyMember, through='OfferingInstructor',
                                         blank=True,
                                         related_name='course_offerings')
@@ -452,9 +452,9 @@ class Grade(models.Model):
 
 
 class CourseTaken(StampedModel):
-    student = models.ForeignKey(Student, related_name='courses_taken')
-    course_offering = models.ForeignKey(CourseOffering)
-    final_grade = models.ForeignKey(Grade, blank=True)
+    student = models.ForeignKey(Student, related_name='courses_taken', on_delete=models.CASCADE)
+    course_offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE)
+    final_grade = models.ForeignKey(Grade, blank=True, on_delete=models.CASCADE)
 
 
 class OfferingInstructor(StampedModel):
@@ -462,8 +462,8 @@ class OfferingInstructor(StampedModel):
     course. The primary purpose for this model is to track load credit being granted to
     each instructor of the course.
     """
-    course_offering = models.ForeignKey(CourseOffering, related_name='offering_instructors')
-    instructor = models.ForeignKey(FacultyMember,related_name='offering_instructors')
+    course_offering = models.ForeignKey(CourseOffering, related_name='offering_instructors', on_delete=models.CASCADE)
+    instructor = models.ForeignKey(FacultyMember,related_name='offering_instructors', on_delete=models.CASCADE)
     load_credit = models.FloatField(validators = [MinValueValidator(0.0), MaxValueValidator(100.0)])
 
 
@@ -477,9 +477,9 @@ class ClassMeeting(StampedModel):
     held_on = models.DateField()
     begin_at = models.TimeField()
     end_at = models.TimeField()
-    course_offering = models.ForeignKey(CourseOffering, related_name='class_meetings')
-    room = models.ForeignKey(Room)
-    instructor = models.ForeignKey(FacultyMember, related_name='class_meetings')
+    course_offering = models.ForeignKey(CourseOffering, related_name='class_meetings', on_delete=models.CASCADE)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE)
+    instructor = models.ForeignKey(FacultyMember, related_name='class_meetings', on_delete=models.CASCADE)
 
     def __str__(self):
         return '{0} ({1} {2})'.format(self.course_offering, self.held_on, self.begin_at)
@@ -509,8 +509,8 @@ class ScheduledClass(StampedModel):
     day = models.IntegerField(choices = DAY_CHOICES, default = MONDAY)
     begin_at = models.TimeField()
     end_at = models.TimeField()
-    course_offering = models.ForeignKey(CourseOffering, related_name='scheduled_classes')
-    room = models.ForeignKey(Room, related_name='scheduled_classes')
+    course_offering = models.ForeignKey(CourseOffering, related_name='scheduled_classes', on_delete=models.CASCADE)
+    room = models.ForeignKey(Room, related_name='scheduled_classes', on_delete=models.CASCADE)
 #    instructor = models.ForeignKey(FacultyMember, blank=True, null=True)
 # at this point let the instructor(s) be determined by CourseOffering...  Eventually
 # it might be good to be able to have one instructor on one day and another on another
@@ -535,12 +535,12 @@ class UserPreferences(models.Model):
         (SUPER, 'super-user')
     )
 
-    user = models.ForeignKey(User, related_name = 'user_preferences')
-    department_to_view = models.ForeignKey(Department, related_name = 'user_preferences')
+    user = models.ForeignKey(User, related_name = 'user_preferences', on_delete=models.CASCADE)
+    department_to_view = models.ForeignKey(Department, related_name = 'user_preferences', on_delete=models.CASCADE)
     faculty_to_view = models.ManyToManyField(FacultyMember,
                                         blank=True,
                                         related_name='user_preferences')
-    academic_year_to_view = models.ForeignKey(AcademicYear, related_name = 'user_preferences')
+    academic_year_to_view = models.ForeignKey(AcademicYear, related_name = 'user_preferences', on_delete=models.CASCADE)
 
     permission_level = models.IntegerField(choices = PERMISSION_CHOICES, default = VIEW_ONLY)
 
@@ -556,9 +556,9 @@ class UserPreferences(models.Model):
         return self.user.last_name
 
 class Note(StampedModel):
-    department = models.ForeignKey(Department, related_name='notes')
+    department = models.ForeignKey(Department, related_name='notes', on_delete=models.CASCADE)
     note = models.TextField()
-    year = models.ForeignKey(AcademicYear, blank=True, null=True, related_name='notes')
+    year = models.ForeignKey(AcademicYear, blank=True, null=True, related_name='notes', on_delete=models.CASCADE)
 
     def __str__(self):
         return "{0} on {1}".format(self.department, self.updated_at)

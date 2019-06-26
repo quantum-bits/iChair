@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='facultymember',
             name='inactive_starting',
-            field=models.ForeignKey(related_name='faculty', blank=True, to='planner.AcademicYear', null=True),
+            field=models.ForeignKey(related_name='faculty', blank=True, to='planner.AcademicYear', null=True, on_delete=models.SET_NULL),
         ),
     ]
