@@ -41,7 +41,7 @@ class RequirementBlock(models.Model):
     
     courses = models.ManyToManyField(Course, help_text = "Select courses for this requirement.")
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -69,7 +69,7 @@ class TransferCourse(models.Model):
     equivalent_course = models.ForeignKey(Course, related_name='transfer_courses')
     student = models.ForeignKey(Student, related_name='transfer_courses')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.title
 
 
@@ -77,7 +77,7 @@ class AdvisingNote(StampedModel):
     student = models.ForeignKey(Student, related_name='advising_notes')
     note = models.TextField()
 
-    def __unicode__(self):
+    def __str__(self):
         return "{0} on {1}".format(self.student, self.updated_at)
 
 
@@ -89,7 +89,7 @@ class ClassStanding(models.Model):
     class Meta:
         ordering = ['seq']
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -100,7 +100,7 @@ class DegreeProgram(StampedModel):
     entering_year = models.CharField(max_length=1, choices=Course.SCHEDULE_YEAR_CHOICES)
     major = models.ForeignKey(Major, related_name='degree_programs')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 

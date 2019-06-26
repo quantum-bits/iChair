@@ -19,7 +19,7 @@ class University(StampedModel):
     class Meta:
         verbose_name_plural = 'universities'
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -29,7 +29,7 @@ class School(StampedModel):
     university = models.ForeignKey(University, related_name='schools')
     dean = models.OneToOneField('FacultyMember', blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -45,7 +45,7 @@ class Department(models.Model):
     class Meta:
         ordering = ['name']
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 class Major(models.Model):
@@ -53,7 +53,7 @@ class Major(models.Model):
     name = models.CharField(max_length=80)
     department = models.ForeignKey(Department, related_name='majors')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
         
 
@@ -62,7 +62,7 @@ class Minor(models.Model):
     name = models.CharField(max_length=80)
     department = models.ForeignKey(Department, related_name='minors')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 class AcademicYear(models.Model):
@@ -72,7 +72,7 @@ class AcademicYear(models.Model):
     class Meta:
         ordering = [ 'begin_on' ]
 
-    def __unicode__(self):
+    def __str__(self):
         return '{0}-{1}'.format(self.begin_on.year, self.end_on.year)
  
     
@@ -144,7 +144,7 @@ class SemesterName(models.Model):
     class Meta:
         ordering = ['seq']
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -158,7 +158,7 @@ class Semester(models.Model):
     class Meta:
         ordering = ['year', 'name']
 
-    def __unicode__(self):
+    def __str__(self):
         return '{0} {1}'.format(self.name, self.year)
 
 
@@ -178,7 +178,7 @@ class Holiday(models.Model):
         """Does date fall on in this holiday?"""
         return self.begin_on <= date <= self.end_on
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -190,7 +190,7 @@ class Building(StampedModel):
     class Meta:
         ordering = ['abbrev']
         
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -203,7 +203,7 @@ class Room(StampedModel):
     class Meta:
         ordering = ['building__name','number']
 
-    def __unicode__(self):
+    def __str__(self):
         return '{0} {1}'.format(self.building, self.number)
 
     def classes_scheduled(self, academic_year_object, department_object):
@@ -230,7 +230,7 @@ class Subject(StampedModel):
     abbrev = models.CharField(max_length=10) # EG: COS, SYS
     name = models.CharField(max_length=80)   # EG: Computer Science, Systems
 
-    def __unicode__(self):
+    def __str__(self):
         return self.abbrev
 
     class Meta:
@@ -241,7 +241,7 @@ class CourseAttribute(StampedModel):
     abbrev = models.CharField(max_length=10)
     name = models.CharField(max_length=80)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -249,7 +249,7 @@ class Constraint(models.Model):
     name = models.CharField(max_length = 80)
     constraint_text = models.CharField(max_length = 100)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def parse_constraint_text(self):
@@ -310,7 +310,7 @@ class Requirement(models.Model):
     requirements = models.ManyToManyField('self', symmetrical=False, blank=True, related_name = 'sub_requirements')
     courses = models.ManyToManyField('Course', related_name = 'courses', blank=True)
     
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def satisfied_sub_categories(self, courses):
@@ -357,7 +357,7 @@ class Course(StampedModel):
 
     crn = models.CharField(max_length=10, blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{0} {1} - {2}".format(self.subject, self.number, self.title)
 
     @property
@@ -382,7 +382,7 @@ class OtherLoadType(models.Model):
     """Types of load other than for teaching course (e.g., administrative load, sabbatical, etc.)"""
     load_type = models.CharField(max_length=20, help_text='e.g., Research, Chair, Sabbatical')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.load_type
 
     class Meta:
@@ -422,7 +422,7 @@ class CourseOffering(StampedModel):
     max_enrollment = models.PositiveIntegerField(default=10)
     comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
 
-    def __unicode__(self):
+    def __str__(self):
         return "{0} ({1})".format(self.course, self.semester)
 
     def department(self):
@@ -447,7 +447,7 @@ class Grade(models.Model):
     letter_grade = models.CharField(max_length=5)
     grade_points = models.FloatField()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.letter_grade
 
 
@@ -481,7 +481,7 @@ class ClassMeeting(StampedModel):
     room = models.ForeignKey(Room)
     instructor = models.ForeignKey(FacultyMember, related_name='class_meetings')
 
-    def __unicode__(self):
+    def __str__(self):
         return '{0} ({1} {2})'.format(self.course_offering, self.held_on, self.begin_at)
 
 class ScheduledClass(StampedModel):
@@ -520,7 +520,7 @@ class ScheduledClass(StampedModel):
                                 help_text='optional brief comment')
 
 
-    def __unicode__(self):
+    def __str__(self):
         return '{0} ({1} {2})'.format(self.course_offering, self.day, self.begin_at)
 
 class UserPreferences(models.Model):
@@ -552,7 +552,7 @@ class UserPreferences(models.Model):
                                                       blank=True,
                                                       related_name='user_preferences')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.user.last_name
 
 class Note(StampedModel):
@@ -560,7 +560,7 @@ class Note(StampedModel):
     note = models.TextField()
     year = models.ForeignKey(AcademicYear, blank=True, null=True, related_name='notes')
 
-    def __unicode__(self):
+    def __str__(self):
         return "{0} on {1}".format(self.department, self.updated_at)
 
 

@@ -24,25 +24,26 @@ from datetime import date
 
 from reportlab.pdfgen import canvas
 
-import io as StringIO
 from xhtml2pdf import pisa
 from django.template.loader import get_template
 from django.template import Context
-from django.http import HttpResponse
+
 from cgi import escape
+from io import BytesIO
 
-
-def render_to_pdf(template_src, context_dict):
+# https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
+def render_to_pdf(template_src, context_dict={}):
     template = get_template(template_src)
-    context = Context(context_dict)
-    html  = template.render(context)
-    result = StringIO.StringIO()
-
-    pdf = pisa.pisaDocument(StringIO.StringIO(html.encode("ISO-8859-1")), result)
+    html  = template.render(context_dict)
+    result = BytesIO()
+    pdf = pisa.pisaDocument(BytesIO(html.encode("ISO-8859-1")), result)
     if not pdf.err:
         return HttpResponse(result.getvalue(), content_type='application/pdf')
     return HttpResponse('We had some errors<pre>%s</pre>' % escape(html))
 
+# some other resources:
+# https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
+# https://github.com/xhtml2pdf/xhtml2pdf/tree/master/demo/djangoproject
 
 
 # TO DO:

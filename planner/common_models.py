@@ -37,7 +37,7 @@ class Person(StampedModel):
     class Meta:
         verbose_name_plural = 'people'
 
-    def __unicode__(self):
+    def __str__(self):
         return self.full_name
 
     @property
