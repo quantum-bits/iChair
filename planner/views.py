@@ -1971,9 +1971,9 @@ def initialize_canvas_data(courses_after_five, num_data_columns):
 
     canvas_width = 2*border+num_data_columns*width_day+width_hour_names
 
-    # 10 hour blocks (7 a.m.,..., 4 p.m.) or 15 (...9 p.m.)
+    # 10 hour blocks (7 a.m.,..., 4 p.m.) or 17 (...11 p.m.)
     if courses_after_five:
-        number_hour_blocks = 15
+        number_hour_blocks = 17
     else:
         number_hour_blocks = 10
 
@@ -2220,7 +2220,7 @@ def manage_course_offerings(request,id):
 # create the formset
 #------new
 
-#    CourseOfferingFormset.form = staticmethod(curry(ManageCourseOfferingForm, year_id=year_id))
+#    CourseOfferingFormset.form = (curry(ManageCourseOfferingForm, year_id=year_id))
 
 #------new
 
@@ -3659,10 +3659,10 @@ def weekly_course_schedule_entire_dept(request):
             table_title = department.name +' ('+semester_name+', '+str(academic_year+1)+')'
 
         master_dict={}
-        num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0}
-        num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0}
+        num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
+        num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
         for day in day_list:
-            master_dict[day]={7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[],17:[],18:[],19:[],20:[],21:[]}
+            master_dict[day]={7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[],17:[],18:[],19:[],20:[],21:[],22:[],23:[]}
 
 # master_dict contains the text that will be displayed in the various boxes
             for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
@@ -3730,21 +3730,21 @@ def weekly_course_schedule_entire_dept(request):
                     for new_line in local_data:
                         master_dict[day][hour_range[ii]].append(new_line)
 
-#        print master_dict
+#        print(master_dict)
         
         for hour in num_lines_in_hour:
             for day in master_dict:
                 if len(master_dict[day][hour])>num_lines_in_hour[hour]:
                     num_lines_in_hour[hour]=len(master_dict[day][hour])
                     num_lines_including_halves[hour]=num_lines_in_hour[hour]-1.0*(master_dict[day][hour].count(''))/2.0
-#                    print master_dict[day][hour],num_lines_including_halves[hour]
+#                    print(master_dict[day][hour],num_lines_including_halves[hour])
 
 #        print num_lines_in_hour
 
         schedule = initialize_canvas_data(courses_after_five, num_data_columns)
 #        print schedule['height']
         
-        height_hour_blocks_dict={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0}
+        height_hour_blocks_dict={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
         min_height_hour_block = 3*schedule['box_text_line_sep_pixels']
 
         canvas_height=2*schedule['border']+schedule['height_day_names']
