@@ -499,10 +499,20 @@ def collect_data_for_summary(request):
             'loads': []
         }
 
+    # Note: even if the user has decided not to view certain load types (in user preferences), those load types
+    # will still show up in the list if there is load assigned for the load type.  That way we don't miss anything.
     for load in other_loads:
-        if (load.load_type in other_load_types) and (load.instructor in faculty_to_view):
+        #print('load: ', load.load_type, load.load_credit, load.instructor)
+        #if (load.load_type in other_load_types) and (load.instructor in faculty_to_view):
+        if (load.instructor in faculty_to_view):
+            # https://stackoverflow.com/questions/42315072/python-update-a-key-in-dict-if-it-doesnt-exist
+            if load.load_type.id not in other_load_type_dict: # this load type is not yet in the dictionary, so add it in
+                other_load_type_dict[load.load_type.id] = {
+                    'load_type': load.load_type,
+                    'loads': []
+                }
             other_load_type_dict[load.load_type.id]['loads'].append(load)
-    
+
 #    assert False
     for key in other_load_type_dict:
         load_list = []

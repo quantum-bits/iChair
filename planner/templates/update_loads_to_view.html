@@ -29,15 +29,16 @@
 	  padding: 15px;
 	  font-weight: normal;
   }
+
   </style>
 
   
 
   <div class="content-center">
 	  <h3>
-		  Choose Which Load Types to Display in Views
+		  Choose Which Load Types to Display in Views*
 	  </h3>
-
+	    
 	  <div>
 		  
 		  <button class="btn btn-info" onmouseover="popLoadsBeingUsed()" onmouseout="unPopLoadsBeingUsed()" onclick="checkLoadsBeingUsed()" id="selectLoadsBeingUsed"> Select only load types in use by this department </button> 
@@ -82,12 +83,22 @@
 		
 	  </form>
 
+	  <div class="alert alert-student-info">  
+		<a class="close" data-dismiss="alert">×</a>  
+		<div><strong>*Note:</strong> If a particular type of load has not yet been assigned in the department, 
+			checking it here will make it show up in the faculty load summary.  If load
+			has already been assigned, it will show up regardless of the settings defined here.
+	  	</div>   
+	  </div>   
+		
+	  <!--
 	  <div id="warningBox" class="warning-container"> Note: One or more load types that are being used by the department
 		  will not be displayed.</div>
+	  -->
   </div>
 
   <script>
-  document.getElementById('warningBox').style.visibility = 'hidden';
+  //document.getElementById('warningBox').style.visibility = 'hidden';
   var loadsInUseNotSelected = false;
   $(function() {
 	  var loadsInUse = {{json_loads_in_use|safe}};
@@ -117,13 +128,13 @@ $(function() {
 				use.style.backgroundColor = '#f2dede';
 				cBox.style.backgroundColor = '#f2dede';
 				loadsInUseNotSelected = true;
-				document.getElementById('warningBox').style.visibility = 'visible';
+				//document.getElementById('warningBox').style.visibility = 'visible';
 			} else {
 				use.style.color = row.style.color;
 				use.style.backgroundColor = row.style.backgroundColor;
 				cBox.style.backgroundColor = row.style.backgroundColor;
 				if (loadsInUseOK()) {
-					document.getElementById('warningBox').style.visibility = 'hidden';
+					//document.getElementById('warningBox').style.visibility = 'hidden';
 				};
 			}
 		});
@@ -154,7 +165,7 @@ function checkLoadsBeingUsed() {
 		document.getElementById('cboxtd'+loadsInUse[n]).style.backgroundColor = row.style.backgroundColor;
 		document.getElementById('use'+loadsInUse[n]).style.backgroundColor = row.style.backgroundColor;
 		document.getElementById('use'+loadsInUse[n]).style.color = row.style.color;
-		document.getElementById('warningBox').style.visibility = 'hidden';
+		//document.getElementById('warningBox').style.visibility = 'hidden';
 	};
 	for (var n=0; n < loadsNotInUse.length; n++) {
 		document.getElementById('option'+loadsNotInUse[n]).checked = false;
