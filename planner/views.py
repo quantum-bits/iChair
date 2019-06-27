@@ -357,16 +357,16 @@ def collect_data_for_summary(request):
     course_offerings = CourseOffering.objects.filter(
         Q(course__subject__department=department)&
         Q(semester__year=academic_year_object)).select_related(
-            'semester__name__name',
-            'semester__year__begin_on',
+            'semester__name',
+            'semester__year',
             'course__subject')
 
     scheduled_classes = ScheduledClass.objects.filter(
         Q(course_offering__course__subject__department=department)&
         Q(course_offering__semester__year=academic_year_object)).select_related(
             'room__building',
-            'course_offering__semester__name__name',
-            'course_offering__semester__year__begin_on',
+            'course_offering__semester__name',
+            'course_offering__semester__year',
             'course_offering__course__subject')
 
 
@@ -374,8 +374,7 @@ def collect_data_for_summary(request):
         Q(course_offering__course__subject__department=department)&
         Q(course_offering__semester__year=academic_year_object)).select_related(
             'course_offering',
-            'instructor__last_name',
-            'instructor__first_name')
+            'instructor')
         
     course_offering_dict = dict()
     
@@ -487,9 +486,8 @@ def collect_data_for_summary(request):
         Q(semester__year=academic_year_object)&
         Q(instructor__department=department)).select_related(
             'load_type',
-            'instructor__last_name',
-            'instructor__first_name',
-            'semester__name__name')
+            'instructor',
+            'semester__name')
 
     other_load_type_dict = dict()
     for other_load_type in other_load_types:
@@ -1573,8 +1571,8 @@ def daily_schedule(request):
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
                                                     Q(course_offering__course__subject__department = department)).select_related(
                                                         'room__building',
-                                                        'course_offering__semester__name__name',
-                                                        'course_offering__semester__year__begin_on',
+                                                        'course_offering__semester__name',
+                                                        'course_offering__semester__year',
                                                         'course_offering__course__subject')
 
             for sc in scheduled_classes:
