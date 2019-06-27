@@ -2,7 +2,7 @@
 {% block extrahead %}
 {% endblock %}
 {% block content %}
-
+{% load static %}
 <style>
 * {outline}
 </style>
@@ -15,8 +15,8 @@ div.f4 { clear: both; }
 </style>
 
 
-<script type="text/javascript" src="{{ STATIC_URL }}js/fixed_table_rc.js"></script>
-<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/fixed_table_rc.css" />
+<script type="text/javascript" src='{% static "js/fixed_table_rc.js" %}'></script>
+<link rel="stylesheet" type="text/css" href='{% static "css/fixed_table_rc.css" %}'/>
 
 <p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
 	    Change Academic Year</a>

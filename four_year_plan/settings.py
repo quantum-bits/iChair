@@ -75,7 +75,7 @@ MEDIA_URL = ''
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/var/www/example.com/static/"
 STATIC_ROOT = run_mode.path_to('static_root')
-
+print(STATIC_ROOT)
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"
 STATIC_URL = '/static/'
@@ -149,7 +149,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
-                #'django.template.context_processors.debug',
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -177,7 +177,7 @@ INSTALLED_APPS = (
 
 if run_mode.debug_toolbar:
     INSTALLED_APPS += ('debug_toolbar',)
-    MIDDLEWARE_CLASSES += ('debug_toolbar.middleware.DebugToolbarMiddleware',)
+    MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware') #KK: not sure about this
     INTERNAL_IPS = ('127.0.0.1',)
     DEBUG_TOOLBAR_CONFIG = { 'INTERCEPT_REDIRECTS': False }
 

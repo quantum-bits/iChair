@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 
+{% load static %}
   <head>
     <title>iChair Faculty Load Scheduler</title>
     <script src="http://code.jquery.com/jquery.js"></script>
-    <link href="{{ STATIC_URL }}css/bootstrap.css" rel="stylesheet" media="screen">
-    <link href="{{ STATIC_URL }}css/igrad.css" rel="stylesheet" media="screen">
+    <link href='{% static "css/bootstrap.css" %}' rel="stylesheet" media="screen">
+    <link href='{% static "css/igrad.css" %}' rel="stylesheet" media="screen">
     {% block extrahead %}
     {% endblock %}
   </head>

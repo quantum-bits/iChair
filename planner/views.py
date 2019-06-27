@@ -2639,30 +2639,6 @@ def update_other_load(request, id):
         return render(request, 'update_other_load.html', dict)
 
 @login_required
-def update_rooms_to_view_old(request, id):
-
-    user = request.user
-# assumes that users each have exactly ONE UserPreferences object
-    user_preferences = user.user_preferences.all()[0]
-    department_id = user_preferences.department_to_view.id
-
-    instance = UserPreferences.objects.get(pk = id)
-
-    if request.method == 'POST':
-        form = UpdateRoomsToViewForm(request.POST, instance=instance)
-        if form.is_valid():
-            form.save()
-            next = request.GET.get('next', 'home')
-            return redirect(next)
-        else:
-            return render(request, 'update_rooms_to_view_old.html', {'form': form})
-    else:
-        form = UpdateRoomsToViewForm(instance=instance)
-        context = {'form': form}
-        return render(request, 'update_rooms_to_view_old.html', context)
-
-
-@login_required
 def update_rooms_to_view(request, id):
 
     user = request.user
@@ -2711,34 +2687,7 @@ def update_rooms_to_view(request, id):
         
         return render(request, 'update_rooms_to_view.html', context)
 
-    
-@login_required
-def update_faculty_to_view_old(request, id):
 
-    user = request.user
-# assumes that users each have exactly ONE UserPreferences object
-    user_preferences = user.user_preferences.all()[0]
-    department_id = user_preferences.department_to_view.id
-
-    instance = UserPreferences.objects.get(pk = id)
-
-    can_edit = False
-    if user_preferences.permission_level == 1:
-        can_edit = True
-    #print(can_edit)
-    if request.method == 'POST':
-        form = UpdateFacultyToViewForm(department_id, request.POST, instance=instance)
-        if form.is_valid():
-            form.save()
-            next = request.GET.get('next', 'home')
-            return redirect(next)
-        else:
-            return render(request, 'update_faculty_to_view.html', {'form': form, 'can_edit': can_edit})
-    else:
-        form = UpdateFacultyToViewForm(department_id, instance=instance)
-#        print form
-        context = {'form': form, 'can_edit': can_edit}
-        return render(request, 'update_faculty_to_view_old.html', context)
 
 @login_required
 def update_faculty_to_view(request, id):

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-
+{% load static %}
 <style>
 div.utilitycontainer {
     width: 70%;
@@ -376,7 +376,7 @@ wish to watch the screencast below.
 <ul class="none">
 <li>
 <a href="http://screencast.com/t/6KvxZT3e0cx" target="_blank"> 
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> A brief introduction to iChair </a>
+<img src='{% static "img/play-button.png" %}' alt="video"> A brief introduction to iChair </a>
 (4:58)<strong>*</strong>
 </li>
 </ul>
@@ -414,27 +414,27 @@ go to the bottom right corner of the screencast after it starts playing and clic
     <ul class="none">
 <li>
 <a href="http://screencast.com/t/5PxcL1Cn" target="_blank"> 
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Copy course offerings from a previous academic year into the current one</a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Copy course offerings from a previous academic year into the current one</a>
 (3:54)<strong>*</strong>
 </li>
 <li>
 <a href="http://screencast.com/t/Bg1cCw5RhofW" target="_blank">
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Add a course offering manually </a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Add a course offering manually </a>
 (4:42)<strong>*</strong>
 </li>
 <li>
 <a href="http://screencast.com/t/PqJdSBuK3GhC" target="_blank">
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Edit teaching loads assigned to instructors</a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Edit teaching loads assigned to instructors</a>
 (2:57)<strong>*</strong>
 </li>
 <li>
 <a href="http://screencast.com/t/DpbSYBBn" target="_blank">
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Edit time(s) and/or room(s) for a course offering</a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Edit time(s) and/or room(s) for a course offering</a>
 (4:12)<strong>*</strong>
 </li>
 <li>
 <a href="http://screencast.com/t/cZBjosMDpV5Y" target="_blank">
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Edit non-teaching (administrative) loads assigned to faculty members</a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Edit non-teaching (administrative) loads assigned to faculty members</a>
 (3:26)<strong>*</strong>
 </li>
 </ul>
@@ -543,12 +543,12 @@ go to the bottom right corner of the screencast after it starts playing and clic
     <ul class="none">
 <li>
 <a href="http://screencast.com/t/OulaEkineZb" target="_blank">
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Export faculty load sheets in Excel format</a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Export faculty load sheets in Excel format</a>
 (4:01)
 </li>
 <li>
 <a href="http://screencast.com/t/nGPzbGcC6OgK" target="_blank">
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Search for courses by name or by time</a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Search for courses by name or by time</a>
 (3:51)
 </li>
 </ul>
@@ -572,7 +572,7 @@ go to the bottom right corner of the screencast after it starts playing and clic
     <ul class="none">
 <li>
 <a href="http://screencast.com/t/7tz1zHtGdt" target="_blank">
-<img src="{{ STATIC_URL }}img/play-button.png" alt="video"> Use the "Notes" feature </a>
+<img src='{% static "img/play-button.png" %}' alt="video"> Use the "Notes" feature </a>
 (1:39)
 </li>
 </ul>
