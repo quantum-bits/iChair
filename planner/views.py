@@ -31,6 +31,9 @@ from django.template import Context
 from cgi import escape
 from io import BytesIO
 
+from functools import partial
+from functools import wraps
+
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
 def render_to_pdf(template_src, context_dict={}):
     template = get_template(template_src)
@@ -1203,7 +1206,7 @@ def update_course_offering(request,id, daisy_chain):
 
     instance = CourseOffering.objects.get(pk = id)
     form = CourseOfferingForm(instance=instance)
-    department_abbrev = instance.course.subject.department.abbrev
+    #department_abbrev = instance.course.subject.department.abbrev
     dept_id = instance.course.subject.department.id
     year = instance.semester.year
     # create the formset class
@@ -1211,8 +1214,10 @@ def update_course_offering(request,id, daisy_chain):
     InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
                                               formset=BaseInstructorFormSet,
                                               exclude = [])
-    InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id, year = year))
-
+    #InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id, year = year))
+    # https://github.com/AndrewIngram/django-extra-views/issues/137
+    InstructorFormset.form = wraps(InstructorForm)(partial(InstructorForm, department_id=dept_id, year = year))
+    
     # create the formset
     formset = InstructorFormset(instance = instance)
 
@@ -2605,7 +2610,9 @@ def update_other_load(request, id):
                                              formset = BaseOtherLoadFormset,
                                              extra = 2,
                                              exclude = ['load_type'])
-    OtherLoadFormset.form = staticmethod(curry(OtherLoadForm, department_id=dept_id, year_to_view=year_to_view))
+    #OtherLoadFormset.form = staticmethod(curry(OtherLoadForm, department_id=dept_id, year_to_view=year_to_view))
+    # https://github.com/AndrewIngram/django-extra-views/issues/137
+    OtherLoadFormset.form = wraps(OtherLoadForm)(partial(OtherLoadForm, department_id=dept_id, year_to_view=year_to_view))
     formset = OtherLoadFormset(instance=instance,queryset=OtherLoad.objects.filter(Q(instructor__department__id=dept_id)
                                                                                    & Q(semester__year = year_to_view)))
     
