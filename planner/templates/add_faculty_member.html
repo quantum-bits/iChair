@@ -3,18 +3,11 @@
 {% block content %}
 
    <div class="content-center">
-
-     {% if form.non_field_errors %}
-     <div class="alert alert-error">
-      {{form.non_field_errors}}
-    </div>
-     {% endif %}
      
      <form action=""  method="post">
       {% csrf_token %}
 
       {{ form.as_table }}
-
       <p><input type="submit" value="Submit" /></p>
      </form>
 
@@ -22,7 +15,7 @@
 
    <script>
     $(window).load(function(){
-    $('.page-name').find('h1').replaceWith('<h1>Update Data for Faculty Member</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>{{title}}</h1>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 

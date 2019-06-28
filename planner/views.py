@@ -2310,6 +2310,44 @@ def new_class_schedule(request,id, daisy_chain):
         form = EasyDaySchedulerForm()
         return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'daisy_chaining': daisy_chaining, 'course':course_offering })
 
+
+def add_faculty(request):
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    university = department.school.university
+
+    print('dept: ', department)
+    print('university: ', university)
+
+    if request.method == 'POST':
+        form = AddFacultyForm(request.POST)
+        if form.is_valid():
+            first_name = form.cleaned_data.get('first_name')
+            last_name = form.cleaned_data.get('last_name')
+            rank = form.cleaned_data.get('rank')
+            faculty_id = '0001' # eventually fix this!
+
+            instructor = FacultyMember.objects.create(last_name = last_name,
+                                                      first_name = first_name,
+                                                      department = department,
+                                                      university = university,
+                                                      rank = rank,
+                                                      faculty_id = faculty_id
+                                                      )
+            next = request.GET.get('next', 'home')
+            return redirect(next)
+
+        else:
+            context = {'form': form, 'title': 'Add New Course'}
+            return render(request, 'add_faculty_member.html', context)
+
+    else:
+        form = AddFacultyForm()
+        context = {'form': form, 'title': 'Add New Faculty Member' }
+        return render(request, 'add_faculty_member.html', context)
+
 def add_course(request, daisy_chain):
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
@@ -2321,7 +2359,7 @@ def add_course(request, daisy_chain):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     department_id = user_preferences.department_to_view.id
-
+    
     course_list=[]
     if int(daisy_chain):
         warning = False
@@ -2796,7 +2834,6 @@ def update_faculty_member(request, id):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
-    department_id = user_preferences.department_to_view.id
 
     instance = FacultyMember.objects.get(pk = id)
 

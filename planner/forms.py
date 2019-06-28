@@ -314,7 +314,6 @@ class EasyDaySchedulerForm(forms.Form):
     duration = forms.ChoiceField(label="Duration",choices=DURATION_OPTIONS)
     room = forms.ModelChoiceField(queryset = Room.objects.all())
 
-
 class AddCourseForm(forms.ModelForm):
 
     class Meta:
@@ -407,6 +406,18 @@ class UpdateDepartmentToViewForm(forms.ModelForm):
                    'permission_level','other_load_types_to_view',)
 
 
+class AddFacultyForm(forms.ModelForm):
+
+    class Meta:
+        model = FacultyMember
+        exclude = ('university', 'faculty_id', 'department',
+                   'nickname', 'home_phone',
+                   'cell_phone', 'work_phone', 'photo', 'inactive_starting')
+
+    def clean(self):
+        return self.cleaned_data
+
+
 class UpdateFacultyMemberForm(forms.ModelForm):
 
 #    def __init__(self, faculty_id, *args, **kwargs):
@@ -416,7 +427,7 @@ class UpdateFacultyMemberForm(forms.ModelForm):
     class Meta:
         model = FacultyMember
         exclude = ('university', 'faculty_id', 'department',
-                   'first_name', 'last_name', 'nickname', 'home_phone',
+                   'nickname', 'home_phone',
                    'cell_phone', 'work_phone', 'photo',)
 
     def clean(self):

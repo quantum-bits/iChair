@@ -35,6 +35,13 @@
   }
   </style>
   
+<div class="container">
+	<div class="row">
+		<div class="span5 offset4">
+				<a class="btn btn-info" href="{% url 'add_faculty' %}?next={{ request.path|urlencode }}">Add Faculty Member</a>
+		</div>
+	</div>
+</div>	
 <!--
 
 Code taken from:
@@ -108,12 +115,13 @@ font-weight: normal;
 
   <div class="content-center">
 	  <h3>
-		  Choose Which Faculty Members to Display in Views
+		  Choose Which Faculty Members to Display in Views*
 	  </h3>
 
 	  <div>
 		  
 		  <button class="btn btn-info" onmouseover="popFacultyWithLoads()" onmouseout="unPopFacultyWithLoads()" onclick="checkFacultyWithLoads()" id="selectFacultyWithLoads"> Select only faculty with loads </button> 
+		
 	  </div>
 
 	  <br/>
@@ -130,7 +138,7 @@ font-weight: normal;
 					    <th> Faculty Member </th>
 					    <th style="text-align: center;"> Rank/Status </th>
 					    {% if can_edit %}
-					    <th></th>
+					    <th> Action </th>
 					    {% endif %}
 						  <th style="text-align: center;"> # Ld Hrs </th>
 						  <th style="text-align: center;"> Display </th>
@@ -151,7 +159,7 @@ font-weight: normal;
 					    </td>
 					    {% if can_edit %}
 					    <td style="text-align: center;" >
-					      <a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit Rank/Status</a>
+					      <a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit</a>
 					    </td>
 					    {% endif %}
 					    <td style="text-align: center;" id="load{{faculty.faculty.id}}">
@@ -173,8 +181,14 @@ font-weight: normal;
 		  <p><input type="submit" value="Submit"/></p>
 		
 	  </form>
-
-	  <div id="warningBox" class="warning-container"> Note: One or more faculty members
+	  <div class="alert alert-student-info">  
+			<a class="close" data-dismiss="alert">×</a>  
+			<div><strong>*Note:</strong> If a faculty member is no longer active in the department,
+				click on "Edit" and set the faculty member's status to Inactive.  If a faculty member's 
+				data needs to be deleted from the database, please contact the site administrator.
+			</div>   
+		  </div>   
+	  <div id="warningBox" class="warning-container"> <strong>Note: </strong>One or more faculty members
 		  have load assigned but will not be displayed.</div>
   </div>
 

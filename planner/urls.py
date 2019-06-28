@@ -38,6 +38,7 @@ urlpatterns = [
     url(r'^updateyeartoview/(\d+)/$', myapp_views.update_year_to_view, name='update_year_to_view'),
     url(r'^updateloadstoview/(\d+)/$', myapp_views.update_loads_to_view, name='update_loads_to_view'),
     url(r'^updatefacultymember/(\d+)/$', myapp_views.update_faculty_member, name='update_faculty_member'),
+    url(r'^addfacultymember/$', myapp_views.add_faculty, name='add_faculty'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', myapp_views.choose_year_course_copy, name='choose_year_course_copy'),
