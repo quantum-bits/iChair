@@ -502,8 +502,6 @@ def collect_data_for_summary(request):
     # Note: even if the user has decided not to view certain load types (in user preferences), those load types
     # will still show up in the list if there is load assigned for the load type.  That way we don't miss anything.
     for load in other_loads:
-        #print('load: ', load.load_type, load.load_credit, load.instructor)
-        #if (load.load_type in other_load_types) and (load.instructor in faculty_to_view):
         if (load.instructor in faculty_to_view):
             # https://stackoverflow.com/questions/42315072/python-update-a-key-in-dict-if-it-doesnt-exist
             if load.load_type.id not in other_load_type_dict: # this load type is not yet in the dictionary, so add it in
@@ -555,37 +553,6 @@ def collect_data_for_summary(request):
                 'total_load':load_hour_rounder(total_other_load)
             })
 
-    
-#    assert False
-            
-#    for other_load_type in user_preferences.other_load_types_to_view.all():
-#        load_list = []
-#        total_other_load=0
-#        for ii in range(number_faculty):
-#            load_list.append([0,0,0])
-#        for other_load in other_load_type.other_loads.all():
-#            instructor_id = other_load.instructor.id
-#            if other_load.semester.year.begin_on.year == academic_year and instructor_id in instructor_id_list:
-#                semester_name = other_load.semester.name.name
-#                ii = instructordict[instructor_id]
-#                jj = semesterdict[semester_name]
-#                load_list[ii][jj] = load_list[ii][jj]+load_hour_rounder(other_load.load_credit)
-#                faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+other_load.load_credit
-#        for ii in range(number_faculty):
-#            total_other_load=total_other_load+sum(load_list[ii])
-#        admin_data_list.append({'load_type': other_load_type.load_type,
-#                                'load_hour_list': load_list,
-#                                'id':other_load_type.id,
-#                                'total_load':load_hour_rounder(total_other_load)
-#                                })
-#        if load_hour_rounder(total_other_load)==0:
-#            unassigned_admin_data_list.append({
-#                    'load_type': other_load_type.load_type,
-#                    'load_hour_list': load_list,
-#                    'id':other_load_type.id,
-#                    'total_load':load_hour_rounder(total_other_load)
-#                    })
-
     total_load_hours=[]
     for ii in range(number_faculty):
         total_load_hours.append(load_hour_rounder(sum(faculty_summary_load_list[ii])))
@@ -616,12 +583,12 @@ def collect_data_for_summary(request):
             for key in instructordict:
                 total_other_load = total_other_load + sum(row['load_hour_list'][instructordict[key]])
             element = row['load_hour_list'][instructordict[instructor_id]]
-            if element[0] > 0 or element[1] > 0 or element[2] > 0:
-                admin_data.append({'load_type':row['load_type'],
-                                   'load_hour_list':element,
-                                   'id': row['id'],
-                                   'total_load':load_hour_rounder(total_other_load)
-                                   })
+            #if element[0] > 0 or element[1] > 0 or element[2] > 0:
+            admin_data.append({'load_type':row['load_type'],
+                                'load_hour_list':element,
+                                'id': row['id'],
+                                'total_load':load_hour_rounder(total_other_load)
+                                })
 
 
         data_list_by_instructor.append({'instructor_id':instructor_id,
@@ -726,9 +693,9 @@ def export_data(request):
                         course_number_dict[course_id]=oi.course_offering.course.subject.abbrev+oi.course_offering.course.number
                         course_comment_dict[course_id]=oi.course_offering.comment
                     else: 
-                        if course_comment_dict[course_id]=='':
+                        if (course_comment_dict[course_id]=='') or (course_comment_dict[course_id] is None):
                             course_comment_dict[course_id]=oi.course_offering.comment
-                        else:
+                        elif (oi.course_offering.comment !='') and (oi.course_offering.comment is not None):
                             course_comment_dict[course_id]=course_comment_dict[course_id]+'; '+oi.course_offering.comment
 
                     course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] = course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] + oi.load_credit
@@ -742,9 +709,9 @@ def export_data(request):
                         other_load_name_dict[other_load_id]=ol.load_type.load_type
                         other_load_comment_dict[other_load_id]=ol.comments
                     else: 
-                        if other_load_comment_dict[other_load_id]=='':
+                        if (other_load_comment_dict[other_load_id]=='') or (other_load_comment_dict[other_load_id] is None):
                             other_load_comment_dict[other_load_id]=ol.comments
-                        else:
+                        elif (ol.comments != '') and (ol.comments is not None):
                             other_load_comment_dict[other_load_id]=other_load_comment_dict[other_load_id]+'; '+ol.comments
                         
                     other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] = other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] + ol.load_credit
@@ -790,7 +757,8 @@ def export_data(request):
                 course_number_dict[new_key]=adjunct['course_number_dict'][key]
                 old_comment = adjunct['course_comment_dict'][key]
                 comment = adjunct['first_name']+' '+adjunct['last_name']
-                if old_comment != '':
+                # https://stackoverflow.com/questions/23086383/how-to-test-nonetype-in-python/23086405
+                if (old_comment != '') and (old_comment is not None):
                     comment = comment+'; '+old_comment                    
                 course_comment_dict[new_key]=comment
                 actual_name_dict[new_key] = adjunct['last_name']
@@ -800,7 +768,7 @@ def export_data(request):
                 other_load_name_dict[new_key]=adjunct['other_load_name_dict'][key]
                 old_comment = adjunct['other_load_comment_dict'][key]
                 comment = adjunct['first_name']+' '+adjunct['last_name']
-                if old_comment != '':
+                if (old_comment != '') and (old_comment is not None):
                     comment = comment+'; '+old_comment                    
                 other_load_comment_dict[new_key]=comment
                 other_load_adj_name_dict[new_key]=adjunct['last_name']
