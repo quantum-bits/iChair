@@ -19,7 +19,7 @@ class RequirementBlockAdmin(admin.ModelAdmin):
     filter_horizontal = ('courselist',)
 
 class MajorAdmin(admin.ModelAdmin):
-    search_fields = ('name', 'department',)
+    search_fields = ('name', 'department__name',)
 
 class StudentAdmin(admin.ModelAdmin):
     list_display = ('last_name', 'first_name', 'entering_year',)
@@ -35,10 +35,10 @@ class TransferCourseAdmin(admin.ModelAdmin):
 
 
 class DegreeProgramAdmin(admin.ModelAdmin):
-    search_fields = ('name','major',)
+    search_fields = ('name','major__name',)
 
 class DegreeProgramCourseAdmin(admin.ModelAdmin):
-    search_fields = ('degree_program',)
+    search_fields = ('degree_program__name',)
 
 class OfferingInstructorInline(admin.TabularInline):
     model = OfferingInstructor
@@ -54,7 +54,8 @@ class FacultyMemberAdmin(admin.ModelAdmin):
 class CourseOfferingAdmin(admin.ModelAdmin):
     inlines = (OfferingInstructorInline,)
     list_display = ('course','semester',)
-    search_fields = ('course','semester',)
+    # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
+    search_fields = ('course__title','course__number','semester__name__name', 'semester__banner_code',)
 
 class CRNAdmin(admin.ModelAdmin):
     list_display = ('number',)
