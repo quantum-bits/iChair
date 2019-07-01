@@ -56,6 +56,9 @@ class CourseOfferingAdmin(admin.ModelAdmin):
     list_display = ('course','semester',)
     search_fields = ('course','semester',)
 
+class CRNAdmin(admin.ModelAdmin):
+    list_display = ('number',)
+
 class ClassMeetingAdmin(admin.ModelAdmin):
     list_display = ('course_offering','held_on','begin_at','end_at','room','instructor',)
 
@@ -86,6 +89,7 @@ admin.site.register(Building, BuildingAdmin)
 admin.site.register(ClassMeeting, ClassMeetingAdmin)
 admin.site.register(Course, CourseAdmin)
 admin.site.register(CourseAttribute)
+admin.site.register(CRN, CRNAdmin)
 admin.site.register(CourseOffering, CourseOfferingAdmin)
 admin.site.register(DegreeProgram, DegreeProgramAdmin)
 admin.site.register(DegreeProgramCourse, DegreeProgramCourseAdmin)

@@ -150,11 +150,13 @@ class SemesterName(models.Model):
 
 class Semester(models.Model):
     """Instance of a single semester in a given academic year."""
+
     name = models.ForeignKey(SemesterName, on_delete=models.CASCADE)
     year = models.ForeignKey(AcademicYear, related_name='semesters', on_delete=models.CASCADE)
     begin_on = models.DateField()
     end_on = models.DateField()
-
+    banner_code = models.CharField(max_length=6, help_text="e.g., 201990", blank=True, null=True)
+    
     class Meta:
         ordering = ['year', 'name']
 
@@ -355,8 +357,6 @@ class Course(StampedModel):
     schedule_semester = models.ManyToManyField(SemesterName, blank=True, help_text='Semester(s) offered')
     schedule_year = models.CharField(max_length=1, choices=SCHEDULE_YEAR_CHOICES, default = 'B')
 
-    crn = models.CharField(max_length=10, blank=True, null=True)
-
     def __str__(self):
         return "{0} {1} - {2}".format(self.subject, self.number, self.title)
 
@@ -411,8 +411,26 @@ class OtherLoad(models.Model):
     comments = models.CharField(max_length=100, blank=True, null=True,
                                 help_text='optional longer comments')
 
+class CRN(StampedModel):
+    """ CRN for a course offering."""
+    number = models.CharField(max_length=15, help_text='e.g., 10435')
+
+    def __str__(self):
+        return self.number
+
 class CourseOffering(StampedModel):
     """Course as listed in the course schedule (i.e., an offering of a course)."""
+
+    FULL_SEMESTER = 0
+    FIRST_HALF_SEMESTER = 1
+    SECOND_HALF_SEMESTER = 2
+
+    PARTIAL_SEMESTER_CHOICES = (
+        (FULL_SEMESTER, 'Full Semester'),
+        (FIRST_HALF_SEMESTER, 'First Half Semester'),
+        (SECOND_HALF_SEMESTER, 'Second Half Semester')
+    )
+
     course = models.ForeignKey(Course, related_name='offerings', on_delete=models.CASCADE)
     semester = models.ForeignKey(Semester, related_name='offerings', on_delete=models.CASCADE)
     instructor = models.ManyToManyField(FacultyMember, through='OfferingInstructor',
@@ -421,6 +439,8 @@ class CourseOffering(StampedModel):
     load_available = models.FloatField(default=3)
     max_enrollment = models.PositiveIntegerField(default=10)
     comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
+    crn = models.ForeignKey(CRN, related_name='course_offerings', blank=True, null=True, on_delete=models.SET_NULL)
+    semester_fraction = models.IntegerField(choices = PARTIAL_SEMESTER_CHOICES, default = FULL_SEMESTER)
 
     def __str__(self):
         return "{0} ({1})".format(self.course, self.semester)
