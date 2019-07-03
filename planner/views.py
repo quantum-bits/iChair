@@ -310,7 +310,6 @@ def collect_data_for_summary(request):
     if user_preferences.permission_level == 1:
         can_edit = True
 
-
 #
 # NOTE:
 # 1.  Summer has been deleted from the load schedule.  If there is any load for summer,
@@ -398,6 +397,12 @@ def collect_data_for_summary(request):
 
     for key in course_offering_dict:
         semester_name = course_offering_dict[key]['course_offering'].semester.name.name
+        semester_fraction = course_offering_dict[key]['course_offering'].semester_fraction_text()
+        #print("semester fraction: ",course_offering_dict[key]['course_offering'].semester_fraction)
+        #print(course_offering_dict[key]['course_offering'].semester_fraction_text())
+
+
+
         classes = course_offering_dict[key]['scheduled_classes']
         if not classes:
             meetings_scheduled = False
@@ -455,6 +460,7 @@ def collect_data_for_summary(request):
                           'id':course_offering_dict[key]['course_offering'].id,
                           'comment':course_offering_dict[key]['course_offering'].comment,
                           'semester':semester_name,
+                          'semester_fraction': semester_fraction,
                           'meeting_times':meeting_times_list,
                           'meetings_scheduled':meetings_scheduled
         })
@@ -471,6 +477,7 @@ def collect_data_for_summary(request):
                 'id':course_offering_dict[key]['course_offering'].id,
                 'comment':course_offering_dict[key]['course_offering'].comment,
                 'semester':semester_name,
+                'semester_fraction': semester_fraction,
                 'meeting_times':meeting_times_list,
                 'meetings_scheduled':meetings_scheduled
             })
@@ -567,6 +574,7 @@ def collect_data_for_summary(request):
             if row['load_hour_list'][instructordict[instructor_id]][0] >= 0:
                 instructor_data.append({'comment':row['comment'],
                                         'semester':row['semester'],
+                                        'semester_fraction': row['semester_fraction'],
                                         'meetings_scheduled': row['meetings_scheduled'],
                                         'name': row['name'],
                                         'load_hour_list': [row['load_hour_list'][instructordict[instructor_id]][0],

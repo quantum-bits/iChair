@@ -433,6 +433,7 @@ class CourseOffering(StampedModel):
 
     course = models.ForeignKey(Course, related_name='offerings', on_delete=models.CASCADE)
     semester = models.ForeignKey(Semester, related_name='offerings', on_delete=models.CASCADE)
+    semester_fraction = models.IntegerField(choices = PARTIAL_SEMESTER_CHOICES, default = FULL_SEMESTER)
     instructor = models.ManyToManyField(FacultyMember, through='OfferingInstructor',
                                         blank=True,
                                         related_name='course_offerings')
@@ -440,7 +441,6 @@ class CourseOffering(StampedModel):
     max_enrollment = models.PositiveIntegerField(default=10)
     comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.ForeignKey(CRN, related_name='course_offerings', blank=True, null=True, on_delete=models.SET_NULL)
-    semester_fraction = models.IntegerField(choices = PARTIAL_SEMESTER_CHOICES, default = FULL_SEMESTER)
 
     def __str__(self):
         return "{0} ({1})".format(self.course, self.semester)
@@ -461,7 +461,13 @@ class CourseOffering(StampedModel):
 
         return self.load_available-load_assigned
 
-
+    def semester_fraction_text(self):
+        if (self.semester_fraction == self.FULL_SEMESTER):
+            return 'Full'
+        elif (self.semester_fraction == self.FIRST_HALF_SEMESTER):
+            return '1st Half'
+        else:
+            return '2nd Half'
 
 class Grade(models.Model):
     letter_grade = models.CharField(max_length=5)

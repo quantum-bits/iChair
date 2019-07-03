@@ -92,7 +92,7 @@ class="btn btn-warning"
 	       <td style="text-align: center;">  </td>
 	       {% endif %}
 -->
-	       <th> Sem </th>
+	       <th> Semester/Fraction </th>
 	       <th> Time </th>
 	       <th> Room </th>
 	       {% if can_edit %} <th> </th> {% endif %}
@@ -111,9 +111,9 @@ class="btn btn-warning"
       <td style="text-align: center;"> 
 	{% if can_edit %}
 	  <a href="{% url 'update_semester_for_course_offering' course.id %}?next={{ request.path|urlencode }}">
-	    {{course.semester}}</a>
+	    {{course.semester}}/{{course.semester_fraction}}</a>
 	{% else %} 
-	  {{course.semester}}
+	  {{course.semester}}/{{course.semester_fraction}}
         {% endif %}
       </td>
       <td style="text-align: center;">      
@@ -302,7 +302,7 @@ class="btn btn-warning"
 	       <th> Number </th>
 	       <th> Name </th>
 
-	       <th> Sem </th>
+	       <th> Sem/Frac </th>
 	       <th> Time </th>
 	       <th> Room </th>
 	       {% if can_edit %} <th> </th> {% endif %}
@@ -321,9 +321,9 @@ class="btn btn-warning"
       <td style="text-align: center;"> 
 	{% if can_edit %}
 	  <a href="{% url 'update_semester_for_course_offering' course.id %}?next={{ request.path|urlencode }}">
-	    {{course.semester}}</a>
+	    {{course.semester}}/{{course.semester_fraction}}</a>
 	{% else %} 
-	  {{course.semester}}
+	  {{course.semester}}/{{course.semester_fraction}}
         {% endif %}
       </td>
       <td style="text-align: center;">      
@@ -521,7 +521,7 @@ class="btn btn-warning"
 		</tr>
 	       <th> Number </th>
 	       <th> Name </th>
-	       <th style="text-align: center;"> Semester </th>
+	       <th style="text-align: center;"> Semester (Fraction) </th>
 	       <th style="text-align: center;"> Time </th>
 	       <th style="text-align: center;"> Room </th>
 	       {% if can_edit %}
@@ -541,9 +541,9 @@ class="btn btn-warning"
       <td style="text-align: center;"> 
 	{% if can_edit %}
 	<a href="{% url 'update_semester_for_course_offering' course.id %}?next={{ request.path|urlencode }}">
-	  {{course.semester}}</a>
+	  {{course.semester}} ({{course.semester_fraction}})</a>
 	{% else %} 
-	  {{course.semester}}
+	  {{course.semester}} ({{course.semester_fraction}})
         {% endif %}
       </td>
       <td style="text-align: center;">      

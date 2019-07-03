@@ -105,7 +105,7 @@ class CourseOfferingRestrictedByYearForm(forms.ModelForm):
 
     class Meta:
         model = CourseOffering
-        exclude = ('course','instructor',)
+        exclude = ('course','instructor','crn',)
 
     def clean(self):
         load_available = self.cleaned_data.get('load_available')
@@ -123,7 +123,7 @@ class CourseSelectForm(forms.ModelForm):
     
     class Meta:
         model = CourseOffering
-        exclude = ('semester','instructor','load_available','max_enrollment', 'comment',)
+        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction')
 
     def clean(self):
         return self.cleaned_data
@@ -134,7 +134,7 @@ class CourseOfferingForm(forms.ModelForm):
 
     class Meta:
         model = CourseOffering
-        exclude = ('course', 'semester','instructor',)
+        exclude = ('course', 'semester','instructor','crn','semester_fraction')
 
     def clean(self):
         instructor = self.cleaned_data.get('instructor')
@@ -318,7 +318,7 @@ class AddCourseForm(forms.ModelForm):
 
     class Meta:
         model = Course
-        exclude = ('prereqs','coreqs','attributes','schedule_semester', 'schedule_year', 'crn',)
+        exclude = ('prereqs','coreqs','attributes','schedule_semester', 'schedule_year',)
 
     def __init__(self, dept_id, *args, **kwargs):
         department_id = dept_id
@@ -462,7 +462,7 @@ class SemesterSelectForm(forms.ModelForm):
 
     class Meta:
         model = CourseOffering
-        exclude = ('course','instructor','load_available','max_enrollment', 'comment',)
+        exclude = ('course','instructor','load_available','max_enrollment', 'comment','crn',)
 
     def clean(self):
         return self.cleaned_data
