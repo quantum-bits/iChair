@@ -607,9 +607,15 @@ def collect_data_for_summary(request):
                                         'total_load_hours':total_load_hours[instructordict[instructor_id]]
                                         })
 
-
+    # https://vsupalov.com/vue-js-in-django-template/
+    people = [
+        {"name": "Tom", "age": 10},
+        {"name": "Mark", "age": 5},
+        {"name": "Pam", "age": 7}]
 
     context={'course_data_list':data_list,
+             'people_json': json.dumps(people),
+             'course_data_list_json': json.dumps(data_list),
              'instructor_list':instructor_name_list,
              'faculty_load_summary':faculty_summary_load_list,
              'admin_data_list':admin_data_list,

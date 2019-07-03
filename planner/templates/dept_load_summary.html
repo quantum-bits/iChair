@@ -49,6 +49,82 @@ class="btn btn-warning"
 
 <div id="position-holder-message-div"><span id="position-holder-message1"></span> <a id="new-link-id" href="{% url 'department_load_summary' %}"></a></div>
 
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
+<script type='text/javascript'>
+	var people = {{ people_json|safe }};
+	var course_data_list_json = {{ course_data_list_json|safe }}
+</script>
+
+<div id="app">
+    [[message]]
+
+    <ul>
+      <li v-for="person in people">
+        <a>[[ person.name ]]</a> <button v-on:click="greet(person.name)">hey</button>
+      </li>
+	</ul>
+
+	<v-app>
+
+	<template>
+		<v-card>
+			<v-card-title>
+				Load Summary
+				<v-spacer></v-spacer>
+				<v-text-field
+				v-model="search"
+				append-icon="search"
+				label="Search"
+				single-line
+				hide-details
+				></v-text-field>
+			</v-card-title>
+		<v-data-table
+		  :headers="headers"
+		  :items="courseData"
+		  :search="search"
+		>
+		  <template v-slot:items="props">
+			<td class="text-xs-left"> [[ props.item.number ]] </td>
+			<td class="text-xs-left"> [[ props.item.name ]]</td>
+			<td class="text-xs-center"> [[ props.item.semester]] </td>
+			<td class="text-xs-center"> [[ props.item.semester_fraction ]]</td>
+			<td class="text-xs-center"> 
+				<div v-for="meeting in props.item.meeting_times">
+						[[ meeting ]]
+				</div>
+			</td>
+			<td class="text-xs-center">
+				<div v-for="room in props.item.rooms">
+						[[ room ]]
+				</div>
+			</td>
+			<td class="text-xs-right"> </td>
+			<td class="text-xs-center"> [[ props.item.load_hours ]]</td>
+			<td class="text-xs-center"> [[ props.item.load_difference ]]</td>
+			<td class="text-xs-left"> 
+				<div v-for="instructor in props.item.instructor_list">
+					[[ instructor ]]
+				</div>
+			</td>
+			<td class="text-xs-left"> [[ props.item.comment ]]</td>
+		  </template>
+		  <template v-slot:no-results>
+				<v-alert :value="true" color="error" icon="warning">
+				  Your search for "[[ search ]]" found no results.
+				</v-alert>
+			</template>
+		</v-data-table>
+	</v-card>
+	</template>
+	</v-app>
+
+
+
+
+</div>
+
 </div>
  <div id="year-accordion" class="accordion">
    <div class="accordion-group">
@@ -720,6 +796,47 @@ class="btn btn-warning"
 
 <div class="content-center" id="position-holder-small-font-message-div"><span id="position-holder-small-font-message"></span> </div>
 
+<script>
+    var app = new Vue({
+      delimiters: ['[[', ']]'],
+      el: '#app',
+      data: {
+          message: 'Hello Vue!',
+		  search: '',
+          people: people,
+		  courseData: course_data_list_json,
+		  headers: [
+          {
+            text: 'Number',
+            align: 'left',
+            sortable: true,
+            value: 'number',
+			width: '10%'
+          },
+          { text: 'Name', value: 'name', width: '25%'},
+          { text: 'Sem', value: 'semester', width: '5%'},
+		  { text: 'Frac', value: 'fraction', width: '5%'},
+          { text: 'Time', value: 'time', width: '18%' },
+          { text: 'Room', value: 'room', width: '15%' },
+          { text: 'Action', value: 'action' },
+		  { text: 'Avail', value: 'avail'},
+		  { text: 'Diff', value: 'diff'},
+		  { text: 'Instructor', value: 'instructor', width: '20%'},
+		  { text: 'Comments', value: 'comments'},
+        ]
+      },
+      methods: {
+          greet: function(name) {
+              console.log('Hello from ' + name + '!');
+			  console.log('course data: ', this.courseData);
+          }
+      }
+    });
+</script>
+
+<style scoped>
+	
+</style>
 <!-- the following is some AJAX that keeps track of which divs are open and which are shut -->
 
 <script>
