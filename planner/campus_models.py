@@ -463,7 +463,7 @@ class CourseOffering(StampedModel):
 
     def semester_fraction_text(self):
         if (self.semester_fraction == self.FULL_SEMESTER):
-            return 'Full'
+            return 'Full Sem'
         elif (self.semester_fraction == self.FIRST_HALF_SEMESTER):
             return '1st Half'
         else:

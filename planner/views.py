@@ -307,6 +307,10 @@ def collect_data_for_summary(request):
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
     can_edit = False
+
+    faculty_with_loads_are_being_viewed = True
+    faculty_not_being_viewed = []
+
     if user_preferences.permission_level == 1:
         can_edit = True
 
@@ -443,6 +447,11 @@ def collect_data_for_summary(request):
                 load_list[ii][0] = instructor_load
                 load_list[ii][1] = jj
                 faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
+            else:
+                faculty_with_loads_are_being_viewed = False
+                if instructor.instructor not in faculty_not_being_viewed:
+                    faculty_not_being_viewed.append(instructor.instructor)
+
 
         if len(instructor_list)==0:
             instructor_list = ['TBA']
@@ -517,6 +526,10 @@ def collect_data_for_summary(request):
                     'loads': []
                 }
             other_load_type_dict[load.load_type.id]['loads'].append(load)
+        else:
+            faculty_with_loads_are_being_viewed = False
+            if load.instructor not in faculty_not_being_viewed:
+                faculty_not_being_viewed.append(load.instructor)
 
 #    assert False
     for key in other_load_type_dict:
@@ -607,15 +620,10 @@ def collect_data_for_summary(request):
                                         'total_load_hours':total_load_hours[instructordict[instructor_id]]
                                         })
 
+
     # https://vsupalov.com/vue-js-in-django-template/
-    people = [
-        {"name": "Tom", "age": 10},
-        {"name": "Mark", "age": 5},
-        {"name": "Pam", "age": 7}]
 
     context={'course_data_list':data_list,
-             'people_json': json.dumps(people),
-             'course_data_list_json': json.dumps(data_list),
              'instructor_list':instructor_name_list,
              'faculty_load_summary':faculty_summary_load_list,
              'admin_data_list':admin_data_list,
@@ -629,7 +637,9 @@ def collect_data_for_summary(request):
              'can_edit': can_edit,
              'id': user_preferences.id,
              'unassigned_overassigned_data_list':unassigned_overassigned_data_list,
-             'unassigned_admin_data_list':unassigned_admin_data_list
+             'unassigned_admin_data_list':unassigned_admin_data_list,
+             'faculty_with_loads_are_being_viewed': faculty_with_loads_are_being_viewed,
+             'faculty_not_being_viewed': faculty_not_being_viewed
              }
 
     return context
@@ -2576,11 +2586,16 @@ def registrar_schedule(request, printer_friendly_flag):
                 for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view)):
                     scheduled_classes=[]
                     instructor_list=[]
+                    load_assigned = 0
                     for instructor in co.offering_instructors.all():
                         instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name+
                                                ' ['+str(load_hour_rounder(instructor.load_credit))+'/'
                                                +str(load_hour_rounder(co.load_available))+']'
                                                )
+                        load_assigned+=instructor.load_credit
+                    
+                    load_diff = load_hour_rounder(co.load_available-load_assigned)
+
                     if len(instructor_list)==0:
                         instructor_list = ['TBA']
 
@@ -2595,6 +2610,10 @@ def registrar_schedule(request, printer_friendly_flag):
                         meetings_scheduled = True
                         meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
 
+                    loads_OK = True
+                    if (load_diff != 0):
+                        loads_OK = False
+
                     registrar_data_list.append({'number':number,
                                                 'name':course_name,
                                                 'room_list': room_list,
@@ -2605,7 +2624,9 @@ def registrar_schedule(request, printer_friendly_flag):
                                                 'course_id':course.id,
                                                 'course_offering_id':co.id,
                                                 'meetings_scheduled':meetings_scheduled,
-                                                'semester':semester.name                                                
+                                                'semester':semester.name,
+                                                'semester_fraction':co.semester_fraction_text(),
+                                                'loads_OK': loads_OK                                                
                                                 })
 
     context={'registrar_data_list':registrar_data_list, 'department': department, 

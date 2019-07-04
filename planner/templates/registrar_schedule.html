@@ -57,51 +57,47 @@
 {% endif %}
 
 {% if not printer_friendly %}
-<p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
-	    Change Academic Year</a>
-</p>
-
-<div class="btn-group">
-  <a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
-    Printer Friendly Version
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-    <li>              
-      <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Small Font </a>
-    </li>
-    <li>              
-      <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Larger Font </a>
-    </li>
-  </ul>
-</div> {# btn-group #}
 
 
+<div class="span3">
+	<div style="padding-bottom: 10px">
+		<a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
+				Change Academic Year</a>
+	</div>
+	<div style="padding-bottom: 20px" class="btn-group">
+    <a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
+      Printer Friendly Version
+      <span class="caret"></span>
+    </a>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+        <li>              
+          <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Small Font </a>
+        </li>
+        <li>              
+          <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Larger Font </a>
+        </li>
+      </ul>
+  </div> {# btn-group #}
+</div>
+<div class="span6">
+	{% if can_edit %}
+		<div class="content-center">
+			<div style="margin-top: 25px; padding: 0px 2px 2px 2px">
+				<a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
+					Add </a> a course offering manually.
+			</div>
+			<div style="padding: 2px 2px 8px 2px"> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
+					Copy</a> one or more course offerings from a previous year.
+			</div>
+		</div>
+	{% else %}<br>
+	{% endif %}
+</div>
 
 {% endif %}
+
 <div class="content-center">
   
-{% if not printer_friendly %}
-<div class="alert alert-student-info">  
-  	<a class="close" data-dismiss="alert">×</a>  
- 	 <div><strong>Note:</strong> This view is intended to mimic the Word document that the Registrar's office sends out.
-    </div>   
-</div>     
-
-{% if can_edit %}
-<div style="margin-top: -10px; padding: 0px 2px 2px 2px">
-    <a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
-	Add </a> a course offering manually.
-</div>
-<div style="padding: 2px 2px 8px 2px"> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
-	    Copy</a> one or more course offerings from a previous year.
-</div>
-{% endif %}
-<!--
-<p> <strong>Note:</strong> This view is intended to mimic the Word document that the Registrar's office sends out.</p>
--->
-{% endif %}
-
 <table class="table table-striped table-bordered table-hover">
 	     <thead>
 	       <tr>
@@ -114,20 +110,20 @@
 		</tr>
 	       <tr>
 		 {% if not printer_friendly %}
-		 <th> Semester </th>
+		 <th> Semester - Fraction</th>
 		 <th> Number </th>
 		 <th> Name </th>
-		 <th style="text-align: center"> Credit Hours </th>
+		 <th style="text-align: center"> Cr Hrs </th>
 		 <th style="text-align: center"> Enrl Cap </th>
 		 <th style="text-align: center"> Times </th>
 		 <th style="text-align: center"> Room(s) </th>
 		 <th style="text-align: center"> Instructor(s) [load] </th>
 		 {% if can_edit %} <th></th> {% endif %}
 		 {% else %}
-		 <th style="width:10%;"> Semester </th>
+		 <th style="width:13%;"> Semester - Fraction</th>
 		 <th style="width:10%;">  Number </th>
 		 <th style="width:25%;"> Name </th>
-		 <th style="text-align: center; width:10%;"> Credit Hours </th>
+		 <th style="text-align: center; width:7%;"> Cr Hrs </th>
 		 <th style="text-align: center; width:7%;"> Enrl Cap </th>
 		 <th style="text-align: center; width:13%;"> Times </th>
 		 <th style="text-align: center; width:10%;"> Room(s) </th>
@@ -140,9 +136,9 @@
     <tr>
       <td> 
 	{% if not printer_friendly and can_edit %}
-	  <a href="{% url 'update_semester_for_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">{{course.semester}}</a>
+	  <a href="{% url 'update_semester_for_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">{{course.semester}} - {{course.semester_fraction}}</a>
 	{% else %} 
-	  {{course.semester}}
+	  {{course.semester}} - {{course.semester_fraction}}
         {% endif %}
       </td>
       <td>
@@ -159,7 +155,7 @@
 	<a href="{% url 'update_course_offering' course.course_offering_id 0 %}?next={{ request.path|urlencode }}">{{course.cap}}</a>
 	   {% else %} {{course.cap}} {% endif %}
       </td>
-      <td style="text-align: center">
+      <td style="{% if not course.meetings_scheduled %}background-color: #f2dede; {% endif %} text-align: center">
       {% for meeting in course.meeting_times_list %}
 	<div>
 	  {% if course.meetings_scheduled %}
@@ -169,14 +165,14 @@
 	  {% else %} {{meeting}} {% endif %}
 	  {% else %}
 	  {% if not printer_friendly and can_edit %}
-	  <a href="{% url 'new_class_schedule' course.course_offering_id 0 %}">
-	    {{meeting}}</a>
+    <a href="{% url 'new_class_schedule' course.course_offering_id 0 %}">
+      {{meeting}}</a>
 	  {% else %} {{meeting}} {% endif %}
 	  {% endif %}
 	</div>
 	{% endfor %}
       </td>
-      <td style="text-align: center">
+      <td style="{% if not course.meetings_scheduled %}background-color: #f2dede; {% endif %} text-align: center">
       {% for room in course.room_list %}
 	<div>
 	  {% if not printer_friendly and can_edit %}
@@ -186,7 +182,7 @@
 	</div>
 	{% endfor %}
       </td>
-      <td style="text-align: center"> 
+      <td style="{% if not course.loads_OK %}background-color: #f2dede; {% endif %} text-align: center"> 
 	{% for instructor in course.instructor_list %}
 	<div>
 	  {% if not printer_friendly and can_edit %}
