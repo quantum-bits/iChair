@@ -49,6 +49,10 @@ class="btn btn-warning"
 
 <div id="position-holder-message-div"><span id="position-holder-message1"></span> <a id="new-link-id" href="{% url 'department_load_summary' %}"></a></div>
 
+<link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.min.css" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
 <script type='text/javascript'>
@@ -57,6 +61,7 @@ class="btn btn-warning"
 </script>
 
 <div id="app">
+	<!--
     [[message]]
 
     <ul>
@@ -64,38 +69,92 @@ class="btn btn-warning"
         <a>[[ person.name ]]</a> <button v-on:click="greet(person.name)">hey</button>
       </li>
 	</ul>
-
+-->
 	<v-app>
 
 	<template>
 		<v-card>
 			<v-card-title>
-				Load Summary
-				<v-spacer></v-spacer>
-				<v-text-field
-				v-model="search"
-				append-icon="search"
-				label="Search"
-				single-line
-				hide-details
-				></v-text-field>
+				<v-container fluid>
+					<v-layout row wrap>
+						<v-flex xs4>
+							<v-text-field
+							v-model="search"
+							append-icon="search"
+							label="Search"
+							single-line
+							hide-details
+							></v-text-field>
+						</v-flex>
+						<!-- @click.stop="toggle('semester')"-->
+						<v-flex offset-xs2 xs1>
+							<v-checkbox
+								v-model="semesterSelected"
+								v-on:change="toggle('semester')"
+								color="primary lighten-1"
+								:label="`Sem`"
+							></v-checkbox>
+						</v-flex>
+						<v-flex xs1>
+							<v-checkbox
+								v-model="semesterFractionSelected"
+								v-on:change="toggle('fraction')"
+								color="primary lighten-1"
+								:label="`Frac`"
+							></v-checkbox>
+						</v-flex>
+						<v-flex xs1>
+							<v-checkbox
+								v-model="timeSelected"
+								v-on:change="toggle('time')"
+								color="primary lighten-1"
+								:label="`Time`"
+							></v-checkbox>
+						</v-flex>
+						<v-flex xs1>
+							<v-checkbox
+								v-model="roomSelected"
+								v-on:change="toggle('room')"
+								color="primary lighten-1"
+								:label="`Room`"
+							></v-checkbox>
+						</v-flex>
+						<v-flex xs1>
+							<v-checkbox
+								v-model="instructorSelected"
+								v-on:change="toggle('instructor')"
+								color="primary lighten-1"
+								:label="`Instr`"
+							></v-checkbox>
+						</v-flex>
+						<v-flex xs1>
+							<v-checkbox
+								v-model="commentsSelected"
+								v-on:change="toggle('comments')"
+								color="primary lighten-1"
+								:label="`Comments`"
+							></v-checkbox>
+						</v-flex>
+						
+					</v-layout>
+				</v-container>
 			</v-card-title>
 		<v-data-table
-		  :headers="headers"
+		  :headers="filteredHeaders"
 		  :items="courseData"
 		  :search="search"
 		>
 		  <template v-slot:items="props">
 			<td class="text-xs-left"> [[ props.item.number ]] </td>
 			<td class="text-xs-left"> [[ props.item.name ]]</td>
-			<td class="text-xs-center"> [[ props.item.semester]] </td>
-			<td class="text-xs-center"> [[ props.item.semester_fraction ]]</td>
-			<td class="text-xs-center"> 
+			<td v-if="semesterSelected" class="text-xs-left"> [[ props.item.semester]] </td>
+			<td v-if="semesterFractionSelected" class="text-xs-left"> [[ props.item.semester_fraction ]]</td>
+			<td v-if="timeSelected" class="text-xs-left"> 
 				<div v-for="meeting in props.item.meeting_times">
 						[[ meeting ]]
 				</div>
 			</td>
-			<td class="text-xs-center">
+			<td v-if="roomSelected" class="text-xs-left">
 				<div v-for="room in props.item.rooms">
 						[[ room ]]
 				</div>
@@ -103,12 +162,12 @@ class="btn btn-warning"
 			<td class="text-xs-right"> </td>
 			<td class="text-xs-center"> [[ props.item.load_hours ]]</td>
 			<td class="text-xs-center"> [[ props.item.load_difference ]]</td>
-			<td class="text-xs-left"> 
+			<td v-if="instructorSelected" class="text-xs-left"> 
 				<div v-for="instructor in props.item.instructor_list">
 					[[ instructor ]]
 				</div>
 			</td>
-			<td class="text-xs-left"> [[ props.item.comment ]]</td>
+			<td v-if="commentsSelected" class="text-xs-left"> [[ props.item.comment ]]</td>
 		  </template>
 		  <template v-slot:no-results>
 				<v-alert :value="true" color="error" icon="warning">
@@ -805,38 +864,72 @@ class="btn btn-warning"
 		  search: '',
           people: people,
 		  courseData: course_data_list_json,
+		  // a very painful way to do this; there must be a better way....
+		  semesterSelected: true,
+		  semesterFractionSelected: false,
+		  timeSelected: true,
+		  roomSelected: true,
+		  instructorSelected: true,
+		  commentsSelected: false,
 		  headers: [
           {
             text: 'Number',
             align: 'left',
             sortable: true,
             value: 'number',
-			width: '10%'
+			width: '10%',
+			selected: true
           },
-          { text: 'Name', value: 'name', width: '25%'},
-          { text: 'Sem', value: 'semester', width: '5%'},
-		  { text: 'Frac', value: 'fraction', width: '5%'},
-          { text: 'Time', value: 'time', width: '18%' },
-          { text: 'Room', value: 'room', width: '15%' },
-          { text: 'Action', value: 'action' },
-		  { text: 'Avail', value: 'avail'},
-		  { text: 'Diff', value: 'diff'},
-		  { text: 'Instructor', value: 'instructor', width: '20%'},
-		  { text: 'Comments', value: 'comments'},
+          { text: 'Name', value: 'name', width: '25%', selected: true},
+          { text: 'Sem', value: 'semester', width: '5%', selected: true},
+		  { text: 'Fraction', value: 'fraction', width: '5%', selected: false},
+          { text: 'Time', value: 'time', width: '18%', selected: true},
+          { text: 'Room', value: 'room', width: '15%', selected: true},
+          { text: 'Action', value: 'action', selected: true},
+		  { text: 'Avail', value: 'avail', selected: true},
+		  { text: 'Diff', value: 'diff', selected: true},
+		  { text: 'Instructor', value: 'instructor', width: '20%', selected: true},
+		  { text: 'Comments', value: 'comments', selected: false},
         ]
       },
       methods: {
           greet: function(name) {
               console.log('Hello from ' + name + '!');
 			  console.log('course data: ', this.courseData);
-          }
-      }
+          },
+		  // https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
+		  showColumn(col){
+			return this.headers.find(h => h.value === col).selected
+		  },
+		  toggle(col) {
+			let tempSelected = this.headers.find(h => h.value === col).selected;
+			this.headers.find(h => h.value === col).selected = !tempSelected;
+		  },
+      },
+	  // https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
+	  computed:{
+  		filteredHeaders(){
+    		return this.headers.filter(h => h.selected)
+		},
+		checkboxVal(col) {
+			return this.headers.find(h => h.value === col).selected;
+		}
+	  },
     });
 </script>
 
+<!-- https://stackoverflow.com/questions/49421170/change-font-size-of-v-radio-vuetify?rq=1 -->
 <style scoped>
-	
+	.v-label {
+    	font-size: 14px;
+		margin-left: 2px;
+	}
+  	.v-input input {
+		height: 32px;
+		margin-bottom: 4px;
+	}
 </style>
+
 <!-- the following is some AJAX that keeps track of which divs are open and which are shut -->
 
 <script>
