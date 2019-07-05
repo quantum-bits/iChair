@@ -469,7 +469,7 @@ class CourseOffering(StampedModel):
         else:
             return '2nd Half'
 
-    def is_full_year(self):
+    def is_full_semester(self):
         return self.semester_fraction == self.FULL_SEMESTER
 
     def is_in_semester_fraction(self, semester_fraction):

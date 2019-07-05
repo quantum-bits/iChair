@@ -1396,7 +1396,7 @@ def weekly_schedule(request):
             for co in course_offering_list_all_years:
                 if co.semester.year.begin_on.year == academic_year:
                     course_offering_list.append(co)
-                    if not co.is_full_year():
+                    if not co.is_full_semester():
                         # we will need to split the semester schedule out into two separate schedules
                         all_courses_are_full_semester = False
 
@@ -1439,7 +1439,7 @@ def weekly_schedule(request):
                     co_id = str(course_offering.id)
                     for scheduled_class in course_offering.scheduled_classes.all():
                         box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, scheduled_class,
-                                                                                        scheduled_class.day)
+                                                                                        scheduled_class.day,course_offering.is_full_semester())
                         box_list.append(box_data)
                         box_label_list.append(course_data)
                         box_label_list.append(room_data)
@@ -1564,7 +1564,7 @@ def daily_schedule(request):
                                                         'course_offering__course__subject')
             all_courses_are_full_semester = True                       
             for sc in scheduled_classes:
-                if not sc.course_offering.is_full_year():
+                if not sc.course_offering.is_full_semester():
                     # we will need to split this out into two separate schedules
                     all_courses_are_full_semester = False
 
@@ -1635,7 +1635,7 @@ def daily_schedule(request):
                     for instructor in sc.course_offering.offering_instructors.all():
                         if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
                             box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc,
-                                                                                            instructor_dict[instructor.instructor.id])
+                                                                                            instructor_dict[instructor.instructor.id], sc.course_offering.is_full_semester())
                             box_list.append(box_data)
                             box_label_list.append(course_data)
                             box_label_list.append(room_data)
@@ -1797,7 +1797,7 @@ def room_schedule(request):
             for sc in ScheduledClass.objects.filter(Q(room = room)&
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)):
-                box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day)
+                box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day, True)
                 box_list.append(box_data)
                 box_label_list.append(course_data)
                 box_label_list.append(room_data)
@@ -1922,7 +1922,7 @@ def course_schedule(request):
                         for sc in ScheduledClass.objects.filter(Q(course_offering__course = course)&
                                                                 Q(course_offering__semester__name__name=semester_name)&
                                                                 Q(course_offering__semester__year__begin_on__year = academic_year)):
-                            box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day)
+                            box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day, True)
                             box_list.append(box_data)
                             box_label_list.append(course_data)
                             box_label_list.append(room_data)
@@ -2118,7 +2118,7 @@ def create_schedule_grid(schedule,column_titles,chapel):
 
 
 
-def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column):
+def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column, is_full_semester):
     """
     returns the coordinates required (by the javascript in the template)
     to display a rectangular box for a single class meeting
@@ -2150,6 +2150,8 @@ def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column
     subject = scheduled_class_object.course_offering.course.subject.abbrev
     course_number = scheduled_class_object.course_offering.course.number
     course_label = subject+course_number
+    if not is_full_semester:
+        course_label+=' (half)'
     room_label = scheduled_class_object.room.building.abbrev+scheduled_class_object.room.number
 
     line_sep = schedule['box_text_line_sep_pixels']
@@ -2382,8 +2384,8 @@ def add_faculty(request):
     department = user_preferences.department_to_view
     university = department.school.university
 
-    print('dept: ', department)
-    print('university: ', university)
+    #print('dept: ', department)
+    #print('university: ', university)
 
     if request.method == 'POST':
         form = AddFacultyForm(request.POST)
