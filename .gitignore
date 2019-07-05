@@ -5,4 +5,5 @@
 foo*
 *.log
 .DS_Store
+secret.py
 static_root/*
