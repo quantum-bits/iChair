@@ -60,6 +60,13 @@
     var table_text_list = {{data.json_table_text_list|safe}};
     var box_label_list = {{data.json_box_label_list|safe}};
 
+    console.log('line list: ', line_list);
+    console.log('filled_row_list: ', filled_row_list);
+    console.log('box_list: ', box_list);
+    console.log('table_text_list: ', table_text_list);
+    console.log('box_label_list: ', box_label_list);
+    
+
     for(var n = 0; n < filled_row_list.length; n++) {
       context.beginPath();
       context.rect(filled_row_list[n][0], filled_row_list[n][1], filled_row_list[n][2], filled_row_list[n][3]);

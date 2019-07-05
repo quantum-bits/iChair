@@ -469,6 +469,35 @@ class CourseOffering(StampedModel):
         else:
             return '2nd Half'
 
+    def is_full_year(self):
+        return self.semester_fraction == self.FULL_SEMESTER
+
+    def is_in_semester_fraction(self, semester_fraction):
+        return (self.semester_fraction == self.FULL_SEMESTER) or  (self.semester_fraction == semester_fraction)
+
+    @classmethod
+    def partial_semesters(cls):
+        return [
+            {'semester_fraction': cls.FIRST_HALF_SEMESTER},
+            {'semester_fraction': cls.SECOND_HALF_SEMESTER}
+        ]
+
+    @classmethod
+    def full_semester(cls):
+        return [
+            {'semester_fraction': cls.FULL_SEMESTER}
+        ]
+            
+    @classmethod
+    def semester_fraction_name(cls, semester_fraction):
+        if (semester_fraction == cls.FULL_SEMESTER):
+            return 'Full Sem'
+        elif (semester_fraction == cls.FIRST_HALF_SEMESTER):
+            return '1st Half'
+        else:
+            return '2nd Half'
+
+
 class Grade(models.Model):
     letter_grade = models.CharField(max_length=5)
     grade_points = models.FloatField()
