@@ -1734,6 +1734,10 @@ def room_schedule(request):
     request.session["return_to_page"] = "/planner/roomschedule/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+
+    partial_semesters = CourseOffering.partial_semesters()
+    full_semester = CourseOffering.full_semester()
+
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
@@ -1767,81 +1771,101 @@ def room_schedule(request):
         data_this_room = []
         roomid=roomid+1
         for semester_name in semester_list:
-            courses_after_five = False
+            
             idnum = idnum + 1
 
-            if semester_name == semester_list[0]:
-                table_title = room.building.name+' '+room.number+' ('+semester_name+', '+str(academic_year)+')'
+            scheduled_classes = ScheduledClass.objects.filter(Q(room = room)&
+                                                    Q(course_offering__semester__name__name=semester_name)&
+                                                    Q(course_offering__semester__year__begin_on__year = academic_year))
+
+            all_courses_are_full_semester = True
+            for sc in scheduled_classes:
+                if not sc.course_offering.is_full_semester():
+                    all_courses_are_full_semester = False
+            
+            if all_courses_are_full_semester:
+                partial_semester_list = full_semester
             else:
-                table_title = room.building.abbrev+' '+room.number+' ('+semester_name+', '+str(academic_year+1)+')'
+                partial_semester_list = partial_semesters
 
-            for sc in ScheduledClass.objects.filter(Q(room = room)&
-                                                    Q(course_offering__semester__name__name=semester_name)&
-                                                    Q(course_offering__semester__year__begin_on__year = academic_year)):
-                if sc.end_at.hour > 16:
-                    courses_after_five = True
+            for partial_semester in partial_semester_list:
+            
+                courses_after_five = False
+                if semester_name == semester_list[0]:
+                    year_name = str(academic_year)
+                else:
+                    year_name = str(academic_year+1)
 
-            schedule = initialize_canvas_data(courses_after_five, num_data_columns)
+                if all_courses_are_full_semester:
+                    table_title = room.building.name+' '+room.number+' ('+semester_name+', '+year_name+')'
+                else:
+                    table_title = room.building.name+' '+room.number+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
 
-            grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, weekdays, 'MWF')
-            table_text_list.append([schedule['width']/2,schedule['border']/2,
-                                    table_title,
-                                    schedule['table_title_font'],
-                                    schedule['table_header_text_colour']])
+                filtered_scheduled_classes = [sc for sc in scheduled_classes if sc.course_offering.is_in_semester_fraction(partial_semester['semester_fraction'])]
+
+                for sc in filtered_scheduled_classes:
+                    if sc.end_at.hour > 16:
+                        courses_after_five = True
+
+                schedule = initialize_canvas_data(courses_after_five, num_data_columns)
+
+                grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, weekdays, 'MWF')
+                table_text_list.append([schedule['width']/2,schedule['border']/2,
+                                        table_title,
+                                        schedule['table_title_font'],
+                                        schedule['table_header_text_colour']])
 
 
-            conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
-            box_list = []
-            box_label_list = []
-            offering_dict = {}
-            for sc in ScheduledClass.objects.filter(Q(room = room)&
-                                                    Q(course_offering__semester__name__name=semester_name)&
-                                                    Q(course_offering__semester__year__begin_on__year = academic_year)):
-                box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day, True)
-                box_list.append(box_data)
-                box_label_list.append(course_data)
-                box_label_list.append(room_data)
-                conflict_check_dict[sc.day].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                    sc.end_at.hour*100+sc.end_at.minute,
-                                                    sc.course_offering.course.subject.abbrev+' '+sc.course_offering.course.number])
- 
-                if sc.course_offering.course.subject.department == department:
-                    co_id = str(sc.course_offering.id)
-                    if co_id in offering_dict:
-                        offering_dict[co_id]["scheduled_class_info"].append(sc)
-                    else:
-                        offering_dict[co_id] = {
-                            "name": sc.course_offering.course.subject.abbrev+sc.course_offering.course.number,
-                            "scheduled_class_info": [sc]
-                        }
-            # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
-            # format for text is: [xcenter, ycenter, text_string, font, text_colour]
-   
-            json_box_list = simplejson.dumps(box_list)
-            json_box_label_list = simplejson.dumps(box_label_list)
-            json_grid_list = simplejson.dumps(grid_list)
-            json_filled_row_list = simplejson.dumps(filled_row_list)
-            json_table_text_list = simplejson.dumps(table_text_list)
+                conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
+                box_list = []
+                box_label_list = []
+                offering_dict = {}
+                for sc in filtered_scheduled_classes:
+                    box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day, sc.course_offering.is_full_semester())
+                    box_list.append(box_data)
+                    box_label_list.append(course_data)
+                    box_label_list.append(room_data)
+                    conflict_check_dict[sc.day].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                        sc.end_at.hour*100+sc.end_at.minute,
+                                                        sc.course_offering.course.subject.abbrev+' '+sc.course_offering.course.number])
+    
+                    if sc.course_offering.course.subject.department == department:
+                        co_id = str(sc.course_offering.id)
+                        if co_id in offering_dict:
+                            offering_dict[co_id]["scheduled_class_info"].append(sc)
+                        else:
+                            offering_dict[co_id] = {
+                                "name": sc.course_offering.course.subject.abbrev+sc.course_offering.course.number,
+                                "scheduled_class_info": [sc]
+                            }
+                # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
+                # format for text is: [xcenter, ycenter, text_string, font, text_colour]
+    
+                json_box_list = simplejson.dumps(box_list)
+                json_box_label_list = simplejson.dumps(box_label_list)
+                json_grid_list = simplejson.dumps(grid_list)
+                json_filled_row_list = simplejson.dumps(filled_row_list)
+                json_table_text_list = simplejson.dumps(table_text_list)
 
-            overlap_dict = check_for_conflicts(conflict_check_dict)
-            error_messages=[]
-            for key in overlap_dict:
-                for row in overlap_dict[key]:
-                    error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
+                overlap_dict = check_for_conflicts(conflict_check_dict)
+                error_messages=[]
+                for key in overlap_dict:
+                    for row in overlap_dict[key]:
+                        error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
 
-            id = 'id'+str(idnum)
-            offering_list = construct_dropdown_list(offering_dict)
-            data_this_room.append({'room_id':roomid,
-                                   'room_name': room.building.abbrev+' '+room.number,
-                                   'json_box_list': json_box_list,
-                                   'json_box_label_list':json_box_label_list,
-                                   'json_grid_list': json_grid_list,
-                                   'json_filled_row_list': json_filled_row_list,
-                                   'json_table_text_list': json_table_text_list,
-                                   'id':id,
-                                   'schedule':schedule,
-                                   'conflict':error_messages,
-                                   'offerings': offering_list})
+                id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
+                offering_list = construct_dropdown_list(offering_dict)
+                data_this_room.append({'room_id':roomid,
+                                    'room_name': room.building.abbrev+' '+room.number,
+                                    'json_box_list': json_box_list,
+                                    'json_box_label_list':json_box_label_list,
+                                    'json_grid_list': json_grid_list,
+                                    'json_filled_row_list': json_filled_row_list,
+                                    'json_table_text_list': json_table_text_list,
+                                    'id':id,
+                                    'schedule':schedule,
+                                    'conflict':error_messages,
+                                    'offerings': offering_list})
         data_list.append(data_this_room)
 
     context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
@@ -2004,7 +2028,7 @@ def initialize_canvas_data(courses_after_five, num_data_columns):
     Creates a dictionary of data for the canvas for various schedules.
     """
 
-    width_day = 120
+    width_day = 140
     width_hour_names = 100
     height_day_names = 40
     height_hour_block = 60
@@ -2151,7 +2175,7 @@ def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column
     course_number = scheduled_class_object.course_offering.course.number
     course_label = subject+course_number
     if not is_full_semester:
-        course_label+=' (half)'
+        course_label+=' ('+'\u00BD'+' sem)'
     room_label = scheduled_class_object.room.building.abbrev+scheduled_class_object.room.number
 
     line_sep = schedule['box_text_line_sep_pixels']
