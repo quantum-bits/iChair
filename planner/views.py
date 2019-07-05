@@ -1356,7 +1356,6 @@ def weekly_schedule(request):
 
     partial_semesters = CourseOffering.partial_semesters()
     full_semester = CourseOffering.full_semester()
-    print(CourseOffering.partial_semesters())
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -1386,32 +1385,29 @@ def weekly_schedule(request):
         prof_id = prof_id + 1
         data_this_professor = []
         for semester_name in semester_list:
+            if semester_name == semester_list[0]:
+                year_name = str(academic_year)
+            else:
+                year_name = str(academic_year+1)
             idnum = idnum + 1
             course_offering_list_all_years = faculty_member.course_offerings.filter(semester__name__name=semester_name)
             course_offering_list = []
-            all_courses_full_year = True
+            all_courses_are_full_semester = True
             for co in course_offering_list_all_years:
                 if co.semester.year.begin_on.year == academic_year:
                     course_offering_list.append(co)
                     if not co.is_full_year():
-                        print('not full year!', co)
-                        # we will need to split this out into two separate schedules
-                        all_courses_full_year = False
-            print('all full year: ', all_courses_full_year)
+                        # we will need to split the semester schedule out into two separate schedules
+                        all_courses_are_full_semester = False
 
-            if all_courses_full_year:
+            if all_courses_are_full_semester:
                 partial_semester_list = full_semester
             else:
                 partial_semester_list = partial_semesters
 
             for partial_semester in partial_semester_list:
-
-                if semester_name == semester_list[0]:
-                    year_name = str(academic_year)
-                else:
-                    year_name = str(academic_year+1)
                 
-                if all_courses_full_year:
+                if all_courses_are_full_semester:
                     table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+year_name+')'
                 else:
                     table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
@@ -1475,7 +1471,6 @@ def weekly_schedule(request):
                         error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
                 
                 id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
-                print('id: ', id)
 
                 offering_list = construct_dropdown_list(offering_dict)
 
@@ -1502,6 +1497,10 @@ def daily_schedule(request):
     request.session["return_to_page"] = "/planner/dailyschedule/"
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+
+    partial_semesters = CourseOffering.partial_semesters()
+    full_semester = CourseOffering.full_semester()
+
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
@@ -1544,64 +1543,17 @@ def daily_schedule(request):
     for day in day_list:
         data_this_day = []
         for semester_name in semester_list:
-            instructor_conflict_check_dict = {}
-            room_conflict_check_dict = {}
-            for faculty_member in user_preferences.faculty_to_view.filter(department=department):
-                instructor_conflict_check_dict[faculty_member.id] = {'today':[]}
+            all_courses_are_full_semester = True
 #        for room in user_preferences.rooms_to_view.all().order_by('building','number'):
 #            room_conflict_check_dict[room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
 
             if semester_name == semester_list[0]:
-                current_semester_string = semester_name+', '+str(academic_year)
-                table_title = department.name +' ('+semester_name+', '+str(academic_year)+')'
+                year_name = str(academic_year)
             else:
-                current_semester_string = semester_name+', '+str(academic_year+1)
-                table_title = department.name +' ('+semester_name+', '+str(academic_year+1)+')'
+                year_name = str(academic_year+1)
 
-            courses_after_five = False
             idnum = idnum + 1
 
-            if semester_name == semester_list[0]:
-                table_title = day+'s'+' ('+semester_name+', '+str(academic_year)+')'
-            else:
-                table_title = day+'s'+' ('+semester_name+', '+str(academic_year+1)+')'
-
-            for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
-                                                    Q(course_offering__semester__name__name=semester_name)&
-                                                    Q(course_offering__semester__year__begin_on__year = academic_year)&
-                                                    Q(course_offering__course__subject__department = department)):
-
-                if sc.end_at.hour > 16:
-                    courses_after_five = True
-
-                for instructor in sc.course_offering.instructor.all():
-                    if instructor.id not in list(instructor_conflict_check_dict.keys()):
-                        instructor_conflict_check_dict[instructor.id] = {'today':[]}
-                    instructor_conflict_check_dict[instructor.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                                                   sc.end_at.hour*100+sc.end_at.minute,
-                                                                                   sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                                                   ' ('+start_end_time_string(sc.begin_at.hour,
-                                                                                                              sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-
-                if sc.room.id not in list(room_conflict_check_dict.keys()):
-                    room_conflict_check_dict[sc.room.id] = {'today':[]}
-                room_conflict_check_dict[sc.room.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                                      sc.end_at.hour*100+sc.end_at.minute,
-                                                                      sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                                      ' ('+start_end_time_string(sc.begin_at.hour,
-                                                                                                 sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-
-            schedule = initialize_canvas_data(courses_after_five, num_data_columns)
-
-            grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, professor_list, chapel_dict[day])
-            table_text_list.append([schedule['width']/2,schedule['border']/2,
-                                    table_title,
-                                    schedule['table_title_font'],
-                                    schedule['table_header_text_colour']])
-
-            box_list = []
-            box_label_list = []
-            offering_dict = {}
             scheduled_classes = ScheduledClass.objects.filter(Q(day=day_dict[day])&
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
@@ -1610,67 +1562,126 @@ def daily_schedule(request):
                                                         'course_offering__semester__name',
                                                         'course_offering__semester__year',
                                                         'course_offering__course__subject')
-
+            all_courses_are_full_semester = True                       
             for sc in scheduled_classes:
-                co_id = str(sc.course_offering.id)
-                if co_id in offering_dict:
-                    offering_dict[co_id]["scheduled_class_info"].append(sc)
+                if not sc.course_offering.is_full_year():
+                    # we will need to split this out into two separate schedules
+                    all_courses_are_full_semester = False
+
+            if all_courses_are_full_semester:
+                partial_semester_list = full_semester
+            else:
+                partial_semester_list = partial_semesters
+                
+            for partial_semester in partial_semester_list:
+                instructor_conflict_check_dict = {}
+                room_conflict_check_dict = {}
+                for faculty_member in user_preferences.faculty_to_view.filter(department=department):
+                    instructor_conflict_check_dict[faculty_member.id] = {'today':[]}
+
+                if all_courses_are_full_semester:
+                    table_title = day+'s'+' ('+semester_name+', '+year_name+')'
+                    current_semester_string = semester_name+', '+year_name
                 else:
-                    offering_dict[co_id] = {
-                        "name": sc.course_offering.course.subject.abbrev+sc.course_offering.course.number,
-                        "scheduled_class_info": [sc]
-                    }
-                                                            
-                for instructor in sc.course_offering.offering_instructors.all():
-                    if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
-                        box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc,
-                                                                                          instructor_dict[instructor.instructor.id])
-                        box_list.append(box_data)
-                        box_label_list.append(course_data)
-                        box_label_list.append(room_data)
+                    table_title = day+'s'+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
+                    current_semester_string = semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])
+
+                filtered_scheduled_classes = [sc for sc in scheduled_classes if sc.course_offering.is_in_semester_fraction(partial_semester['semester_fraction'])]
+
+                courses_after_five = False
+                for sc in filtered_scheduled_classes:
+                    if sc.end_at.hour > 16:
+                        courses_after_five = True
+
+                    for instructor in sc.course_offering.instructor.all():
+                        if instructor.id not in list(instructor_conflict_check_dict.keys()):
+                            instructor_conflict_check_dict[instructor.id] = {'today':[]}
+                        instructor_conflict_check_dict[instructor.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                                    sc.end_at.hour*100+sc.end_at.minute,
+                                                                                    sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                                    ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                                sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+
+                    if sc.room.id not in list(room_conflict_check_dict.keys()):
+                        room_conflict_check_dict[sc.room.id] = {'today':[]}
+                    room_conflict_check_dict[sc.room.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                        sc.end_at.hour*100+sc.end_at.minute,
+                                                                        sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                        ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                    sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+
+                schedule = initialize_canvas_data(courses_after_five, num_data_columns)
+
+                grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, professor_list, chapel_dict[day])
+                table_text_list.append([schedule['width']/2,schedule['border']/2,
+                                        table_title,
+                                        schedule['table_title_font'],
+                                        schedule['table_header_text_colour']])
+
+                box_list = []
+                box_label_list = []
+                offering_dict = {}
+
+                for sc in filtered_scheduled_classes:
+                    co_id = str(sc.course_offering.id)
+                    if co_id in offering_dict:
+                        offering_dict[co_id]["scheduled_class_info"].append(sc)
+                    else:
+                        offering_dict[co_id] = {
+                            "name": sc.course_offering.course.subject.abbrev+sc.course_offering.course.number,
+                            "scheduled_class_info": [sc]
+                        }
+                                                                
+                    for instructor in sc.course_offering.offering_instructors.all():
+                        if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
+                            box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc,
+                                                                                            instructor_dict[instructor.instructor.id])
+                            box_list.append(box_data)
+                            box_label_list.append(course_data)
+                            box_label_list.append(room_data)
 
 
-        # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
-        # format for text is: [xcenter, ycenter, text_string, font, text_colour]
+            # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
+            # format for text is: [xcenter, ycenter, text_string, font, text_colour]
 
-            json_box_list = simplejson.dumps(box_list)
-            json_box_label_list = simplejson.dumps(box_label_list)
-            json_grid_list = simplejson.dumps(grid_list)
-            json_filled_row_list = simplejson.dumps(filled_row_list)
-            json_table_text_list = simplejson.dumps(table_text_list)
+                json_box_list = simplejson.dumps(box_list)
+                json_box_label_list = simplejson.dumps(box_label_list)
+                json_grid_list = simplejson.dumps(grid_list)
+                json_filled_row_list = simplejson.dumps(filled_row_list)
+                json_table_text_list = simplejson.dumps(table_text_list)
 
-            error_messages=[]
-            for faculty_member_id in list(instructor_conflict_check_dict.keys()):
-                overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
-                faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
-                for key in overlap_dict:
-                    for row in overlap_dict[key]:
-                        error_messages.append([faculty_member.first_name[:1]+' '+
-                                               faculty_member.last_name+' has a conflict:',
-                                               row[0]+' conflicts with '+row[1]])
+                error_messages=[]
+                for faculty_member_id in list(instructor_conflict_check_dict.keys()):
+                    overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
+                    faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
+                    for key in overlap_dict:
+                        for row in overlap_dict[key]:
+                            error_messages.append([faculty_member.first_name[:1]+' '+
+                                                faculty_member.last_name+' has a conflict:',
+                                                row[0]+' conflicts with '+row[1]])
 
-            for room_id in list(room_conflict_check_dict.keys()):
-                overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id])
-                room = Room.objects.get(pk = room_id)
-                for key in overlap_dict:
-                    for row in overlap_dict[key]:
-                        error_messages.append([room.building.abbrev+room.number+' has a conflict:',
-                                               row[0]+' conflicts with '+row[1]])
+                for room_id in list(room_conflict_check_dict.keys()):
+                    overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id])
+                    room = Room.objects.get(pk = room_id)
+                    for key in overlap_dict:
+                        for row in overlap_dict[key]:
+                            error_messages.append([room.building.abbrev+room.number+' has a conflict:',
+                                                row[0]+' conflicts with '+row[1]])
 
-            id = 'id'+str(idnum)
-            offering_list = construct_dropdown_list(offering_dict)
+                id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
+                offering_list = construct_dropdown_list(offering_dict)
 
-            data_this_day.append({'day_name': day,
-                                  'json_box_list': json_box_list,
-                                  'json_box_label_list':json_box_label_list,
-                                  'json_grid_list': json_grid_list,
-                                  'json_filled_row_list': json_filled_row_list,
-                                  'json_table_text_list': json_table_text_list,
-                                  'id':id,
-                                  'schedule':schedule,
-                                  'error_messages':error_messages,
-                                  'semester':current_semester_string,
-                                  'offerings': offering_list})
+                data_this_day.append({'day_name': day,
+                                    'json_box_list': json_box_list,
+                                    'json_box_label_list':json_box_label_list,
+                                    'json_grid_list': json_grid_list,
+                                    'json_filled_row_list': json_filled_row_list,
+                                    'json_table_text_list': json_table_text_list,
+                                    'id':id,
+                                    'schedule':schedule,
+                                    'error_messages':error_messages,
+                                    'semester':current_semester_string,
+                                    'offerings': offering_list})
         data_list.append(data_this_day)
 
     context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
