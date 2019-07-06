@@ -3752,6 +3752,9 @@ def weekly_course_schedule_entire_dept(request):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
 
+    partial_semesters = CourseOffering.partial_semesters()
+    full_semester = CourseOffering.full_semester()
+
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
@@ -3781,223 +3784,247 @@ def weekly_course_schedule_entire_dept(request):
     chapel_dict = {'Monday':'every', 'Tuesday':'none', 'Wednesday':'every', 'Thursday':'none', 'Friday':'every'}
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-# ---working here--- NEXT: dump the results from the instructor conflict check out to the template; check for room conflicts, too
-
-
     for semester_name in semester_list:
-        instructor_conflict_check_dict = {}
-        room_conflict_check_dict = {}
-        for faculty_member in user_preferences.faculty_to_view.filter(department=department):
-            instructor_conflict_check_dict[faculty_member.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-#        for room in user_preferences.rooms_to_view.all().order_by('building','number'):
-#            room_conflict_check_dict[room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
 
-        idnum = idnum+1
-        courses_after_five = False
         if semester_name == semester_list[0]:
-            current_semester_string = semester_name+', '+str(academic_year)
-            table_title = department.name +' ('+semester_name+', '+str(academic_year)+')'
+            year_name = str(academic_year)
         else:
-            current_semester_string = semester_name+', '+str(academic_year+1)
-            table_title = department.name +' ('+semester_name+', '+str(academic_year+1)+')'
+            year_name = str(academic_year+1)
 
-        master_dict={}
-        num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
-        num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
-        for day in day_list:
-            master_dict[day]={7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[],17:[],18:[],19:[],20:[],21:[],22:[],23:[]}
-
-# master_dict contains the text that will be displayed in the various boxes
-            for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
-                                                    Q(course_offering__semester__name__name=semester_name)&
+        scheduled_classes = ScheduledClass.objects.filter(Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
-                                                    Q(course_offering__course__subject__department = department)):
+                                                    Q(course_offering__course__subject__department = department))
 
-                data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+' - '+
-                                 sc.room.building.abbrev+sc.room.number]
+        all_courses_are_full_semester = True
+        for sc in scheduled_classes:
+            if not sc.course_offering.is_full_semester():
+                all_courses_are_full_semester = False
 
-                for instructor in sc.course_offering.instructor.all():
-                    if instructor.id not in list(instructor_conflict_check_dict.keys()):
-                        instructor_conflict_check_dict[instructor.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-                    instructor_conflict_check_dict[instructor.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                                                  sc.end_at.hour*100+sc.end_at.minute,
-                                                                                  sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                                                            ' ('+start_end_time_string(sc.begin_at.hour,
-                                                                                                                       sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-                if sc.room.id not in list(room_conflict_check_dict.keys()):
-                    room_conflict_check_dict[sc.room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+        if all_courses_are_full_semester:
+            partial_semester_list = full_semester
+        else:
+            partial_semester_list = partial_semesters
 
-                room_conflict_check_dict[sc.room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                                                  sc.end_at.hour*100+sc.end_at.minute,
-                                                                                  sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                                                            ' ('+start_end_time_string(sc.begin_at.hour,
-                                                                                                                       sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+        for partial_semester in partial_semester_list:
 
-                if sc.end_at.hour > 16:
-                    courses_after_five = True
-                profs_this_class = ''
-                for instructor in sc.course_offering.instructor.all():
+            instructor_conflict_check_dict = {}
+            room_conflict_check_dict = {}
+            for faculty_member in user_preferences.faculty_to_view.filter(department=department):
+                instructor_conflict_check_dict[faculty_member.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+    #        for room in user_preferences.rooms_to_view.all().order_by('building','number'):
+    #            room_conflict_check_dict[room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+
+            idnum = idnum+1
+            courses_after_five = False
+
+            if all_courses_are_full_semester:
+                current_semester_string = semester_name+', '+year_name
+                table_title = department.name +' ('+semester_name+', '+year_name+')'
+            else:
+                current_semester_string = semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])
+                table_title = department.name +' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
+
+            master_dict={}
+            num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
+            num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
+
+            filtered_scheduled_classes = [sc for sc in scheduled_classes if sc.course_offering.is_in_semester_fraction(partial_semester['semester_fraction'])]
+
+            for day in day_list:
+                master_dict[day]={7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[],17:[],18:[],19:[],20:[],21:[],22:[],23:[]}
+
+    # master_dict contains the text that will be displayed in the various boxes
+                scheduled_classes_this_day = [sc for sc in filtered_scheduled_classes if sc.day == day_dict[day]]
+                for sc in scheduled_classes_this_day:
+
+                    half_sem_text = ''
+                    if not sc.course_offering.is_full_semester():
+                        half_sem_text = ' ('+'\u00BD'+' sem)'
+                    data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+' - '+
+                                    sc.room.building.abbrev+sc.room.number+half_sem_text]
+
+                    for instructor in sc.course_offering.instructor.all():
+                        if instructor.id not in list(instructor_conflict_check_dict.keys()):
+                            instructor_conflict_check_dict[instructor.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                        instructor_conflict_check_dict[instructor.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                                    sc.end_at.hour*100+sc.end_at.minute,
+                                                                                    sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                                                ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                                        sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+                    if sc.room.id not in list(room_conflict_check_dict.keys()):
+                        room_conflict_check_dict[sc.room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+
+                    room_conflict_check_dict[sc.room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                                    sc.end_at.hour*100+sc.end_at.minute,
+                                                                                    sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                                                ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                                        sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+
+                    if sc.end_at.hour > 16:
+                        courses_after_five = True
+                    profs_this_class = ''
+                    for instructor in sc.course_offering.instructor.all():
+                        if len(profs_this_class)>0:
+                            profs_this_class = profs_this_class+' / '+instructor.first_name[:1]+' '+instructor.last_name
+                        else:
+                            profs_this_class = instructor.first_name[:1]+' '+instructor.last_name
                     if len(profs_this_class)>0:
-                        profs_this_class = profs_this_class+' / '+instructor.first_name[:1]+' '+instructor.last_name
+                        data_this_class.append(profs_this_class)
+
+                    begin_hour = sc.begin_at.hour
+                    if(sc.end_at.minute==0):
+                        end_hour = sc.end_at.hour - 1
                     else:
-                        profs_this_class = instructor.first_name[:1]+' '+instructor.last_name
-                if len(profs_this_class)>0:
-                    data_this_class.append(profs_this_class)
+                        end_hour = sc.end_at.hour
 
-                begin_hour = sc.begin_at.hour
-                if(sc.end_at.minute==0):
-                    end_hour = sc.end_at.hour - 1
+                    hour_range=list(range(begin_hour,end_hour+1))
+                    for ii in range(len(hour_range)):
+                        local_data=[]
+                        for line in data_this_class:
+                            local_data.append(line)
+                        if ii == 0:
+                            if sc.begin_at.minute != 0:
+                                if sc.begin_at.minute<10:
+                                    local_data.append('(begins @ '+str(sc.begin_at.hour)+':0'+str(sc.begin_at.minute)+')')
+                                else:
+                                    local_data.append('(begins @ '+str(sc.begin_at.hour)+':'+str(sc.begin_at.minute)+')')
+                        if ii == len(hour_range)-1:
+                            if sc.end_at.minute != 50:
+                                if sc.end_at.minute<10:
+                                    local_data.append('(ends @ '+str(sc.end_at.hour)+':0'+str(sc.end_at.minute)+')')
+                                else:
+                                    local_data.append('(ends @ '+str(sc.end_at.hour)+':'+str(sc.end_at.minute)+')')
+
+                        if len(master_dict[day][hour_range[ii]])>0:
+                            master_dict[day][hour_range[ii]].append('')
+                        for new_line in local_data:
+                            master_dict[day][hour_range[ii]].append(new_line)
+
+    #        print(master_dict)
+            
+            for hour in num_lines_in_hour:
+                for day in master_dict:
+                    if len(master_dict[day][hour])>num_lines_in_hour[hour]:
+                        num_lines_in_hour[hour]=len(master_dict[day][hour])
+                        num_lines_including_halves[hour]=num_lines_in_hour[hour]-1.0*(master_dict[day][hour].count(''))/2.0
+    #                    print(master_dict[day][hour],num_lines_including_halves[hour])
+
+    #        print num_lines_in_hour
+
+            schedule = initialize_canvas_data(courses_after_five, num_data_columns)
+    #        print schedule['height']
+            
+            height_hour_blocks_dict={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
+            min_height_hour_block = 3*schedule['box_text_line_sep_pixels']
+
+            canvas_height=2*schedule['border']+schedule['height_day_names']
+            for hour in num_lines_in_hour:
+                height_this_block=(1+num_lines_including_halves[hour])*schedule['box_text_line_sep_pixels']
+                if height_this_block<min_height_hour_block:
+                    height_hour_blocks_dict[hour]=min_height_hour_block
                 else:
-                    end_hour = sc.end_at.hour
-
-                hour_range=list(range(begin_hour,end_hour+1))
-                for ii in range(len(hour_range)):
-                    local_data=[]
-                    for line in data_this_class:
-                        local_data.append(line)
-                    if ii == 0:
-                        if sc.begin_at.minute != 0:
-                            if sc.begin_at.minute<10:
-                                local_data.append('(begins @ '+str(sc.begin_at.hour)+':0'+str(sc.begin_at.minute)+')')
-                            else:
-                                local_data.append('(begins @ '+str(sc.begin_at.hour)+':'+str(sc.begin_at.minute)+')')
-                    if ii == len(hour_range)-1:
-                        if sc.end_at.minute != 50:
-                            if sc.end_at.minute<10:
-                                local_data.append('(ends @ '+str(sc.end_at.hour)+':0'+str(sc.end_at.minute)+')')
-                            else:
-                                local_data.append('(ends @ '+str(sc.end_at.hour)+':'+str(sc.end_at.minute)+')')
-
-                    if len(master_dict[day][hour_range[ii]])>0:
-                        master_dict[day][hour_range[ii]].append('')
-                    for new_line in local_data:
-                        master_dict[day][hour_range[ii]].append(new_line)
-
-#        print(master_dict)
-        
-        for hour in num_lines_in_hour:
-            for day in master_dict:
-                if len(master_dict[day][hour])>num_lines_in_hour[hour]:
-                    num_lines_in_hour[hour]=len(master_dict[day][hour])
-                    num_lines_including_halves[hour]=num_lines_in_hour[hour]-1.0*(master_dict[day][hour].count(''))/2.0
-#                    print(master_dict[day][hour],num_lines_including_halves[hour])
-
-#        print num_lines_in_hour
-
-        schedule = initialize_canvas_data(courses_after_five, num_data_columns)
-#        print schedule['height']
-        
-        height_hour_blocks_dict={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
-        min_height_hour_block = 3*schedule['box_text_line_sep_pixels']
-
-        canvas_height=2*schedule['border']+schedule['height_day_names']
-        for hour in num_lines_in_hour:
-            height_this_block=(1+num_lines_including_halves[hour])*schedule['box_text_line_sep_pixels']
-            if height_this_block<min_height_hour_block:
-                height_hour_blocks_dict[hour]=min_height_hour_block
-            else:
-                height_hour_blocks_dict[hour]=height_this_block
-            if hour<17:
-                canvas_height=canvas_height+height_hour_blocks_dict[hour]
-            else:
-                if courses_after_five:
+                    height_hour_blocks_dict[hour]=height_this_block
+                if hour<17:
                     canvas_height=canvas_height+height_hour_blocks_dict[hour]
-                    
-#        print height_hour_blocks_dict
-        # replace 'height_hour_block' by a dictionary of heights and 'height' by the recalculated canvas_height and width
-        # by a greater width than normal            
-        schedule['height_hour_block']=height_hour_blocks_dict
-        schedule['height']=canvas_height
-        schedule['width_day']=2*schedule['width_day']
+                else:
+                    if courses_after_five:
+                        canvas_height=canvas_height+height_hour_blocks_dict[hour]
+                        
+    #        print height_hour_blocks_dict
+            # replace 'height_hour_block' by a dictionary of heights and 'height' by the recalculated canvas_height and width
+            # by a greater width than normal            
+            schedule['height_hour_block']=height_hour_blocks_dict
+            schedule['height']=canvas_height
+            schedule['width_day']=2*schedule['width_day']
 
-#        print schedule
+    #        print schedule
 
-        canvas_width = 2*schedule['border']+5*schedule['width_day']+schedule['width_hour_names']
-        schedule['width']=canvas_width
-        grid_list, filled_row_list, table_text_list = create_flexible_schedule_grid(schedule, weekdays, 'MWF')
+            canvas_width = 2*schedule['border']+5*schedule['width_day']+schedule['width_hour_names']
+            schedule['width']=canvas_width
+            grid_list, filled_row_list, table_text_list = create_flexible_schedule_grid(schedule, weekdays, 'MWF')
 
-        table_text_list.append([schedule['width']/2,schedule['border']/2,
-                                table_title,
-                                schedule['table_title_font'],
-                                schedule['table_header_text_colour']])
-        
-        b = schedule['border']
-        h_h_b = schedule['height_hour_block']
-        h_d_n = schedule['height_day_names']
-        n_h_b = schedule['number_hour_blocks']
-        start_time = schedule['start_time'] 
-        vertical_edges = [b,b+h_d_n]
-        current_edge = b+h_d_n
-        for ii in range(n_h_b):
-            hour = start_time+ii
-            current_edge = current_edge+h_h_b[hour]
-            vertical_edges.append(current_edge)
-
-        box_list = []
-        box_label_list = []
-        # now loop over the text in the master_dict, etc.
-        for day in master_dict:
+            table_text_list.append([schedule['width']/2,schedule['border']/2,
+                                    table_title,
+                                    schedule['table_title_font'],
+                                    schedule['table_header_text_colour']])
+            
+            b = schedule['border']
+            h_h_b = schedule['height_hour_block']
+            h_d_n = schedule['height_day_names']
+            n_h_b = schedule['number_hour_blocks']
+            start_time = schedule['start_time'] 
+            vertical_edges = [b,b+h_d_n]
+            current_edge = b+h_d_n
             for ii in range(n_h_b):
                 hour = start_time+ii
-                text_list = master_dict[day][hour]
-                
-                if len(text_list)>0:
-                    box_data, text_data = rectangle_coordinates_flexible_schedule(schedule, vertical_edges,
-                                                                                       text_list, day_dict[day], hour)
-#                print box_data, text_data
+                current_edge = current_edge+h_h_b[hour]
+                vertical_edges.append(current_edge)
 
-#        box_data = [xleft, begin_height_pixels, w_d, height, schedule['box_fill_colour'],
-#                schedule['box_line_width'], schedule['box_border_colour']]
+            box_list = []
+            box_label_list = []
+            # now loop over the text in the master_dict, etc.
+            for day in master_dict:
+                for ii in range(n_h_b):
+                    hour = start_time+ii
+                    text_list = master_dict[day][hour]
+                    
+                    if len(text_list)>0:
+                        box_data, text_data = rectangle_coordinates_flexible_schedule(schedule, vertical_edges,
+                                                                                        text_list, day_dict[day], hour)
+    #                print box_data, text_data
 
-#        text_data = [
-#                     [xleft+w_d/2, row_height, line_of_text,
-#                      schedule['box_font'],
-#                      schedule['table_header_text_colour']],[...],...]
+    #        box_data = [xleft, begin_height_pixels, w_d, height, schedule['box_fill_colour'],
+    #                schedule['box_line_width'], schedule['box_border_colour']]
 
-                    box_list.append(box_data)
-                    for text_row in text_data:
-                        box_label_list.append(text_row)
+    #        text_data = [
+    #                     [xleft+w_d/2, row_height, line_of_text,
+    #                      schedule['box_font'],
+    #                      schedule['table_header_text_colour']],[...],...]
 
-        # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
-        # format for text is: [xcenter, ycenter, text_string, font, text_colour]
+                        box_list.append(box_data)
+                        for text_row in text_data:
+                            box_label_list.append(text_row)
 
-        json_box_list = simplejson.dumps(box_list)
-        json_box_label_list = simplejson.dumps(box_label_list)
-        json_grid_list = simplejson.dumps(grid_list)
-        json_filled_row_list = simplejson.dumps(filled_row_list)
-        json_table_text_list = simplejson.dumps(table_text_list)
+            # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
+            # format for text is: [xcenter, ycenter, text_string, font, text_colour]
 
-        error_messages=[]
-        for faculty_member_id in list(instructor_conflict_check_dict.keys()):
-            overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
-            faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
-            for key in overlap_dict:
-                for row in overlap_dict[key]:
-                    error_messages.append([faculty_member.first_name[:1]+' '+
-                                           faculty_member.last_name+' has a conflict on '+key+'s:',
-                                           row[0]+' conflicts with '+row[1]])
+            json_box_list = simplejson.dumps(box_list)
+            json_box_label_list = simplejson.dumps(box_label_list)
+            json_grid_list = simplejson.dumps(grid_list)
+            json_filled_row_list = simplejson.dumps(filled_row_list)
+            json_table_text_list = simplejson.dumps(table_text_list)
 
-        for room_id in list(room_conflict_check_dict.keys()):
-            overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id])
-            room = Room.objects.get(pk = room_id)
-            for key in overlap_dict:
-                for row in overlap_dict[key]:
-                    error_messages.append([room.building.abbrev+room.number+' has a conflict on '+key+'s:',
-                                           row[0]+' conflicts with '+row[1]])
+            error_messages=[]
+            for faculty_member_id in list(instructor_conflict_check_dict.keys()):
+                overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id])
+                faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
+                for key in overlap_dict:
+                    for row in overlap_dict[key]:
+                        error_messages.append([faculty_member.first_name[:1]+' '+
+                                            faculty_member.last_name+' has a conflict on '+key+'s:',
+                                            row[0]+' conflicts with '+row[1]])
 
-        id = 'id'+str(idnum)
-        data_this_term = {'day_name': day,
-                          'json_box_list': json_box_list,
-                          'json_box_label_list':json_box_label_list,
-                          'json_grid_list': json_grid_list,
-                          'json_filled_row_list': json_filled_row_list,
-                          'json_table_text_list': json_table_text_list,
-                          'id':id,
-                          'schedule':schedule,
-                          'error_messages':error_messages,
-                          'semester':current_semester_string
-                          }
-        data_list.append(data_this_term)
+            for room_id in list(room_conflict_check_dict.keys()):
+                overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id])
+                room = Room.objects.get(pk = room_id)
+                for key in overlap_dict:
+                    for row in overlap_dict[key]:
+                        error_messages.append([room.building.abbrev+room.number+' has a conflict on '+key+'s:',
+                                            row[0]+' conflicts with '+row[1]])
+
+            id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
+            data_this_term = {'day_name': day,
+                            'json_box_list': json_box_list,
+                            'json_box_label_list':json_box_label_list,
+                            'json_grid_list': json_grid_list,
+                            'json_filled_row_list': json_filled_row_list,
+                            'json_table_text_list': json_table_text_list,
+                            'id':id,
+                            'schedule':schedule,
+                            'error_messages':error_messages,
+                            'semester':current_semester_string
+                            }
+            data_list.append(data_this_term)
 
 #    print data_list
     context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
