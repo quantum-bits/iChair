@@ -7,3 +7,6 @@ foo*
 .DS_Store
 secret.py
 static_root/*
+venv/
+.idea/
+.vscode/
