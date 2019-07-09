@@ -1468,7 +1468,11 @@ def weekly_schedule(request):
                 error_messages=[]
                 for key in overlap_dict:
                     for row in overlap_dict[key]:
+                        print(weekdays)
+                        print(key)
+                        print(weekdays[key])
                         error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
+                        print(error_messages)
                 
                 id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
 
@@ -2643,6 +2647,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
     # printer_friendly_flag == 0 => display the usual page
     # printer_friendly_flag == 1 => display the printer-friendly version in a new tab with small font
     # printer_friendly_flag == 2 => display the printer-friendly version in a new tab with larger font
+    # https://stackoverflow.com/questions/14351048/django-optional-url-parameters
     # check_conflicts_flag == 0 => don't do any checks for conflicts (saves time for the page load)
     # check_conflicts_flag == 1 => check for time and room conflicts
 
@@ -2679,6 +2684,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
 
     registrar_data_list = []
     faculty_time_conflicts = []
+    room_conflicts = []
 
     for semester in SemesterName.objects.all():
         # check for conflicts....
@@ -2737,32 +2743,45 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                     if check_conflicts:
                         for partial_semester in partial_semesters:
                             if (co.is_in_semester_fraction(partial_semester['semester_fraction'])):
-                                #print(co, '  ', partial_semester['semester_fraction'])
-                                for offering_instructor in co.offering_instructors.all():
-                                    #print(offering_instructor.instructor,'  ', offering_instructor.instructor.id)
-                                    if offering_instructor.instructor.id not in list(instructor_conflict_check_dict.keys()):
-                                        instructor_conflict_check_dict[offering_instructor.instructor.id] = {}
-                                        for p_s in partial_semesters:
-                                            instructor_conflict_check_dict[offering_instructor.instructor.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-                                    
-                                    #print(co)
-                                    
-                                    #print('before: ', instructor_conflict_check_dict[offering_instructor.instructor.id])
-                                    #print('sem frac: ', partial_semester['semester_fraction'])
 
-                                    for sc in co.scheduled_classes.all():
+                                #for offering_instructor in co.offering_instructors.all():
+
+                                #    if offering_instructor.instructor.id not in list(instructor_conflict_check_dict.keys()):
+                                #        instructor_conflict_check_dict[offering_instructor.instructor.id] = {}
+                                #        for p_s in partial_semesters:
+                                #            instructor_conflict_check_dict[offering_instructor.instructor.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                                course_offering_instructors = co.offering_instructors.all()
+                                for sc in co.scheduled_classes.all():
+                                    if sc.room.id not in list(room_conflict_check_dict.keys()):
+                                        room_conflict_check_dict[sc.room.id] = {}
+                                        for p_s in partial_semesters:
+                                            room_conflict_check_dict[sc.room.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                                
+                                    room_conflict_check_dict[sc.room.id][partial_semester['semester_fraction']][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                                        sc.end_at.hour*100+sc.end_at.minute,
+                                                                                        sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                                                ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                                        sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+
+
+                                    for offering_instructor in course_offering_instructors:
+                                        if offering_instructor.instructor.id not in list(instructor_conflict_check_dict.keys()):
+                                            instructor_conflict_check_dict[offering_instructor.instructor.id] = {}
+                                            for p_s in partial_semesters:
+                                                instructor_conflict_check_dict[offering_instructor.instructor.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+
                                         instructor_conflict_check_dict[offering_instructor.instructor.id][partial_semester['semester_fraction']][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                                         sc.end_at.hour*100+sc.end_at.minute,
                                                                                         sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
                                                                                                     ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                                             sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-                                #print('after: ', instructor_conflict_check_dict[offering_instructor.instructor.id])
-
-
-                    
-
-
-
+                                
+                                #for sc in co.scheduled_classes.all():
+                                #    if sc.room.id not in list(room_conflict_check_dict.keys()):
+                                #        room_conflict_check_dict[sc.room.id] = {}
+                                #        for p_s in partial_semesters:
+                                #            room_conflict_check_dict[sc.room.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                                
     #    for room in user_preferences.rooms_to_view.all().order_by('building','number'):
     #        room_conflict_check_dict[room.id] = {}
     #            for partial_semester in partial_semesters:
@@ -2828,7 +2847,9 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                                 })
 
         if check_conflicts:
+            print(room_conflict_check_dict)
             error_messages = []
+            room_error_messages = []
             for faculty_member_id in list(instructor_conflict_check_dict.keys()):
                 for semester_fraction in list(instructor_conflict_check_dict[faculty_member_id].keys()):
                     #print(faculty_member_id, '  ', semester_fraction)
@@ -2854,9 +2875,35 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                         'error_messages': error_messages
                     }
                 )
+            for room_id in list(room_conflict_check_dict.keys()):
+                for semester_fraction in list(room_conflict_check_dict[room_id].keys()):
+                    #print(faculty_member_id, '  ', semester_fraction)
+                    room = Room.objects.get(pk = room_id)
+                    #print(faculty_member)
+                    #print('instructor conflict dict: ', instructor_conflict_check_dict[faculty_member_id])
+
+                    overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id][semester_fraction])
+                    print('overlap dict: ', overlap_dict)
+                    
+                    #faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
+                    for key in overlap_dict:
+                        for row in overlap_dict[key]:
+                            new_message = room.building.abbrev+room.number +' on '+ key+'s: '+row[0]+' conflicts with '+row[1]
+                            if (new_message not in room_error_messages):
+                                room_error_messages.append(new_message)   
+            print(room_error_messages)
+            if (len(room_error_messages) > 0):
+                room_conflicts.append(
+                    {
+                        'semester': semester.name,
+                        'error_messages': room_error_messages
+                    }
+                )
+
     #print(faculty_time_conflicts)
     context={'registrar_data_list':registrar_data_list, 'department': department, 'check_conflicts': check_conflicts,
              'faculty_time_conflicts': faculty_time_conflicts,
+             'room_conflicts': room_conflicts,
              'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id,
              'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large
     }
