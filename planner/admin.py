@@ -53,7 +53,7 @@ class FacultyMemberAdmin(admin.ModelAdmin):
 
 class CourseOfferingAdmin(admin.ModelAdmin):
     inlines = (OfferingInstructorInline,)
-    list_display = ('course','semester',)
+    list_display = ('course','crn','semester',)
     # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
     search_fields = ('course__title','course__number','semester__name__name', 'semester__banner_code',)
 
@@ -67,7 +67,7 @@ class ScheduledClassAdmin(admin.ModelAdmin):
     list_display = ('course_offering','day','begin_at','end_at','room','comment',)
 
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ('building','number',)
+    list_display = ('building','number','capacity',)
 
 class BuildingAdmin(admin.ModelAdmin):
     list_display = ('name','abbrev',)

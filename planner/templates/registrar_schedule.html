@@ -24,6 +24,14 @@
   }
 </style>
 
+<style>
+  .alert-student-info {
+	  width: 100%!important;
+  }
+</style>
+
+
+
 {% if printer_friendly %}
 
 <style>
@@ -57,7 +65,6 @@
 {% endif %}
 
 {% if not printer_friendly %}
-
 
 <div class="span3">
 	<div style="padding-bottom: 10px">
@@ -94,6 +101,41 @@
 	{% endif %}
 </div>
 
+{% if faculty_time_conflicts %}
+	
+	<div id="message-about-errors" class="span4 offset1">
+		<div class="alert alert-student-info">  
+			<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessageAboutErrors()">×</a>  
+			<div><strong>*Note:</strong> There are some time or room conflicts.  To view these conflicts, click 
+			<strong><a style="cursor: pointer;" onclick="unhideErrorMessages()">here</a></strong>.
+			</div>   
+		</div>   
+	</div>
+	
+{% endif %}
+
+<div id="error-messages" style="display: none;" class="span8 offset2">
+	<div class="alert alert-student-info">  
+		<a style="padding-right: 20px;" class="close" data-dismiss="alert" onclick="hideErrorMessages()">×</a>  
+		<ul>
+		{% for semester_message in faculty_time_conflicts %}
+			<li> <strong>{{ semester_message.semester }}:</strong>
+				<ul>
+				{% for error in semester_message.error_messages %}
+					<li>
+						{{error}}
+					</li>
+				{% endfor %}
+				</ul>
+			</li>
+		{% endfor %}
+		</ul>
+	</div>
+</div>
+
+
+
+
 {% endif %}
 
 <div class="content-center">
@@ -110,7 +152,8 @@
 		</tr>
 	       <tr>
 		 {% if not printer_friendly %}
-		 <th> Semester - Fraction</th>
+		 <th> Sem - Frac</th>
+		 <th>CRN</th>
 		 <th> Number </th>
 		 <th> Name </th>
 		 <th style="text-align: center"> Cr Hrs </th>
@@ -118,11 +161,13 @@
 		 <th style="text-align: center"> Times </th>
 		 <th style="text-align: center"> Room(s) </th>
 		 <th style="text-align: center"> Instructor(s) [load] </th>
+		 <th style="text-align: center"> Comments</th>
 		 {% if can_edit %} <th></th> {% endif %}
 		 {% else %}
 		 <th style="width:13%;"> Semester - Fraction</th>
-		 <th style="width:10%;">  Number </th>
-		 <th style="width:25%;"> Name </th>
+		 <th style="width:6%;">  CRN </th>
+		 <th style="width:9%;">  Number </th>
+		 <th style="width:20%;"> Name </th>
 		 <th style="text-align: center; width:7%;"> Cr Hrs </th>
 		 <th style="text-align: center; width:7%;"> Enrl Cap </th>
 		 <th style="text-align: center; width:13%;"> Times </th>
@@ -141,6 +186,11 @@
 	  {{course.semester}} - {{course.semester_fraction}}
         {% endif %}
       </td>
+	  <td>
+		{% if course.crn != None %}
+	   		{{course.crn}}
+	   {% endif %}
+	  </td>
       <td>
 	{% if not printer_friendly and can_edit %}
 	<a href="{% url 'update_course' course.course_id %}?next={{ request.path|urlencode }}">{{course.number}}</a>
@@ -192,6 +242,15 @@
 	</div>
 	{% endfor %}
       </td>
+
+	  {% if not printer_friendly %}
+      {% if can_edit %}
+      <td style="text-align: center;"> <a href="{% url 'update_course_offering' course.course_offering_id 0 %}?next={{ request.path|urlencode }}">{{course.comment}}</a>  </td>
+	  {% else %}
+	  <td style="text-align: center;">{{course.comment}}</td>
+	  {% endif %}
+      {% endif %}
+
       {% if not printer_friendly %}
       {% if can_edit %}
       <td title = "Delete this course offering" style="text-align: center;"> <a href="{% url 'delete_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Delete</a>  </td>
@@ -203,6 +262,31 @@
 
 </table>
 </div>
+
+<script>
+
+
+function unhideErrorMessages() {
+	document.getElementById('error-messages').style.display = 'block';
+	console.log('got here');
+	document.getElementById('message-about-errors').style.display = 'none';
+};
+
+function hideErrorMessages() {
+	document.getElementById('error-messages').style.display = 'none';
+};
+
+function hideMessageAboutErrors() {
+	document.getElementById('message-about-errors').style.display = 'none';
+};
+
+
+	
+</script>
+
+
+
+
 
   <script>
     $(window).load(function(){
