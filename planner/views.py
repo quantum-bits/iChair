@@ -1468,11 +1468,7 @@ def weekly_schedule(request):
                 error_messages=[]
                 for key in overlap_dict:
                     for row in overlap_dict[key]:
-                        print(weekdays)
-                        print(key)
-                        print(weekdays[key])
                         error_messages.append([weekdays[key],row[0]+' conflicts with '+row[1]])
-                        print(error_messages)
                 
                 id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
 
@@ -1974,7 +1970,6 @@ def course_schedule(request):
                             box_list = []
                             box_label_list = []
                             offering_dict = {}
-                            #print('length: ', len(filtered_scheduled_classes))
                             for sc in filtered_scheduled_classes:
                                 box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day, sc.course_offering.is_full_semester())
                                 box_list.append(box_data)
@@ -2439,9 +2434,6 @@ def add_faculty(request):
     department = user_preferences.department_to_view
     university = department.school.university
 
-    #print('dept: ', department)
-    #print('university: ', university)
-
     if request.method == 'POST':
         form = AddFacultyForm(request.POST)
         if form.is_valid():
@@ -2685,6 +2677,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
     registrar_data_list = []
     faculty_time_conflicts = []
     room_conflicts = []
+    overbooked_rooms = []
 
     for semester in SemesterName.objects.all():
         # check for conflicts....
@@ -2692,45 +2685,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
 
         instructor_conflict_check_dict = {}
         room_conflict_check_dict = {}
-
-
-
-        # WORKING HERE: now do the same for rooms....
-        # actually...add another flag in the url, for whether or not to check for errors...it slows things down, and users
-        # might not want to do it every time
-
-
-
-
-
-
-        #    for subject in department.subjects.all():
-        #        for course in subject.courses.all():
-        #            number = "{0} {1}".format(course.subject, course.number)
-        #            course_name = course.title
-        #            for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view)):
-        #                if (co.is_in_semester_fraction(partial_semester['semester_fraction'])):
-        #                    print(co)
-                        #for instructor in co.instructor.all():
-                        #if instructor.id not in list(instructor_conflict_check_dict.keys()):
-                         #   instructor_conflict_check_dict[instructor.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-                        #instructor_conflict_check_dict[instructor.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                     #                               sc.end_at.hour*100+sc.end_at.minute,
-                                                      #                              sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                       #                                         ' ('+start_end_time_string(sc.begin_at.hour,
-                                                        #                                                                sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-                    #if sc.room.id not in list(room_conflict_check_dict.keys()):
-                     #   room_conflict_check_dict[sc.room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-
-                    #room_conflict_check_dict[sc.room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                     #                                                               sc.end_at.hour*100+sc.end_at.minute,
-                      #                                                              sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                       #                                                                         ' ('+start_end_time_string(sc.begin_at.hour,
-                        #                                                                                                sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-
-
-
-    
+        overbooked_room_messages = []
 
         for subject in department.subjects.all():
             for course in subject.courses.all():
@@ -2752,6 +2707,12 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                 #            instructor_conflict_check_dict[offering_instructor.instructor.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
                                 course_offering_instructors = co.offering_instructors.all()
                                 for sc in co.scheduled_classes.all():
+
+                                    if co.max_enrollment > sc.room.capacity:
+                                        new_overbooked_room_message = 'Max enrollment in '+course.subject.abbrev+course.number+' ('+str(co.max_enrollment)+') exceeds the room capacity in '+sc.room.building.abbrev+sc.room.number+' ('+str(sc.room.capacity)+')'
+                                        if new_overbooked_room_message not in overbooked_room_messages:
+                                            overbooked_room_messages.append(new_overbooked_room_message)
+
                                     if sc.room.id not in list(room_conflict_check_dict.keys()):
                                         room_conflict_check_dict[sc.room.id] = {}
                                         for p_s in partial_semesters:
@@ -2776,23 +2737,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                                                                                     ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                                             sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
                                 
-                                #for sc in co.scheduled_classes.all():
-                                #    if sc.room.id not in list(room_conflict_check_dict.keys()):
-                                #        room_conflict_check_dict[sc.room.id] = {}
-                                #        for p_s in partial_semesters:
-                                #            room_conflict_check_dict[sc.room.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
                                 
-    #    for room in user_preferences.rooms_to_view.all().order_by('building','number'):
-    #        room_conflict_check_dict[room.id] = {}
-    #            for partial_semester in partial_semesters:
-    #                room_conflict_check_dict[room.id][partial_semester['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-        
-
-                                    # working here.....
-
-                         #   instructor_conflict_check_dict[instructor.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-
-                    
                     
                     scheduled_classes=[]
                     instructor_list=[]
@@ -2847,27 +2792,18 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                                 })
 
         if check_conflicts:
-            print(room_conflict_check_dict)
+            print(overbooked_room_messages)
             error_messages = []
             room_error_messages = []
             for faculty_member_id in list(instructor_conflict_check_dict.keys()):
                 for semester_fraction in list(instructor_conflict_check_dict[faculty_member_id].keys()):
-                    #print(faculty_member_id, '  ', semester_fraction)
                     faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
-                    #print(faculty_member)
-                    #print('instructor conflict dict: ', instructor_conflict_check_dict[faculty_member_id])
-
                     overlap_dict = check_for_conflicts(instructor_conflict_check_dict[faculty_member_id][semester_fraction])
-                    #print('overlap dict: ', overlap_dict)
-
-
-                    #faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
                     for key in overlap_dict:
                         for row in overlap_dict[key]:
                             new_message = faculty_member.first_name[:1]+' '+ faculty_member.last_name+' has a conflict on '+key+'s: '+row[0]+' conflicts with '+row[1]
                             if (new_message not in error_messages):
                                 error_messages.append(new_message)      
-            #print(error_messages)  
             if (len(error_messages) > 0):
                 faculty_time_conflicts.append(
                     {
@@ -2877,21 +2813,13 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                 )
             for room_id in list(room_conflict_check_dict.keys()):
                 for semester_fraction in list(room_conflict_check_dict[room_id].keys()):
-                    #print(faculty_member_id, '  ', semester_fraction)
                     room = Room.objects.get(pk = room_id)
-                    #print(faculty_member)
-                    #print('instructor conflict dict: ', instructor_conflict_check_dict[faculty_member_id])
-
                     overlap_dict = check_for_conflicts(room_conflict_check_dict[room_id][semester_fraction])
-                    print('overlap dict: ', overlap_dict)
-                    
-                    #faculty_member = FacultyMember.objects.get(pk = faculty_member_id)
                     for key in overlap_dict:
                         for row in overlap_dict[key]:
                             new_message = room.building.abbrev+room.number +' on '+ key+'s: '+row[0]+' conflicts with '+row[1]
                             if (new_message not in room_error_messages):
                                 room_error_messages.append(new_message)   
-            print(room_error_messages)
             if (len(room_error_messages) > 0):
                 room_conflicts.append(
                     {
@@ -2899,11 +2827,18 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                         'error_messages': room_error_messages
                     }
                 )
+            if (len(overbooked_room_messages) > 0):
+                overbooked_rooms.append(
+                    {
+                        'semester': semester.name,
+                        'error_messages': overbooked_room_messages
+                    }
+                )
 
-    #print(faculty_time_conflicts)
     context={'registrar_data_list':registrar_data_list, 'department': department, 'check_conflicts': check_conflicts,
              'faculty_time_conflicts': faculty_time_conflicts,
              'room_conflicts': room_conflicts,
+             'overbooked_rooms': overbooked_rooms,
              'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id,
              'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large
     }

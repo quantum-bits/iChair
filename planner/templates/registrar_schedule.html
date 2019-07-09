@@ -122,12 +122,12 @@
 
 {% if not check_conflicts %}
 	
-	<div id="message-about-errors" class="span4 offset1 content-center">
+	<div id="message-about-errors" class="span4 offset1">
 		<div class="alert alert-student-info">  
 			<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessage()">×</a>  
 			<div>Click 
 			<strong><a href="{% url 'registrar_schedule' 0 1 %}" onclick="launchSpinner()">here</a></strong> to check
-			for possible time or room conflicts.
+			for overbooked rooms and possible time or room conflicts.
 			</div>   
 		</div>   
 	</div>
@@ -138,12 +138,12 @@
 {% endif %}
 
 {% if check_conflicts %}
-	{% if faculty_time_conflicts or room_conflicts%}
+	{% if faculty_time_conflicts or room_conflicts or overbooked_rooms %}
 		<div id="error-messages" class="span8 offset2">
 			<div class="alert alert-student-info">  
 				<a style="padding-right: 20px;" class="close" data-dismiss="alert" onclick="hideErrorMessages()">×</a>  
 				{% if faculty_time_conflicts %}
-					<div class="content-center">
+					<div class="content-center" style="padding-top: 20px;">
 						<strong>
 							Faculty Time Conflicts
 						</strong>
@@ -163,13 +163,33 @@
 					</ul>
 				{% endif %}
 				{% if room_conflicts %}
-					<div class="content-center">
+					<div class="content-center" style="padding-top: 20px;">
 						<strong>
 							Room Conflicts
 						</strong>
 					</div>
 					<ul>
 					{% for semester_message in room_conflicts %}
+						<li> <strong>{{ semester_message.semester }}:</strong>
+							<ul>
+							{% for error in semester_message.error_messages %}
+								<li>
+									{{error}}
+								</li>
+							{% endfor %}
+							</ul>
+						</li>
+					{% endfor %}
+					</ul>
+				{% endif %}
+				{% if overbooked_rooms %}
+					<div class="content-center" style="padding-top: 20px;">
+						<strong>
+							Overbooked Rooms
+						</strong>
+					</div>
+					<ul>
+					{% for semester_message in overbooked_rooms %}
 						<li> <strong>{{ semester_message.semester }}:</strong>
 							<ul>
 							{% for error in semester_message.error_messages %}
