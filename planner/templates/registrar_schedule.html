@@ -24,11 +24,30 @@
   }
 </style>
 
+{% if not printer_friendly %}
+<!-- spinner help from W3schools: https://www.w3schools.com/howto/howto_css_loader.asp -->
+
 <style>
-  .alert-student-info {
-	  width: 100%!important;
-  }
+.alert-student-info {
+	width: 100%!important;
+}
+
+.loader {
+	border: 8px solid #f3f3f3; /* Light grey */
+	border-top: 8px solid #3498db; /* Blue */
+	border-radius: 50%;
+	width: 30px;
+	height: 30px;
+	margin-bottom: 20px;
+	animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
 </style>
+{% endif %}
 
 
 
@@ -101,37 +120,52 @@
 	{% endif %}
 </div>
 
-{% if faculty_time_conflicts %}
+{% if not check_conflicts %}
 	
-	<div id="message-about-errors" class="span4 offset1">
+	<div id="message-about-errors" class="span4 offset1 content-center">
 		<div class="alert alert-student-info">  
-			<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessageAboutErrors()">×</a>  
-			<div><strong>*Note:</strong> There are some time or room conflicts.  To view these conflicts, click 
-			<strong><a style="cursor: pointer;" onclick="unhideErrorMessages()">here</a></strong>.
+			<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessage()">×</a>  
+			<div>Click 
+			<strong><a href="{% url 'registrar_schedule' 0 1 %}" onclick="launchSpinner()">here</a></strong> to check
+			for possible time or room conflicts.
 			</div>   
 		</div>   
 	</div>
-	
+	<div id="spinner" style="display: none;" class="span4 offset2">
+		<div class="loader"></div>
+	</div>
+
 {% endif %}
 
-<div id="error-messages" style="display: none;" class="span8 offset2">
-	<div class="alert alert-student-info">  
-		<a style="padding-right: 20px;" class="close" data-dismiss="alert" onclick="hideErrorMessages()">×</a>  
-		<ul>
-		{% for semester_message in faculty_time_conflicts %}
-			<li> <strong>{{ semester_message.semester }}:</strong>
+{% if check_conflicts %}
+	{% if faculty_time_conflicts %}
+		<div id="error-messages" class="span8 offset2">
+			<div class="alert alert-student-info">  
+				<a style="padding-right: 20px;" class="close" data-dismiss="alert" onclick="hideErrorMessages()">×</a>  
 				<ul>
-				{% for error in semester_message.error_messages %}
-					<li>
-						{{error}}
+				{% for semester_message in faculty_time_conflicts %}
+					<li> <strong>{{ semester_message.semester }}:</strong>
+						<ul>
+						{% for error in semester_message.error_messages %}
+							<li>
+								{{error}}
+							</li>
+						{% endfor %}
+						</ul>
 					</li>
 				{% endfor %}
 				</ul>
-			</li>
-		{% endfor %}
-		</ul>
-	</div>
-</div>
+			</div>
+		</div>
+	{% else %}
+		<div id="error-messages" class="span4 offset1 content-center">
+			<div class="alert alert-student-info">  
+				<a style="padding-right: 20px;" class="close" data-dismiss="alert" onclick="hideErrorMessages()">×</a>  
+				No time or room conflicts were found.
+			</div>
+		</div>
+	{% endif %}
+{% endif %}
 
 
 
@@ -276,10 +310,14 @@ function hideErrorMessages() {
 	document.getElementById('error-messages').style.display = 'none';
 };
 
-function hideMessageAboutErrors() {
+function hideMessage() {
 	document.getElementById('message-about-errors').style.display = 'none';
 };
 
+function launchSpinner() {
+	document.getElementById('message-about-errors').style.display = 'none';
+	document.getElementById('spinner').style.display = 'inline';
+}
 
 	
 </script>

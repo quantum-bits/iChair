@@ -21,6 +21,7 @@ urlpatterns = [
     url(r'^weeklyscheduledeptsummary/$', myapp_views.weekly_course_schedule_entire_dept, name='weekly_course_schedule_entire_dept'),
     url(r'^dailyschedule/$', myapp_views.daily_schedule, name='daily_schedule'),
     url(r'^registrarschedule/(\d+)/$', myapp_views.registrar_schedule, name='registrar_schedule'),
+    url(r'^registrarschedule/(\d+)/(\d+)/$', myapp_views.registrar_schedule, name='registrar_schedule'),
     url(r'^roomschedule/$', myapp_views.room_schedule, name='room_schedule'),
     url(r'^courseschedule/$', myapp_views.course_schedule, name='course_schedule'),
     url(r'^selectcourse/$', myapp_views.select_course, name='select_course'),
