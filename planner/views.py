@@ -2440,7 +2440,7 @@ def add_faculty(request):
             first_name = form.cleaned_data.get('first_name')
             last_name = form.cleaned_data.get('last_name')
             rank = form.cleaned_data.get('rank')
-            faculty_id = '0001' # eventually fix this!
+            faculty_id = '' # eventually fix this!
 
             instructor = FacultyMember.objects.create(last_name = last_name,
                                                       first_name = first_name,
