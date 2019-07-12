@@ -48,8 +48,8 @@ class OfferingInstructorAdmin(admin.ModelAdmin):
     list_display = ('instructor','load_credit','course_offering',)
 
 class FacultyMemberAdmin(admin.ModelAdmin):
-    list_display = ('last_name', 'first_name', 'faculty_id', 'department', 'number_course_offerings', 'created_at',)
-    search_fields = ('last_name','first_name', 'faculty_id',)
+    list_display = ('last_name', 'first_name', 'pidm', 'department', 'number_course_offerings', 'created_at',)
+    search_fields = ('last_name','first_name', 'pidm',)
 
 class CourseOfferingAdmin(admin.ModelAdmin):
     inlines = (OfferingInstructorInline,)

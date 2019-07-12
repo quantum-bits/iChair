@@ -83,7 +83,7 @@ class FacultyMember(Person):
                     ('Assoc', 'Associate Professor'),
                     ('Full', 'Professor'))
     university = models.ForeignKey(University, related_name='faculty', on_delete=models.CASCADE)
-    faculty_id = models.CharField(max_length=25, blank=True, null=True)
+    pidm = models.CharField(max_length=25, blank=True, null=True)
     department = models.ForeignKey(Department, related_name='faculty', on_delete=models.CASCADE)
     rank = models.CharField(max_length=8, choices=RANK_CHOICES)
     inactive_starting = models.ForeignKey(AcademicYear, related_name='faculty', blank=True, null=True, on_delete=models.SET_NULL)
@@ -440,6 +440,7 @@ class CourseOffering(StampedModel):
     max_enrollment = models.PositiveIntegerField(default=10)
     comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.CharField(max_length=5, blank=True, null=True)
+
 
     def __str__(self):
         return "{0} ({1})".format(self.course, self.semester)

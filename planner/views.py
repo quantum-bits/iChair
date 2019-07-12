@@ -3003,13 +3003,18 @@ def update_faculty_to_view(request, id):
         next = request.GET.get('next', 'home')
         return redirect(next)
     else:
-        all_faculty=FacultyMember.objects.filter(department=department)
-        
+        all_faculty_ids = [fm.id for fm in FacultyMember.objects.filter(department=department)]
+        # now add in faculty from other departments who are currently in the faculty_to_view list....
+        faculty_to_view_ids = [fm.id for fm in faculty_to_view]
+        for fm_id in faculty_to_view_ids:
+            if fm_id not in all_faculty_ids:
+                all_faculty_ids.append(fm_id)
         faculty_info = []
         inactive_faculty_info = []
         faculty_with_loads = []
         faculty_without_loads = []
-        for faculty in all_faculty:
+        for faculty_id in all_faculty_ids:
+            faculty = FacultyMember.objects.get(pk = faculty_id)
             total_load = load_hour_rounder(faculty.load(year))
             if total_load > 0:
                 has_load = True

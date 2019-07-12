@@ -42,16 +42,16 @@ class Command(BaseCommand):
                     print(faculty_member.last_name," ", faculty_member.first_name, " ", banner_faculty.last_name, " ", banner_faculty.first_name, " ", banner_faculty.formal_first_name)
                     no_match = False
                     banner_pidm = str(banner_faculty.pidm)
-                    if faculty_member.faculty_id == banner_pidm:
+                    if faculty_member.pidm == banner_pidm:
                         print("pidm matches!")
                     else:
-                        faculty_member.faculty_id = str(banner_faculty.pidm)
+                        faculty_member.pidm = str(banner_faculty.pidm)
                         faculty_member.save()
                     break
             print(banner_counter)
             if no_match:
                 # set id to ''
-                faculty_member.faculty_id = ''
+                faculty_member.pidm = ''
                 faculty_member.save()
                 unmatched_faculty.append(faculty_member)
                 
