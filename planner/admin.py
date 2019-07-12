@@ -48,17 +48,14 @@ class OfferingInstructorAdmin(admin.ModelAdmin):
     list_display = ('instructor','load_credit','course_offering',)
 
 class FacultyMemberAdmin(admin.ModelAdmin):
-    inlines = (OfferingInstructorInline,)
-    search_fields = ('last_name',)
+    list_display = ('last_name', 'first_name', 'faculty_id', 'department', 'number_course_offerings', 'created_at',)
+    search_fields = ('last_name','first_name', 'faculty_id',)
 
 class CourseOfferingAdmin(admin.ModelAdmin):
     inlines = (OfferingInstructorInline,)
     list_display = ('course','crn','semester',)
     # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
     search_fields = ('course__title','course__number','semester__name__name', 'semester__banner_code',)
-
-class CRNAdmin(admin.ModelAdmin):
-    list_display = ('number',)
 
 class ClassMeetingAdmin(admin.ModelAdmin):
     list_display = ('course_offering','held_on','begin_at','end_at','room','instructor',)
@@ -90,7 +87,6 @@ admin.site.register(Building, BuildingAdmin)
 admin.site.register(ClassMeeting, ClassMeetingAdmin)
 admin.site.register(Course, CourseAdmin)
 admin.site.register(CourseAttribute)
-admin.site.register(CRN, CRNAdmin)
 admin.site.register(CourseOffering, CourseOfferingAdmin)
 admin.site.register(DegreeProgram, DegreeProgramAdmin)
 admin.site.register(DegreeProgramCourse, DegreeProgramCourseAdmin)

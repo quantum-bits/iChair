@@ -125,10 +125,20 @@
 	<div id="message-about-errors" class="span4 offset1">
 		<div class="alert alert-student-info">  
 			<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessage()">×</a>  
-			<div>Click 
-			<strong><a href="{% url 'registrar_schedule' 0 1 %}" onclick="launchSpinner()">here</a></strong> to check
-			for overbooked rooms and possible time or room conflicts.
-			</div>   
+			<p class="content-center"><strong>Check for Conflicts...? </strong></p>
+			<p>Check for overbooked rooms and possible time or room conflicts
+			<strong><a href="{% url 'registrar_schedule' 0 1 %}" onclick="launchSpinner()">within this department</a></strong>. 
+			</p>
+			<p>
+			If faculty members
+			are also scheduled by other departments, go to <strong><a href="{% url 'weekly_schedule' %}">faculty schedules</a></strong>
+			to find possible conflicts.
+			</p>   
+			<p>
+			If rooms are shared with other departments, go to <strong><a href="{% url 'room_schedule' %}">room schedules</a></strong>
+			to find possible conflicts.
+			</p>  
+
 		</div>   
 	</div>
 	<div id="spinner" style="display: none;" class="span4 offset2">

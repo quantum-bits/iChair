@@ -38,7 +38,10 @@
 <div class="container">
 	<div class="row">
 		<div class="span5 offset4">
-				<a class="btn btn-info" href="{% url 'add_faculty' %}?next={{ request.path|urlencode }}">Add Faculty Member</a>
+				<a class="btn btn-info" href="{% url 'add_faculty' %}?next={{ request.path|urlencode }}">Create New Faculty Member</a>
+				<p></p>
+				<a class="btn btn-info" href="{% url 'add_faculty' %}?next={{ request.path|urlencode }}">View Faculty From Another Department</a>
+		
 		</div>
 	</div>
 </div>	
@@ -182,7 +185,7 @@ font-weight: normal;
 		
 	  </form>
 	  <div class="alert alert-student-info">  
-			<a class="close" data-dismiss="alert">×</a>  
+			<a style="padding-right: 10px;" class="close" data-dismiss="alert">×</a>  
 			<div><strong>*Note:</strong> If a faculty member is no longer active in the department,
 				click on "Edit" and set the faculty member's status to Inactive.  If a faculty member's 
 				data needs to be deleted from the database, please contact the site administrator.

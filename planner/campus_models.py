@@ -83,7 +83,7 @@ class FacultyMember(Person):
                     ('Assoc', 'Associate Professor'),
                     ('Full', 'Professor'))
     university = models.ForeignKey(University, related_name='faculty', on_delete=models.CASCADE)
-    faculty_id = models.CharField(max_length=25)
+    faculty_id = models.CharField(max_length=25, blank=True, null=True)
     department = models.ForeignKey(Department, related_name='faculty', on_delete=models.CASCADE)
     rank = models.CharField(max_length=8, choices=RANK_CHOICES)
     inactive_starting = models.ForeignKey(AcademicYear, related_name='faculty', blank=True, null=True, on_delete=models.SET_NULL)
@@ -128,6 +128,11 @@ class FacultyMember(Person):
             return True
         else:
             return False
+    
+    @property
+    def number_course_offerings(self):
+        """ returns the # of course offerings taught by this faculty member """
+        return len(self.course_offerings.all())
             
 class StaffMember(Person):
     university = models.ForeignKey(University, related_name='staff', on_delete=models.CASCADE)
@@ -411,12 +416,6 @@ class OtherLoad(models.Model):
     comments = models.CharField(max_length=100, blank=True, null=True,
                                 help_text='optional longer comments')
 
-class CRN(StampedModel):
-    """ CRN for a course offering."""
-    number = models.CharField(max_length=15, help_text='e.g., 10435')
-
-    def __str__(self):
-        return self.number
 
 class CourseOffering(StampedModel):
     """Course as listed in the course schedule (i.e., an offering of a course)."""
@@ -440,7 +439,7 @@ class CourseOffering(StampedModel):
     load_available = models.FloatField(default=3)
     max_enrollment = models.PositiveIntegerField(default=10)
     comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
-    crn = models.ForeignKey(CRN, related_name='course_offerings', blank=True, null=True, on_delete=models.SET_NULL)
+    crn = models.CharField(max_length=5, blank=True, null=True)
 
     def __str__(self):
         return "{0} ({1})".format(self.course, self.semester)

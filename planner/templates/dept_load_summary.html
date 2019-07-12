@@ -126,7 +126,15 @@ class="btn btn-warning"
 <table class="table table-striped table-bordered table-hover">
 	     <thead>
 	       <tr>
-		<th colspan="6">Teaching Load</th>
+		<th colspan="6">Teaching Load
+			{% if not instructor_row.instructor_is_in_this_dept %}
+			<p>
+			<div class="alert alert-student-info">
+				Note: This faculty member belongs to another department -- only loads in this department are being shown.
+			</div>
+			</p>
+			{% endif %}
+		</th>
 		</tr>
 	       <th> Number </th>
 	       <th> Name </th>

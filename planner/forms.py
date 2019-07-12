@@ -184,12 +184,18 @@ class BaseInstructorFormSet(forms.models.BaseInlineFormSet):
 
 class InstructorForm(forms.ModelForm):
 
-    def __init__(self, department_id, year, *args, **kwargs):
+    def __init__(self, department_id, year, faculty_to_view_ids, *args, **kwargs):
         super (InstructorForm,self).__init__(*args,**kwargs)
         # following code from Tom Nurkkala
+        # list of all active faculty in the dept (used for dropdown lists)
         active_fm_ids = [fm.id
                          for fm in FacultyMember.objects.filter(department__id=department_id)
                          if fm.is_active(year)]
+        # in addition, there could be faculty from other depts that are in the group of "faculty_to_view" in user preferences, so add those in, too....
+        for fm_to_view_id in faculty_to_view_ids:
+            fm = FacultyMember.objects.get(pk = fm_to_view_id)
+            if fm.is_active(year) and (fm.id not in active_fm_ids):
+                active_fm_ids.append(fm.id)
         fm_objects = FacultyMember.objects.filter(id__in=active_fm_ids)
         self.fields['instructor'].queryset = fm_objects
 

@@ -328,7 +328,8 @@ def collect_data_for_summary(request):
     instructor_name_list=[]
     instructor_name_dict=dict()
     instructor_integer_list=[]
-    faculty_to_view = user_preferences.faculty_to_view.filter(department=department)
+    faculty_to_view = user_preferences.faculty_to_view.all()
+    #faculty_to_view = user_preferences.faculty_to_view.filter(department=department)
     for faculty in faculty_to_view:
         instructordict[faculty.id] = ii
         instructor_name_list.append(faculty.first_name[0]+'. '+faculty.last_name)
@@ -611,8 +612,12 @@ def collect_data_for_summary(request):
                                 'total_load':load_hour_rounder(total_other_load)
                                 })
 
-
+        instructor_is_in_this_dept = True
+        this_instructor = FacultyMember.objects.get(pk=instructor_id)
+        if this_instructor.department != department:
+            instructor_is_in_this_dept = False
         data_list_by_instructor.append({'instructor_id':instructor_id,
+                                        'instructor_is_in_this_dept': instructor_is_in_this_dept,
                                         'course_info':instructor_data,
                                         'instructor':instructor_name_dict[instructor_id],
                                         'admin_data_list':admin_data,
@@ -1206,11 +1211,17 @@ def update_course_offering(request,id, daisy_chain):
     else:
         next = "home"
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    
     instance = CourseOffering.objects.get(pk = id)
     form = CourseOfferingForm(instance=instance)
     #department_abbrev = instance.course.subject.department.abbrev
     dept_id = instance.course.subject.department.id
     year = instance.semester.year
+    faculty_to_view_ids = [fm.id
+                         for fm in user_preferences.faculty_to_view.all()
+                         if fm.is_active(year)]
     # create the formset class
 
     InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
@@ -1218,7 +1229,7 @@ def update_course_offering(request,id, daisy_chain):
                                               exclude = [])
     #InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id, year = year))
     # https://github.com/AndrewIngram/django-extra-views/issues/137
-    InstructorFormset.form = wraps(InstructorForm)(partial(InstructorForm, department_id=dept_id, year = year))
+    InstructorFormset.form = wraps(InstructorForm)(partial(InstructorForm, department_id=dept_id, year = year, faculty_to_view_ids = faculty_to_view_ids))
     
     # create the formset
     formset = InstructorFormset(instance = instance)
@@ -1381,7 +1392,8 @@ def weekly_schedule(request):
     idnum = 0
     prof_id = 0
     
-    for faculty_member in user_preferences.faculty_to_view.filter(department=department).order_by('last_name'):
+    for faculty_member in user_preferences.faculty_to_view.all().order_by('last_name'):
+        #user_preferences.faculty_to_view.filter(department=department).order_by('last_name'):
         prof_id = prof_id + 1
         data_this_professor = []
         for semester_name in semester_list:
@@ -1526,7 +1538,8 @@ def daily_schedule(request):
     instructor_dict = {}
     ii = 0
     professor_list = []
-    for faculty_member in user_preferences.faculty_to_view.filter(department=department):
+    for faculty_member in user_preferences.faculty_to_view.all():
+        #user_preferences.faculty_to_view.filter(department=department):
         instructor_dict[faculty_member.id] = ii
         professor_list.append(faculty_member.first_name[0]+'. '+faculty_member.last_name)
         ii=ii+1
@@ -1576,7 +1589,7 @@ def daily_schedule(request):
             for partial_semester in partial_semester_list:
                 instructor_conflict_check_dict = {}
                 room_conflict_check_dict = {}
-                for faculty_member in user_preferences.faculty_to_view.filter(department=department):
+                for faculty_member in user_preferences.faculty_to_view.all():
                     instructor_conflict_check_dict[faculty_member.id] = {'today':[]}
 
                 if all_courses_are_full_semester:
@@ -1633,7 +1646,7 @@ def daily_schedule(request):
                         }
                                                                 
                     for instructor in sc.course_offering.offering_instructors.all():
-                        if instructor.instructor in user_preferences.faculty_to_view.filter(department=department):
+                        if instructor.instructor in user_preferences.faculty_to_view.all():
                             box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc,
                                                                                             instructor_dict[instructor.instructor.id], sc.course_offering.is_full_semester())
                             box_list.append(box_data)
@@ -2007,6 +2020,18 @@ def course_schedule(request):
                                                         'id':id,
                                                         'schedule':schedule,
                                                         'offerings': offering_list})
+                if len(data_this_course) == 0:
+                    # no course offerings for this course
+                    data_this_course.append({'course_id':courseid,
+                                            'course_name': course.subject.abbrev+' '+course.number+': '+course.title,
+                                            'json_box_list': simplejson.dumps([]),
+                                            'json_box_label_list':simplejson.dumps([]),
+                                            'json_grid_list': simplejson.dumps([]),
+                                            'json_filled_row_list': simplejson.dumps([]),
+                                            'json_table_text_list': simplejson.dumps([]),
+                                            'id':id,
+                                            'schedule':[],
+                                            'offerings': []})
                 data_list.append(data_this_course)
 
     context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
@@ -2458,7 +2483,7 @@ def add_faculty(request):
 
     else:
         form = AddFacultyForm()
-        context = {'form': form, 'title': 'Add New Faculty Member' }
+        context = {'form': form, 'title': 'Add New Faculty Member', 'department': department }
         return render(request, 'add_faculty_member.html', context)
 
 def add_course(request, daisy_chain):
@@ -3925,7 +3950,7 @@ def weekly_course_schedule_entire_dept(request):
 
             instructor_conflict_check_dict = {}
             room_conflict_check_dict = {}
-            for faculty_member in user_preferences.faculty_to_view.filter(department=department):
+            for faculty_member in user_preferences.faculty_to_view.all():
                 instructor_conflict_check_dict[faculty_member.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
     #        for room in user_preferences.rooms_to_view.all().order_by('building','number'):
     #            room_conflict_check_dict[room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}

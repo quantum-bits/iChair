@@ -21,7 +21,7 @@
 
       <div id="{{course_data.0.course_id}}" class="accordion-body collapse">
 	<div class="accordion-inner">
-
+    
 {% for data in course_data %}
 
 {% if data.offerings and can_edit %}                                     
@@ -35,7 +35,7 @@
     </ul>
   </div>
 {% endif %}
-
+{% if data.offerings %}
 <canvas id="{{data.id}}" width="{{data.schedule.width}}" height="{{data.schedule.height}}"></canvas>
 
   <script>
@@ -95,6 +95,9 @@
       }
 
   </script>
+{% else %}
+There are currently no offerings scheduled for this course.
+{% endif %}
 
 {% endfor %}
 
