@@ -361,27 +361,40 @@ def collect_data_for_summary(request):
     for ii in range(number_faculty):
         faculty_summary_load_list.append([0,0,0])
 
-    course_offerings = CourseOffering.objects.filter(
+    course_offerings = [co for co in CourseOffering.objects.filter(
         Q(course__subject__department=department)&
         Q(semester__year=academic_year_object)).select_related(
             'semester__name',
             'semester__year',
-            'course__subject')
+            'course__subject')]
 
-    scheduled_classes = ScheduledClass.objects.filter(
+    outside_course_offerings = []
+    for faculty in FacultyMember.objects.filter(department=department):
+        if faculty.is_active(academic_year_object):
+            for outside_co in faculty.outside_course_offerings_this_year(academic_year_object):
+                if outside_co not in course_offerings:
+                    outside_course_offerings.append(outside_co)
+                    course_offerings.append(outside_co)
+    
+    scheduled_classes = [sc for sc in ScheduledClass.objects.filter(
         Q(course_offering__course__subject__department=department)&
         Q(course_offering__semester__year=academic_year_object)).select_related(
             'room__building',
             'course_offering__semester__name',
             'course_offering__semester__year',
-            'course_offering__course__subject')
+            'course_offering__course__subject')]
 
-
-    offering_instructors = OfferingInstructor.objects.filter(
+    offering_instructors = [oi for oi in OfferingInstructor.objects.filter(
         Q(course_offering__course__subject__department=department)&
         Q(course_offering__semester__year=academic_year_object)).select_related(
             'course_offering',
-            'instructor')
+            'instructor')]
+
+    for oco in outside_course_offerings:
+        for sc in oco.scheduled_classes.all():
+            scheduled_classes.append(sc)
+        for oi in oco.offering_instructors.all():
+            offering_instructors.append(oi)
         
     course_offering_dict = dict()
     
@@ -405,8 +418,6 @@ def collect_data_for_summary(request):
         semester_fraction = course_offering_dict[key]['course_offering'].semester_fraction_text()
         #print("semester fraction: ",course_offering_dict[key]['course_offering'].semester_fraction)
         #print(course_offering_dict[key]['course_offering'].semester_fraction_text())
-
-
 
         classes = course_offering_dict[key]['scheduled_classes']
         if not classes:
