@@ -45,6 +45,14 @@ class Department(models.Model):
     class Meta:
         ordering = ['name']
 
+    def outside_courses_this_year(self, academic_year_object):
+        course_list = []
+        for fac in self.faculty.all():
+            for co in fac.outside_course_offerings_this_year(academic_year_object):
+                if co.course not in course_list:
+                    course_list.append(co.course)
+        return course_list
+
     def __str__(self):
         return self.name
 

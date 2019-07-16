@@ -1564,6 +1564,9 @@ def daily_schedule(request):
 
     chapel_dict = {'Monday':'every', 'Tuesday':'none', 'Wednesday':'every', 'Thursday':'none', 'Friday':'every'}
 
+
+    dept_faculty_list = FacultyMember.objects.filter(department=department)
+        
     for day in day_list:
         data_this_day = []
         for semester_name in semester_list:
@@ -1578,14 +1581,27 @@ def daily_schedule(request):
 
             idnum = idnum + 1
 
-            scheduled_classes = ScheduledClass.objects.filter(Q(day=day_dict[day])&
+            scheduled_classes = [sc for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
                                                     Q(course_offering__course__subject__department = department)).select_related(
                                                         'room__building',
                                                         'course_offering__semester__name',
                                                         'course_offering__semester__year',
-                                                        'course_offering__course__subject')
+                                                        'course_offering__course__subject')]
+
+            semester_this_year = Semester.objects.filter(Q(name__name=semester_name)&Q(year__begin_on__year=academic_year))
+
+            if len(semester_this_year) == 1:
+                # there is exactly one of these...which is good
+                semester_object = semester_this_year[0]
+                for faculty in FacultyMember.objects.filter(department=department):
+                    if faculty.is_active(semester_object.year):
+                        for outside_co in faculty.outside_course_offerings(semester_object):
+                            for sc in outside_co.scheduled_classes.filter(Q(day=day_dict[day])):
+                                if sc not in scheduled_classes:
+                                    scheduled_classes.append(sc)
+
             all_courses_are_full_semester = True                       
             for sc in scheduled_classes:
                 if not sc.course_offering.is_full_semester():
@@ -1934,9 +1950,31 @@ def course_schedule(request):
     data_list =[]
     idnum = 0
     courseid = 0
+    
+    outside_course_list = department.outside_courses_this_year(user_preferences.academic_year_to_view)
+    print(outside_course_list)
 
-    for subject in department.subjects.all():
-        for course in subject.courses.all(): #filter(offerings__semester__year__begin_on__year = academic_year):
+    subject_list = [subj for subj in department.subjects.all()]
+        
+    # add in subjects for outside courses
+    for course in outside_course_list:
+        if course.subject not in subject_list:
+            subject_list.append(course.subject)
+    
+    for subject in subject_list:
+        if subject in department.subjects.all():
+            # get all courses if the course is in this department
+            course_list = [course for course in subject.courses.all()]
+        else:
+            # the subject is from another dept, so grab the appropriate courses
+            course_list = []
+            for course in outside_course_list:
+                if (course.subject == subject) and (course not in course_list):
+                    course_list.append(course)
+            # https://stackoverflow.com/questions/403421/how-to-sort-a-list-of-objects-based-on-an-attribute-of-the-objects
+            course_list.sort(key=lambda x: x.number)
+        
+        for course in course_list: #filter(offerings__semester__year__begin_on__year = academic_year):
             co = course.offerings.filter(semester__year__begin_on__year = academic_year)
             if len(co) > 0:
                 co_semester_list=[]
@@ -2721,6 +2759,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
 
         # find this semester in this academic year....
         semester_this_year = Semester.objects.filter(Q(name__name=semester.name)&Q(year__begin_on__year=year_to_view))
+
         outside_course_offerings = []
         dept_faculty_list = FacultyMember.objects.filter(department=department)
         if len(semester_this_year) == 1:
@@ -2740,8 +2779,9 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
         for oco in outside_course_offerings:
             if oco.course.subject not in subject_list:
                     subject_list.append(oco.course.subject)
-        subject_is_in_dept = True
+
         for subject in subject_list:
+            subject_is_in_dept = True
             if subject in department.subjects.all():
                 # get all courses if the course is in this department
                 course_list = [course for course in subject.courses.all()]
