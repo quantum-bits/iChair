@@ -53,12 +53,16 @@
 	    </td>
 	 {% endfor %}
       {% endfor %}
-	    {% if can_edit %}
-	    <td style="text-align: center"><a title="Edit properties of the course itself, such as the title, course number or number of credit hours" href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">Edit Course Properties</a> 
-	      {% if allow_delete %} | 
-	      <a href="{% url 'delete_course_confirmation' course.id %}">Delete Course</a> 
-	      {% endif %}
-	    </td>
+		{% if can_edit %}
+			{% if course.subject_in_department%}
+				<td style="text-align: center"><a title="Edit properties of the course itself, such as the title, course number or number of credit hours" href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">Edit Course Properties</a> 
+				{% if allow_delete %} | 
+				<a href="{% url 'delete_course_confirmation' course.id %}">Delete Course</a> 
+				{% endif %}
+				</td>
+			{% else %}
+			<td></td>
+			{% endif %}
 	    {% endif %}
     </tr>
 {% endfor %}

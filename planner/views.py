@@ -1952,7 +1952,6 @@ def course_schedule(request):
     courseid = 0
     
     outside_course_list = department.outside_courses_this_year(user_preferences.academic_year_to_view)
-    print(outside_course_list)
 
     subject_list = [subj for subj in department.subjects.all()]
         
@@ -2315,6 +2314,9 @@ def course_summary(request, allow_delete):
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
 
     department = user_preferences.department_to_view
+
+    faculty_in_dept_id_list = [fac.id for fac in department.faculty.all()]
+
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
@@ -2335,8 +2337,34 @@ def course_summary(request, allow_delete):
         ii=ii+1
 
     data_list = []
-    for subject in department.subjects.all():
-        for course in subject.courses.all():
+
+    subject_list = [subj for subj in department.subjects.all()]
+    outside_course_list = department.outside_courses_any_year()
+    other_subject_list = []
+    for oco in outside_course_list:
+        if oco.subject not in other_subject_list:
+            other_subject_list.append(oco.subject)
+    other_subject_list.sort(key=lambda x: x.abbrev)
+    for other_subject in other_subject_list:
+        if other_subject not in subject_list:
+            subject_list.append(other_subject)
+
+    for subject in subject_list:
+        subject_in_department = True
+        if subject in department.subjects.all():
+            # get all courses if the course is in this department
+            course_list = [course for course in subject.courses.all()]
+        else:
+            subject_in_department = False
+            # the subject is from another dept, so grab the appropriate courses
+            course_list = []
+            for course in outside_course_list:
+                if (course.subject == subject) and (course not in course_list):
+                    course_list.append(course)
+            # https://stackoverflow.com/questions/403421/how-to-sort-a-list-of-objects-based-on-an-attribute-of-the-objects
+            course_list.sort(key=lambda x: x.number)
+ 
+        for course in course_list:
             number = "{0} {1}".format(course.subject,
                                        course.number)
             course_name = course.title
@@ -2345,19 +2373,28 @@ def course_summary(request, allow_delete):
                 offering_list.append([0]*number_semesters)
 
             for course_offering in course.offerings.all():
-                semester_name = course_offering.semester.name.name
-                academic_year = course_offering.semester.year.begin_on.year
-                try:
-                    current_number_offerings = offering_list[academic_year_dict[academic_year]][semesterdict[semester_name]]
-                    offering_list[academic_year_dict[academic_year]][semesterdict[semester_name]] = current_number_offerings+1
-                except KeyError:
-                    pass
+                include_course_offering = True
+                if not subject_in_department:
+                    # in this case we only want to show the # course offerings taught by people in the department
+                    offering_instructors = course_offering.instructor.filter(pk__in = faculty_in_dept_id_list)
+                    if len(offering_instructors) == 0:
+                        include_course_offering = False
+
+                if include_course_offering:
+                    semester_name = course_offering.semester.name.name
+                    academic_year = course_offering.semester.year.begin_on.year
+                    try:
+                        current_number_offerings = offering_list[academic_year_dict[academic_year]][semesterdict[semester_name]]
+                        offering_list[academic_year_dict[academic_year]][semesterdict[semester_name]] = current_number_offerings+1
+                    except KeyError:
+                        pass
 
             data_list.append({'number':number,
                               'name':course_name,
                               'offering_list': offering_list,
                               'id':course.id,
-                              'credit_hrs':course.credit_hours
+                              'credit_hrs':course.credit_hours,
+                              'subject_in_department': subject_in_department
                               })
 
 
@@ -4027,14 +4064,31 @@ def weekly_course_schedule_entire_dept(request):
 
     for semester_name in semester_list:
 
+        # find this semester in this academic year....
+        semester_this_year = Semester.objects.filter(Q(name__name=semester_name)&Q(year__begin_on__year=academic_year))
+        outside_course_offerings = []
+        dept_faculty_list = FacultyMember.objects.filter(department=department)
+        if len(semester_this_year) == 1:
+            # there is exactly one of these...which is good
+            semester_object = semester_this_year[0]
+            for faculty in dept_faculty_list:
+                if faculty.is_active(semester_object.year):
+                    for outside_co in faculty.outside_course_offerings(semester_object):
+                        outside_course_offerings.append(outside_co)
+
         if semester_name == semester_list[0]:
             year_name = str(academic_year)
         else:
             year_name = str(academic_year+1)
 
-        scheduled_classes = ScheduledClass.objects.filter(Q(course_offering__semester__name__name=semester_name)&
+        scheduled_classes = [sc for sc in ScheduledClass.objects.filter(Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
-                                                    Q(course_offering__course__subject__department = department))
+                                                    Q(course_offering__course__subject__department = department))]
+        
+        for oco in outside_course_offerings:
+            for sc in oco.scheduled_classes.all():
+                if sc not in scheduled_classes:
+                    scheduled_classes.append(sc)
 
         all_courses_are_full_semester = True
         for sc in scheduled_classes:

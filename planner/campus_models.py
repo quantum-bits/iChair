@@ -51,6 +51,18 @@ class Department(models.Model):
             for co in fac.outside_course_offerings_this_year(academic_year_object):
                 if co.course not in course_list:
                     course_list.append(co.course)
+        # https://stackoverflow.com/questions/403421/how-to-sort-a-list-of-objects-based-on-an-attribute-of-the-objects
+        course_list.sort(key=lambda x: x.number)
+        return course_list
+
+    def outside_courses_any_year(self):
+        course_list = []
+        subject_id_list = [subj.id for subj in self.subjects.all()]
+        for fac in self.faculty.all():
+            for co in fac.course_offerings.filter(~Q(course__subject__pk__in = subject_id_list)):
+                if co.course not in course_list:
+                    course_list.append(co.course)
+        course_list.sort(key=lambda x: x.number)
         return course_list
 
     def __str__(self):
