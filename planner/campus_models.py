@@ -129,6 +129,19 @@ class FacultyMember(Person):
         else:
             return False
     
+    def outside_course_offerings(self, semester_object):
+        """
+        Returns the courses that the faculty member is teaching outside his or her home department this year.
+        """
+        #Printself.offering_instructors.all()
+        subject_list = self.department.subjects.all()
+        course_offering_list = []
+        #return [co for co in self.offering_instructors.filter(course_offering__semester=semester_object) for sl in self.department.subjects.all() if co.course.subject not in sl]
+        for oi in self.offering_instructors.filter(course_offering__semester=semester_object):
+            if oi.course_offering.course.subject not in subject_list:
+                course_offering_list.append(oi.course_offering)
+        return course_offering_list
+
     @property
     def number_course_offerings(self):
         """ returns the # of course offerings taught by this faculty member """

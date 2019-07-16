@@ -2708,17 +2708,61 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
         # check for conflicts....
         #for partial_semester in partial_semesters:
 
+        # find this semester in this academic year....
+        semester_this_year = Semester.objects.filter(Q(name__name=semester.name)&Q(year__begin_on__year=year_to_view))
+        outside_course_offerings = []
+        dept_faculty_list = FacultyMember.objects.filter(department=department)
+        if len(semester_this_year) == 1:
+            # there is exactly one of these...which is good
+            semester_object = semester_this_year[0]
+            for faculty in dept_faculty_list:
+                if faculty.is_active(semester_object.year):
+                    for outside_co in faculty.outside_course_offerings(semester_object):
+                        outside_course_offerings.append(outside_co)
+
         instructor_conflict_check_dict = {}
         room_conflict_check_dict = {}
         overbooked_room_messages = []
 
-        for subject in department.subjects.all():
-            for course in subject.courses.all():
+        subject_list = [subj for subj in department.subjects.all()]
+        # add in subjects for outside courses
+        for oco in outside_course_offerings:
+            if oco.course.subject not in subject_list:
+                    subject_list.append(oco.course.subject)
+        subject_is_in_dept = True
+        for subject in subject_list:
+            if subject in department.subjects.all():
+                # get all courses if the course is in this department
+                course_list = [course for course in subject.courses.all()]
+            else:
+                subject_is_in_dept = False
+                # the subject is from another dept, so grab the appropriate courses
+                course_list = []
+                for oco in outside_course_offerings:
+                    if (oco.course.subject == subject) and (oco.course not in course_list):
+                        course_list.append(oco.course)
+                # https://stackoverflow.com/questions/403421/how-to-sort-a-list-of-objects-based-on-an-attribute-of-the-objects
+                course_list.sort(key=lambda x: x.number)
+            for course in course_list:
                 
                 number = "{0} {1}".format(course.subject, course.number)
                 course_name = course.title
 
-                for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view)):
+                if subject_is_in_dept:
+                    course_offerings = [co for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view))]
+                else:
+                    course_offerings_super = [co for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view))]
+                    course_offerings = []
+                    # if the course comes from outside the dept, only include the offerings that are (co-)taught by someone in the dept
+                    for cos in course_offerings_super:
+                        offering_includes_dept_faculty = False
+                        for oi in cos.offering_instructors.all():
+                            if oi.instructor in dept_faculty_list:
+                                offering_includes_dept_faculty = True
+                        if offering_includes_dept_faculty:
+                            course_offerings.append(cos)
+                    
+                for co in course_offerings:
                     
                     if check_conflicts:
                         for partial_semester in partial_semesters:
@@ -2817,7 +2861,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                                 })
 
         if check_conflicts:
-            print(overbooked_room_messages)
+            #print(overbooked_room_messages)
             error_messages = []
             room_error_messages = []
             for faculty_member_id in list(instructor_conflict_check_dict.keys()):
