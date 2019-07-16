@@ -2321,6 +2321,8 @@ def course_summary(request, allow_delete):
     if user_preferences.permission_level == 1:
         can_edit = True
 
+    courses_from_other_departments = False
+
     ii = 0
     semesterdict=dict()
     for semester in SemesterName.objects.all():
@@ -2379,6 +2381,8 @@ def course_summary(request, allow_delete):
                     offering_instructors = course_offering.instructor.filter(pk__in = faculty_in_dept_id_list)
                     if len(offering_instructors) == 0:
                         include_course_offering = False
+                    else:
+                        courses_from_other_departments = True
 
                 if include_course_offering:
                     semester_name = course_offering.semester.name.name
@@ -2399,6 +2403,7 @@ def course_summary(request, allow_delete):
 
 
     context={'course_data_list':data_list, 'year_list':year_list, 
+             'courses_from_other_departments': courses_from_other_departments,
              'number_semesters': number_semesters,
              'can_edit': can_edit,
              'year':academic_year_string, 

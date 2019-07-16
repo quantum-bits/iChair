@@ -40,7 +40,11 @@
 	     <tbody>
 {% for course in course_data_list %}
     <tr>
-      <td>{{course.number}}</td>
+		{% if course.subject_in_department %}
+			<td>{{course.number}}</td>
+		{% else %}
+			<td>{{course.number}}*</td>
+		{% endif %}
       <td> {{course.name}}</td>
       <td style="text-align: center;"> 
 	{{course.credit_hrs}}
@@ -67,7 +71,13 @@
     </tr>
 {% endfor %}
 
+</tbody>
+</table>
+
 </div>
+{% if courses_from_other_departments %}
+*Course from another department.
+{% endif %}
 
 <!-- <script>
    document.getElementsByName("allow_delete_button").onmouseover = myAlertFunction();
