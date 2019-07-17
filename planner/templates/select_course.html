@@ -37,24 +37,29 @@ div.content {
     <div class="alert alert-student-info">
       <p> <h3>Choose a Course from the Following List....</h3> </p>
       <p>
-          <form method="post" id="courseForm" data-courses-url="{% url 'ajax_load_courses' %}" novalidate>
-              {% csrf_token %}
-              <table class="content-center">
-                <tr>
-                  <td>Subject</td>
-                </tr>
-                <tr>
-                  <td>{{ form2.subject}}</td>
-                </tr>
-                <tr>
-                    <td>Course</td>
-                </tr>
-                <tr>
-                  <td>{{ form2.course }}</td>
-                </tr>
-              </table>
-              <button type="submit">Submit</button>
-            </form>
+        <form method="post" id="courseForm" data-courses-url="{% url 'ajax_load_courses' %}" novalidate>
+            {% csrf_token %}
+            <table class="content-center">
+              <tr>
+                <td>Subject</td>
+              </tr>
+              <tr>
+                <td>{{ form.subject}}</td>
+              </tr>
+              <tr>
+                  <td>Course</td>
+              </tr>
+              <tr>
+                <td>{{ form.course }}</td>
+              </tr>
+              {% if has_errors %}
+              <tr>
+                  <td style="padding-bottom: 10px">Please select a subject and course.</td>
+              </tr>
+              {% endif %}
+            </table>
+            <button type="submit">Submit</button>
+          </form>
      </p>
      </div>
 </div>
@@ -135,7 +140,6 @@ xmlhttp.send();
       if (subjectId == '') {
         $("#id_course").html("<option value>---------</option>");
       } else {
-      
         $.ajax({                       // initialize an AJAX request
           url: url,                    // set the url of the request (.../ajax/load-courses/)
           data: {
@@ -149,32 +153,6 @@ xmlhttp.send();
 
     });
   </script>
-
-
-
-<script>
-    $(window).load(function(){
-    var subjects = {{subjects|safe}};
-    var courses = {{courses|safe}};
-    console.log(subjects);
-    console.log(courses);
-    /*
-    for (var n=0; n < subaccount_labels.length; n++) {
-      var value=$('#'+budget_line_labels[n]).val();
-      var bl_has_sa = false;
-      for (var m=0; m < bls_with_sas.length; m++) {
-         if (value == bls_with_sas[m]) {
-           bl_has_sa = true;
-         }
-      }
-      if (bl_has_sa == false) {
-	$('#'+subaccount_labels[n]).prop("disabled", true);
-	$('#'+subaccount_labels[n]).hide();
-      }
-      } */
-    });
-   </script>
-
 
    <script>
     $(window).load(function(){

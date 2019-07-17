@@ -148,6 +148,16 @@ class DynamicCourseSelectForm(forms.ModelForm):
         subjects_tuple = ([(subject[0], subject[1]) for subject in subjects])
         self.fields['subject'].choices = subjects_tuple
         self.initial['subject'] = subjects_tuple[0][0]
+
+        if 'course' in self.data:
+            try:
+                subject_id = int(self.data.get('subject'))
+                self.fields['course'].queryset = Course.objects.filter(subject_id=subject_id).order_by('number')
+            except (ValueError, TypeError):
+                pass  # invalid input from the client; ignore and fallback to empty course queryset
+        # I think the following would be used for an update, although I'm not sure it would work....
+        elif self.instance.pk:
+            self.fields['course'].queryset = self.instance.subject.course_set.order_by('number')
     
     class Meta:
         model = CourseOffering
