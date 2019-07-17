@@ -130,16 +130,24 @@ class CourseSelectForm(forms.ModelForm):
 
 class DynamicCourseSelectForm(forms.ModelForm):
     
-    subject = forms.ModelChoiceField(queryset=Subject.objects.none())
+    #subject = forms.ModelChoiceField(queryset=Subject.objects.none())
+
+    subject = forms.ChoiceField(choices = ())
 
     def __init__(self, dept, *args, **kwargs):
         
         department = dept
         super (DynamicCourseSelectForm,self).__init__(*args,**kwargs)
         self.fields['course'].queryset = Course.objects.none()
-        dept_subjects = Subject.objects.filter(department=department)
-        other_subjects = Subject.objects.filter(~Q(department=department))
-        self.fields['subject'].queryset = dept_subjects | other_subjects
+        subjects =[['','---------']]
+        for subj in Subject.objects.filter(department=department):
+            subjects.append([subj.id,subj.abbrev])
+        subjects.append(['','-- Other Departments --'])
+        for subj in Subject.objects.filter(~Q(department=department)):
+            subjects.append([subj.id,subj.abbrev])
+        subjects_tuple = ([(subject[0], subject[1]) for subject in subjects])
+        self.fields['subject'].choices = subjects_tuple
+        self.initial['subject'] = subjects_tuple[0][0]
     
     class Meta:
         model = CourseOffering

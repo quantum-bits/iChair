@@ -43,17 +43,17 @@ div.content {
                 <tr>
                   <td>Subject</td>
                 </tr>
-                <tr><td>{{ form2.subject}}</td></tr>
+                <tr>
+                  <td>{{ form2.subject}}</td>
+                </tr>
                 <tr>
                     <td>Course</td>
                 </tr>
-                <tr><td>{{ form2.course }}</td></tr>
-                    
-      
+                <tr>
+                  <td>{{ form2.course }}</td>
+                </tr>
               </table>
-              <div id="fill-in-later"></div>
               <button type="submit">Submit</button>
-              
             </form>
      </p>
      </div>
@@ -131,20 +131,21 @@ xmlhttp.send();
     $("#id_subject").change(function () {
       var url = $("#courseForm").attr("data-courses-url");  // get the url of the `load_courses` view
       var subjectId = $(this).val();  // get the selected subject ID from the HTML input
-      console.log('got here: ', subjectId);
-      console.log('url: ', url);
-      $.ajax({                       // initialize an AJAX request
-        url: url,                    // set the url of the request (.../ajax/load-courses/)
-        data: {
-          'subjectId': subjectId       // add the country id to the GET parameters
-        },
-        success: function (data) {   // `data` is the return of the `load_courses` view function
-          console.log(data);
-          $("#fill-in-later").html("<h1>wow</h1>");
-          //$("#id_course").html("<option value='1'>course1</option><option value='2'>course2</option>");
-          $("#id_course").html(data);  // replace the contents of the course input with the data that came from the server
-        }
-      });
+
+      if (subjectId == '') {
+        $("#id_course").html("<option value>---------</option>");
+      } else {
+      
+        $.ajax({                       // initialize an AJAX request
+          url: url,                    // set the url of the request (.../ajax/load-courses/)
+          data: {
+            'subjectId': subjectId       // add the country id to the GET parameters
+          },
+          success: function (data) {   // `data` is the return of the `load_courses` view function
+            $("#id_course").html(data);  // replace the contents of the course input with the data that came from the server
+          }
+        });
+      }
 
     });
   </script>
