@@ -128,6 +128,25 @@ class CourseSelectForm(forms.ModelForm):
     def clean(self):
         return self.cleaned_data
 
+class DynamicCourseSelectForm(forms.ModelForm):
+    
+    subject = forms.ModelChoiceField(queryset=Subject.objects.none())
+
+    def __init__(self, dept, *args, **kwargs):
+        
+        department = dept
+        super (DynamicCourseSelectForm,self).__init__(*args,**kwargs)
+        self.fields['course'].queryset = Course.objects.none()
+        dept_subjects = Subject.objects.filter(department=department)
+        other_subjects = Subject.objects.filter(~Q(department=department))
+        self.fields['subject'].queryset = dept_subjects | other_subjects
+    
+    class Meta:
+        model = CourseOffering
+        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction')
+
+    def clean(self):
+        return self.cleaned_data
 
     
 class CourseOfferingForm(forms.ModelForm):

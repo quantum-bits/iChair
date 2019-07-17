@@ -4456,6 +4456,15 @@ def rectangle_coordinates_flexible_schedule(schedule, vertical_edges, text_list,
     return box_data, text_data
 
 @login_required
+def load_courses(request):
+    
+    subject_id = request.GET.get('subjectId')
+    print('subject id: ', subject_id)
+    courses = Course.objects.filter(subject__id = subject_id).order_by('number')
+    print(courses)
+    return render(request, 'course_dropdown_list_options.html', {'courses': courses})
+
+@login_required
 def select_course(request):
     """
     Allows the user to select a course, as the first step in creating a new course offering.
@@ -4464,7 +4473,8 @@ def select_course(request):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     department = user_preferences.department_to_view
-
+    # one possibility: https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
+    # another: https://stackoverflow.com/questions/42820728/filter-a-django-form-select-element-based-on-a-previously-selected-element
     if request.method == 'POST':
         form = CourseSelectForm(department.id, request.POST)
         if form.is_valid():
@@ -4476,7 +4486,31 @@ def select_course(request):
             return render(request, 'select_course.html', {'form': form})
     else:
         form = CourseSelectForm(department.id)
-        context = {'form': form}
+        form2 = DynamicCourseSelectForm(department)
+
+        print(form2)
+
+        subject_list = []
+        for subject in Subject.objects.all():
+            subject_list.append({'subject': subject.abbrev, 'id': subject.id })
+        course_dict_by_subject = {}
+        for course in Course.objects.all():
+            if course.subject.id not in list(course_dict_by_subject.keys()):
+                course_dict_by_subject[course.subject.id] = [
+                    { 
+                        'course': "{0} {1} - {2}".format(course.subject, course.number, course.title),
+                        'value': course.id
+                    }]
+            else:
+                course_dict_by_subject[course.subject.id].append(
+                    { 
+                        'course': "{0} {1} - {2}".format(course.subject, course.number, course.title),
+                        'id': course.id
+                    })
+        json_subject_list = simplejson.dumps(subject_list)
+        json_course_dict_by_subject = simplejson.dumps(course_dict_by_subject)
+
+        context = {'form': form, 'form2': form2, 'subjects': json_subject_list, 'courses': json_course_dict_by_subject}
         if "never_alerted_before" in request.session:
             context['never_alerted_before'] = False
         else:

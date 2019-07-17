@@ -58,5 +58,7 @@ urlpatterns = [
     url(r'^gettingstarted/$', myapp_views.getting_started, name='getting_started'),
     url(r'^divtracker/(\d+)/$', myapp_views.open_close_div_tracker, name='open_close_div_tracker'),
     url(r'^alertregister/$', myapp_views.alert_register, name='alert_register'),
+    url(r'^ajax/load_courses/$', myapp_views.load_courses, name='ajax_load_courses'),
+
 
 ]

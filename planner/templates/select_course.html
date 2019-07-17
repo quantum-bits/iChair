@@ -37,13 +37,24 @@ div.content {
     <div class="alert alert-student-info">
       <p> <h3>Choose a Course from the Following List....</h3> </p>
       <p>
-     <form action=""  method="post">
-      {% csrf_token %}
-
-      {{ form.as_table }}
-      <p><input type="submit" value="Submit" /></p>
-      <p> (You probably want to do this.)</p>
-     </form>
+          <form method="post" id="courseForm" data-courses-url="{% url 'ajax_load_courses' %}" novalidate>
+              {% csrf_token %}
+              <table class="content-center">
+                <tr>
+                  <td>Subject</td>
+                </tr>
+                <tr><td>{{ form2.subject}}</td></tr>
+                <tr>
+                    <td>Course</td>
+                </tr>
+                <tr><td>{{ form2.course }}</td></tr>
+                    
+      
+              </table>
+              <div id="fill-in-later"></div>
+              <button type="submit">Submit</button>
+              
+            </form>
      </p>
      </div>
 </div>
@@ -114,6 +125,54 @@ xmlhttp.open("GET","/planner/alertregister/",true);
 xmlhttp.send();
 }
 </script>
+
+  <script>
+    //https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
+    $("#id_subject").change(function () {
+      var url = $("#courseForm").attr("data-courses-url");  // get the url of the `load_courses` view
+      var subjectId = $(this).val();  // get the selected subject ID from the HTML input
+      console.log('got here: ', subjectId);
+      console.log('url: ', url);
+      $.ajax({                       // initialize an AJAX request
+        url: url,                    // set the url of the request (.../ajax/load-courses/)
+        data: {
+          'subjectId': subjectId       // add the country id to the GET parameters
+        },
+        success: function (data) {   // `data` is the return of the `load_courses` view function
+          console.log(data);
+          $("#fill-in-later").html("<h1>wow</h1>");
+          //$("#id_course").html("<option value='1'>course1</option><option value='2'>course2</option>");
+          $("#id_course").html(data);  // replace the contents of the course input with the data that came from the server
+        }
+      });
+
+    });
+  </script>
+
+
+
+<script>
+    $(window).load(function(){
+    var subjects = {{subjects|safe}};
+    var courses = {{courses|safe}};
+    console.log(subjects);
+    console.log(courses);
+    /*
+    for (var n=0; n < subaccount_labels.length; n++) {
+      var value=$('#'+budget_line_labels[n]).val();
+      var bl_has_sa = false;
+      for (var m=0; m < bls_with_sas.length; m++) {
+         if (value == bls_with_sas[m]) {
+           bl_has_sa = true;
+         }
+      }
+      if (bl_has_sa == false) {
+	$('#'+subaccount_labels[n]).prop("disabled", true);
+	$('#'+subaccount_labels[n]).hide();
+      }
+      } */
+    });
+   </script>
 
 
    <script>
