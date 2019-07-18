@@ -2,22 +2,56 @@
 
 {% block content %}
 
+<div class="content">
    <div class="content-center">
 
-     {% if form.non_field_errors %}
-     <div class="alert alert-error">
-      {{form.non_field_errors}}
-    </div>
-     {% endif %}
+      {% if form.non_field_errors %}
+         <div class="alert alert-error">
+         {{form.non_field_errors}}
+         </div>
+      {% endif %}
      
-     <form action=""  method="post">
+      <form action=""  method="post">
       {% csrf_token %}
 
-      {{ form.as_table }}
-
-      <p><input type="submit" value="Submit" /></p>
-     </form>
-
+         <!-- if pidm is not '', then the faculty member has been aligned with the Banner version, so don't allow edits to name-->
+         <table class="content-center">
+            {% if drop_names %}
+               <tr>
+                  <td><h2>{{faculty_member.first_name }} {{faculty_member.last_name}}</h2></td>
+               </tr>
+            {% else %}
+               <tr>
+                  <td>First name:</td>
+               </tr>
+               <tr>
+                  <td>{{ form.first_name}}</td>
+               </tr>
+               <tr>
+                  <td>Last name:</td>
+               </tr>
+               <tr>
+                  <td>{{ form.last_name }}</td>
+               </tr>
+            {% endif %}
+            <tr>
+               <td>Rank:</td>
+            </tr>
+            <tr>
+               <td>{{ form.rank }}</td>
+            </tr>
+            <tr>
+               <td>Inactive starting:</td>
+            </tr>
+            <tr>
+               <td>{{ form.inactive_starting }}</td>
+            </tr> 
+            <tr>
+               <td><input type="submit" value="Submit" /></td>
+            </tr>
+         </table>
+      </form>
+   </div>
 </div>
 
    <script>

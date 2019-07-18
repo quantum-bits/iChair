@@ -90,6 +90,9 @@
 		<a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
 				Change Academic Year</a>
 	</div>
+	<div style="padding-bottom: 10px">
+		<a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" href="{% url 'update_faculty_to_view' %}?next={{ request.path|urlencode }}">Manage Faculty</a>
+  	</div>
 	<div style="padding-bottom: 20px" class="btn-group">
     <a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
       Printer Friendly Version

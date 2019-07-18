@@ -460,23 +460,32 @@ class AddFacultyForm(forms.ModelForm):
 
     class Meta:
         model = FacultyMember
-        exclude = ('university', 'faculty_id', 'department',
+        exclude = ('university', 'pidm', 'department',
                    'nickname', 'home_phone',
                    'cell_phone', 'work_phone', 'photo', 'inactive_starting')
 
     def clean(self):
+        last_name = self.cleaned_data.get('last_name')
+        first_name = self.cleaned_data.get('first_name')
+        faculty_list = [fm for fm in FacultyMember.objects.filter(Q(last_name__icontains = last_name)&Q(first_name__icontains = first_name))]
+        if len(faculty_list)>0:
+            error_message = 'This faculty member may already exist in the database.  Please contact the iChair site administrator.'                          
+            raise forms.ValidationError(error_message)
         return self.cleaned_data
 
 
 class UpdateFacultyMemberForm(forms.ModelForm):
 
-#    def __init__(self, faculty_id, *args, **kwargs):
-#        super (UpdateFacultyMemberForm, self).__init__(*args,**kwargs)
-#        self.faculty_id = faculty_id
+    def __init__(self, drop_names, *args, **kwargs):
+        super (UpdateFacultyMemberForm,self).__init__(*args,**kwargs)
+        if drop_names:
+            print('has a pidm!')
+            self.fields.pop('first_name')
+            self.fields.pop('last_name')
 
     class Meta:
         model = FacultyMember
-        exclude = ('university', 'faculty_id', 'department',
+        exclude = ('university', 'pidm', 'department',
                    'nickname', 'home_phone',
                    'cell_phone', 'work_phone', 'photo',)
 

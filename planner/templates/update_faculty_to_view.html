@@ -31,7 +31,7 @@
   }
 
   div.alert.alert-student-info {
-  width: 600px!important;
+  width: 700px!important;
   }
   </style>
   
@@ -136,12 +136,13 @@ font-weight: normal;
 			  <table class="table table-striped table-bordered table-hover">
 				  <thead>
 					  <tr>
-					    <th> Faculty Member </th>
+						<th> Faculty Member </th>
+						<th> Dept </th>
 					    <th style="text-align: center;"> Rank/Status </th>
 					    {% if can_edit %}
 					    <th> Action </th>
 					    {% endif %}
-						  <th style="text-align: center;"> # Ld Hrs </th>
+						  <th style="text-align: center;"> # Ld Hrs in Dept</th>
 						  <th style="text-align: center;"> Display </th>
 					  </tr>
 				  </thead>
@@ -150,7 +151,8 @@ font-weight: normal;
 					  <tr id="row{{faculty.faculty.id}}">
 					    <td id="faculty{{faculty.faculty.id}}">
 							  {{ faculty.faculty }}
-					    </td>
+						</td>
+						<td>{{ faculty.faculty.department.abbrev }} </td>
 					    <td style="text-align: center;" >
 					      {% if faculty.faculty.inactive_starting %}
 					      Inactive as of {{faculty.faculty.inactive_starting}}
@@ -159,8 +161,10 @@ font-weight: normal;
 					      {% endif %}
 					    </td>
 					    {% if can_edit %}
-					    <td style="text-align: center;" >
-					      <a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit</a>
+						<td style="text-align: center;" >
+							{% if faculty.is_in_this_dept %}
+								<a href="{% url 'update_faculty_member' faculty.faculty.id %}?next={{ request.path|urlencode }}">Edit</a>
+							{% endif %}
 					    </td>
 					    {% endif %}
 					    <td style="text-align: center;" id="load{{faculty.faculty.id}}">
@@ -184,7 +188,7 @@ font-weight: normal;
 	  </form>
 	  <div class="alert alert-student-info">  
 			<a style="padding-right: 10px;" class="close" data-dismiss="alert">×</a>  
-			<div><strong>*Note:</strong> If a faculty member is no longer active in the department,
+			<div><strong>*Note:</strong> If a faculty member has retired or left the department,
 				click on "Edit" and set the faculty member's status to Inactive.  If a faculty member's 
 				data needs to be deleted from the database, please contact the site administrator.
 			</div>   

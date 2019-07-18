@@ -18,6 +18,7 @@ from .forms import *
 import json
 import csv
 from django.http import HttpResponse, HttpResponseRedirect
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import xlwt
 from os.path import expanduser
@@ -2561,20 +2562,23 @@ def add_faculty(request):
             first_name = form.cleaned_data.get('first_name')
             last_name = form.cleaned_data.get('last_name')
             rank = form.cleaned_data.get('rank')
-            faculty_id = '' # eventually fix this!
+            pidm = '' # eventually fix this!
 
             instructor = FacultyMember.objects.create(last_name = last_name,
                                                       first_name = first_name,
                                                       department = department,
                                                       university = university,
                                                       rank = rank,
-                                                      faculty_id = faculty_id
+                                                      pidm = pidm
                                                       )
-            next = request.GET.get('next', 'home')
+            #next = request.GET.get('next', 'home')
+            if instructor not in user_preferences.faculty_to_view.all():
+                user_preferences.faculty_to_view.add(instructor)
+            next = '/planner/updatefacultytoview'
             return redirect(next)
 
         else:
-            context = {'form': form, 'title': 'Add New Course'}
+            context = {'form': form, 'title': 'Add New Faculty Member', 'department': department }
             return render(request, 'add_faculty_member.html', context)
 
     else:
@@ -3135,22 +3139,29 @@ def add_faculty_to_view_list(request):
 
     if request.method == 'POST':
         form = FacultySearchForm(request.POST)
-        print('post!')
         if form.is_valid():
-            print('valid!')
             search_string = form.cleaned_data.get('name')
-            print(search_string)
 
             split_array = search_string.split()
             if len(split_array) == 0:
                 faculty_list = []
             elif len(split_array) == 1:
                 name = split_array[0]
-                faculty_list = [fm for fm in FacultyMember.objects.filter(Q(last_name__icontains = name)|Q(first_name__icontains = name))]
+                faculty_list = [
+                    {
+                        'faculty': fm, 
+                        'currently_being_viewed': fm in faculty_to_view,
+                        'is_active': fm.is_active(year)
+                    } for fm in FacultyMember.objects.filter(Q(last_name__icontains = name)|Q(first_name__icontains = name))]
             else:
                 name_1 = split_array[0]
                 name_2 = split_array[1]
-                faculty_list = [fm for fm in FacultyMember.objects.filter(Q(last_name__icontains = name_1)|Q(first_name__icontains = name_1)) | FacultyMember.objects.filter(Q(last_name__icontains = name_2)|Q(first_name__icontains = name_2))]
+                faculty_list = [
+                    {
+                        'faculty': fm, 
+                        'currently_being_viewed': fm in faculty_to_view,
+                        'is_active': fm.is_active(year)
+                    } for fm in FacultyMember.objects.filter(Q(last_name__icontains = name_1)|Q(first_name__icontains = name_1)) | FacultyMember.objects.filter(Q(last_name__icontains = name_2)|Q(first_name__icontains = name_2))]
 
             search_performed = True
             context = {'form': form, 'search_results': faculty_list, 'search_performed': search_performed}
@@ -3170,14 +3181,14 @@ def add_faculty_to_view_list(request):
 
 
 @login_required
-def update_faculty_to_view(request, id):
+def update_faculty_to_view(request):
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     department = user_preferences.department_to_view
     year = user_preferences.academic_year_to_view
-    faculty_to_view = user_preferences.faculty_to_view.all()
+    faculty_to_view = user_preferences.faculty_to_view.all().order_by('department', 'last_name')
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
@@ -3188,7 +3199,7 @@ def update_faculty_to_view(request, id):
         for faculty_id in faculty_to_display_id_list:
             faculty = FacultyMember.objects.get(pk=faculty_id)
             user_preferences.faculty_to_view.add(faculty)
-        next = request.GET.get('next', 'home')
+        next = request.GET.get('next', 'department_load_summary')
         return redirect(next)
     else:
         all_faculty_ids = [fm.id for fm in FacultyMember.objects.filter(department=department)]
@@ -3203,7 +3214,7 @@ def update_faculty_to_view(request, id):
         faculty_without_loads = []
         for faculty_id in all_faculty_ids:
             faculty = FacultyMember.objects.get(pk = faculty_id)
-            total_load = load_hour_rounder(faculty.load(year))
+            total_load = load_hour_rounder(faculty.load_in_dept(department, year))
             if total_load > 0:
                 has_load = True
                 faculty_with_loads.append(faculty.id)
@@ -3222,7 +3233,8 @@ def update_faculty_to_view(request, id):
                     'view_this_faculty': view_this_faculty,
                     'load': total_load,
                     'has_load': has_load,
-                    'is_active': True
+                    'is_active': True,
+                    'is_in_this_dept': faculty.department == department
                 })
             else:
                 if faculty in faculty_to_view:
@@ -3233,7 +3245,8 @@ def update_faculty_to_view(request, id):
                     'view_this_faculty': False,
                     'load': total_load,
                     'has_load': has_load,
-                    'is_active': False
+                    'is_active': False,
+                    'is_in_this_dept': faculty.department == department
                 })
                 
         faculty_info = faculty_info + inactive_faculty_info
@@ -3298,19 +3311,21 @@ def update_faculty_member(request, id):
     user_preferences = user.user_preferences.all()[0]
 
     instance = FacultyMember.objects.get(pk = id)
+    # if the faculty member's pidm is None, his or her data has not yet been aligned with Banner, so allow for name editing
+    drop_names = not((instance.pidm == '') or (instance.pidm == None))
 
     if request.method == 'POST':
-        form = UpdateFacultyMemberForm(request.POST, instance=instance)
+        form = UpdateFacultyMemberForm(drop_names, request.POST, instance=instance)
         if form.is_valid():
             form.save()
             next = request.GET.get('next', 'home')
             return redirect(next)
         else:
             return render(request, 'update_faculty_member.html',
-                          {'form': form, 'faculty_member': instance})
+                          {'form': form, 'faculty_member': instance, 'drop_names': drop_names})
     else:
-        form = UpdateFacultyMemberForm(instance=instance)
-        context = {'form': form, 'faculty_member': instance}
+        form = UpdateFacultyMemberForm(drop_names, instance=instance)
+        context = {'form': form, 'faculty_member': instance, 'drop_names': drop_names}
         return render(request, 'update_faculty_member.html', context)
 
     
@@ -4510,9 +4525,7 @@ def rectangle_coordinates_flexible_schedule(schedule, vertical_edges, text_list,
 def load_courses(request):
     
     subject_id = request.GET.get('subjectId')
-    print('subject id: ', subject_id)
     courses = Course.objects.filter(subject__id = subject_id).order_by('number')
-    print(courses)
     return render(request, 'course_dropdown_list_options.html', {'courses': courses})
 
 @login_required
@@ -4521,35 +4534,35 @@ def update_view_list(request):
     """Add a faculty member to the list of faculty to view; used for AJAX requests."""
     user = request.user
     user_preferences = user.user_preferences.all()[0]
-
-    print(request.get_full_path)
     faculty_id = request.POST.get('facultyId')
-
+    
     try:
         faculty = FacultyMember.objects.get(pk = faculty_id)
     except FacultyMember.DoesNotExist:
-        message = 'This faculty member could not be found; please try again later or contact the site administrator.'
-        return HttpResponse(message)
-    print(faculty)
+        data = {
+            'success': False,
+            'message': 'This faculty member could not be found; please try again later or contact the site administrator.'
+        }
+        return JsonResponse(data)
     if faculty not in user_preferences.faculty_to_view.all():
         user_preferences.faculty_to_view.add(faculty)
-        next = request.POST.get('next', 'home')
-        print(request.GET.get('next'))
-        print('next: ', next)
-        print(request.get_full_path())
-        print(request.path)
-        #url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
-#            print url_string
-        #return redirect(url_string)
+        data = {
+            'success': True,
+            'message': 'Faculty member added!'
+        }
+        return JsonResponse(data)
     else:
-        message = 'It appears that '+faculty.first_name+' '+faculty.last_name+' is already in your list of faculty to view.'
-        return HttpResponse(message)
-    # maybe redirect on success anyways?
+        data = {
+            'success': False,
+            'message': 'It appears that '+faculty.first_name+' '+faculty.last_name+' is already in your list of faculty to view.'
+        }
+        return JsonResponse(data)
 
-    # WORKING HERE: now need to return and then redirect...
-
-    return HttpResponse('Sorry, we were not able to process this request.')
-
+    data = {
+            'success': False,
+            'message': 'Sorry, we were not able to process this request.'
+    }
+    return JsonResponse(data)
 
 
 @login_required

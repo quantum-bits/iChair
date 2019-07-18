@@ -133,6 +133,24 @@ class FacultyMember(Person):
 
         return total_load
 
+    def load_in_dept(self, department_object, academic_year_object):
+        """Total load for this faculty member in a given department for a particular academic year"""
+
+        total_load = 0
+        for oi in OfferingInstructor.objects.filter(
+                Q(instructor = self)&
+                Q(course_offering__semester__year=academic_year_object)&
+                Q(course_offering__course__subject__department = department_object)):
+            total_load += oi.load_credit
+        # only include "other load" if the faculty member's department is department
+        if self.department == department_object:
+            for ol in OtherLoad.objects.filter(
+                    Q(instructor = self)&
+                    Q(semester__year=academic_year_object)):
+                total_load += ol.load_credit
+
+        return total_load
+
     def is_active(self, academic_year_object):
         """
         Returns True if the person is still active in the given academic year

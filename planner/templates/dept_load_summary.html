@@ -41,7 +41,7 @@ div.f4 { clear: both; }
 				Change Academic Year</a>
 	</div>
 	<div style="padding-bottom: 15px">
-		<a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}">Manage Faculty</a>
+		<a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" href="{% url 'update_faculty_to_view' %}?next={{ request.path|urlencode }}">Manage Faculty</a>
 	</div>
 </div>
 <div class="span6">
@@ -344,7 +344,7 @@ class="btn btn-warning"
 			<li>{{instructor.first_name}} {{instructor.last_name}} </li>
 		{% endfor %}
 	</ul>
-	Go to <a style="color:#b94a48" title = "Choose which faculty to display when looking at loads, schedules, etc." href="{% url 'update_faculty_to_view' id %}?next={{ request.path|urlencode }}"><strong>Manage Faculty </strong></a> 
+	Go to <a style="color:#b94a48" title = "Choose which faculty to display when looking at loads, schedules, etc." href="{% url 'update_faculty_to_view' %}?next={{ request.path|urlencode }}"><strong>Manage Faculty </strong></a> 
 	to display faculty members or to <a style="color:#b94a48" href="{% url 'registrar_schedule' 0 %}?next={{ request.path|urlencode }}"><strong>Master Schedule View </strong></a> to edit course loads.
 </div>
 {% endif %}

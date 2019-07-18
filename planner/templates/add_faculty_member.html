@@ -9,10 +9,14 @@
      <form action=""  method="post">
       {% csrf_token %}
 
-   
       {{ form.as_table }}
       <p><input type="submit" value="Submit" /></p>
      </form>
+     {% if form.errors %}
+         <div style="padding-bottom: 15px">
+            <a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" href="{% url 'update_faculty_to_view' %}">Return to Manage Faculty</a>
+         </div>
+      {% endif %}
 
 </div>
 

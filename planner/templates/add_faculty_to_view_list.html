@@ -58,22 +58,28 @@
 
         {% if search_results %}
         <div class="alert alert-student-info wide">
-            <div id="facultyTable" add-faculty-url="{% url 'ajax_update_view_list' %}?next={{ request.path|urlencode }}">
+            <div id="facultyTable" add-faculty-url="{% url 'ajax_update_view_list' %}" redirect-url="{% url 'update_faculty_to_view' %}">
                 <table class="table table-striped table-bordered table-hover">
                         <thead>
                             <tr>
                                 <th>Name</th>
                                 <th>Department</th>
-                                <th>Action</th>
+                                <th>Action/Status</th>
                             </tr>
                         </thead>
                         <tbody>
                 
                                 {% for faculty in search_results %}
                                 <tr>
-                                        <td>{{faculty}}</td>
-                                        <td>{{faculty.department}}</td>
-                                        <td><a style="cursor: pointer;" onclick="addFacultyToViewList('{{faculty.id}}')">Select</a></td>
+                                        <td>{{faculty.faculty}}</td>
+                                        <td>{{faculty.faculty.department}}</td>
+                                        {% if faculty.currently_being_viewed %}
+                                            <td>currently being viewed</td>
+                                        {% elif not faculty.is_active %}
+                                            <td>currently inactive</td>
+                                        {% else %}
+                                            <td><a style="cursor: pointer;" onclick="addFacultyToViewList('{{faculty.faculty.id}}')">Select</a></td>
+                                        {% endif %}
                                     </tr>
                                 {% endfor %}
                         </tbody>
@@ -81,35 +87,44 @@
                     
                 </table>
             </div>
+        </div>
             
         {% endif %}
     
+    {% if search_performed %}
+        <div style="padding-bottom: 15px">
+            <a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" href="{% url 'update_faculty_to_view' %}">Return to Manage Faculty</a>
+        </div>
+    {% endif %}
     </div>
-        
 </div>
 
 
 <script>
     //https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
+    //https://simpleisbetterthancomplex.com/tutorial/2016/08/29/how-to-work-with-ajax-request-with-django.html
     function addFacultyToViewList(facultyId) {
-        console.log('got here!', facultyId);
-        var url = $("#facultyTable").attr("add-faculty-url");  // get the url of the `load_courses` view
-        console.log(url);
+        var url = $("#facultyTable").attr("add-faculty-url");  // get the url of the view
+        var redirectUrl = $("#facultyTable").attr("redirect-url");
         // https://stackoverflow.com/questions/13465711/how-do-i-post-with-jquery-ajax-in-django
         $.ajax({                       // initialize an AJAX request
             type: "POST",
-            url: url,                    // set the url of the request (.../ajax/load-courses/)
+            url: url,                    // set the url of the request
+            dataType: 'json',
             data: {
                 'facultyId': facultyId       // add the faculty id to the POST parameters
             },
             success: function (data) {   // `data` is the return of the `load_courses` view function
                 console.log(data);
                 console.log('success!');
-
-                document.getElementById('error-message-container').style.display = 'block';
+                if (!data.success) {
+                    document.getElementById('error-message-container').style.display = 'block';
                 //console.log('got here');
                 //document.getElementById('message-about-errors').style.display = 'none';
-                $("#error-message").html(data);
+                    $("#error-message").html(data.message);
+                } else {
+                    window.location=redirectUrl;
+                }
             }
         });
         
