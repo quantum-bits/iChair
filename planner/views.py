@@ -18,6 +18,7 @@ from .forms import *
 import json
 import csv
 from django.http import HttpResponse, HttpResponseRedirect
+from django.views.decorators.csrf import csrf_exempt
 import xlwt
 from os.path import expanduser
 from datetime import date
@@ -1233,6 +1234,10 @@ def update_course_offering(request,id, daisy_chain):
     faculty_to_view_ids = [fm.id
                          for fm in user_preferences.faculty_to_view.all()
                          if fm.is_active(year)]
+    # should add in other active faculty from the department, too....
+    for faculty in user_preferences.department_to_view.faculty.all():
+        if faculty.id not in faculty_to_view_ids:
+            faculty_to_view_ids.append(faculty.id)
     # create the formset class
 
     InstructorFormset = inlineformset_factory(CourseOffering, OfferingInstructor,
@@ -3116,6 +3121,52 @@ def update_rooms_to_view(request, id):
         
         return render(request, 'update_rooms_to_view.html', context)
 
+@login_required
+def add_faculty_to_view_list(request):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    year = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+    
+    search_performed = False
+
+    if request.method == 'POST':
+        form = FacultySearchForm(request.POST)
+        print('post!')
+        if form.is_valid():
+            print('valid!')
+            search_string = form.cleaned_data.get('name')
+            print(search_string)
+
+            split_array = search_string.split()
+            if len(split_array) == 0:
+                faculty_list = []
+            elif len(split_array) == 1:
+                name = split_array[0]
+                faculty_list = [fm for fm in FacultyMember.objects.filter(Q(last_name__icontains = name)|Q(first_name__icontains = name))]
+            else:
+                name_1 = split_array[0]
+                name_2 = split_array[1]
+                faculty_list = [fm for fm in FacultyMember.objects.filter(Q(last_name__icontains = name_1)|Q(first_name__icontains = name_1)) | FacultyMember.objects.filter(Q(last_name__icontains = name_2)|Q(first_name__icontains = name_2))]
+
+            search_performed = True
+            context = {'form': form, 'search_results': faculty_list, 'search_performed': search_performed}
+            return render(request, 'add_faculty_to_view_list.html', context)
+
+        else:
+
+        
+            context = {'form': form, 'search_results': [], 'search_performed': search_performed}
+            return render(request, 'add_faculty_to_view_list.html', context)
+    else:
+        form = FacultySearchForm()
+        context = {'form': form, 'search_results': [], 'search_performed': search_performed}
+    
+        return render(request, 'add_faculty_to_view_list.html', context)
+
 
 
 @login_required
@@ -4463,6 +4514,43 @@ def load_courses(request):
     courses = Course.objects.filter(subject__id = subject_id).order_by('number')
     print(courses)
     return render(request, 'course_dropdown_list_options.html', {'courses': courses})
+
+@login_required
+@csrf_exempt
+def update_view_list(request):
+    """Add a faculty member to the list of faculty to view; used for AJAX requests."""
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+
+    print(request.get_full_path)
+    faculty_id = request.POST.get('facultyId')
+
+    try:
+        faculty = FacultyMember.objects.get(pk = faculty_id)
+    except FacultyMember.DoesNotExist:
+        message = 'This faculty member could not be found; please try again later or contact the site administrator.'
+        return HttpResponse(message)
+    print(faculty)
+    if faculty not in user_preferences.faculty_to_view.all():
+        user_preferences.faculty_to_view.add(faculty)
+        next = request.POST.get('next', 'home')
+        print(request.GET.get('next'))
+        print('next: ', next)
+        print(request.get_full_path())
+        print(request.path)
+        #url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
+#            print url_string
+        #return redirect(url_string)
+    else:
+        message = 'It appears that '+faculty.first_name+' '+faculty.last_name+' is already in your list of faculty to view.'
+        return HttpResponse(message)
+    # maybe redirect on success anyways?
+
+    # WORKING HERE: now need to return and then redirect...
+
+    return HttpResponse('Sorry, we were not able to process this request.')
+
+
 
 @login_required
 def select_course(request):

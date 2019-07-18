@@ -42,6 +42,9 @@ class Department(models.Model):
     chair = models.OneToOneField('FacultyMember', blank=True, null=True,
                                  related_name='department_chaired', on_delete=models.SET_NULL)
 
+    # trusted_departments are those that the present department trusts to make changes to the present department's course offerings
+    trusted_departments = models.ManyToManyField("self", symmetrical = False, related_name='trusting_departments', blank=True)
+
     class Meta:
         ordering = ['name']
 
@@ -64,6 +67,10 @@ class Department(models.Model):
                     course_list.append(co.course)
         course_list.sort(key=lambda x: x.number)
         return course_list
+
+    def is_trusted_by(self, other_department):
+        """True if the present department is trusted by the other department"""
+        return self in other_department.trusted_departments.all()
 
     def __str__(self):
         return self.name

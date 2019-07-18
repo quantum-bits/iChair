@@ -38,9 +38,7 @@
 <div class="container">
 	<div class="row">
 		<div class="span5 offset4">
-				<a class="btn btn-info" href="{% url 'add_faculty' %}?next={{ request.path|urlencode }}">Create New Faculty Member</a>
-				<p></p>
-				<a class="btn btn-info" href="{% url 'add_faculty' %}?next={{ request.path|urlencode }}">View Faculty From Another Department</a>
+				<a class="btn btn-info" href="{% url 'add_faculty_to_view_list' %}?next={{ request.path|urlencode }}">Add Faculty to List</a>
 		
 		</div>
 	</div>

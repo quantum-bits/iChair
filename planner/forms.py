@@ -142,9 +142,10 @@ class DynamicCourseSelectForm(forms.ModelForm):
         subjects =[['','---------']]
         for subj in Subject.objects.filter(department=department):
             subjects.append([subj.id,subj.abbrev])
-        subjects.append(['','-- Other Departments --'])
+        subjects.append(['','-- Subjects in Other Departments --'])
         for subj in Subject.objects.filter(~Q(department=department)):
-            subjects.append([subj.id,subj.abbrev])
+            if department.is_trusted_by(subj.department):
+                subjects.append([subj.id,subj.abbrev])
         subjects_tuple = ([(subject[0], subject[1]) for subject in subjects])
         self.fields['subject'].choices = subjects_tuple
         self.initial['subject'] = subjects_tuple[0][0]
@@ -166,7 +167,13 @@ class DynamicCourseSelectForm(forms.ModelForm):
     def clean(self):
         return self.cleaned_data
 
-    
+
+class FacultySearchForm(forms.Form):
+    name = forms.CharField(label=('Faculty Name'))
+
+    def clean(self):
+        return self.cleaned_data
+
 class CourseOfferingForm(forms.ModelForm):
 
     class Meta:

@@ -30,13 +30,13 @@ div.content {
 }
 </style>
 
-<div class="content-center">
+<div>
 <!--<h3> Use an existing course or create a new one. </h3>-->
 <div class="container">
   <div class="left">
     <div class="alert alert-student-info">
-      <p> <h3>Choose a Course from the Following List....</h3> </p>
-      <p>
+      <p> <h3 class="content-center">Choose a Course from the Following List*....</h3> </p>
+      <div class="content-center">
         <form method="post" id="courseForm" data-courses-url="{% url 'ajax_load_courses' %}" novalidate>
             {% csrf_token %}
             <table class="content-center">
@@ -60,10 +60,15 @@ div.content {
             </table>
             <button type="submit">Submit</button>
           </form>
-     </p>
+        </div>
+     <div style="padding-bottom: 10px">
+        <strong>*Note: </strong>If a subject does not show up in the above list,
+        please contact the iChair site administrator.</td>
+    </div>
+     
      </div>
 </div>
-  <div class="content">
+  <div class="content content-center">
     <!--<div class="alert alert-student-info">-->
       <p> <h3>Course not in the List?  Create a New One....</h3> </p>
 <p> If the course does not appear in the list to the left, you may need to 
@@ -104,7 +109,7 @@ to skip some of the steps if you like. </p>
 -->
 </div>
 
-<h3>In the next step you will choose the semester for this course offering. </h3>
+<h3 class="content-center">In the next step you will choose the semester for this course offering. </h3>
 </div>
 
 <script>
@@ -143,7 +148,7 @@ xmlhttp.send();
         $.ajax({                       // initialize an AJAX request
           url: url,                    // set the url of the request (.../ajax/load-courses/)
           data: {
-            'subjectId': subjectId       // add the country id to the GET parameters
+            'subjectId': subjectId       // add the subject id to the GET parameters
           },
           success: function (data) {   // `data` is the return of the `load_courses` view function
             $("#id_course").html(data);  // replace the contents of the course input with the data that came from the server
