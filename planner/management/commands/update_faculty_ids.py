@@ -7,7 +7,7 @@ from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
 
 class Command(BaseCommand):
-    help = "Manage data warehouse information"
+    help = "Update faculty pidms in the iChair database so that they match those in Banner"
 
     def handle(self, *args, **options):
         connection = pyodbc.connect(f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
