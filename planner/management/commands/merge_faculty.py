@@ -1,4 +1,3 @@
-import pyodbc
 from django.core.management import BaseCommand
 
 from planner.models import *
@@ -15,7 +14,7 @@ from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
 class Command(BaseCommand):
     # https://stackoverflow.com/questions/30230490/django-custom-command-error-unrecognized-arguments
-    help = "Look for duplicates of faculty members in the iChair database."
+    help = "Merges load from one faculty member to another; to be used when there are duplicate faculty members (before deleting one of them)."
 
     def add_arguments(self, parser):
         parser.add_argument('delete_instructor_id')
@@ -35,14 +34,10 @@ class Command(BaseCommand):
             for oi in delete_instructor.offering_instructors.all():
                 oi.instructor = keep_instructor
                 oi.save()
-        # same idea for other loads:
-        for ol in delete_instructor.other_loads.all():
-            ol.instructor = keep_instructor
-            ol.save()
-
-
-
-
+            # same idea for other loads:
+            for ol in delete_instructor.other_loads.all():
+                ol.instructor = keep_instructor
+                ol.save()
 
 
 
