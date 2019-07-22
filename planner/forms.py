@@ -362,7 +362,8 @@ class EasyDaySchedulerForm(forms.Form):
     days = forms.ChoiceField(label="Days of the week",choices=DAY_OPTIONS)
     start = forms.ChoiceField(label="Class starting times",choices=START_OPTIONS)
     duration = forms.ChoiceField(label="Duration",choices=DURATION_OPTIONS)
-    room = forms.ModelChoiceField(queryset = Room.objects.all())
+    # https://stackoverflow.com/questions/2623325/is-a-modelchoicefield-always-required
+    room = forms.ModelChoiceField(queryset = Room.objects.all(), required=False,)
 
 class AddCourseForm(forms.ModelForm):
 

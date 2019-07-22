@@ -1115,9 +1115,13 @@ def room_list_summary(scheduled_classes):
     Returns a list of the rooms in which a given class occurs during a given semester;
     scheduled_classes is assumed to be a list of ScheduledClass objects with at least one element.
     """
+    # looks like this method is no longer used....
     room_list = []
     for sc in scheduled_classes:
-        room = sc.room.building.abbrev+' '+sc.room.number
+        if sc.room != None:
+            room = sc.room.building.abbrev+' '+sc.room.number
+        else:
+            room = '---'
         if room not in room_list:
             room_list.append(room)
 
@@ -1172,7 +1176,10 @@ def class_time_and_room_summary(scheduled_classes):
     schedule_list = []
     for sc in scheduled_classes:
         time_string=start_end_time_string(sc.begin_at.hour, sc.begin_at.minute, sc.end_at.hour, sc.end_at.minute)
-        room = sc.room.building.abbrev+' '+sc.room.number
+        if sc.room != None:
+            room = sc.room.building.abbrev+' '+sc.room.number
+        else:
+            room = '---'
         schedule_list.append([sc.day, time_string, room])
         day_dict[time_string+room]=''
         room_dict[time_string+room] = room
@@ -1648,13 +1655,14 @@ def daily_schedule(request):
                                                                                     ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                                 sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
 
-                    if sc.room.id not in list(room_conflict_check_dict.keys()):
-                        room_conflict_check_dict[sc.room.id] = {'today':[]}
-                    room_conflict_check_dict[sc.room.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                                        sc.end_at.hour*100+sc.end_at.minute,
-                                                                        sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                                        ' ('+start_end_time_string(sc.begin_at.hour,
-                                                                                                    sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+                    if sc.room != None:
+                        if sc.room.id not in list(room_conflict_check_dict.keys()):
+                            room_conflict_check_dict[sc.room.id] = {'today':[]}
+                        room_conflict_check_dict[sc.room.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                            sc.end_at.hour*100+sc.end_at.minute,
+                                                                            sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                            ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                        sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
 
                 schedule = initialize_canvas_data(courses_after_five, num_data_columns)
 
@@ -2281,7 +2289,10 @@ def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column
     course_label = subject+course_number
     if not is_full_semester:
         course_label+=' ('+'\u00BD'+' sem)'
-    room_label = scheduled_class_object.room.building.abbrev+scheduled_class_object.room.number
+    if scheduled_class_object.room != None:
+        room_label = scheduled_class_object.room.building.abbrev+scheduled_class_object.room.number
+    else:
+        room_label = '---'
 
     line_sep = schedule['box_text_line_sep_pixels']
 
@@ -2879,21 +2890,22 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                 course_offering_instructors = co.offering_instructors.all()
                                 for sc in co.scheduled_classes.all():
 
-                                    if co.max_enrollment > sc.room.capacity:
-                                        new_overbooked_room_message = 'Max enrollment in '+course.subject.abbrev+course.number+' ('+str(co.max_enrollment)+') exceeds the room capacity in '+sc.room.building.abbrev+sc.room.number+' ('+str(sc.room.capacity)+')'
-                                        if new_overbooked_room_message not in overbooked_room_messages:
-                                            overbooked_room_messages.append(new_overbooked_room_message)
+                                    if sc.room != None:
+                                        if co.max_enrollment > sc.room.capacity:
+                                            new_overbooked_room_message = 'Max enrollment in '+course.subject.abbrev+course.number+' ('+str(co.max_enrollment)+') exceeds the room capacity in '+sc.room.building.abbrev+sc.room.number+' ('+str(sc.room.capacity)+')'
+                                            if new_overbooked_room_message not in overbooked_room_messages:
+                                                overbooked_room_messages.append(new_overbooked_room_message)
 
-                                    if sc.room.id not in list(room_conflict_check_dict.keys()):
-                                        room_conflict_check_dict[sc.room.id] = {}
-                                        for p_s in partial_semesters:
-                                            room_conflict_check_dict[sc.room.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
-                                
-                                    room_conflict_check_dict[sc.room.id][partial_semester['semester_fraction']][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                                                        sc.end_at.hour*100+sc.end_at.minute,
-                                                                                        sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                                                                ' ('+start_end_time_string(sc.begin_at.hour,
-                                                                                                                        sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+                                        if sc.room.id not in list(room_conflict_check_dict.keys()):
+                                            room_conflict_check_dict[sc.room.id] = {}
+                                            for p_s in partial_semesters:
+                                                room_conflict_check_dict[sc.room.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                                    
+                                        room_conflict_check_dict[sc.room.id][partial_semester['semester_fraction']][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                                            sc.end_at.hour*100+sc.end_at.minute,
+                                                                                            sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                                                    ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                                            sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
 
 
                                     for offering_instructor in course_offering_instructors:
@@ -4206,8 +4218,12 @@ def weekly_course_schedule_entire_dept(request):
                     half_sem_text = ''
                     if not sc.course_offering.is_full_semester():
                         half_sem_text = ' ('+'\u00BD'+' sem)'
+                    if sc.room != None:
+                        room_text = sc.room.building.abbrev+sc.room.number
+                    else:
+                        room_text = 'TBD'
                     data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+' - '+
-                                    sc.room.building.abbrev+sc.room.number+half_sem_text]
+                                        room_text+half_sem_text]
 
                     for instructor in sc.course_offering.instructor.all():
                         if instructor.id not in list(instructor_conflict_check_dict.keys()):
@@ -4217,14 +4233,15 @@ def weekly_course_schedule_entire_dept(request):
                                                                                     sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
                                                                                                 ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                                         sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-                    if sc.room.id not in list(room_conflict_check_dict.keys()):
-                        room_conflict_check_dict[sc.room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                    if sc.room != None:
+                        if sc.room.id not in list(room_conflict_check_dict.keys()):
+                            room_conflict_check_dict[sc.room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
 
-                    room_conflict_check_dict[sc.room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
-                                                                                    sc.end_at.hour*100+sc.end_at.minute,
-                                                                                    sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
-                                                                                                ' ('+start_end_time_string(sc.begin_at.hour,
-                                                                                                                        sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
+                        room_conflict_check_dict[sc.room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                                                                        sc.end_at.hour*100+sc.end_at.minute,
+                                                                                        sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
+                                                                                                    ' ('+start_end_time_string(sc.begin_at.hour,
+                                                                                                                            sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
 
                     if sc.end_at.hour > 16:
                         courses_after_five = True
