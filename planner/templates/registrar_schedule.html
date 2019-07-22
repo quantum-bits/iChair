@@ -282,12 +282,12 @@
 	   {% endif %}
 	  </td>
       <td>
-	{% if not printer_friendly and can_edit %}
+	{% if not printer_friendly and can_edit and course.can_edit %}
 	<a href="{% url 'update_course' course.course_id %}?next={{ request.path|urlencode }}">{{course.number}}</a>
 	   {% else %} {{course.number}} {% endif %}
       </td>
       <td> {{course.name}}</td>
-      <td style="text-align: center"> {% if not printer_friendly and can_edit %}
+      <td style="text-align: center"> {% if not printer_friendly and can_edit and course.can_edit%}
 	<a href="{% url 'update_course' course.course_id %}?next={{ request.path|urlencode }}">{{course.credit_hours}}</a>
            {% else %} {{course.credit_hours}} {% endif %}
       </td>

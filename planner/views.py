@@ -2959,6 +2959,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
 
                     registrar_data_list.append({'number':number,
                                                 'name':course_name,
+                                                'can_edit':co.course.subject.department == department,
                                                 'room_list': room_list,
                                                 'meeting_times_list': meeting_times_list,
                                                 'instructor_list': instructor_list,
