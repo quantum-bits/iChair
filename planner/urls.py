@@ -1,6 +1,7 @@
 from django.conf.urls import include, url
 
 from planner import views as myapp_views
+from planner import api_views
 
 urlpatterns = [
     #'planner.views',
@@ -42,6 +43,9 @@ urlpatterns = [
     url(r'^addfacultymember/$', myapp_views.add_faculty, name='add_faculty'),
     url(r'^addfacultytoviewlist/$', myapp_views.add_faculty_to_view_list, name='add_faculty_to_view_list'),
 
+    url(r'^bannercomparison/$', myapp_views.compare_with_banner, name='compare_with_banner'),
+    url(r'^ajax/fetch-banner-comparison-data/$', api_views.banner_comparison_data, name='banner_comparison_data'),
+
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', myapp_views.choose_year_course_copy, name='choose_year_course_copy'),
 
@@ -59,8 +63,8 @@ urlpatterns = [
     url(r'^gettingstarted/$', myapp_views.getting_started, name='getting_started'),
     url(r'^divtracker/(\d+)/$', myapp_views.open_close_div_tracker, name='open_close_div_tracker'),
     url(r'^alertregister/$', myapp_views.alert_register, name='alert_register'),
-    url(r'^ajax/load-courses/$', myapp_views.load_courses, name='ajax_load_courses'),
-    url(r'^ajax/add-faculty-view-list/$', myapp_views.update_view_list, name='ajax_update_view_list'),
+    url(r'^ajax/load-courses/$', api_views.load_courses, name='ajax_load_courses'),
+    url(r'^ajax/add-faculty-view-list/$', api_views.update_view_list, name='ajax_update_view_list'),
 
 
 ]
