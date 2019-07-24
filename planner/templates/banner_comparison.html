@@ -25,16 +25,47 @@
 
 <div id="app">
 	<v-app>
+
+			
+			<template>
+					<div class="text-center">
+					  <v-menu offset-y>
+						<template v-slot:activator="{ on }">
+						  <v-btn
+							color="primary"
+							dark
+							v-on="on"
+						  >
+							Actions
+						  </v-btn>
+						</template>
+						<v-list>
+						  <v-list-item
+							v-for="(item, index) in items"
+							:key="index"
+							@click=""
+						  >
+							<v-list-item-title>[[item.title]]</v-list-item-title>
+						  </v-list-item>
+						</v-list>
+					  </v-menu>
+					</div>
+				  </template>
+
+
+
 		<!-- https://stackoverflow.com/questions/52819619/understand-rows-per-page-items-at-vuetify-data-iterators-data-tables-can-i-->
 		<template>
-				<div>
-						<v-toolbar flat color="white">
-						  <v-toolbar-title>Course Offerings</v-toolbar-title>
-						  <v-spacer></v-spacer>
-						  <v-btn color="primary" dark @click="expand = !expand">
+				
+			<template>
+					<v-toolbar flat color="white">
+						<v-toolbar-title>Course Offerings</v-toolbar-title>
+						<v-spacer></v-spacer>
+						<v-btn color="primary" dark @click="expand = !expand">
 							[[ expand ? 'Close' : 'Keep' ]] other rows
-						  </v-btn>
-						</v-toolbar>
+						</v-btn>
+					</v-toolbar>
+			</template>	
 			<v-data-table
 			:headers="headers"
 			:items="courses"
@@ -43,8 +74,64 @@
 			item-key="name"
 			class="elevation-1"
 			>
+
+		
+					  <!--
+			<template >
+				<v-toolbar flat color="white">
+					<v-toolbar-title>Course Offerings</v-toolbar-title>
+					<v-spacer></v-spacer>
+					<v-btn color="primary" dark @click="expand = !expand">
+						[[ expand ? 'Close' : 'Keep' ]] other rows
+					</v-btn>
+
+					<!--
+					<v-dialog v-model="dialog" max-width="500px">
+					
+						<template v-slot:activator="{ on }">
+						<v-btn color="primary" dark class="mb-2" v-on="on">New Item</v-btn>
+					</template>
+					
+					<v-card>
+						<v-card-title>
+						<span class="headline">{{ formTitle }}</span>
+						</v-card-title>
+			
+						<v-card-text>
+						<v-container grid-list-md>
+							<v-layout wrap>
+							<v-flex xs12 sm6 md4>
+								<v-text-field v-model="editedItem.name" label="Dessert name"></v-text-field>
+							</v-flex>
+							<v-flex xs12 sm6 md4>
+								<v-text-field v-model="editedItem.calories" label="Calories"></v-text-field>
+							</v-flex>
+							<v-flex xs12 sm6 md4>
+								<v-text-field v-model="editedItem.fat" label="Fat (g)"></v-text-field>
+							</v-flex>
+							<v-flex xs12 sm6 md4>
+								<v-text-field v-model="editedItem.carbs" label="Carbs (g)"></v-text-field>
+							</v-flex>
+							<v-flex xs12 sm6 md4>
+								<v-text-field v-model="editedItem.protein" label="Protein (g)"></v-text-field>
+							</v-flex>
+							</v-layout>
+						</v-container>
+						</v-card-text>
+			
+						<v-card-actions>
+						<v-spacer></v-spacer>
+						<v-btn color="blue darken-1" text @click="close">Cancel</v-btn>
+						<v-btn color="blue darken-1" text @click="save">Save</v-btn>
+						</v-card-actions>
+					</v-card>
+					</v-dialog>
+			
+					</v-toolbar>
+				  </template>
+				-->
 			<template v-slot:items="props">
-				<tr @click="props.expanded = !props.expanded">
+				<tr @click="props.expanded = !props.expanded" style="cursor: pointer;">
 				<td>[[props.item.semester]]  </td>
 				<td>[[props.item.crn]]  </td>
 				<td class="text-xs-left">[[props.item.number]]</td>
@@ -58,7 +145,7 @@
 					  <v-card-text>
 						  <v-container>
 							<strong>[[props.item.name]]</strong>
-							<v-layout row wrap>
+							<v-layout row wrap align-center>
 								<v-flex xs3>
 									<div v-if="props.item.hasIChair">
 										<div>iChair -- meeting time(s):</div>
@@ -69,7 +156,61 @@
 										</ul>
 									</div>
 								</v-flex>
-								<v-flex xs3>
+								
+								<v-flex xs1>
+										<template>
+												<div class="text-center">
+												  <v-dialog
+													v-model="dialog"
+													width="500"
+												  >
+													
+													  <!--
+
+													  <v-icon class="left"
+														color="blue"
+														dark
+														v-on="on"
+													  >
+														edit
+													  </v-icon>
+													-->
+												
+											  
+													<v-card>
+													  <v-card-title
+														class="headline grey lighten-2"
+														primary-title
+													  >
+														Privacy Policy
+													  </v-card-title>
+											  
+													  <v-card-text>
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+													  </v-card-text>
+											  
+													  <v-divider></v-divider>
+											  
+													  <v-card-actions>
+														<v-spacer></v-spacer>
+														<v-btn
+														  color="primary"
+														  text
+														  @click="dialog = false"
+														>
+														  I accept
+														</v-btn>
+													  </v-card-actions>
+													</v-card>
+												  </v-dialog>
+												</div>
+											  </template>
+											  
+											 
+
+
+								</v-flex>
+								<v-flex xs3 offset-xs2>
 									<div v-if="props.item.hasIChair">
 										<div>iChair -- instructor(s):</div>
 										<ul>
@@ -79,7 +220,26 @@
 										</ul>
 									</div>
 								</v-flex>
-								<v-flex xs6></v-flex>
+
+								<div style="padding-bottom: 20px" class="btn-group">
+										<a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
+										  Actions
+										  <span class="caret"></span>
+										</a>
+										  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+											<li>              
+											  <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Edit Meeting Times in iChair </a>
+											</li>
+											<li>              
+											  <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept Registrar Edits </a>
+											</li>
+											<li>              
+													<a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Request Changes from Registrar</a>
+												  </li>
+										  </ul>
+									  </div> {# btn-group #}
+					
+
 							</v-layout>
 							<v-layout row wrap>
 								<v-flex xs3>
@@ -92,6 +252,7 @@
 											</ul>
 									</div>
 								</v-flex>
+								<v-flex xs3></v-flex>
 								<v-flex xs3>
 										<div v-if="props.item.hasBanner">
 											<div>Registrar -- instructor(s):</div>
@@ -102,7 +263,7 @@
 											</ul>
 										</div>
 								</v-flex>
-								<v-flex xs6></v-flex>
+								<v-flex xs3></v-flex>
 							</v-layout>
 						  </v-container>
 						  
@@ -112,7 +273,7 @@
 					</v-card>
 				  </template>
 			</v-data-table>
-			</div>
+			
 		</template>
 	</v-app>
 </div>
@@ -137,11 +298,17 @@
 						value: 'number'
 					},
 					{ text: 'Name', value: 'name' , align: 'left'},
-					{ text: 'iChair', value: 'ichair', align: 'center' },
-					{ text: 'Banner', value: 'banner', align: 'center' },
+					{ text: 'In iChair', value: 'ichair', align: 'center' },
+					{ text: 'In Banner', value: 'banner', align: 'center' },
 					{ text: 'Done?', value: 'linked', align: 'center'  }
 				],
         		courses: [],
+				items: [
+					{ title: 'Click Me' },
+					{ title: 'Click Me' },
+					{ title: 'Click Me' },
+					{ title: 'Click Me 2' },
+				],
 				pagination: {
 					rowsPerPage: 20
 				}
