@@ -17,15 +17,19 @@
 	var json_data = {{ json_data|safe }};
 </script>
 
+<div class="container">
+	<p>This page allows you to compare your course offerings with those in Banner and
+		request changes from the Registrar.
+	</p>
+</div>
+
 <div id="app">
 	<v-app>
-
-		[[message]]
-		
+		<!-- https://stackoverflow.com/questions/52819619/understand-rows-per-page-items-at-vuetify-data-iterators-data-tables-can-i-->
 		<template>
 				<div>
 						<v-toolbar flat color="white">
-						  <v-toolbar-title>Expandable Table</v-toolbar-title>
+						  <v-toolbar-title>Course Offerings</v-toolbar-title>
 						  <v-spacer></v-spacer>
 						  <v-btn color="primary" dark @click="expand = !expand">
 							[[ expand ? 'Close' : 'Keep' ]] other rows
@@ -33,23 +37,78 @@
 						</v-toolbar>
 			<v-data-table
 			:headers="headers"
-			:items="desserts"
+			:items="courses"
 			:expand="expand"
+			:pagination.sync="pagination"
 			item-key="name"
 			class="elevation-1"
 			>
 			<template v-slot:items="props">
 				<tr @click="props.expanded = !props.expanded">
-				<td>[[props.item.name]]  </td>
-				<td class="text-xs-right">[[props.item.calories]]</td>
-				<td class="text-xs-right">[[props.item.fat]] </td>
-				<td class="text-xs-right">[[props.item.carbs]] </td>
-				<td class="text-xs-right">[[props.item.protein]]  </td>
-				<td class="text-xs-right">[[props.item.iron]] </td>
+				<td>[[props.item.semester]]  </td>
+				<td>[[props.item.crn]]  </td>
+				<td class="text-xs-left">[[props.item.number]]</td>
+				<td class="text-xs-left">[[props.item.name]] </td>
+				<td class="text-xs-center"><v-icon v-if="props.item.hasIChair">check_circle</v-icon></td>
+				<td class="text-xs-center"><v-icon v-if="props.item.hasBanner">check_circle</v-icon></td>
+				<td class="text-xs-center"><v-icon class="green--text" v-if="!props.item.needsWork">check_circle</v-icon></td>
 			</template>
 			<template v-slot:expand="props">
 					<v-card flat>
-					  <v-card-text>Peek-a-boo!</v-card-text>
+					  <v-card-text>
+						  <v-container>
+							<strong>[[props.item.name]]</strong>
+							<v-layout row wrap>
+								<v-flex xs3>
+									<div v-if="props.item.hasIChair">
+										<div>iChair -- meeting time(s):</div>
+										<ul>
+											<li v-for="meetingTime in props.item.ichair.meeting_times">
+													[[meetingTime]]
+											</li>
+										</ul>
+									</div>
+								</v-flex>
+								<v-flex xs3>
+									<div v-if="props.item.hasIChair">
+										<div>iChair -- instructor(s):</div>
+										<ul>
+											<li v-for="instructor in props.item.ichair.instructors">
+													[[instructor]]
+											</li>
+										</ul>
+									</div>
+								</v-flex>
+								<v-flex xs6></v-flex>
+							</v-layout>
+							<v-layout row wrap>
+								<v-flex xs3>
+									<div v-if="props.item.hasBanner">
+											<div>Registrar -- meeting time(s):</div>
+											<ul>
+												<li v-for="meetingTime in props.item.banner.meeting_times">
+													[[meetingTime]]
+												</li>
+											</ul>
+									</div>
+								</v-flex>
+								<v-flex xs3>
+										<div v-if="props.item.hasBanner">
+											<div>Registrar -- instructor(s):</div>
+											<ul>
+												<li v-for="instructor in props.item.banner.instructors">
+													  [[instructor]]
+												</li>
+											</ul>
+										</div>
+								</v-flex>
+								<v-flex xs6></v-flex>
+							</v-layout>
+						  </v-container>
+						  
+						
+
+					  </v-card-text>
 					</v-card>
 				  </template>
 			</v-data-table>
@@ -62,107 +121,31 @@
     var app = new Vue({
       delimiters: ['[[', ']]'],
       el: '#app',
-      data: {
+      data() {
+		  return {
 		  		expand: false,
 				message: 'Hello Vue!',
 				search: '',
 				json_data: json_data,
 				headers: [
-				{
-					text: 'Dessert (100g serving)',
-					align: 'left',
-					sortable: false,
-					value: 'name'
-			},
-			{ text: 'Calories', value: 'calories' },
-			{ text: 'Fat (g)', value: 'fat' },
-			{ text: 'Carbs (g)', value: 'carbs' },
-			{ text: 'Protein (g)', value: 'protein' },
-			{ text: 'Iron (%)', value: 'iron' }
-			],
-        desserts: [
-          {
-            name: 'Frozen Yogurt',
-            calories: 159,
-            fat: 6.0,
-            carbs: 24,
-            protein: 4.0,
-            iron: '1%'
-          },
-          {
-            name: 'Ice cream sandwich',
-            calories: 237,
-            fat: 9.0,
-            carbs: 37,
-            protein: 4.3,
-            iron: '1%'
-          },
-          {
-            name: 'Eclair',
-            calories: 262,
-            fat: 16.0,
-            carbs: 23,
-            protein: 6.0,
-            iron: '7%'
-          },
-          {
-            name: 'Cupcake',
-            calories: 305,
-            fat: 3.7,
-            carbs: 67,
-            protein: 4.3,
-            iron: '8%'
-          },
-          {
-            name: 'Gingerbread',
-            calories: 356,
-            fat: 16.0,
-            carbs: 49,
-            protein: 3.9,
-            iron: '16%'
-          },
-          {
-            name: 'Jelly bean',
-            calories: 375,
-            fat: 0.0,
-            carbs: 94,
-            protein: 0.0,
-            iron: '0%'
-          },
-          {
-            name: 'Lollipop',
-            calories: 392,
-            fat: 0.2,
-            carbs: 98,
-            protein: 0,
-            iron: '2%'
-          },
-          {
-            name: 'Honeycomb',
-            calories: 408,
-            fat: 3.2,
-            carbs: 87,
-            protein: 6.5,
-            iron: '45%'
-          },
-          {
-            name: 'Donut',
-            calories: 452,
-            fat: 25.0,
-            carbs: 51,
-            protein: 4.9,
-            iron: '22%'
-          },
-          {
-            name: 'KitKat',
-            calories: 518,
-            fat: 26.0,
-            carbs: 65,
-            protein: 7,
-            iron: '6%'
-          }
-        ]
-
+					{ text: 'Semester - Fraction', value: 'semester' },
+					{ text: 'CRN', value: 'crn' },
+					{
+						text: 'Number',
+						align: 'left',
+						sortable: true,
+						value: 'number'
+					},
+					{ text: 'Name', value: 'name' , align: 'left'},
+					{ text: 'iChair', value: 'ichair', align: 'center' },
+					{ text: 'Banner', value: 'banner', align: 'center' },
+					{ text: 'Done?', value: 'linked', align: 'center'  }
+				],
+        		courses: [],
+				pagination: {
+					rowsPerPage: 20
+				}
+		  };
       },
       methods: {
           greet: function(name) {
@@ -189,16 +172,43 @@
 	  },
 	  mounted: function(){
 		  console.log('mounted!');
+		  console.log("message: ", this.message);
+		  console.log("courses: ", this.courses);
+		  var _this = this;
 		  $.ajax({                       // initialize an AJAX request
 				type: "GET",
 				url: "/planner/ajax/fetch-banner-comparison-data/",                    // set the url of the request
 				dataType: 'json',
 				data: {
-					'departmentId': json_data.departmentId       // add the faculty id to the POST parameters
+					'departmentId': json_data.departmentId,       // add the faculty id to the GET parameters
+					'yearId': json_data.yearId
 				},
-				success: function (data) {   // `data` is the return of the `load_courses` view function
-					console.log(data);
+				success: function (incomingData) {
+					console.log(incomingData);
 					console.log('success!');
+					console.log('incoming data: ', incomingData);
+					console.log('message: ', _this.message);
+					console.log('courses: ', _this.courses);
+					// https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
+					incomingData.course_data.forEach(course => {
+						_this.courses.push({
+							semester: course.semester,
+							number: course.course,
+							name: course.course_title,
+							crn: course.crn,
+							ichair: course.ichair,
+							banner: course.banner,
+							hasIChair: course.has_ichair,
+							hasBanner: course.has_banner,
+							linked: course.linked,
+							needsWork: course.needs_work
+						});
+					});
+
+					console.log(_this.courses);
+
+
+
 					//if (!data.success) {
 					//	document.getElementById('error-message-container').style.display = 'block';
 					//console.log('got here');
@@ -214,38 +224,6 @@
 </script>
 
 
-<script>
-		//https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
-		//https://simpleisbetterthancomplex.com/tutorial/2016/08/29/how-to-work-with-ajax-request-with-django.html
-		function addFacultyToViewList(facultyId) {
-			var url = $("#facultyTable").attr("add-faculty-url");  // get the url of the view
-			var redirectUrl = $("#facultyTable").attr("redirect-url");
-			// https://stackoverflow.com/questions/13465711/how-do-i-post-with-jquery-ajax-in-django
-			$.ajax({                       // initialize an AJAX request
-				type: "POST",
-				url: url,                    // set the url of the request
-				dataType: 'json',
-				data: {
-					'facultyId': facultyId       // add the faculty id to the POST parameters
-				},
-				success: function (data) {   // `data` is the return of the `load_courses` view function
-					console.log(data);
-					console.log('success!');
-					if (!data.success) {
-						document.getElementById('error-message-container').style.display = 'block';
-					//console.log('got here');
-					//document.getElementById('message-about-errors').style.display = 'none';
-						$("#error-message").html(data.message);
-					} else {
-						window.location=redirectUrl;
-					}
-				}
-			});
-			
-		};
-		
-	</script>
-	
 
 
 
