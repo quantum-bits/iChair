@@ -266,13 +266,12 @@
 
 			editMeetingTimes(courseInfo) {
 				this.editCourseOfferingData = {
-					'courseOfferingId': courseInfo.ichair.course_offering_id
+					'courseOfferingId': courseInfo.ichair.course_offering_id,
+					'ichairObject': courseInfo.ichair
 				}
 				this.dialogTitle = courseInfo.number + ': ' + courseInfo.name;
 				let meetingDetails = courseInfo.ichair.meeting_times_detail;
-				console.log(courseInfo);
 				this.dialog = true;
-				console.log(meetingDetails);
 				//trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
 				this.editMeetings = JSON.parse(JSON.stringify(meetingDetails));
 				this.editMeetings.forEach(meeting => {
@@ -282,7 +281,6 @@
 				this.initialMeetingData = meetingDetails;
 				this.addMeetingTime();
 				this.addMeetingTime();
-				console.log(this.editMeetings);
 			},
 
 			addMeetingTime() {
@@ -305,10 +303,6 @@
 			},
 
 			submitMeetingsForm() {
-				console.log(this.editMeetings);
-				console.log('reentering the submit method');
-				//console.log(this.initialMeetingData);
-				//console.log(this.courses);
 				let meetingsToDelete = [];//list of ids
 				let meetingsToUpdate = [];//list of objects
 				let meetingsToCreate = [];//list of objects
@@ -316,11 +310,7 @@
 				this.meetingFormErrorMessage = '';
 				let formOK = true;
 				this.editMeetings.forEach(meeting => {
-					//console.log(meeting);
-					//console.log(meeting.id);
-					//console.log(meeting.delete);
 					if ((meeting.id !== null) && (meeting.delete === true)) {
-						//console.log('delete: ', meeting.id);
 						meetingsToDelete.push(meeting.id);
 					} else if (meeting.delete === false) {
 						// check if need to make updates....
@@ -335,7 +325,6 @@
 									})
 								} else {
 									this.meetingFormErrorMessage = checkTime.errorMessage;
-									console.log(this.meetingFormErrorMessage);
 									formOK = false;
 								}
 							} else {
@@ -344,7 +333,6 @@
 								let timesIdentical = true;
 								if (!checkTime.timesOK) {
 									this.meetingFormErrorMessage = checkTime.errorMessage;
-									console.log(this.meetingFormErrorMessage);
 									formOK = false;
 								} else {
 									// now check if anything has been changed in the form;
@@ -366,10 +354,6 @@
 									}
 
 									if (!timesIdentical) {
-										console.log(meeting.id, ' ', matchingMeeting.day === parseInt(meeting.day), ' ', matchingMeeting.day, ' ', meeting.day);
-										console.log(meeting.id, ' ', matchingMeeting.begin_at === meeting.begin_at, ' ', matchingMeeting.begin_at, ' ', meeting.begin_at);
-										console.log(meeting.id, ' ', matchingMeeting.end_at === meeting.end_at, ' ', matchingMeeting.end_at, ' ', meeting.end_at);
-
 										meetingsToUpdate.push({
 											id: meeting.id,
 											day: parseInt(meeting.day),
@@ -391,13 +375,6 @@
 					}
 				});
 
-				console.log('meetings to delete: ', meetingsToDelete);
-				console.log('meetings to create: ', meetingsToCreate);
-				console.log('meetings to update: ', meetingsToUpdate);
-				console.log('meetings to leave: ', meetingsToLeave);
-				console.log(this.meetingFormErrorMessage);
-				console.log(this.courses);
-
 				let meetingSummary = [];
 				meetingsToCreate.forEach(meeting => meetingSummary.push(meeting));
 				meetingsToUpdate.forEach(meeting => meetingSummary.push(meeting));
@@ -408,7 +385,6 @@
 					let checkTimeOverlaps = this.checkTimeConflicts(meetingSummary);
 					if (!checkTimeOverlaps.timesOK) {
 						this.meetingFormErrorMessage = checkTimeOverlaps.errorMessage;
-						console.log(this.meetingFormErrorMessage);
 						formOK = false;
 					}
 				}
@@ -416,11 +392,8 @@
 				let numChanges = meetingsToCreate.length + meetingsToUpdate.length + meetingsToDelete.length;
 
 				if (formOK && numChanges > 0) {
-					console.log('everything is good!');
-					console.log('co id: ', this.editCourseOfferingData.courseOfferingId );
-					console.log(typeof(this.editCourseOfferingData.courseOfferingId ));
 					// now post the data...
-					//var _this = this;
+					var _this = this;
 					let data_for_post = {
 						'courseOfferingId': this.editCourseOfferingData.courseOfferingId,
 						'delete': meetingsToDelete,
@@ -435,7 +408,14 @@
 						dataType: 'json',
 						data: JSON.stringify(data_for_post),
 						success: function (jsonResponse) {
-							console.log('response: ', jsonResponse);
+							_this.editCourseOfferingData.ichairObject.meeting_times_detail = jsonResponse.meeting_times_detail;
+							_this.editCourseOfferingData.ichairObject.meeting_times = jsonResponse.meeting_times;
+							_this.cancelMeetingsForm();
+						},
+						error: function (jqXHR, exception) {
+							// https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+							console.log(jqXHR);
+							_this.meetingFormErrorMessage = 'Sorry, there appears to have been an error.'
 						}
 					});
 				}
@@ -488,7 +468,6 @@
 						)
 					}
 				});
-				console.log('daySchedules: ', daySchedules);
 				return {
 					timesOK: timesOK,
 					errorMessage: timesOK ? '' : 'Time blocks for a given day within a course offering cannot overlap.'
@@ -515,8 +494,7 @@
 			},
 
 			greet: function (name) {
-				console.log('Hello from ' + name + '!');
-				console.log('course data: ', this.courseData);
+				//console.log('Hello from ' + name + '!');
 			},
 			// https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
 			showColumn(col) {
@@ -537,9 +515,6 @@
 			}
 		},
 		mounted: function () {
-			console.log('mounted!');
-			console.log("message: ", this.message);
-			console.log("courses: ", this.courses);
 			var _this = this;
 			$.ajax({                       // initialize an AJAX request
 				type: "GET",
@@ -550,11 +525,6 @@
 					'yearId': json_data.yearId
 				},
 				success: function (incomingData) {
-					console.log(incomingData);
-					console.log('success!');
-					console.log('incoming data: ', incomingData);
-					console.log('message: ', _this.message);
-					console.log('courses: ', _this.courses);
 					// https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
 					incomingData.course_data.forEach(course => {
 						_this.courses.push({
@@ -571,18 +541,6 @@
 						});
 					});
 
-					console.log(_this.courses);
-
-
-
-					//if (!data.success) {
-					//	document.getElementById('error-message-container').style.display = 'block';
-					//console.log('got here');
-					//document.getElementById('message-about-errors').style.display = 'none';
-					//	$("#error-message").html(data.message);
-					//} else {
-					//	window.location=redirectUrl;
-					//}
 				}
 			});
 		}

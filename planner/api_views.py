@@ -17,8 +17,6 @@ def banner_comparison_data(request):
 
     department_id = request.GET.get('departmentId')
     year_id = request.GET.get('yearId')
-    print('dept: ', department_id)
-    print('year: ', year_id)
 
     semester_fractions = {
         'full': CourseOffering.FULL_SEMESTER,
@@ -43,14 +41,8 @@ def banner_comparison_data(request):
         co2meeting_times_list, co2room_list = class_time_and_room_summary(co2.scheduled_classes.all())
         instructors1 = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co1.offering_instructors.all()]
         instructors2 = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co2.offering_instructors.all()]
-        meeting_times_detail = []
-        for sc in co2.scheduled_classes.all():
-            meeting_times_detail.append({
-                "day": sc.day,
-                "begin_at": sc.begin_at,
-                "end_at": sc.end_at,
-                "id": sc.id
-            })
+        meeting_times_detail = construct_meeting_times_detail(co2)
+        
         course_data.append({
             "semester": 'Fall',
             "course_id": co1.course.id,
@@ -113,14 +105,7 @@ def banner_comparison_data(request):
     co = course.offerings.all()[num_offerings-1]
     meeting_times_list, room_list = class_time_and_room_summary(co1.scheduled_classes.all())
     instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co.offering_instructors.all()]
-    meeting_times_detail = []
-    for sc in co.scheduled_classes.all():
-        meeting_times_detail.append({
-            "day": sc.day,
-            "begin_at": sc.begin_at,
-            "end_at": sc.end_at,
-            "id": sc.id
-        })
+    meeting_times_detail = construct_meeting_times_detail(co)
    
     course_data.append({
         "semester": 'Spring',
@@ -145,8 +130,6 @@ def banner_comparison_data(request):
         "crn": None
     })
 
-    #print(course_data)
-
     data = {
         "message": "hello!",
         "course_data": course_data,
@@ -154,35 +137,36 @@ def banner_comparison_data(request):
     }
     return JsonResponse(data)
 
+def construct_meeting_times_detail(course_offering):
+    meeting_times_detail = []
+    for sc in course_offering.scheduled_classes.all():
+        meeting_times_detail.append({
+            "day": sc.day,
+            "begin_at": sc.begin_at,
+            "end_at": sc.end_at,
+            "id": sc.id
+        })
+    return meeting_times_detail
 
 @login_required
 @csrf_exempt
 def update_class_schedule_api(request):
     """Update the class schedule for a course offering.  Can do any combination of delete, create and update."""
-    user = request.user
-    user_preferences = user.user_preferences.all()[0]
+    #user = request.user
+    #user_preferences = user.user_preferences.all()[0]
 
     json_data=json.loads(request.body)
     
-    print(json_data)
-
     course_offering_id = json_data['courseOfferingId']
     delete_ids = json_data['delete']
     update_dict = json_data['update']
     create_dict = json_data['create']
-    #meetings_to_delete = request.POST.get('delete')
-
+ 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
     except:
         course_offering = None
-
-    print(course_offering_id)
-
-
-    print(delete_ids)
-    print(update_dict)
-    print(create_dict)
+        print('could not find the course offering....')
 
     # delete scheduled classes
     deletes_successful = True
@@ -193,8 +177,6 @@ def update_class_schedule_api(request):
         except ScheduledClass.DoesNotExist:
             print('unable to delete scheduled class id = ', delete_id,'; it may be that the object no longer exists.')
             deletes_successful = False
-
-    print('deletes successful: ', deletes_successful)
 
     # define a regular expression to use for matching times....
     # https://docs.python.org/3/howto/regex.html#matching-characters
@@ -217,7 +199,7 @@ def update_class_schedule_api(request):
                 updates_successful = False
         except:
             updates_successful = False
-            pass
+            print('not able to complete class schedule updates')
         
     # now create new scheduled classes
     if course_offering:
@@ -234,29 +216,26 @@ def update_class_schedule_api(request):
                         end_at = meeting['end_at'])
                 sc.save()
             else:
-                updates_successful = False
+                creates_successful = False
+                print('not able to create new scheduled classes')
     else:
         creates_successful = False
 
+    # now retrieve the scheduled classes from the db again
+    if course_offering:
+        meeting_times_list, room_list = class_time_and_room_summary(course_offering.scheduled_classes.all())
+        meeting_times_detail = construct_meeting_times_detail(course_offering)
+    else:
+        meeting_times_list = []
+        meeting_times_detail = []
 
-
-    #co = CourseOffering.objects.create(course = course,
-    #                                           semester = semester_object,
-    ##                                           load_available = float(load_list[ii]),
-    #                                           max_enrollment = int(max_enrollment),
-    #                                           comment = ''
-    #                                           )
-    #        co.save()
-    #schedule_addition = ScheduledClass.objects.create(course_offering = co_empty,
-    #                                                          day = day,
-    ##                                                          begin_at = begin_time[:2]+':'+begin_time[2:],
-    #                                                          end_at = end_time[:2]+':'+end_time[2:],
-    #                                                          room = room,
-    #                                                          comment = ''
-    #                                                          )
-    #        schedule_addition.save()
-
-    data = {}
+    data = {
+        'updates_successful': updates_successful,
+        'creates_successful': creates_successful,
+        'deletes_successful': deletes_successful,
+        "meeting_times": meeting_times_list,
+        "meeting_times_detail": meeting_times_detail
+    }
 
     return JsonResponse(data)
 
