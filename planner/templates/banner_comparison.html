@@ -146,7 +146,7 @@
 													  <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept iChair Version </a>
 													</li>
 													<li>              
-															<a @click="editMeetingTimes(props.item.ichair.meeting_times_detail)"> Edit iChair Version</a>
+															<a @click="editMeetingTimes(props.item)"> Edit iChair Version</a>
 														  </li>
 												  </ul>
 											  </div> {# btn-group #}
@@ -156,6 +156,7 @@
 												
 												<div class="text-center">
 												  <v-dialog
+													persistent
 													v-model="dialog"
 													width="800"
 												  >
@@ -177,7 +178,7 @@
 														class="headline grey lighten-2"
 														primary-title
 													  >
-														Privacy Policy
+														[[dialogTitle]]
 													  </v-card-title>
 											  
 													  <v-card-text>
@@ -220,21 +221,34 @@
 																				
 																			</v-flex>
 																		</v-layout>
-																	</div>
 
-															
-															
-														
+																	</div>
+																	
+																	
+																	<v-layout text-center>
+																		<v-flex xs12>
+																			<div class="red--text" >[[meetingFormErrorMessage]]</div>
+																		</v-flex>
+																		
+																	</v-layout>
+																	
 
 															</v-container>
 															
-																			
+														
 													  </v-card-text>
 											  
 													  <v-divider></v-divider>
 											  
 													  <v-card-actions>
 														<v-spacer></v-spacer>
+														<v-btn
+														  color="primary"
+														  text
+														  @click="cancelMeetingsForm()"
+														>
+														  Cancel
+														</v-btn>
 														<v-btn
 														  color="primary"
 														  text
@@ -346,6 +360,7 @@
 				],
         		courses: [],
 				dialog: false,
+				dialogTitle: '',
 				editMeetings: [],
 				initialMeetingData: [],
 				meetingFormErrorMessage: '',
@@ -356,8 +371,10 @@
       },
       methods: {
 
-		  editMeetingTimes(meetingDetails) {
-			
+		  editMeetingTimes(courseInfo) {
+			this.dialogTitle = courseInfo.number+': '+courseInfo.name;
+			let meetingDetails = courseInfo.ichair.meeting_times_detail;
+			console.log(courseInfo);
 			this.dialog = true;
 			console.log(meetingDetails);
 			//trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
@@ -365,15 +382,8 @@
 			this.editMeetings.forEach(meeting => {
 				meeting.delete = false;
 			});
-			
-			//for (meeting in meetingDetails){
-			//	this.editMeetings.push(
-			//		JSON.parse(JSON.stringify(meeting))
-			//	)
-			//}
-			//this.editMeetings = meetingDetails;
+
 			this.initialMeetingData = meetingDetails;
-			
 			this.addMeetingTime();
 			this.addMeetingTime();
 			console.log(this.editMeetings);
@@ -391,13 +401,22 @@
 			)
 		  },
 
+		  cancelMeetingsForm() {
+			this.dialog = false;
+			this.editMeetings = [];
+			this.meetingFormErrorMessage = '';
+		  },
+
 		  submitMeetingsForm() {
 			console.log(this.editMeetings);
+			console.log('reentering the submit method');
 			//console.log(this.initialMeetingData);
 			//console.log(this.courses);
 			let meetingsToDelete = [];//list of ids
 			let meetingsToUpdate = [];//list of objects
 			let meetingsToCreate = [];//list of objects
+			let meetingsToLeave = [];//list of objects
+			this.meetingFormErrorMessage = '';
 			let formOK = true;
 			this.editMeetings.forEach(meeting => {
 				//console.log(meeting);
@@ -406,19 +425,21 @@
 				if ((meeting.id !== null) && (meeting.delete === true)) {
 					//console.log('delete: ', meeting.id);
 					meetingsToDelete.push(meeting.id);
-				} else {
+				} else if (meeting.delete === false) {
 					// check if need to make updates....
-					if ((meeting.begin_at !=='') && (meeting.end_at !=='')) {
+					if ((meeting.begin_at !=='') || (meeting.end_at !=='')) {
 						if (meeting.id === null) {
 							let checkTime = this.checkTimes(meeting.begin_at,meeting.end_at);
 							if (checkTime.timesOK) {
 								meetingsToCreate.push({
-									day: meeting.day,
+									day: parseInt(meeting.day),
 									begin_at: meeting.begin_at,
 									end_at: meeting.end_at
 								})
 							} else {
 								this.meetingFormErrorMessage = checkTime.errorMessage;
+								console.log(this.meetingFormErrorMessage);
+								formOK = false;
 							}
 						} else {
 							let checkTime = this.checkTimes(meeting.begin_at,meeting.end_at);
@@ -426,6 +447,8 @@
 							let timesIdentical = true;
 							if (!checkTime.timesOK) {
 								this.meetingFormErrorMessage = checkTime.errorMessage;
+								console.log(this.meetingFormErrorMessage);
+								formOK = false;
 							} else {
 								// now check if anything has been changed in the form;
 								// find the corresponding element in this.initialMeetingData and look for differences....
@@ -439,19 +462,31 @@
 								});
 
 								if (foundMeeting) {
-									timesIdentical = (matchingMeeting.day === meeting.day) && (matchingMeeting.begin_at === meeting.begin_at) && (matchingMeeting.end_at === meeting.end_at);
+									// meeting.day could come from the form, so it might be a string....
+									timesIdentical = (matchingMeeting.day === parseInt(meeting.day)) && (matchingMeeting.begin_at === meeting.begin_at) && (matchingMeeting.end_at === meeting.end_at);
 								} else {
 									console.log('something is wrong! cannot find the id for the update....')
 								}
 
 								if (!timesIdentical){
+									console.log(meeting.id,' ',matchingMeeting.day === parseInt(meeting.day), ' ', matchingMeeting.day,' ',meeting.day);
+									console.log(meeting.id,' ',matchingMeeting.begin_at === meeting.begin_at, ' ', matchingMeeting.begin_at,' ',meeting.begin_at);
+									console.log(meeting.id,' ',matchingMeeting.end_at === meeting.end_at, ' ', matchingMeeting.end_at,' ',meeting.end_at);
+
 									meetingsToUpdate.push({
 										id: meeting.id,
-										day: meeting.day,
+										day: parseInt(meeting.day),
 										begin_at: meeting.begin_at,
 										end_at: meeting.end_at
 									})
-								}	
+								} else {
+									meetingsToLeave.push({
+										id: meeting.id,
+										day: parseInt(meeting.day),
+										begin_at: meeting.begin_at,
+										end_at: meeting.end_at
+									})
+								}
 							} 
 						}
 
@@ -462,8 +497,28 @@
 			console.log('meetings to delete: ', meetingsToDelete);
 			console.log('meetings to create: ', meetingsToCreate);
 			console.log('meetings to update: ', meetingsToUpdate);
+			console.log('meetings to leave: ', meetingsToLeave);
+			console.log(this.meetingFormErrorMessage);
+			console.log(this.courses);
 
-
+			let meetingSummary = [];
+			meetingsToCreate.forEach(meeting => meetingSummary.push(meeting));
+			meetingsToUpdate.forEach(meeting => meetingSummary.push(meeting));
+			meetingsToLeave.forEach(meeting => meetingSummary.push(meeting));
+			
+			if (formOK) {
+				// everything else is OK, so check if the various times conflict with each other
+				let checkTimeOverlaps = this.checkTimeConflicts(meetingSummary);
+				if (!checkTimeOverlaps.timesOK) {
+					this.meetingFormErrorMessage = checkTimeOverlaps.errorMessage;
+					console.log(this.meetingFormErrorMessage);
+					formOK = false;
+				}
+			}
+			if (formOK) {
+				console.log('everything is good!')
+			}
+			
 			
 		  },
 
@@ -489,6 +544,36 @@
 				timesOK: true
 			}
 		  },
+
+		  checkTimeConflicts(meetingSummary) {
+			  daySchedules = {0: [], 1: [], 2: [], 3: [], 4: []};
+			  let timesOK = true;
+			  meetingSummary.forEach(meeting => {
+				  let begin = this.convertTimeStringToInt(meeting.begin_at);
+				  let end = this.convertTimeStringToInt(meeting.end_at);
+				  daySchedules[meeting.day].forEach(meetingTime => {
+					  let existingBegin = meetingTime.begin;
+					  let existingEnd = meetingTime.end;
+					  if (((begin < existingEnd) && (begin > existingBegin)) || ((end < existingEnd) && (end > existingBegin)) || ((begin <= existingBegin) && (end >= existingEnd))) {
+						  timesOK = false;
+					  }
+				  });
+				  if (timesOK) {
+					daySchedules[meeting.day].push(
+						{
+							begin: begin,
+							end: end
+						}
+					)
+				  }
+			  });
+			  console.log('daySchedules: ', daySchedules);
+			  return {
+				  timesOK: timesOK,
+				  errorMessage: timesOK ? '': 'Time blocks for a given day within a course offering cannot overlap.'
+			  }
+		  },
+
 		  timeStringValid(timeString) {
 			return /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/.test(timeString);
 		  },
