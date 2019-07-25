@@ -4,7 +4,9 @@
 {% block content %}
 {% load static %}
 <style>
-* {outline}
+	* {
+		outline
+	}
 </style>
 
 <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet">
@@ -14,7 +16,7 @@
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
 <script type='text/javascript'>
-	var json_data = {{ json_data|safe }};
+	var json_data = {{ json_data| safe }};
 </script>
 
 <div class="container">
@@ -25,322 +27,212 @@
 
 <div id="app">
 	<v-app>
-
-
-
-
 		<!-- https://stackoverflow.com/questions/52819619/understand-rows-per-page-items-at-vuetify-data-iterators-data-tables-can-i-->
 		<template>
-				
 			<template>
-					<v-toolbar flat color="white">
-						<v-toolbar-title>Course Offerings</v-toolbar-title>
-						<v-spacer></v-spacer>
-						<v-btn color="primary" dark @click="expand = !expand">
-							[[ expand ? 'Close' : 'Keep' ]] other rows
-						</v-btn>
-					</v-toolbar>
-			</template>	
-			<v-data-table
-			:headers="headers"
-			:items="courses"
-			:expand="expand"
-			:pagination.sync="pagination"
-			item-key="name"
-			class="elevation-1"
-			>
-
-		
-					  <!--
-			<template >
 				<v-toolbar flat color="white">
 					<v-toolbar-title>Course Offerings</v-toolbar-title>
 					<v-spacer></v-spacer>
 					<v-btn color="primary" dark @click="expand = !expand">
 						[[ expand ? 'Close' : 'Keep' ]] other rows
 					</v-btn>
-
-					<!--
-					<v-dialog v-model="dialog" max-width="500px">
-					
-						<template v-slot:activator="{ on }">
-						<v-btn color="primary" dark class="mb-2" v-on="on">New Item</v-btn>
-					</template>
-					
-					<v-card>
-						<v-card-title>
-						<span class="headline">{{ formTitle }}</span>
-						</v-card-title>
-			
-						<v-card-text>
-						<v-container grid-list-md>
-							<v-layout wrap>
-							<v-flex xs12 sm6 md4>
-								<v-text-field v-model="editedItem.name" label="Dessert name"></v-text-field>
-							</v-flex>
-							<v-flex xs12 sm6 md4>
-								<v-text-field v-model="editedItem.calories" label="Calories"></v-text-field>
-							</v-flex>
-							<v-flex xs12 sm6 md4>
-								<v-text-field v-model="editedItem.fat" label="Fat (g)"></v-text-field>
-							</v-flex>
-							<v-flex xs12 sm6 md4>
-								<v-text-field v-model="editedItem.carbs" label="Carbs (g)"></v-text-field>
-							</v-flex>
-							<v-flex xs12 sm6 md4>
-								<v-text-field v-model="editedItem.protein" label="Protein (g)"></v-text-field>
-							</v-flex>
-							</v-layout>
-						</v-container>
-						</v-card-text>
-			
-						<v-card-actions>
-						<v-spacer></v-spacer>
-						<v-btn color="blue darken-1" text @click="close">Cancel</v-btn>
-						<v-btn color="blue darken-1" text @click="save">Save</v-btn>
-						</v-card-actions>
-					</v-card>
-					</v-dialog>
-			
-					</v-toolbar>
-				  </template>
-				-->
-			<template v-slot:items="props">
-				<tr @click="props.expanded = !props.expanded" style="cursor: pointer;">
-				<td>[[props.item.semester]]  </td>
-				<td>[[props.item.crn]]  </td>
-				<td class="text-xs-left">[[props.item.number]]</td>
-				<td class="text-xs-left">[[props.item.name]] </td>
-				<td class="text-xs-center"><v-icon v-if="props.item.hasIChair">check_circle</v-icon></td>
-				<td class="text-xs-center"><v-icon v-if="props.item.hasBanner">check_circle</v-icon></td>
-				<td class="text-xs-center"><v-icon class="green--text" v-if="!props.item.needsWork">check_circle</v-icon></td>
+				</v-toolbar>
 			</template>
-			<template v-slot:expand="props">
+			<v-data-table :headers="headers" :items="courses" :expand="expand" :pagination.sync="pagination"
+				item-key="name" class="elevation-1">
+				<template v-slot:items="props">
+					<tr @click="props.expanded = !props.expanded" style="cursor: pointer;">
+						<td>[[props.item.semester]] </td>
+						<td>[[props.item.crn]] </td>
+						<td class="text-xs-left">[[props.item.number]]</td>
+						<td class="text-xs-left">[[props.item.name]] </td>
+						<td class="text-xs-center">
+							<v-icon v-if="props.item.hasIChair">check_circle</v-icon>
+						</td>
+						<td class="text-xs-center">
+							<v-icon v-if="props.item.hasBanner">check_circle</v-icon>
+						</td>
+						<td class="text-xs-center">
+							<v-icon class="green--text" v-if="!props.item.needsWork">check_circle</v-icon>
+						</td>
+				</template>
+				<template v-slot:expand="props">
 					<v-card flat>
-					  <v-card-text>
-						  <v-container>
-							<strong>[[props.item.name]]</strong>
-							<v-layout row wrap align-center>
-								<v-flex xs3>
-									<div v-if="props.item.hasIChair">
-										<div>iChair -- meeting time(s):</div>
-										<ul>
-											<li v-for="meetingTime in props.item.ichair.meeting_times">
+						<v-card-text>
+							<v-container>
+								<strong>[[props.item.name]]</strong>
+								<v-layout row wrap align-center>
+									<v-flex xs3>
+										<div v-if="props.item.hasIChair">
+											<div>iChair -- meeting time(s):</div>
+											<ul>
+												<li v-for="meetingTime in props.item.ichair.meeting_times">
 													[[meetingTime]]
-											</li>
-										</ul>
-									</div>
-								</v-flex>
-								
-								<v-flex xs1>
+												</li>
+											</ul>
+										</div>
+									</v-flex>
+
+									<v-flex xs1>
 										<div style="padding-bottom: 20px" class="btn-group">
-												<a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
-												  Actions
-												  <span class="caret"></span>
-												</a>
-												  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-													<li>              
-													  <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept Registrar Version </a>
-													</li>
-													<li>              
-													  <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept iChair Version </a>
-													</li>
-													<li>              
-															<a @click="editMeetingTimes(props.item)"> Edit iChair Version</a>
-														  </li>
-												  </ul>
-											  </div> {# btn-group #}
-
-
+											<a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
+												Actions
+												<span class="caret"></span>
+											</a>
+											<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+												<li>
+													<a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept
+														Registrar Version </a>
+												</li>
+												<li>
+													<a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept
+														iChair Version </a>
+												</li>
+												<li>
+													<a @click="editMeetingTimes(props.item)"> Edit iChair Version</a>
+												</li>
+											</ul>
+										</div> {# btn-group #}
 										<template>
-												
-												<div class="text-center">
-												  <v-dialog
-													persistent
-													v-model="dialog"
-													width="800"
-												  >
-													
-													  <!--
-
-													  <v-icon class="left"
-														color="blue"
-														dark
-														v-on="on"
-													  >
-														edit
-													  </v-icon>
-													-->
-												
-											  
+											<div class="text-center">
+												<v-dialog persistent v-model="dialog" width="800">
 													<v-card>
-													  <v-card-title
-														class="headline grey lighten-2"
-														primary-title
-													  >
-														[[dialogTitle]]
-													  </v-card-title>
-											  
-													  <v-card-text>
+														<v-card-title class="headline grey lighten-2" primary-title>
+															[[dialogTitle]]
+														</v-card-title>
+														<v-card-text>
 															<v-container grid-list-md>
+																<v-layout wrap>
+																	<v-flex xs4>Day</v-flex>
+																	<v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
+																	<v-flex xs3>End Time (e.g., 13:50)</v-flex>
+																	<v-flex xs2>Delete</v-flex>
+																</v-layout>
+																<div v-for="meetingTimeDetail in editMeetings">
 																	<v-layout wrap>
-																		<v-flex xs4>Day</v-flex>
-																		<v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
-																		<v-flex xs3>End Time (e.g., 13:50)</v-flex>
-																		<v-flex xs2>Delete</v-flex>
-																	</v-layout>
-																	<div v-for="meetingTimeDetail in editMeetings">
-																		
-																		<v-layout wrap>
-																			<v-flex xs4>
-																			
-																					<select style="border-style: solid; height: 32px;" id="day_select" v-model="meetingTimeDetail.day">
-																						<option value="0">Monday</option>
-																						<option value="1">Tuesday</option>
-																						<option value="2">Wednesday</option>
-																						<option value="3">Thursday</option>
-																						<option value="4">Friday</option>
-																					</select>
-																				
-																			</v-flex>
-																			<v-flex xs3>
-																			
-																					<input style="height: 32px; width: 140px;" type="text" v-model="meetingTimeDetail.begin_at">
-																				
-																			</v-flex>
-																			<v-flex xs3>
-																			
-																					
-																					<input style="height: 32px; width: 140px;" type="text" v-model="meetingTimeDetail.end_at">
-																				
-																			</v-flex>
-																			<v-flex xs2>
-																			
-																					
-																					<input type="checkbox" v-model="meetingTimeDetail.delete">
-																				
-																			</v-flex>
-																		</v-layout>
+																		<v-flex xs4>
 
-																	</div>
-																	
-																	
-																	<v-layout text-center>
-																		<v-flex xs12>
-																			<div class="red--text" >[[meetingFormErrorMessage]]</div>
+																			<select
+																				style="border-style: solid; height: 32px;"
+																				id="day_select"
+																				v-model="meetingTimeDetail.day">
+																				<option value="0">Monday</option>
+																				<option value="1">Tuesday</option>
+																				<option value="2">Wednesday</option>
+																				<option value="3">Thursday</option>
+																				<option value="4">Friday</option>
+																			</select>
 																		</v-flex>
-																		
+																		<v-flex xs3>
+																			<input style="height: 32px; width: 140px;"
+																				type="text"
+																				v-model="meetingTimeDetail.begin_at">
+																		</v-flex>
+																		<v-flex xs3>
+																			<input style="height: 32px; width: 140px;"
+																				type="text"
+																				v-model="meetingTimeDetail.end_at">
+																		</v-flex>
+																		<v-flex xs2>
+																			<input type="checkbox"
+																				v-model="meetingTimeDetail.delete">
+																		</v-flex>
 																	</v-layout>
-																	
-
+																</div>
+																<v-layout text-center>
+																	<v-flex xs12>
+																		<div class="red--text">
+																			[[meetingFormErrorMessage]]</div>
+																	</v-flex>
+																</v-layout>
 															</v-container>
-															
-														
-													  </v-card-text>
-											  
-													  <v-divider></v-divider>
-											  
-													  <v-card-actions>
-														<v-spacer></v-spacer>
-														<v-btn
-														  color="primary"
-														  text
-														  @click="cancelMeetingsForm()"
-														>
-														  Cancel
-														</v-btn>
-														<v-btn
-														  color="primary"
-														  text
-														  @click="submitMeetingsForm()"
-														>
-														  Submit
-														</v-btn>
-													  </v-card-actions>
+														</v-card-text>
+														<v-divider></v-divider>
+														<v-card-actions>
+															<v-spacer></v-spacer>
+															<v-btn color="primary" text @click="cancelMeetingsForm()">
+																Cancel
+															</v-btn>
+															<v-btn color="primary" text @click="submitMeetingsForm()">
+																Submit
+															</v-btn>
+														</v-card-actions>
 													</v-card>
-												  </v-dialog>
-												</div>
-											  </template>
-											  
-											 
-
-
-								</v-flex>
-								<v-flex xs3 offset-xs2>
-									<div v-if="props.item.hasIChair">
-										<div>iChair -- instructor(s):</div>
-										<ul>
-											<li v-for="instructor in props.item.ichair.instructors">
+												</v-dialog>
+											</div>
+										</template>
+									</v-flex>
+									<v-flex xs3 offset-xs2>
+										<div v-if="props.item.hasIChair">
+											<div>iChair -- instructor(s):</div>
+											<ul>
+												<li v-for="instructor in props.item.ichair.instructors">
 													[[instructor]]
+												</li>
+											</ul>
+										</div>
+									</v-flex>
+									<div style="padding-bottom: 20px" class="btn-group">
+										<a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
+											Actions
+											<span class="caret"></span>
+										</a>
+										<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+											<li>
+												<a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept
+													Registrar Version</a>
+											</li>
+											<li>
+												<a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept
+													iChair Version </a>
+											</li>
+											<li>
+												<a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Edit iChair
+													Version</a>
 											</li>
 										</ul>
-									</div>
-								</v-flex>
-
-								<div style="padding-bottom: 20px" class="btn-group">
-										<a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
-										  Actions
-										  <span class="caret"></span>
-										</a>
-										  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-											<li>              
-											  <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept Registrar Version</a>
-											</li>
-											<li>              
-											  <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept iChair Version </a>
-											</li>
-											<li>              
-													<a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Edit iChair Version</a>
-												  </li>
-										  </ul>
-									  </div> {# btn-group #}
-					
-
-							</v-layout>
-							<v-layout row wrap>
-								<v-flex xs3>
-									<div v-if="props.item.hasBanner">
+									</div> {# btn-group #}
+								</v-layout>
+								<v-layout row wrap>
+									<v-flex xs3>
+										<div v-if="props.item.hasBanner">
 											<div>Registrar -- meeting time(s):</div>
 											<ul>
 												<li v-for="meetingTime in props.item.banner.meeting_times">
 													[[meetingTime]]
 												</li>
 											</ul>
-									</div>
-								</v-flex>
-								<v-flex xs3></v-flex>
-								<v-flex xs3>
+										</div>
+									</v-flex>
+									<v-flex xs3></v-flex>
+									<v-flex xs3>
 										<div v-if="props.item.hasBanner">
 											<div>Registrar -- instructor(s):</div>
 											<ul>
 												<li v-for="instructor in props.item.banner.instructors">
-													  [[instructor]]
+													[[instructor]]
 												</li>
 											</ul>
 										</div>
-								</v-flex>
-								<v-flex xs3></v-flex>
-							</v-layout>
-						  </v-container>
-						  
-						
-
-					  </v-card-text>
+									</v-flex>
+									<v-flex xs3></v-flex>
+								</v-layout>
+							</v-container>
+						</v-card-text>
 					</v-card>
-				  </template>
+				</template>
 			</v-data-table>
-			
 		</template>
 	</v-app>
 </div>
 
 <script>
-    var app = new Vue({
-      delimiters: ['[[', ']]'],
-      el: '#app',
-      data() {
-		  return {
-		  		expand: false,
+	var app = new Vue({
+		delimiters: ['[[', ']]'],
+		el: '#app',
+		data() {
+			return {
+				expand: false,
 				message: 'Hello Vue!',
 				search: '',
 				json_data: json_data,
@@ -353,12 +245,12 @@
 						sortable: true,
 						value: 'number'
 					},
-					{ text: 'Name', value: 'name' , align: 'left'},
+					{ text: 'Name', value: 'name', align: 'left' },
 					{ text: 'In iChair', value: 'ichair', align: 'center' },
 					{ text: 'In Banner', value: 'banner', align: 'center' },
-					{ text: 'Done?', value: 'linked', align: 'center'  }
+					{ text: 'Done?', value: 'linked', align: 'center' }
 				],
-        		courses: [],
+				courses: [],
 				dialog: false,
 				dialogTitle: '',
 				editMeetings: [],
@@ -367,260 +259,260 @@
 				pagination: {
 					rowsPerPage: 20
 				}
-		  };
-      },
-      methods: {
+			};
+		},
+		methods: {
 
-		  editMeetingTimes(courseInfo) {
-			this.dialogTitle = courseInfo.number+': '+courseInfo.name;
-			let meetingDetails = courseInfo.ichair.meeting_times_detail;
-			console.log(courseInfo);
-			this.dialog = true;
-			console.log(meetingDetails);
-			//trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
-			this.editMeetings = JSON.parse(JSON.stringify(meetingDetails));
-			this.editMeetings.forEach(meeting => {
-				meeting.delete = false;
-			});
+			editMeetingTimes(courseInfo) {
+				this.dialogTitle = courseInfo.number + ': ' + courseInfo.name;
+				let meetingDetails = courseInfo.ichair.meeting_times_detail;
+				console.log(courseInfo);
+				this.dialog = true;
+				console.log(meetingDetails);
+				//trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
+				this.editMeetings = JSON.parse(JSON.stringify(meetingDetails));
+				this.editMeetings.forEach(meeting => {
+					meeting.delete = false;
+				});
 
-			this.initialMeetingData = meetingDetails;
-			this.addMeetingTime();
-			this.addMeetingTime();
-			console.log(this.editMeetings);
-		  },
+				this.initialMeetingData = meetingDetails;
+				this.addMeetingTime();
+				this.addMeetingTime();
+				console.log(this.editMeetings);
+			},
 
-		  addMeetingTime() {
-			this.editMeetings.push(
-				{
-					delete: false,
-					day: 0,
-					begin_at: "",
-					end_at: "",
-					id: null
-				}
-			)
-		  },
+			addMeetingTime() {
+				this.editMeetings.push(
+					{
+						delete: false,
+						day: 0,
+						begin_at: "",
+						end_at: "",
+						id: null
+					}
+				)
+			},
 
-		  cancelMeetingsForm() {
-			this.dialog = false;
-			this.editMeetings = [];
-			this.meetingFormErrorMessage = '';
-		  },
+			cancelMeetingsForm() {
+				this.dialog = false;
+				this.editMeetings = [];
+				this.meetingFormErrorMessage = '';
+			},
 
-		  submitMeetingsForm() {
-			console.log(this.editMeetings);
-			console.log('reentering the submit method');
-			//console.log(this.initialMeetingData);
-			//console.log(this.courses);
-			let meetingsToDelete = [];//list of ids
-			let meetingsToUpdate = [];//list of objects
-			let meetingsToCreate = [];//list of objects
-			let meetingsToLeave = [];//list of objects
-			this.meetingFormErrorMessage = '';
-			let formOK = true;
-			this.editMeetings.forEach(meeting => {
-				//console.log(meeting);
-				//console.log(meeting.id);
-				//console.log(meeting.delete);
-				if ((meeting.id !== null) && (meeting.delete === true)) {
-					//console.log('delete: ', meeting.id);
-					meetingsToDelete.push(meeting.id);
-				} else if (meeting.delete === false) {
-					// check if need to make updates....
-					if ((meeting.begin_at !=='') || (meeting.end_at !=='')) {
-						if (meeting.id === null) {
-							let checkTime = this.checkTimes(meeting.begin_at,meeting.end_at);
-							if (checkTime.timesOK) {
-								meetingsToCreate.push({
-									day: parseInt(meeting.day),
-									begin_at: meeting.begin_at,
-									end_at: meeting.end_at
-								})
+			submitMeetingsForm() {
+				console.log(this.editMeetings);
+				console.log('reentering the submit method');
+				//console.log(this.initialMeetingData);
+				//console.log(this.courses);
+				let meetingsToDelete = [];//list of ids
+				let meetingsToUpdate = [];//list of objects
+				let meetingsToCreate = [];//list of objects
+				let meetingsToLeave = [];//list of objects
+				this.meetingFormErrorMessage = '';
+				let formOK = true;
+				this.editMeetings.forEach(meeting => {
+					//console.log(meeting);
+					//console.log(meeting.id);
+					//console.log(meeting.delete);
+					if ((meeting.id !== null) && (meeting.delete === true)) {
+						//console.log('delete: ', meeting.id);
+						meetingsToDelete.push(meeting.id);
+					} else if (meeting.delete === false) {
+						// check if need to make updates....
+						if ((meeting.begin_at !== '') || (meeting.end_at !== '')) {
+							if (meeting.id === null) {
+								let checkTime = this.checkTimes(meeting.begin_at, meeting.end_at);
+								if (checkTime.timesOK) {
+									meetingsToCreate.push({
+										day: parseInt(meeting.day),
+										begin_at: meeting.begin_at,
+										end_at: meeting.end_at
+									})
+								} else {
+									this.meetingFormErrorMessage = checkTime.errorMessage;
+									console.log(this.meetingFormErrorMessage);
+									formOK = false;
+								}
 							} else {
-								this.meetingFormErrorMessage = checkTime.errorMessage;
-								console.log(this.meetingFormErrorMessage);
-								formOK = false;
-							}
-						} else {
-							let checkTime = this.checkTimes(meeting.begin_at,meeting.end_at);
-							// now check if anything is different....
-							let timesIdentical = true;
-							if (!checkTime.timesOK) {
-								this.meetingFormErrorMessage = checkTime.errorMessage;
-								console.log(this.meetingFormErrorMessage);
-								formOK = false;
-							} else {
-								// now check if anything has been changed in the form;
-								// find the corresponding element in this.initialMeetingData and look for differences....
-								let foundMeeting = false;
-								let matchingMeeting = null;
-								this.initialMeetingData.forEach(initialData => {
-									if (initialData.id === meeting.id) {
-										foundMeeting = true;
-										matchingMeeting = initialData;
+								let checkTime = this.checkTimes(meeting.begin_at, meeting.end_at);
+								// now check if anything is different....
+								let timesIdentical = true;
+								if (!checkTime.timesOK) {
+									this.meetingFormErrorMessage = checkTime.errorMessage;
+									console.log(this.meetingFormErrorMessage);
+									formOK = false;
+								} else {
+									// now check if anything has been changed in the form;
+									// find the corresponding element in this.initialMeetingData and look for differences....
+									let foundMeeting = false;
+									let matchingMeeting = null;
+									this.initialMeetingData.forEach(initialData => {
+										if (initialData.id === meeting.id) {
+											foundMeeting = true;
+											matchingMeeting = initialData;
+										}
+									});
+
+									if (foundMeeting) {
+										// meeting.day could come from the form, so it might be a string....
+										timesIdentical = (matchingMeeting.day === parseInt(meeting.day)) && (matchingMeeting.begin_at === meeting.begin_at) && (matchingMeeting.end_at === meeting.end_at);
+									} else {
+										console.log('something is wrong! cannot find the id for the update....')
 									}
-								});
 
-								if (foundMeeting) {
-									// meeting.day could come from the form, so it might be a string....
-									timesIdentical = (matchingMeeting.day === parseInt(meeting.day)) && (matchingMeeting.begin_at === meeting.begin_at) && (matchingMeeting.end_at === meeting.end_at);
-								} else {
-									console.log('something is wrong! cannot find the id for the update....')
+									if (!timesIdentical) {
+										console.log(meeting.id, ' ', matchingMeeting.day === parseInt(meeting.day), ' ', matchingMeeting.day, ' ', meeting.day);
+										console.log(meeting.id, ' ', matchingMeeting.begin_at === meeting.begin_at, ' ', matchingMeeting.begin_at, ' ', meeting.begin_at);
+										console.log(meeting.id, ' ', matchingMeeting.end_at === meeting.end_at, ' ', matchingMeeting.end_at, ' ', meeting.end_at);
+
+										meetingsToUpdate.push({
+											id: meeting.id,
+											day: parseInt(meeting.day),
+											begin_at: meeting.begin_at,
+											end_at: meeting.end_at
+										})
+									} else {
+										meetingsToLeave.push({
+											id: meeting.id,
+											day: parseInt(meeting.day),
+											begin_at: meeting.begin_at,
+											end_at: meeting.end_at
+										})
+									}
 								}
+							}
 
-								if (!timesIdentical){
-									console.log(meeting.id,' ',matchingMeeting.day === parseInt(meeting.day), ' ', matchingMeeting.day,' ',meeting.day);
-									console.log(meeting.id,' ',matchingMeeting.begin_at === meeting.begin_at, ' ', matchingMeeting.begin_at,' ',meeting.begin_at);
-									console.log(meeting.id,' ',matchingMeeting.end_at === meeting.end_at, ' ', matchingMeeting.end_at,' ',meeting.end_at);
-
-									meetingsToUpdate.push({
-										id: meeting.id,
-										day: parseInt(meeting.day),
-										begin_at: meeting.begin_at,
-										end_at: meeting.end_at
-									})
-								} else {
-									meetingsToLeave.push({
-										id: meeting.id,
-										day: parseInt(meeting.day),
-										begin_at: meeting.begin_at,
-										end_at: meeting.end_at
-									})
-								}
-							} 
 						}
+					}
+				});
 
+				console.log('meetings to delete: ', meetingsToDelete);
+				console.log('meetings to create: ', meetingsToCreate);
+				console.log('meetings to update: ', meetingsToUpdate);
+				console.log('meetings to leave: ', meetingsToLeave);
+				console.log(this.meetingFormErrorMessage);
+				console.log(this.courses);
+
+				let meetingSummary = [];
+				meetingsToCreate.forEach(meeting => meetingSummary.push(meeting));
+				meetingsToUpdate.forEach(meeting => meetingSummary.push(meeting));
+				meetingsToLeave.forEach(meeting => meetingSummary.push(meeting));
+
+				if (formOK) {
+					// everything else is OK, so check if the various times conflict with each other
+					let checkTimeOverlaps = this.checkTimeConflicts(meetingSummary);
+					if (!checkTimeOverlaps.timesOK) {
+						this.meetingFormErrorMessage = checkTimeOverlaps.errorMessage;
+						console.log(this.meetingFormErrorMessage);
+						formOK = false;
 					}
 				}
-			});
-
-			console.log('meetings to delete: ', meetingsToDelete);
-			console.log('meetings to create: ', meetingsToCreate);
-			console.log('meetings to update: ', meetingsToUpdate);
-			console.log('meetings to leave: ', meetingsToLeave);
-			console.log(this.meetingFormErrorMessage);
-			console.log(this.courses);
-
-			let meetingSummary = [];
-			meetingsToCreate.forEach(meeting => meetingSummary.push(meeting));
-			meetingsToUpdate.forEach(meeting => meetingSummary.push(meeting));
-			meetingsToLeave.forEach(meeting => meetingSummary.push(meeting));
-			
-			if (formOK) {
-				// everything else is OK, so check if the various times conflict with each other
-				let checkTimeOverlaps = this.checkTimeConflicts(meetingSummary);
-				if (!checkTimeOverlaps.timesOK) {
-					this.meetingFormErrorMessage = checkTimeOverlaps.errorMessage;
-					console.log(this.meetingFormErrorMessage);
-					formOK = false;
+				if (formOK) {
+					console.log('everything is good!')
 				}
-			}
-			if (formOK) {
-				console.log('everything is good!')
-			}
-			
-			
-		  },
 
-		  checkTimes(beginTime, endTime) {
-			let beginValid = this.timeStringValid(beginTime);
-			let endValid = this.timeStringValid(endTime);
-			
-			if (!(beginValid && endValid)) {
-				return {
-					errorMessage: 'Beginning and ending times must be in the correct format.',
-					timesOK: false
-				}
-			} else {
-				if (!this.timeSeqOK(beginTime, endTime)) {
+
+			},
+
+			checkTimes(beginTime, endTime) {
+				let beginValid = this.timeStringValid(beginTime);
+				let endValid = this.timeStringValid(endTime);
+
+				if (!(beginValid && endValid)) {
 					return {
-						errorMessage: 'Ending time must be after beginning time.',
+						errorMessage: 'Beginning and ending times must be in the correct format.',
 						timesOK: false
 					}
-				}
-			}
-			return {
-				errorMessage: '',
-				timesOK: true
-			}
-		  },
-
-		  checkTimeConflicts(meetingSummary) {
-			  daySchedules = {0: [], 1: [], 2: [], 3: [], 4: []};
-			  let timesOK = true;
-			  meetingSummary.forEach(meeting => {
-				  let begin = this.convertTimeStringToInt(meeting.begin_at);
-				  let end = this.convertTimeStringToInt(meeting.end_at);
-				  daySchedules[meeting.day].forEach(meetingTime => {
-					  let existingBegin = meetingTime.begin;
-					  let existingEnd = meetingTime.end;
-					  if (((begin < existingEnd) && (begin > existingBegin)) || ((end < existingEnd) && (end > existingBegin)) || ((begin <= existingBegin) && (end >= existingEnd))) {
-						  timesOK = false;
-					  }
-				  });
-				  if (timesOK) {
-					daySchedules[meeting.day].push(
-						{
-							begin: begin,
-							end: end
+				} else {
+					if (!this.timeSeqOK(beginTime, endTime)) {
+						return {
+							errorMessage: 'Ending time must be after beginning time.',
+							timesOK: false
 						}
-					)
-				  }
-			  });
-			  console.log('daySchedules: ', daySchedules);
-			  return {
-				  timesOK: timesOK,
-				  errorMessage: timesOK ? '': 'Time blocks for a given day within a course offering cannot overlap.'
-			  }
-		  },
+					}
+				}
+				return {
+					errorMessage: '',
+					timesOK: true
+				}
+			},
 
-		  timeStringValid(timeString) {
-			return /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/.test(timeString);
-		  },
+			checkTimeConflicts(meetingSummary) {
+				daySchedules = { 0: [], 1: [], 2: [], 3: [], 4: [] };
+				let timesOK = true;
+				meetingSummary.forEach(meeting => {
+					let begin = this.convertTimeStringToInt(meeting.begin_at);
+					let end = this.convertTimeStringToInt(meeting.end_at);
+					daySchedules[meeting.day].forEach(meetingTime => {
+						let existingBegin = meetingTime.begin;
+						let existingEnd = meetingTime.end;
+						if (((begin < existingEnd) && (begin > existingBegin)) || ((end < existingEnd) && (end > existingBegin)) || ((begin <= existingBegin) && (end >= existingEnd))) {
+							timesOK = false;
+						}
+					});
+					if (timesOK) {
+						daySchedules[meeting.day].push(
+							{
+								begin: begin,
+								end: end
+							}
+						)
+					}
+				});
+				console.log('daySchedules: ', daySchedules);
+				return {
+					timesOK: timesOK,
+					errorMessage: timesOK ? '' : 'Time blocks for a given day within a course offering cannot overlap.'
+				}
+			},
 
-		  timeSeqOK(beginTimeString, endTimeString) {
-			return this.convertTimeStringToInt(endTimeString) > this.convertTimeStringToInt(beginTimeString);
-		  },
+			timeStringValid(timeString) {
+				return /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/.test(timeString);
+			},
 
-		  convertTimeStringToInt(timeString) {
-			let multiplicativeFactors = [10000,100,1];
-			let timeSum = 0;
-			let timeSplit = timeString.split(':');
-			// https://www.w3schools.com/jsref/jsref_parseint.asp
-			for (var i=0; i < timeSplit.length; i++) {
-				timeSum+=multiplicativeFactors[i]*parseInt(timeSplit[i]);
-			}
-			return timeSum;
-		  },
+			timeSeqOK(beginTimeString, endTimeString) {
+				return this.convertTimeStringToInt(endTimeString) > this.convertTimeStringToInt(beginTimeString);
+			},
 
-          greet: function(name) {
-              console.log('Hello from ' + name + '!');
-			  console.log('course data: ', this.courseData);
-          },
-		  // https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
-		  showColumn(col){
-			return this.headers.find(h => h.value === col).selected
-		  },
-		  toggle(col) {
-			let tempSelected = this.headers.find(h => h.value === col).selected;
-			this.headers.find(h => h.value === col).selected = !tempSelected;
-		  },
-      },
-	  // https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
-	  computed:{
-  		filteredHeaders(){
-    		return this.headers.filter(h => h.selected)
+			convertTimeStringToInt(timeString) {
+				let multiplicativeFactors = [10000, 100, 1];
+				let timeSum = 0;
+				let timeSplit = timeString.split(':');
+				// https://www.w3schools.com/jsref/jsref_parseint.asp
+				for (var i = 0; i < timeSplit.length; i++) {
+					timeSum += multiplicativeFactors[i] * parseInt(timeSplit[i]);
+				}
+				return timeSum;
+			},
+
+			greet: function (name) {
+				console.log('Hello from ' + name + '!');
+				console.log('course data: ', this.courseData);
+			},
+			// https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
+			showColumn(col) {
+				return this.headers.find(h => h.value === col).selected
+			},
+			toggle(col) {
+				let tempSelected = this.headers.find(h => h.value === col).selected;
+				this.headers.find(h => h.value === col).selected = !tempSelected;
+			},
 		},
-		checkboxVal(col) {
-			return this.headers.find(h => h.value === col).selected;
-		}
-	  },
-	  mounted: function(){
-		  console.log('mounted!');
-		  console.log("message: ", this.message);
-		  console.log("courses: ", this.courses);
-		  var _this = this;
-		  $.ajax({                       // initialize an AJAX request
+		// https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
+		computed: {
+			filteredHeaders() {
+				return this.headers.filter(h => h.selected)
+			},
+			checkboxVal(col) {
+				return this.headers.find(h => h.value === col).selected;
+			}
+		},
+		mounted: function () {
+			console.log('mounted!');
+			console.log("message: ", this.message);
+			console.log("courses: ", this.courses);
+			var _this = this;
+			$.ajax({                       // initialize an AJAX request
 				type: "GET",
 				url: "/planner/ajax/fetch-banner-comparison-data/",                    // set the url of the request
 				dataType: 'json',
@@ -664,8 +556,8 @@
 					//}
 				}
 			});
-	  }
-    });
+		}
+	});
 </script>
 
 
@@ -677,10 +569,11 @@
 <!-- https://stackoverflow.com/questions/49421170/change-font-size-of-v-radio-vuetify?rq=1 -->
 <style scoped>
 	.v-label {
-    	font-size: 14px;
+		font-size: 14px;
 		margin-left: 2px;
 	}
-  	.v-input input {
+
+	.v-input input {
 		height: 32px;
 		margin-bottom: 4px;
 	}
@@ -689,12 +582,13 @@
 
 
 
-<script>    
+<script>
 	//window.addEventListener("resize",function(){alertMessage();},true);
-	$(window).load(function(){
-	$("#nav-bannercomparison").addClass("current");
-	$('.page-name').find('h1').replaceWith('<h1>Banner Comparison</h1><h2>{{department}}, {{academic_year_string}}</h2>');
-	$(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+	$(window).load(function () {
+		$("#nav-bannercomparison").addClass("current");
+		$('.page-name').find('h1').replaceWith('<h1>Banner Comparison</h1><h2>{{department}}, {{academic_year_string}}</h2>');
+		$(".page-name").stop().animate({ opacity: 1, 'margin-left': '5%' }, 700);
+	});
 </script>
 
 
