@@ -45,6 +45,7 @@ urlpatterns = [
 
     url(r'^bannercomparison/$', myapp_views.compare_with_banner, name='compare_with_banner'),
     url(r'^ajax/fetch-banner-comparison-data/$', api_views.banner_comparison_data, name='banner_comparison_data'),
+    url(r'^ajax/update-class-schedule/$', api_views.update_class_schedule_api, name='update_class_schedule_api'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', myapp_views.choose_year_course_copy, name='choose_year_course_copy'),

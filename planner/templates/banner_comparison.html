@@ -251,11 +251,12 @@
 					{ text: 'Done?', value: 'linked', align: 'center' }
 				],
 				courses: [],
-				dialog: false,
+				dialog: false, // true when the dialog is being displayed
 				dialogTitle: '',
-				editMeetings: [],
-				initialMeetingData: [],
-				meetingFormErrorMessage: '',
+				editMeetings: [], // used to store the data in the class schedule form
+				editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule form
+				initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
+				meetingFormErrorMessage: '',// used to display errors in the class scheduling form
 				pagination: {
 					rowsPerPage: 20
 				}
@@ -264,6 +265,9 @@
 		methods: {
 
 			editMeetingTimes(courseInfo) {
+				this.editCourseOfferingData = {
+					'courseOfferingId': courseInfo.ichair.course_offering_id
+				}
 				this.dialogTitle = courseInfo.number + ': ' + courseInfo.name;
 				let meetingDetails = courseInfo.ichair.meeting_times_detail;
 				console.log(courseInfo);
@@ -297,6 +301,7 @@
 				this.dialog = false;
 				this.editMeetings = [];
 				this.meetingFormErrorMessage = '';
+				this.editCourseOfferingData = {};
 			},
 
 			submitMeetingsForm() {
@@ -407,8 +412,32 @@
 						formOK = false;
 					}
 				}
-				if (formOK) {
-					console.log('everything is good!')
+
+				let numChanges = meetingsToCreate.length + meetingsToUpdate.length + meetingsToDelete.length;
+
+				if (formOK && numChanges > 0) {
+					console.log('everything is good!');
+					console.log('co id: ', this.editCourseOfferingData.courseOfferingId );
+					console.log(typeof(this.editCourseOfferingData.courseOfferingId ));
+					// now post the data...
+					//var _this = this;
+					let data_for_post = {
+						'courseOfferingId': this.editCourseOfferingData.courseOfferingId,
+						'delete': meetingsToDelete,
+						'update': meetingsToUpdate,
+						'create': meetingsToCreate
+					}
+					// https://stackoverflow.com/questions/53714037/decoding-django-post-request-body
+					// https://stackoverflow.com/questions/1208067/wheres-my-json-data-in-my-incoming-django-request
+					$.ajax({                       // initialize an AJAX request
+						type: "POST",
+						url: "/planner/ajax/update-class-schedule/",               
+						dataType: 'json',
+						data: JSON.stringify(data_for_post),
+						success: function (jsonResponse) {
+							console.log('response: ', jsonResponse);
+						}
+					});
 				}
 
 
@@ -578,8 +607,6 @@
 		margin-bottom: 4px;
 	}
 </style>
-
-
 
 
 <script>
