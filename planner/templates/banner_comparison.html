@@ -26,31 +26,6 @@
 <div id="app">
 	<v-app>
 
-			
-			<template>
-					<div class="text-center">
-					  <v-menu offset-y>
-						<template v-slot:activator="{ on }">
-						  <v-btn
-							color="primary"
-							dark
-							v-on="on"
-						  >
-							Actions
-						  </v-btn>
-						</template>
-						<v-list>
-						  <v-list-item
-							v-for="(item, index) in items"
-							:key="index"
-							@click=""
-						  >
-							<v-list-item-title>[[item.title]]</v-list-item-title>
-						  </v-list-item>
-						</v-list>
-					  </v-menu>
-					</div>
-				  </template>
 
 
 
@@ -158,11 +133,31 @@
 								</v-flex>
 								
 								<v-flex xs1>
+										<div style="padding-bottom: 20px" class="btn-group">
+												<a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
+												  Actions
+												  <span class="caret"></span>
+												</a>
+												  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+													<li>              
+													  <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept Registrar Version </a>
+													</li>
+													<li>              
+													  <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept iChair Version </a>
+													</li>
+													<li>              
+															<a @click="editMeetingTimes(props.item.ichair.meeting_times_detail)"> Edit iChair Version</a>
+														  </li>
+												  </ul>
+											  </div> {# btn-group #}
+
+
 										<template>
+												
 												<div class="text-center">
 												  <v-dialog
 													v-model="dialog"
-													width="500"
+													width="800"
 												  >
 													
 													  <!--
@@ -186,7 +181,54 @@
 													  </v-card-title>
 											  
 													  <v-card-text>
-														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+															<v-container grid-list-md>
+																	<v-layout wrap>
+																		<v-flex xs4>Day</v-flex>
+																		<v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
+																		<v-flex xs3>End Time (e.g., 13:50)</v-flex>
+																		<v-flex xs2>Delete</v-flex>
+																	</v-layout>
+																	<div v-for="meetingTimeDetail in editMeetings">
+																		
+																		<v-layout wrap>
+																			<v-flex xs4>
+																			
+																					<select style="border-style: solid; height: 32px;" id="day_select" v-model="meetingTimeDetail.day">
+																						<option value="0">Monday</option>
+																						<option value="1">Tuesday</option>
+																						<option value="2">Wednesday</option>
+																						<option value="3">Thursday</option>
+																						<option value="4">Friday</option>
+																					</select>
+																				
+																			</v-flex>
+																			<v-flex xs3>
+																			
+																					<input style="height: 32px; width: 140px;" type="text" v-model="meetingTimeDetail.begin_at">
+																				
+																			</v-flex>
+																			<v-flex xs3>
+																			
+																					
+																					<input style="height: 32px; width: 140px;" type="text" v-model="meetingTimeDetail.end_at">
+																				
+																			</v-flex>
+																			<v-flex xs2>
+																			
+																					
+																					<input type="checkbox" v-model="meetingTimeDetail.delete">
+																				
+																			</v-flex>
+																		</v-layout>
+																	</div>
+
+															
+															
+														
+
+															</v-container>
+															
+																			
 													  </v-card-text>
 											  
 													  <v-divider></v-divider>
@@ -196,9 +238,9 @@
 														<v-btn
 														  color="primary"
 														  text
-														  @click="dialog = false"
+														  @click="submitMeetingsForm()"
 														>
-														  I accept
+														  Submit
 														</v-btn>
 													  </v-card-actions>
 													</v-card>
@@ -228,13 +270,13 @@
 										</a>
 										  <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
 											<li>              
-											  <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Edit Meeting Times in iChair </a>
+											  <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept Registrar Version</a>
 											</li>
 											<li>              
-											  <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept Registrar Edits </a>
+											  <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept iChair Version </a>
 											</li>
 											<li>              
-													<a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Request Changes from Registrar</a>
+													<a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Edit iChair Version</a>
 												  </li>
 										  </ul>
 									  </div> {# btn-group #}
@@ -303,18 +345,169 @@
 					{ text: 'Done?', value: 'linked', align: 'center'  }
 				],
         		courses: [],
-				items: [
-					{ title: 'Click Me' },
-					{ title: 'Click Me' },
-					{ title: 'Click Me' },
-					{ title: 'Click Me 2' },
-				],
+				dialog: false,
+				editMeetings: [],
+				initialMeetingData: [],
+				meetingFormErrorMessage: '',
 				pagination: {
 					rowsPerPage: 20
 				}
 		  };
       },
       methods: {
+
+		  editMeetingTimes(meetingDetails) {
+			
+			this.dialog = true;
+			console.log(meetingDetails);
+			//trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
+			this.editMeetings = JSON.parse(JSON.stringify(meetingDetails));
+			this.editMeetings.forEach(meeting => {
+				meeting.delete = false;
+			});
+			
+			//for (meeting in meetingDetails){
+			//	this.editMeetings.push(
+			//		JSON.parse(JSON.stringify(meeting))
+			//	)
+			//}
+			//this.editMeetings = meetingDetails;
+			this.initialMeetingData = meetingDetails;
+			
+			this.addMeetingTime();
+			this.addMeetingTime();
+			console.log(this.editMeetings);
+		  },
+
+		  addMeetingTime() {
+			this.editMeetings.push(
+				{
+					delete: false,
+					day: 0,
+					begin_at: "",
+					end_at: "",
+					id: null
+				}
+			)
+		  },
+
+		  submitMeetingsForm() {
+			console.log(this.editMeetings);
+			//console.log(this.initialMeetingData);
+			//console.log(this.courses);
+			let meetingsToDelete = [];//list of ids
+			let meetingsToUpdate = [];//list of objects
+			let meetingsToCreate = [];//list of objects
+			let formOK = true;
+			this.editMeetings.forEach(meeting => {
+				//console.log(meeting);
+				//console.log(meeting.id);
+				//console.log(meeting.delete);
+				if ((meeting.id !== null) && (meeting.delete === true)) {
+					//console.log('delete: ', meeting.id);
+					meetingsToDelete.push(meeting.id);
+				} else {
+					// check if need to make updates....
+					if ((meeting.begin_at !=='') && (meeting.end_at !=='')) {
+						if (meeting.id === null) {
+							let checkTime = this.checkTimes(meeting.begin_at,meeting.end_at);
+							if (checkTime.timesOK) {
+								meetingsToCreate.push({
+									day: meeting.day,
+									begin_at: meeting.begin_at,
+									end_at: meeting.end_at
+								})
+							} else {
+								this.meetingFormErrorMessage = checkTime.errorMessage;
+							}
+						} else {
+							let checkTime = this.checkTimes(meeting.begin_at,meeting.end_at);
+							// now check if anything is different....
+							let timesIdentical = true;
+							if (!checkTime.timesOK) {
+								this.meetingFormErrorMessage = checkTime.errorMessage;
+							} else {
+								// now check if anything has been changed in the form;
+								// find the corresponding element in this.initialMeetingData and look for differences....
+								let foundMeeting = false;
+								let matchingMeeting = null;
+								this.initialMeetingData.forEach(initialData => {
+									if (initialData.id === meeting.id) {
+										foundMeeting = true;
+										matchingMeeting = initialData;
+									}
+								});
+
+								if (foundMeeting) {
+									timesIdentical = (matchingMeeting.day === meeting.day) && (matchingMeeting.begin_at === meeting.begin_at) && (matchingMeeting.end_at === meeting.end_at);
+								} else {
+									console.log('something is wrong! cannot find the id for the update....')
+								}
+
+								if (!timesIdentical){
+									meetingsToUpdate.push({
+										id: meeting.id,
+										day: meeting.day,
+										begin_at: meeting.begin_at,
+										end_at: meeting.end_at
+									})
+								}	
+							} 
+						}
+
+					}
+				}
+			});
+
+			console.log('meetings to delete: ', meetingsToDelete);
+			console.log('meetings to create: ', meetingsToCreate);
+			console.log('meetings to update: ', meetingsToUpdate);
+
+
+			
+		  },
+
+		  checkTimes(beginTime, endTime) {
+			let beginValid = this.timeStringValid(beginTime);
+			let endValid = this.timeStringValid(endTime);
+			
+			if (!(beginValid && endValid)) {
+				return {
+					errorMessage: 'Beginning and ending times must be in the correct format.',
+					timesOK: false
+				}
+			} else {
+				if (!this.timeSeqOK(beginTime, endTime)) {
+					return {
+						errorMessage: 'Ending time must be after beginning time.',
+						timesOK: false
+					}
+				}
+			}
+			return {
+				errorMessage: '',
+				timesOK: true
+			}
+		  },
+		  timeStringValid(timeString) {
+			return /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/.test(timeString);
+		  },
+
+		  timeSeqOK(beginTimeString, endTimeString) {
+			return this.convertTimeStringToInt(endTimeString) > this.convertTimeStringToInt(beginTimeString);
+		  },
+
+		  convertTimeStringToInt(timeString) {
+			let multiplicativeFactors = [10000,100,1];
+			let timeSum = 0;
+			let timeSplit = timeString.split(':');
+			// https://www.w3schools.com/jsref/jsref_parseint.asp
+			for (var i=0; i < timeSplit.length; i++) {
+				timeSum+=multiplicativeFactors[i]*parseInt(timeSplit[i]);
+			}
+			return timeSum;
+		  },
+
           greet: function(name) {
               console.log('Hello from ' + name + '!');
 			  console.log('course data: ', this.courseData);

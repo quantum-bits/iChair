@@ -35,6 +35,14 @@ def banner_comparison_data(request):
         co2meeting_times_list, co2room_list = class_time_and_room_summary(co2.scheduled_classes.all())
         instructors1 = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co1.offering_instructors.all()]
         instructors2 = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co2.offering_instructors.all()]
+        meeting_times_detail = []
+        for sc in co2.scheduled_classes.all():
+            meeting_times_detail.append({
+                "day": sc.day,
+                "begin_at": sc.begin_at,
+                "end_at": sc.end_at,
+                "id": sc.id
+            })
         course_data.append({
             "semester": 'Fall',
             "course_id": co1.course.id,
@@ -49,6 +57,7 @@ def banner_comparison_data(request):
             "ichair": { 
                 "course_offering_id": co2.id,
                 "meeting_times": co2meeting_times_list,
+                "meeting_times_detail": meeting_times_detail,
                 "rooms": co2room_list,
                 "instructors": instructors2
             },
@@ -90,6 +99,15 @@ def banner_comparison_data(request):
     co = course.offerings.all()[num_offerings-1]
     meeting_times_list, room_list = class_time_and_room_summary(co1.scheduled_classes.all())
     instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co.offering_instructors.all()]
+    meeting_times_detail = []
+    for sc in co.scheduled_classes.all():
+        meeting_times_detail.append({
+            "day": sc.day,
+            "begin_at": sc.begin_at,
+            "end_at": sc.end_at,
+            "id": sc.id
+        })
+   
     course_data.append({
         "semester": 'Spring',
         "course_id": co.course.id,
@@ -98,6 +116,7 @@ def banner_comparison_data(request):
         "ichair": { 
                 "course_offering_id": co.id,
                 "meeting_times": meeting_times_list,
+                 "meeting_times_detail": meeting_times_detail,
                 "rooms": room_list,
                 "instructors": instructors
             },
