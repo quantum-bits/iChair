@@ -1,4 +1,5 @@
 
+
 def class_time_and_room_summary(scheduled_classes):
 # Returns a class time summary list and an accompanying room list, such as ['MWF 9-9:50','T 10-10:50'] and ['NS 210', 'ESC 141']
 # scheduled_classes is assumed to be a list of ScheduledClass objects with at least one element
