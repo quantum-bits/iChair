@@ -144,7 +144,7 @@ class DynamicCourseSelectForm(forms.ModelForm):
             subjects.append([subj.id,subj.abbrev])
         subjects.append(['','-- Subjects in Other Departments --'])
         for subj in Subject.objects.filter(~Q(department=department)):
-            if department.is_trusted_by(subj.department):
+            if department.is_trusted_by_subject(subj):
                 subjects.append([subj.id,subj.abbrev])
         subjects_tuple = ([(subject[0], subject[1]) for subject in subjects])
         self.fields['subject'].choices = subjects_tuple
