@@ -472,6 +472,11 @@ def collect_data_for_summary(request):
             
         load_diff = load_hour_rounder(course_offering_dict[key]['course_offering'].load_available - load_assigned)
 
+        if course_offering_dict[key]['course_offering'].comment is None:
+            co_comment = ''
+        else:
+            co_comment = course_offering_dict[key]['course_offering'].comment
+        
         data_list.append({'number':number,
                           'name':course_name,
                           'rooms':room_list,
@@ -481,7 +486,7 @@ def collect_data_for_summary(request):
                           'instructor_list': instructor_list,
                           'course_id':course_offering_dict[key]['course_offering'].course.id,
                           'id':course_offering_dict[key]['course_offering'].id,
-                          'comment':course_offering_dict[key]['course_offering'].comment,
+                          'comment':co_comment,
                           'semester':semester_name,
                           'semester_fraction': semester_fraction,
                           'meeting_times':meeting_times_list,
@@ -498,7 +503,7 @@ def collect_data_for_summary(request):
                 'instructor_list': instructor_list,
                 'course_id':course_offering_dict[key]['course_offering'].course.id,
                 'id':course_offering_dict[key]['course_offering'].id,
-                'comment':course_offering_dict[key]['course_offering'].comment,
+                'comment':co_comment,
                 'semester':semester_name,
                 'semester_fraction': semester_fraction,
                 'meeting_times':meeting_times_list,
@@ -3700,7 +3705,7 @@ def search_form(request):
                 for course_offering in course.offerings.all():
                     if course_offering.semester.year.begin_on.year == year:
                         can_edit = False
-                        if user_preferences.permission_level == 1 and year == current_year and course.subject.department==department:
+                        if user_preferences.permission_level == 1 and year == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
                             can_edit = True
                         elif user_preferences.permission_level == 2 and year == current_year:
                             can_edit = True
@@ -3714,6 +3719,15 @@ def search_form(request):
                             meetings_scheduled = True
                             meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
 
+
+                        instructor_list=[]
+
+                        for instructor in course_offering.offering_instructors.all():
+                            instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name)
+
+                        if len(instructor_list)==0:
+                            instructor_list = ['TBA']
+
                         course_offering_list.append({'name':course.title, 
                                                      'number': course.subject.abbrev+' '+course.number,
                                                      'course_id':course.id,
@@ -3722,6 +3736,7 @@ def search_form(request):
                                                      'rooms':room_list,
                                                      'meeting_times':meeting_times_list,
                                                      'meetings_scheduled':meetings_scheduled,
+                                                     'instructor_list':instructor_list,
                                                      'can_edit':can_edit
                                                      })
 
@@ -3793,7 +3808,7 @@ def search_form_time(request):
             for course in course_list:
                 for course_offering in course.offerings.filter(semester__id = semester_id):
                     can_edit = False
-                    if user_preferences.permission_level == 1 and year_for_search == current_year and course.subject.department==department:
+                    if user_preferences.permission_level == 1 and year_for_search == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
                         can_edit = True
                     elif user_preferences.permission_level == 2 and year_for_search == current_year:
                         can_edit = True
@@ -3815,6 +3830,14 @@ def search_form_time(request):
                             meetings_scheduled = True
                             meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
 
+                        instructor_list=[]
+
+                        for instructor in course_offering.offering_instructors.all():
+                            instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name)
+
+                        if len(instructor_list)==0:
+                            instructor_list = ['TBA']
+    
                         course_offering_list.append({'name':course.title, 
                                                      'number': course.subject.abbrev+' '+course.number,
                                                      'course_id':course.id,
@@ -3823,7 +3846,8 @@ def search_form_time(request):
                                                      'rooms':room_list,
                                                      'meeting_times':meeting_times_list,
                                                      'meetings_scheduled':meetings_scheduled,
-                                                     'can_edit':can_edit
+                                                     'can_edit':can_edit,
+                                                     'instructor_list': instructor_list
                                                      })
         
         search_details = 'courses in '+semester.name.name+' '+str(semester.year.begin_on.year)+'-'+str(extract_two_digits(semester.year.begin_on.year+1))+' that occur between '+start_string+' and '+end_string+' on the following day(s): '+day_string

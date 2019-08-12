@@ -15,7 +15,8 @@
 	       <td> Name </td>
 	       <td style="text-align: center;"> Semester </td>
 	       <td style="text-align: center;"> Time </td>
-	       <td style="text-align: center;"> Room </td>
+		   <td style="text-align: center;"> Room </td>
+		   <td style="text-align: center;"> Instructor(s) </td>
 	       </tr>
 	     </thead>
 <tbody>
@@ -65,7 +66,19 @@
 	  {% endif %}
 	</div>
 	{% endfor %}
-      </td>
+	  </td>
+	  <td style="text-align: center;">
+		{% for instructor in course.instructor_list %}
+		<div>
+			{% if course.can_edit %}
+			<a href="{% url 'update_course_offering' course.offering_id 0 %}?next={{ request.path|urlencode }}">
+			  {{instructor}}</a>
+			{% else %}
+			{{instructor}}
+			{% endif %}
+		  </div>
+		{% endfor %}
+	  </td>
 </tr>
 {% endfor %}
 </table>
