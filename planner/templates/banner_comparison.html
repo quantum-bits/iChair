@@ -85,11 +85,13 @@
 										<v-flex xs3>
 											<div v-if="props.item.hasIChair">
 												<div>iChair -- meeting time(s):</div>
-												<ul>
-													<li v-for="meetingTime in props.item.ichair.meeting_times">
-														[[meetingTime]]
-													</li>
-												</ul>
+												<a @click="editMeetingTimes(props.item)">
+													<ul>
+														<li v-for="meetingTime in props.item.ichair.meeting_times">
+															[[meetingTime]]
+														</li>
+													</ul>
+												</a>
 											</div>
 										</v-flex>
 
