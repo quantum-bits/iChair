@@ -2661,11 +2661,13 @@ def add_course_offering(request, course_id, daisy_chain):
         if form.is_valid():
 
             semester = form.cleaned_data.get('semester')
+            semester_fraction = form.cleaned_data.get('semester_fraction')
             load_available = form.cleaned_data.get('load_available')
             max_enrollment = form.cleaned_data.get('max_enrollment')
             comment = form.cleaned_data.get('comment')
             new_course_offering = CourseOffering(course = course,
                                                  semester = semester,
+                                                 semester_fraction = semester_fraction,
                                                  load_available = load_available,
                                                  max_enrollment = max_enrollment,
                                                  comment = comment)
@@ -3481,6 +3483,7 @@ def copy_courses(request, id, check_all_flag):
 
             new_co = CourseOffering.objects.create(course = co.course,
                                                    semester = semester_object_copy_to,
+                                                   semester_fraction = co.semester_fraction,
                                                    load_available = co.load_available,
                                                    max_enrollment = co.max_enrollment,
                                                    comment = co.comment
@@ -3542,15 +3545,16 @@ def copy_courses(request, id, check_all_flag):
 # the course offerings in the year being copied from
                     scheduled_classes_current_year=[]
                     for cocy in course_offerings_current_year:
-                        for sc in cocy.scheduled_classes.all():
-                            scheduled_classes_current_year.append(sc)
+                        # check if the semester fractions overlap
+                        if cocy.is_in_semester_fraction(course_offering.semester_fraction):
+                            for sc in cocy.scheduled_classes.all():
+                                scheduled_classes_current_year.append(sc)
 # at this point, scheduled_classes and scheduled_classes_current_year are both arrays of "ScheduledClass"
 # objects; one has the classes from the "copy from" year and one from the "copy to" year; now those need
 # to be compared to see if there is any overlap
                     course_offering_already_exists = scheduled_classes_overlap(scheduled_classes, scheduled_classes_current_year)
 #                    if course_offering_already_exists:
 #                        note_list.append("similar schedule exists")
-
                     data_list.append({'instructors':instructor_list,
                                       'room_list': room_list,
                                       'meeting_times': meeting_times_list,
@@ -3560,7 +3564,8 @@ def copy_courses(request, id, check_all_flag):
                                       'exists':course_offering_already_exists,
                                       'number':course_offering.course.subject.abbrev+' '+course_offering.course.number,
                                       'name':course_offering.course.title,
-                                      'semester':course_offering.semester.name
+                                      'semester':course_offering.semester.name,
+                                      'semester_fraction':course_offering.semester_fraction_text()
                                       })
         if missing_instructor:
             comment_list.append("One or more instructors is missing from the current academic year and will not be included in a course copy.  If this is unintentional, you can add instructors back in under Profile.")
