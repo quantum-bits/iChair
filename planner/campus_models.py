@@ -543,7 +543,7 @@ class CourseOffering(StampedModel):
         return self.semester_fraction == self.FULL_SEMESTER
 
     def is_in_semester_fraction(self, semester_fraction):
-        return (self.semester_fraction == self.FULL_SEMESTER) or  (self.semester_fraction == semester_fraction)
+        return (self.semester_fraction == self.FULL_SEMESTER) or (self.semester_fraction == semester_fraction) or (semester_fraction == self.FULL_SEMESTER)
 
     @classmethod
     def partial_semesters(cls):
