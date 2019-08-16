@@ -52,8 +52,8 @@
 				class="elevation-1" @page-count="pageCount = $event">
 				<template v-slot:item="{ item, expand }">
 					<tr>
-						<td @click="expand" style="cursor: pointer;">
-							<v-icon>mdi-chevron-down</v-icon>
+						<td>
+							<v-btn text @click="expand">Details</v-btn>
 						</td>
 						<td>[[item.semester]] </td>
 						<td>[[item.crn]] </td>
@@ -70,6 +70,78 @@
 
 						<v-container>
 							<strong>[[item.name]]</strong>
+
+							<v-layout row wrap align-center>
+								<v-flex xs10 offset-xs1>
+									<table>
+										<thead>
+											<tr>
+												<th></th>
+												<th class="text-center">iChair</th>
+												<th class="text-center">Registrar</th>
+												<th class="text-left">Action</th>
+												<th class="text-left">Message</th>
+												<th class="text-left">Status</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td>Meeting Times</td>
+												<td v-if="item.hasIChair" class="text-center">
+													<a @click="editMeetingTimes(item)">
+														<div v-for="meetingTime in item.ichair.meeting_times">
+															[[meetingTime]]
+														</div>
+													</a>
+												</td>
+												<td v-else class="text-center">
+													<a @click="addNewMeetingTimes(item)">
+														---
+													</a>
+												</td>
+												<td v-if="item.hasBanner" class="text-center">
+													<div v-for="meetingTime in item.banner.meeting_times">
+														[[meetingTime]]
+													</div>
+												</td>
+												<td></td>
+												<td></td>
+												<td>
+													<v-icon class="green--text">mdi-check-circle</v-icon>
+												</td>
+
+											</tr>
+											<tr>
+												<td>Instructor(s)</td>
+												<td v-if="item.hasIChair" class="text-center">
+													<div v-for="instructor in item.ichair.instructors">
+															[[instructor]]
+													</div>
+											
+												</td>
+												<td v-if="item.hasBanner" class="text-center">
+														<div v-for="instructor in item.banner.instructors">
+																[[instructor]]
+														</div>
+												
+													</td>
+												
+												<td></td>
+												<td></td>
+												<td>
+													<v-icon>mdi-check-circle</v-icon>
+												</td>
+											</tr>
+										</tbody>
+									</table>
+								</v-flex>
+							</v-layout>
+
+
+
+
+
+
 							<v-layout row wrap align-center>
 								<v-flex xs3>
 									<div v-if="item.hasIChair">
@@ -291,7 +363,8 @@
 				meetingFormErrorMessage: '',// used to display errors in the class scheduling form
 				pagination: {
 					rowsPerPage: 20
-				}
+				},
+				
 			};
 		},
 		methods: {
@@ -322,6 +395,10 @@
 				this.initialMeetingData = meetingDetails;
 				this.addMeetingTime();
 				this.addMeetingTime();
+			},
+
+			addNewMeetingTimes(courseInfo) {
+				console.log(courseInfo);
 			},
 
 			addMeetingTime() {
