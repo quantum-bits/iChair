@@ -9,17 +9,17 @@
             </v-toolbar>
         </template>
         <v-data-table :headers="headers" :items="courses" :single-expand="singleExpand" :expanded.sync="expanded"
-                      show-expand :page.sync="page" :items-per-page="itemsPerPage" hide-default-footer item-key="name"
-                      class="elevation-1" @page-count="pageCount = $event">
+            show-expand :page.sync="page" :items-per-page="itemsPerPage" hide-default-footer item-key="name"
+            class="elevation-1" @page-count="pageCount = $event">
             <template v-slot:item="{ item, expand }">
                 <tr>
                     <td>
                         <v-btn text @click="expand">Details</v-btn>
                     </td>
-                    <td>[[item.semester]]</td>
-                    <td>[[item.crn]]</td>
+                    <td>[[item.semester]] </td>
+                    <td>[[item.crn]] </td>
                     <td class="text-xs-left">[[item.number]]</td>
-                    <td class="text-xs-left">[[item.name]]</td>
+                    <td class="text-xs-left">[[item.name]] </td>
                     <td class="text-xs-center">
                         <v-icon class="green--text" v-if="!item.needsWork">mdi-check-circle</v-icon>
                         <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
@@ -27,239 +27,178 @@
                 </tr>
             </template>
             <template v-slot:expanded-item="{ item, headers }">
-                <td :colspan="headers.length">
+                <td :colspan="headers.length" style="border-bottom: 1px solid grey;">
 
                     <v-container>
+
+
+
+
+
+                        <template>
+                            <div class="text-center">
+                                <v-dialog persistent v-model="dialog" width="800">
+                                    <v-card>
+                                        <v-card-title class="headline grey lighten-2" primary-title>
+                                            [[dialogTitle]]
+                                        </v-card-title>
+                                        <v-card-text>
+                                            <v-container grid-list-md>
+                                                <v-layout wrap>
+                                                    <v-flex xs4>Day</v-flex>
+                                                    <v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
+                                                    <v-flex xs3>End Time (e.g., 13:50)</v-flex>
+                                                    <v-flex xs2>Delete</v-flex>
+                                                </v-layout>
+                                                <div v-for="meetingTimeDetail in editMeetings">
+                                                    <v-layout wrap>
+                                                        <v-flex xs4>
+
+                                                            <select style="border-style: solid; height: 32px;"
+                                                                id="day_select" v-model="meetingTimeDetail.day">
+                                                                <option value="0">Monday</option>
+                                                                <option value="1">Tuesday</option>
+                                                                <option value="2">Wednesday</option>
+                                                                <option value="3">Thursday</option>
+                                                                <option value="4">Friday</option>
+                                                            </select>
+                                                        </v-flex>
+                                                        <v-flex xs3>
+                                                            <input style="height: 32px; width: 140px;" type="text"
+                                                                v-model="meetingTimeDetail.begin_at">
+                                                        </v-flex>
+                                                        <v-flex xs3>
+                                                            <input style="height: 32px; width: 140px;" type="text"
+                                                                v-model="meetingTimeDetail.end_at">
+                                                        </v-flex>
+                                                        <v-flex xs2>
+                                                            <input type="checkbox" v-model="meetingTimeDetail.delete">
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </div>
+                                                <v-layout text-center>
+                                                    <v-flex xs12>
+                                                        <div class="red--text">
+                                                            [[meetingFormErrorMessage]]</div>
+                                                    </v-flex>
+                                                </v-layout>
+                                            </v-container>
+                                        </v-card-text>
+                                        <v-divider></v-divider>
+                                        <v-card-actions>
+                                            <v-spacer></v-spacer>
+                                            <v-btn color="primary" text @click="cancelMeetingsForm()">
+                                                Cancel
+                                            </v-btn>
+                                            <v-btn color="primary" text @click="submitMeetingsForm()">
+                                                Submit
+                                            </v-btn>
+                                        </v-card-actions>
+                                    </v-card>
+                                </v-dialog>
+                            </div>
+                        </template>
+
                         <strong>[[item.name]]</strong>
+
+
 
                         <v-layout row wrap align-center>
                             <v-flex xs10 offset-xs1>
-                                <table>
+
+                                <table style="border: 1px solid grey; margin: 10px;">
                                     <thead>
-                                    <tr>
-                                        <th></th>
-                                        <th class="text-center">iChair</th>
-                                        <th class="text-center">Registrar</th>
-                                        <th class="text-left">Action</th>
-                                        <th class="text-left">Message</th>
-                                        <th class="text-left">Status</th>
-                                    </tr>
+                                        <tr>
+                                            <th></th>
+                                            <th class="text-center">iChair</th>
+                                            <th class="text-center">Registrar</th>
+                                            <th class="text-center">Accept...</th>
+                                            <th class="text-center">Message for Registrar</th>
+                                            <th class="text-center">Status</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                    <tr>
-                                        <td>Meeting Times</td>
-                                        <td v-if="item.hasIChair" class="text-center">
-                                            <a @click="editMeetingTimes(item)">
-                                                <div v-for="meetingTime in item.ichair.meeting_times">
+                                        <tr>
+                                            <td>Meeting Times</td>
+                                            <td v-if="item.hasIChair" class="text-center">
+                                                <a @click="editMeetingTimes(item)">
+                                                    <div v-for="meetingTime in item.ichair.meeting_times">
+                                                        [[meetingTime]]
+                                                    </div>
+                                                </a>
+                                            </td>
+                                            <td v-else class="text-center">
+                                                <a @click="addNewMeetingTimes(item)">
+                                                    ---
+                                                </a>
+                                            </td>
+                                            <td v-if="item.hasBanner" class="text-center">
+                                                <div v-for="meetingTime in item.banner.meeting_times">
                                                     [[meetingTime]]
                                                 </div>
-                                            </a>
-                                        </td>
-                                        <td v-else class="text-center">
-                                            <a @click="addNewMeetingTimes(item)">
+                                            </td>
+                                            <td v-else class="text-center">
                                                 ---
-                                            </a>
-                                        </td>
-                                        <td v-if="item.hasBanner" class="text-center">
-                                            <div v-for="meetingTime in item.banner.meeting_times">
-                                                [[meetingTime]]
-                                            </div>
-                                        </td>
-                                        <td></td>
-                                        <td></td>
-                                        <td>
-                                            <v-icon class="green--text">mdi-check-circle</v-icon>
-                                        </td>
+                                            </td>
+                                            <td class="text-center">
+                                                <a @click="addNewMeetingTimes(item)">
+                                                    iChair
+                                                </a> |
+                                                <a @click="addNewMeetingTimes(item)">
+                                                    Registrar
+                                                </a>
+                                            </td>
+                                            <td class="text-center"> change to: MW 9-9:50; R 11-11:35</td>
+                                            <td class="text-center">
+                                                <v-icon class="green--text">mdi-check-circle</v-icon>
+                                            </td>
 
-                                    </tr>
-                                    <tr>
-                                        <td>Instructor(s)</td>
-                                        <td v-if="item.hasIChair" class="text-center">
-                                            <div v-for="instructor in item.ichair.instructors">
-                                                [[instructor]]
-                                            </div>
+                                        </tr>
+                                        <tr>
+                                            <td>Instructor(s)</td>
+                                            <td v-if="item.hasIChair" class="text-center">
+                                                <a @click="editMeetingTimes(item)">
+                                                    <div v-for="instructor in item.ichair.instructors">
+                                                        [[instructor]]
+                                                    </div>
+                                                </a>
+                                            </td>
+                                            <td v-else class="text-center">
+                                                <a @click="addNewMeetingTimes(item)">
+                                                    ---
+                                                </a>
+                                            </td>
+                                            <td v-if="item.hasBanner" class="text-center">
+                                                <div v-for="instructor in item.banner.instructors">
+                                                    [[instructor]]
+                                                </div>
 
-                                        </td>
-                                        <td v-if="item.hasBanner" class="text-center">
-                                            <div v-for="instructor in item.banner.instructors">
-                                                [[instructor]]
-                                            </div>
-
-                                        </td>
-
-                                        <td></td>
-                                        <td></td>
-                                        <td>
-                                            <v-icon>mdi-check-circle</v-icon>
-                                        </td>
-                                    </tr>
+                                            </td>
+                                            <td v-else class="text-center">
+                                                ---
+                                            </td>
+                                            <td class="text-center">
+                                                <a @click="addNewMeetingTimes(item)">
+                                                    iChair
+                                                </a> |
+                                                <a @click="addNewMeetingTimes(item)">
+                                                    Registrar
+                                                </a>
+                                            </td>
+                                            <td></td>
+                                            <td class="text-center">
+                                                <v-icon>mdi-check-circle</v-icon>
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
+
                             </v-flex>
                         </v-layout>
 
 
-                        <v-layout row wrap align-center>
-                            <v-flex xs3>
-                                <div v-if="item.hasIChair">
-                                    <div>iChair -- meeting time(s):</div>
-                                    <a @click="editMeetingTimes(item)">
-                                        <ul>
-                                            <li v-for="meetingTime in item.ichair.meeting_times">
-                                                [[meetingTime]]
-                                            </li>
-                                        </ul>
-                                    </a>
-                                </div>
-                            </v-flex>
 
-                            <v-flex xs1>
-                                <div style="padding-bottom: 20px" class="btn-group">
-                                    <a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
-                                        Actions
-                                        <span class="caret"></span>
-                                    </a>
-                                    <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-                                        <li>
-                                            <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept
-                                                Registrar Version </a>
-                                        </li>
-                                        <li>
-                                            <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept
-                                                iChair Version </a>
-                                        </li>
-                                        <li>
-                                            <a @click="editMeetingTimes(item)"> Edit iChair Version</a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                {# btn-group #}
-                                <template>
-                                    <div class="text-center">
-                                        <v-dialog persistent v-model="dialog" width="800">
-                                            <v-card>
-                                                <v-card-title class="headline grey lighten-2" primary-title>
-                                                    [[dialogTitle]]
-                                                </v-card-title>
-                                                <v-card-text>
-                                                    <v-container grid-list-md>
-                                                        <v-layout wrap>
-                                                            <v-flex xs4>Day</v-flex>
-                                                            <v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
-                                                            <v-flex xs3>End Time (e.g., 13:50)</v-flex>
-                                                            <v-flex xs2>Delete</v-flex>
-                                                        </v-layout>
-                                                        <div v-for="meetingTimeDetail in editMeetings">
-                                                            <v-layout wrap>
-                                                                <v-flex xs4>
 
-                                                                    <select
-                                                                            style="border-style: solid; height: 32px;"
-                                                                            id="day_select"
-                                                                            v-model="meetingTimeDetail.day">
-                                                                        <option value="0">Monday</option>
-                                                                        <option value="1">Tuesday</option>
-                                                                        <option value="2">Wednesday</option>
-                                                                        <option value="3">Thursday</option>
-                                                                        <option value="4">Friday</option>
-                                                                    </select>
-                                                                </v-flex>
-                                                                <v-flex xs3>
-                                                                    <input style="height: 32px; width: 140px;"
-                                                                           type="text"
-                                                                           v-model="meetingTimeDetail.begin_at">
-                                                                </v-flex>
-                                                                <v-flex xs3>
-                                                                    <input style="height: 32px; width: 140px;"
-                                                                           type="text"
-                                                                           v-model="meetingTimeDetail.end_at">
-                                                                </v-flex>
-                                                                <v-flex xs2>
-                                                                    <input type="checkbox"
-                                                                           v-model="meetingTimeDetail.delete">
-                                                                </v-flex>
-                                                            </v-layout>
-                                                        </div>
-                                                        <v-layout text-center>
-                                                            <v-flex xs12>
-                                                                <div class="red--text">
-                                                                    [[meetingFormErrorMessage]]
-                                                                </div>
-                                                            </v-flex>
-                                                        </v-layout>
-                                                    </v-container>
-                                                </v-card-text>
-                                                <v-divider></v-divider>
-                                                <v-card-actions>
-                                                    <v-spacer></v-spacer>
-                                                    <v-btn color="primary" text @click="cancelMeetingsForm()">
-                                                        Cancel
-                                                    </v-btn>
-                                                    <v-btn color="primary" text @click="submitMeetingsForm()">
-                                                        Submit
-                                                    </v-btn>
-                                                </v-card-actions>
-                                            </v-card>
-                                        </v-dialog>
-                                    </div>
-                                </template>
-                            </v-flex>
-                            <v-flex xs3 offset-xs2>
-                                <div v-if="item.hasIChair">
-                                    <div>iChair -- instructor(s):</div>
-                                    <ul>
-                                        <li v-for="instructor in item.ichair.instructors">
-                                            [[instructor]]
-                                        </li>
-                                    </ul>
-                                </div>
-                            </v-flex>
-                            <div style="padding-bottom: 20px" class="btn-group">
-                                <a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
-                                    Actions
-                                    <span class="caret"></span>
-                                </a>
-                                <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-                                    <li>
-                                        <a href="{% url 'registrar_schedule' 1 %}" target="_blank"> Accept
-                                            Registrar Version</a>
-                                    </li>
-                                    <li>
-                                        <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Accept
-                                            iChair Version </a>
-                                    </li>
-                                    <li>
-                                        <a href="{% url 'registrar_schedule' 2 %}" target="_blank"> Edit iChair
-                                            Version</a>
-                                    </li>
-                                </ul>
-                            </div>
-                            {# btn-group #}
-                        </v-layout>
-                        <v-layout row wrap>
-                            <v-flex xs3>
-                                <div v-if="item.hasBanner">
-                                    <div>Registrar -- meeting time(s):</div>
-                                    <ul>
-                                        <li v-for="meetingTime in item.banner.meeting_times">
-                                            [[meetingTime]]
-                                        </li>
-                                    </ul>
-                                </div>
-                            </v-flex>
-                            <v-flex xs3></v-flex>
-                            <v-flex xs3>
-                                <div v-if="item.hasBanner">
-                                    <div>Registrar -- instructor(s):</div>
-                                    <ul>
-                                        <li v-for="instructor in item.banner.instructors">
-                                            [[instructor]]
-                                        </li>
-                                    </ul>
-                                </div>
-                            </v-flex>
-                            <v-flex xs3></v-flex>
-                        </v-layout>
                     </v-container>
 
                 </td>
