@@ -421,9 +421,15 @@ class Course(StampedModel):
     SCHEDULE_YEAR_CHOICES = (('E', 'Even'), ('O', 'Odd'), ('B', 'Both'))
 
     subject = models.ForeignKey(Subject, related_name='courses', on_delete=models.CASCADE)
+    # only the first x characters of the course 'number' are checked against Banner, where x is the number of characters for this field in Banner
+    # thus, PHY 311 in Banner will match PHY 311L here (which is good, since Banner uses the same number for both the lecture and the lab)
+    # because of this, some further checking needs to be done against the # of credit hours
     number = models.CharField(max_length=10)
     title = models.CharField(max_length=80)
     credit_hours = models.PositiveIntegerField(default=3)
+    # banner_title used to store a (possibly different) title for this same course, as it appears in Banner
+    # when checking to see if two courses are the same, we check first against title, and then against banner_title (if necessary)
+    banner_title = models.CharField(max_length=80, blank=True, null=True)
     prereqs = models.ManyToManyField('Requirement', blank=True, related_name='prereq_for')
     coreqs  = models.ManyToManyField('Requirement', blank=True, related_name='coreq_for')
 
@@ -590,6 +596,7 @@ class OfferingInstructor(StampedModel):
     course_offering = models.ForeignKey(CourseOffering, related_name='offering_instructors', on_delete=models.CASCADE)
     instructor = models.ForeignKey(FacultyMember,related_name='offering_instructors', on_delete=models.CASCADE)
     load_credit = models.FloatField(validators = [MinValueValidator(0.0), MaxValueValidator(100.0)])
+    is_primary = models.BooleanField(default=True)
 
 
 class ClassMeeting(StampedModel):

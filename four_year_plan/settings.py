@@ -19,8 +19,13 @@ if run_mode.dev:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': 'ichair.db',
+        },
+        'banner': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': 'banner.db'
         }
     }
+    DATABASE_ROUTERS = ['banner.banner_router.BannerRouter']
 elif run_mode.prod:
     DATABASES = {
         'default': {
@@ -171,6 +176,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.admindocs',
     'planner',
+    'banner'
 )
 
 if run_mode.debug_toolbar:

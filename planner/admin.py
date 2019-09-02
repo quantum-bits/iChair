@@ -2,6 +2,83 @@ from django.contrib import admin
 from planner.models import *
 from planner.forms import RequirementForm
 
+# using 'as' in order to disambiguate (saw this tip somewhere....)
+from banner.models import Subject as BannerSubject
+from banner.models import Course as BannerCourse
+from banner.models import FacultyMember as BannerFacultyMember
+from banner.models import CourseOffering as BannerCourseOffering
+from banner.models import OfferingInstructor as BannerOfferingInstructor
+from banner.models import ScheduledClass as BannerScheduledClass
+
+class MultiDBModelAdmin(admin.ModelAdmin):
+    # https://docs.djangoproject.com/en/2.2/topics/db/multi-db/
+    # A handy constant for the name of the alternate database.
+    using = 'banner'
+
+    def save_model(self, request, obj, form, change):
+        # Tell Django to save objects to the 'banner' database.
+        obj.save(using=self.using)
+
+    def delete_model(self, request, obj):
+        # Tell Django to delete objects from the 'banner' database
+        obj.delete(using=self.using)
+
+    def get_queryset(self, request):
+        # Tell Django to look for objects on the 'banner' database.
+        return super().get_queryset(request).using(self.using)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # Tell Django to populate ForeignKey widgets using a query
+        # on the 'banner' database.
+        return super().formfield_for_foreignkey(db_field, request, using=self.using, **kwargs)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        # Tell Django to populate ManyToMany widgets using a query
+        # on the 'banner' database.
+        return super().formfield_for_manytomany(db_field, request, using=self.using, **kwargs)
+
+
+class MultiDBTabularInline(admin.TabularInline):
+    using = 'banner'
+
+    def get_queryset(self, request):
+        # Tell Django to look for inline objects on the 'banner' database.
+        return super().get_queryset(request).using(self.using)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # Tell Django to populate ForeignKey widgets using a query
+        # on the 'banner' database.
+        return super().formfield_for_foreignkey(db_field, request, using=self.using, **kwargs)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        # Tell Django to populate ManyToMany widgets using a query
+        # on the 'banner' database.
+        return super().formfield_for_manytomany(db_field, request, using=self.using, **kwargs)
+
+
+class BannerSubjectAdmin(MultiDBModelAdmin):
+    search_fields = ('abbrev',)
+    list_display = ('abbrev',)
+
+class BannerCourseAdmin(MultiDBModelAdmin):
+    search_fields = ('subject', 'number', 'title',)
+    list_display = ('subject', 'number', 'title', 'credit_hours',)
+
+class BannerFacultyMemberAdmin(MultiDBModelAdmin):
+    search_fields = ('pidm', 'first_name', 'last_name', 'formal_first_name', 'middle_name',)
+    list_display = ('pidm', 'first_name', 'last_name', 'formal_first_name', 'middle_name',)
+
+class BannerOfferingInstructorInline(MultiDBTabularInline):
+    model = BannerOfferingInstructor
+    extra = 1
+
+class BannerCourseOfferingAdmin(MultiDBModelAdmin):
+    inlines = (BannerOfferingInstructorInline,)
+    list_display = ('course', 'crn', 'term_code', 'semester_fraction','max_enrollment', 'banner_comment',)
+    search_fields = ('course__title','course__number','term_code',)
+
+class BannerScheduledClassAdmin(admin.ModelAdmin):
+    list_display = ('course_offering','day','begin_at','end_at',)
 
 class RequirementAdmin(admin.ModelAdmin):
     form = RequirementForm
@@ -109,5 +186,10 @@ admin.site.register(TransferCourse)
 admin.site.register(University)
 admin.site.register(Constraint)
 admin.site.register(UserPreferences, UserPreferencesAdmin)
+admin.site.register(BannerSubject, BannerSubjectAdmin)
+admin.site.register(BannerCourse, BannerCourseAdmin)
+admin.site.register(BannerFacultyMember, BannerFacultyMemberAdmin)
+admin.site.register(BannerCourseOffering, BannerCourseOfferingAdmin)
+admin.site.register(BannerScheduledClass, BannerScheduledClassAdmin)
 
 
