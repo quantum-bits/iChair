@@ -44,6 +44,8 @@ urlpatterns = [
     url(r'^addfacultytoviewlist/$', myapp_views.add_faculty_to_view_list, name='add_faculty_to_view_list'),
 
     url(r'^bannercomparison/$', myapp_views.compare_with_banner, name='compare_with_banner'),
+    url(r'^ajax/fetch-semesters/$', api_views.fetch_semesters, name='fetch_semesters'),
+    url(r'^ajax/fetch-courses-to-be-aligned/$', api_views.fetch_courses_to_be_aligned, name='fetch_courses_to_be_aligned'),
     url(r'^ajax/fetch-banner-comparison-data/$', api_views.banner_comparison_data, name='banner_comparison_data'),
     url(r'^ajax/update-class-schedule/$', api_views.update_class_schedule_api, name='update_class_schedule_api'),
 

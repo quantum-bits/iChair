@@ -231,7 +231,7 @@ class Semester(models.Model):
     banner_code = models.CharField(max_length=6, help_text="e.g., 201990", blank=True, null=True)
     
     class Meta:
-        ordering = ['year', 'name']
+        ordering = ['year', 'begin_on']
 
     def __str__(self):
         return '{0} {1}'.format(self.name, self.year)
@@ -440,6 +440,9 @@ class Course(StampedModel):
 
     def __str__(self):
         return "{0} {1} - {2}".format(self.subject, self.number, self.title)
+
+    def number_offerings_this_year(self, academic_year_object):
+        return len(self.offerings.filter(semester__year = academic_year_object))
 
     @property
     def department(self):

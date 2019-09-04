@@ -1,4 +1,98 @@
 <v-app>
+
+    <template v-if="choosingSemesters && semesterChoices">
+
+        <v-layout row wrap align-center>
+            <v-flex xs10 offset-xs1>
+                <div class="headline">
+                    This page allows you to compare your course offerings with those in Banner and
+                    request changes from the Registrar.
+                </div>
+                <div class="headline">
+                    Please choose one or more semesters to work on:
+                </div>
+            </v-flex>
+        </v-layout>
+        <v-layout row wrap class="mt-n12" v-for="semester in semesterChoices">
+            <v-flex xs10 offset-xs2 class="my-0">
+
+                <v-checkbox class="mb-n12" color="success" :label="semester.semester_name" :value="semester.id"
+                    v-model="chosenSemesters" hide-details></v-checkbox>
+            </v-flex>
+        </v-layout>
+        <v-layout>
+            <v-flex row>
+                <v-flex xs10 offset-xs2>
+                    <v-btn color="primary" @click="alignCourses()">Get Started</v-btn>
+                </v-flex>
+            </v-flex>
+        </v-layout>
+    </template>
+
+    <template v-if="courseAlignmentPhaseReady">
+        <v-layout row wrap align-center>
+            <v-flex xs10 offset-xs1>
+                <div class="headline">
+                    There were one or more courses in the Registrar's database that couldn't be
+                    uniquely identified with courses in iChair (perhaps due to small differences
+                    in the wording of the title). Please make selections in the
+                    following table, as appropriate.
+                </div>
+            </v-flex>
+        </v-layout>
+        <v-layout row wrap align-center>
+            <v-flex xs10 offset-xs1>
+                <!--<table style="border: 1px solid grey; margin: 10px; padding: 10px">-->
+                <table class="course-align-table mt-5">
+                    <thead>
+                        <tr>
+                            <th class="text-center course-align-th">Registrar</th>
+                            <th class="text-center course-align-th">Choose Corresponding Course in
+                                iChair</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="course in unmatchedCourses" :key="course.banner_course.id">
+                            <td class="course-align-td">
+                                [[course.banner_course.subject]] [[course.banner_course.number]]:
+                                [[course.banner_course.title]]
+                                ([[course.banner_course.credit_hours]] credits)
+                            </td>
+                            <td class="course-align-td">
+                                <v-radio-group v-model="course.choice">
+                                    <v-radio v-for="item in course.choices" :key="item.selectionId" :label="item.text"
+                                        :value="item.selectionId" color="success"></v-radio>
+                                </v-radio-group>
+
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <v-btn class="my-4" color="primary" @click.stop="performCourseAlignment()">Submit</v-btn>
+
+                <!--<table style="border: 1px solid grey; margin: 10px; padding: 10px">-->
+
+                <div class="headline">
+                    The next step will be to look at course offerings....
+                </div>
+            </v-flex>
+        </v-layout>
+
+    </template>
+
+    <!--
+    <template v-if="courseAlignmentPhaseReady">
+        <v-layout row wrap align-center>
+            <v-flex xs210 offset-xs1>
+                <div>
+                    [[courseAlignmentChoices]]
+                </div>
+            </v-flex>
+        </v-layout>
+    </template>
+-->
+
     <!-- https://stackoverflow.com/questions/52819619/understand-rows-per-page-items-at-vuetify-data-iterators-data-tables-can-i-->
     <template>
         <template>

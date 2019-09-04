@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 
 from .models import *
+from banner.models import Course as BannerCourse
 from .helper_functions import *
 
 from django.shortcuts import render
@@ -11,6 +12,87 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
 import re
+
+
+
+@login_required
+def fetch_semesters(request):
+    department_id = request.GET.get('departmentId')
+    year_id = request.GET.get('yearId')
+
+    academic_year = AcademicYear.objects.get(pk=year_id)
+    semesters = academic_year.semesters.all()
+    semester_choices = []
+    for semester in semesters:
+        semester_choices.append({
+            "semester_name": '{0} {1}'.format(semester.name, semester.year),
+            "id": semester.id,
+            "banner_code": semester.banner_code
+            })
+    data = {
+        "semester_choices": semester_choices
+    }
+    return JsonResponse(data)
+
+@login_required
+def fetch_courses_to_be_aligned(request):
+    department_id = request.GET.get('departmentId')
+    year_id = request.GET.get('yearId')
+    academic_year = AcademicYear.objects.get(pk = year_id)
+    department = Department.objects.get(pk = department_id)
+
+    unmatched_courses = []
+    for subject in department.subjects.all():
+        print(subject, subject.abbrev)
+        #print(BannerCourse.objects.all
+        for banner_course in BannerCourse.objects.filter(subject__abbrev = subject.abbrev):
+            ichair_courses = Course.objects.filter(
+                Q(subject__abbrev = banner_course.subject.abbrev)&
+                Q(number__startswith = banner_course.number)&
+                Q(credit_hours = banner_course.credit_hours))
+            
+            exact_match = False
+            multiple_potential_matches = False
+
+            for ichair_course in ichair_courses:
+                if (banner_course.title == ichair_course.title) or (banner_course.title == ichair_course.banner_title): # found a match...
+                    if (exact_match == True) and (multiple_potential_matches == False): # uh-oh...we had already found a match -- this means we have more than one potential match, so we will list them all
+                        exact_match = False
+                        multiple_potential_matches = True
+                    elif (exact_match == False) and (multiple_potential_matches == False):
+                        exact_match = True
+
+            if exact_match == False:
+                ichair_course_data = [ # all the candidate iChair courses
+                    {
+                        "subject": c.subject.abbrev,
+                        "number": c.number,
+                        "credit_hours": c.credit_hours,
+                        "title": c.title,
+                        "id": c.id,
+                        "banner_title": c.banner_title,
+                        "number_offerings_this_year": c.number_offerings_this_year(academic_year)
+                    } for c in ichair_courses]
+                unmatched_courses.append({
+                    "ichair_subject_id": subject.id,
+                    "banner_course": {
+                        "id": banner_course.id,
+                        "subject": banner_course.subject.abbrev,
+                        "number": banner_course.number,
+                        "credit_hours": banner_course.credit_hours,
+                        "title": banner_course.title
+                    },
+                    "ichair_courses": ichair_course_data
+                    })
+
+            
+    for bc in unmatched_courses:
+        print(bc)
+
+    data = {
+        "unmatched_courses": unmatched_courses
+    }
+    return JsonResponse(data)
 
 @login_required
 def banner_comparison_data(request):

@@ -84,7 +84,7 @@ class RequirementAdmin(admin.ModelAdmin):
     form = RequirementForm
 
 class SemesterAdmin(admin.ModelAdmin):
-    list_display = ('name', 'year')
+    list_display = ('name', 'year', 'banner_code',)
 
 class CourseAdmin(admin.ModelAdmin):
     list_display = ('title', 'department','number', 'credit_hours',)

@@ -4,6 +4,13 @@ var app = new Vue({
   vuetify: new Vuetify(),
   data() {
     return {
+      choosingSemesters: true, // set to false once semesters have been chosen to work on
+      semesterChoices: [], // filled in via an ajax request after the component is mounted
+      chosenSemesters: [], // ids of semesters chosen to work on
+      aligningCourses: false, // set to true once we start aligning courses (if necessary)
+      courseAlignmentPhaseReady: false,
+      //courseAlignmentChoices: [], // used to populate radio select elements in the table used for aligning courses
+      unmatchedCourses: [], // filled in via an ajax request after one or more semesters are chosen; also used to populate radio select elements in the table used for aligning courses
       expanded: [],
       singleExpand: false,
       message: "Hello Vue!",
@@ -39,6 +46,80 @@ var app = new Vue({
     };
   },
   methods: {
+    alignCourses() {
+      // second step of the process...so we turn off the 'select semesters' template
+      console.log('inside align courses');
+      var _this = this;
+      this.choosingSemesters = false;
+      $.ajax({
+        // initialize an AJAX request
+        type: "GET",
+        url: "/planner/ajax/fetch-courses-to-be-aligned/", // set the url of the request
+        dataType: "json",
+        data: {
+          departmentId: json_data.departmentId, // add the department id to the GET parameters
+          yearId: json_data.yearId
+        },
+        success: function(incomingData) {
+          console.log(incomingData);
+            //this.unmatchedCourses = incomingData.unmatched_courses;
+            console.log(incomingData.unmatched_courses);
+            _this.unmatchedCourses = [];
+            let unmatchedCourse = null;
+            let choices = null;
+            let num_offerings = '';
+            let max_num_offerings = 0;
+            /**
+             * course.choice = -1 ==> do nothing
+             * course.choice = -2 ==> create new course
+             * course.choice = iChair course id ==> set banner_title in iChair course to banner title (in data warehouse database)
+             */
+            incomingData.unmatched_courses.forEach( course => {
+                unmatchedCourse = course;
+                choices = [];
+                if (course.ichair_courses.length === 0) {
+                    unmatchedCourse.choice = -2; // default is to create a new course
+                    choices.push({
+                        bannerCourseId: course.banner_course.id,
+                        selectionId: -2,//assuming actual db ids will never be negative
+                        text: "There are no matching courses in iChair; create a new matching course."
+                    })
+                } else {
+                    max_num_offerings = 0;
+                    unmatchedCourse.choice = -1; // default starts as "do nothing"
+                    course.ichair_courses.forEach( item => {
+                        if (item.number_offerings_this_year > max_num_offerings) {
+                            max_num_offerings = item.number_offerings_this_year;
+                            unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
+                        }
+                        item.number_offerings_this_year == 1 ? num_offerings = ' offering ' : num_offerings = ' offerings ';
+                        choices.push({
+                            bannerCourseId: course.banner_course.id,
+                            selectionId: item.id,//assuming actual db ids will never be negative
+                            text: item.subject+' '+item.number+': '+item.title+' ('+item.credit_hours+' credit hours; '+
+                                item.number_offerings_this_year+num_offerings+'this year)'
+                        })
+                    })
+                }
+                choices.push({
+                    bannerCourseId: course.banner_course.id,
+                    selectionId: -1,//assuming actual db ids will never be negative
+                    text: "Do nothing for now...."
+                });
+                unmatchedCourse.choices = choices;
+                _this.unmatchedCourses.push(unmatchedCourse);
+        });
+        //_this.unmatchedCourses = cAC;
+        console.log(_this.unmatchedCourses);
+        _this.courseAlignmentPhaseReady = true;
+        console.log(_this.courseAlignmentPhaseReady);
+        }
+      });
+  
+    },
+    performCourseAlignment() {
+        console.log(this.unmatchedCourses);
+    },
     showAll() {
       this.itemsPerPage = this.courses.length;
       this.page = 1;
@@ -303,6 +384,21 @@ var app = new Vue({
   },
   mounted: function() {
     var _this = this;
+    $.ajax({
+      // initialize an AJAX request
+      type: "GET",
+      url: "/planner/ajax/fetch-semesters/", // set the url of the request
+      dataType: "json",
+      data: {
+        departmentId: json_data.departmentId, // add the department id to the GET parameters
+        yearId: json_data.yearId
+      },
+      success: function(incomingData) {
+        console.log(incomingData);
+        _this.semesterChoices = incomingData.semester_choices;
+      }
+    });
+
     $.ajax({
       // initialize an AJAX request
       type: "GET",
