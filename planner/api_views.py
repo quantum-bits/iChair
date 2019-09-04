@@ -95,6 +95,53 @@ def fetch_courses_to_be_aligned(request):
     return JsonResponse(data)
 
 @login_required
+@csrf_exempt
+def create_update_courses(request):
+
+    json_data=json.loads(request.body)
+    update_dict = json_data['update']
+    create_dict = json_data['create']
+
+    print('update: ', update_dict)
+    print('create: ', create_dict)
+
+    creates_successful = True
+    updates_successful = True
+    print('updating....')
+    for update_item in update_dict:
+        print(update_item)
+        #course = Course.objects.get(pk = update_item.ichair_course_id)
+        try:
+            course = Course.objects.get(pk = update_item["ichair_course_id"])
+            print(course)
+            course.banner_title = update_item["banner_title"]
+            course.save()
+        except:
+            creates_successful = False
+
+    print('creating...')
+    for create_item in create_dict:
+        print(create_item)
+        try:
+            subject = Subject.objects.get(pk = create_item["subject_id"])
+            print(subject)
+            course = Course.objects.create(
+                title = create_item["title"],
+                credit_hours = create_item["credit_hours"],
+                subject = subject,
+                number = create_item["number"])
+            course.save()
+            print(course)
+        except:
+            updates_successful = False
+       
+    data = {
+        'updates_successful': updates_successful,
+        'creates_successful': creates_successful
+    }
+    return JsonResponse(data)
+
+@login_required
 def banner_comparison_data(request):
 
     department_id = request.GET.get('departmentId')

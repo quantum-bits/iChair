@@ -48,6 +48,7 @@ urlpatterns = [
     url(r'^ajax/fetch-courses-to-be-aligned/$', api_views.fetch_courses_to_be_aligned, name='fetch_courses_to_be_aligned'),
     url(r'^ajax/fetch-banner-comparison-data/$', api_views.banner_comparison_data, name='banner_comparison_data'),
     url(r'^ajax/update-class-schedule/$', api_views.update_class_schedule_api, name='update_class_schedule_api'),
+    url(r'^ajax/create-update-courses/$', api_views.create_update_courses, name='create_update_courses'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', myapp_views.choose_year_course_copy, name='choose_year_course_copy'),

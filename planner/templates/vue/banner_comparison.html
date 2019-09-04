@@ -33,11 +33,14 @@
         <v-layout row wrap align-center>
             <v-flex xs10 offset-xs1>
                 <div class="headline">
-                    There were one or more courses in the Registrar's database that couldn't be
-                    uniquely identified with courses in iChair (perhaps due to small differences
-                    in the wording of the title). Please make selections in the
-                    following table, as appropriate.
+                    One or more courses in the Registrar's database couldn't be
+                    uniquely identified with courses in iChair.
                 </div>
+                <div class="mt-2 subtitle-1">
+                    This can happen due to small differences
+                    in the wording of the title. Please make selections in the
+                    following table, as appropriate.
+                </div>    
             </v-flex>
         </v-layout>
         <v-layout row wrap align-center>
@@ -56,7 +59,9 @@
                             <td class="course-align-td">
                                 [[course.banner_course.subject]] [[course.banner_course.number]]:
                                 [[course.banner_course.title]]
-                                ([[course.banner_course.credit_hours]] credits)
+                                ([[course.banner_course.credit_hours]] 
+                                <span v-if="course.banner_course.credit_hours == 1">credit hour)</span>
+                                <span v-else>credit hours)</span>
                             </td>
                             <td class="course-align-td">
                                 <v-radio-group v-model="course.choice">
@@ -69,16 +74,30 @@
                     </tbody>
                 </table>
 
-                <v-btn class="my-4" color="primary" @click.stop="performCourseAlignment()">Submit</v-btn>
+                <v-btn class="my-4" color="primary" @click.stop="performCourseAlignment()">Continue</v-btn>
 
                 <!--<table style="border: 1px solid grey; margin: 10px; padding: 10px">-->
 
-                <div class="headline">
+                <div class="subtitle-1">
                     The next step will be to look at course offerings....
                 </div>
             </v-flex>
         </v-layout>
 
+    </template>
+
+    <template v-if="displayCreateUpdateErrorMessage">
+            <v-layout row wrap align-center>
+                    <v-flex xs10 offset-xs1>
+                        <div class="headline">
+                            Sorry, there appears to have been a problem creating/updating courses.
+                        </div>
+                        <div class="mt-2 subtitle-1">
+                            Please contact the site administrator if the problem persists.
+                        </div>    
+                        <v-btn class="my-4" color="primary" @click.stop="alignCourseOfferings()">Continue</v-btn>
+                    </v-flex>
+                </v-layout>
     </template>
 
     <!--
