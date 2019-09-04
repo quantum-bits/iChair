@@ -38,7 +38,8 @@ var app = new Vue({
         { text: "Name", value: "name", align: "left" },
         { text: "Status", value: "status", align: "center" }
       ],
-      courses: [],
+      courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
+      courseOfferings: [],
       dialog: false, // true when the dialog is being displayed
       dialogTitle: "",
       editMeetings: [], // used to store the data in the class schedule form
@@ -194,10 +195,44 @@ var app = new Vue({
         this.courseAlignmentPhaseReady = false;
         this.displayCreateUpdateErrorMessage = false;
         console.log('align course offerings!');
+        var _this = this;
+
+        $.ajax({
+            // initialize an AJAX request
+            type: "GET",
+            url: "/planner/ajax/fetch-banner-comparison-data/", // set the url of the request
+            dataType: "json",
+            data: {
+              departmentId: json_data.departmentId, // add the faculty id to the GET parameters
+              yearId: json_data.yearId
+            },
+            success: function(incomingData) {
+              // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
+              incomingData.course_data.forEach(course => {
+                _this.courseOfferings.push({
+                  semester: course.semester,
+                  number: course.course,
+                  name: course.course_title,
+                  crn: course.crn,
+                  ichair: course.ichair,
+                  banner: course.banner,
+                  hasIChair: course.has_ichair,
+                  hasBanner: course.has_banner,
+                  linked: course.linked,
+                  needsWork: course.needs_work
+                });
+              });
+              _this.courseOfferingAlignmentPhaseReady = true;
+            }
+          });
+
+
+
+
     },
 
     showAll() {
-      this.itemsPerPage = this.courses.length;
+      this.itemsPerPage = this.courseOfferings.length;
       this.page = 1;
       this.showAllCourses = true;
     },
@@ -475,32 +510,5 @@ var app = new Vue({
       }
     });
 
-    $.ajax({
-      // initialize an AJAX request
-      type: "GET",
-      url: "/planner/ajax/fetch-banner-comparison-data/", // set the url of the request
-      dataType: "json",
-      data: {
-        departmentId: json_data.departmentId, // add the faculty id to the GET parameters
-        yearId: json_data.yearId
-      },
-      success: function(incomingData) {
-        // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
-        incomingData.course_data.forEach(course => {
-          _this.courses.push({
-            semester: course.semester,
-            number: course.course,
-            name: course.course_title,
-            crn: course.crn,
-            ichair: course.ichair,
-            banner: course.banner,
-            hasIChair: course.has_ichair,
-            hasBanner: course.has_banner,
-            linked: course.linked,
-            needsWork: course.needs_work
-          });
-        });
-      }
-    });
   }
 });

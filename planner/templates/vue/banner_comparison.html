@@ -8,7 +8,7 @@
                     This page allows you to compare your course offerings with those in Banner and
                     request changes from the Registrar.
                 </div>
-                <div class="headline">
+                <div class="subtitle-1 mt-2">
                     Please choose one or more semesters to work on:
                 </div>
             </v-flex>
@@ -22,7 +22,7 @@
         </v-layout>
         <v-layout>
             <v-flex row>
-                <v-flex xs10 offset-xs2>
+                <v-flex xs10 offset-xs1>
                     <v-btn color="primary" @click="alignCourses()">Get Started</v-btn>
                 </v-flex>
             </v-flex>
@@ -39,7 +39,7 @@
                 <div class="mt-2 subtitle-1">
                     This can happen due to small differences
                     in the wording of the title. Please make selections in the
-                    following table, as appropriate.
+                    following table, as appropriate, and then click 'Continue'.
                 </div>    
             </v-flex>
         </v-layout>
@@ -79,7 +79,7 @@
                 <!--<table style="border: 1px solid grey; margin: 10px; padding: 10px">-->
 
                 <div class="subtitle-1">
-                    The next step will be to look at course offerings....
+                    The next step will be to look at course offerings (i.e., meeting times, instructors, etc.)
                 </div>
             </v-flex>
         </v-layout>
@@ -100,20 +100,9 @@
                 </v-layout>
     </template>
 
-    <!--
-    <template v-if="courseAlignmentPhaseReady">
-        <v-layout row wrap align-center>
-            <v-flex xs210 offset-xs1>
-                <div>
-                    [[courseAlignmentChoices]]
-                </div>
-            </v-flex>
-        </v-layout>
-    </template>
--->
 
     <!-- https://stackoverflow.com/questions/52819619/understand-rows-per-page-items-at-vuetify-data-iterators-data-tables-can-i-->
-    <template>
+    <template v-if="courseOfferingAlignmentPhaseReady">
         <template>
             <v-toolbar flat color="white">
                 <v-toolbar-title>Course Offerings</v-toolbar-title>
@@ -121,7 +110,7 @@
                 <v-switch v-model="singleExpand" label="Single expand" class="mt-2"></v-switch>
             </v-toolbar>
         </template>
-        <v-data-table :headers="headers" :items="courses" :single-expand="singleExpand" :expanded.sync="expanded"
+        <v-data-table :headers="headers" :items="courseOfferings" :single-expand="singleExpand" :expanded.sync="expanded"
             show-expand :page.sync="page" :items-per-page="itemsPerPage" hide-default-footer item-key="name"
             class="elevation-1" @page-count="pageCount = $event">
             <template v-slot:item="{ item, expand }">
