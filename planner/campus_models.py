@@ -237,6 +237,7 @@ class Semester(models.Model):
         return '{0} {1}'.format(self.name, self.year)
 
 
+
 class Holiday(models.Model):
     """Range of days off within a semester. Can be a single day (begin and end are the same
     date) or multiple consecutive days. A semester may have multiple holidays.

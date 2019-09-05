@@ -197,15 +197,19 @@ var app = new Vue({
         console.log('align course offerings!');
         var _this = this;
 
+        let dataForPost = {
+            departmentId: json_data.departmentId, // add the faculty id to the GET parameters
+            yearId: json_data.yearId,
+            semesterIds: this.chosenSemesters
+        }
+
         $.ajax({
             // initialize an AJAX request
-            type: "GET",
+            // seems like this should be a GET request, but I'm having trouble sending along the json data that way....
+            type: "POST",
             url: "/planner/ajax/fetch-banner-comparison-data/", // set the url of the request
             dataType: "json",
-            data: {
-              departmentId: json_data.departmentId, // add the faculty id to the GET parameters
-              yearId: json_data.yearId
-            },
+            data: JSON.stringify(dataForPost),
             success: function(incomingData) {
               // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
               incomingData.course_data.forEach(course => {

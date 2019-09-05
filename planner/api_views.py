@@ -4,6 +4,11 @@ from django.db.models import Q
 
 from .models import *
 from banner.models import Course as BannerCourse
+from banner.models import CourseOffering as BannerCourseOffering
+from banner.models import ScheduledClass as BannerScheduledClass
+from banner.models import FacultyMember as BannerFacultyMember
+from banner.models import OfferingInstructor as BannerOfferingInstructor
+
 from .helper_functions import *
 
 from django.shortcuts import render
@@ -142,16 +147,146 @@ def create_update_courses(request):
     return JsonResponse(data)
 
 @login_required
+@csrf_exempt
 def banner_comparison_data(request):
 
-    department_id = request.GET.get('departmentId')
-    year_id = request.GET.get('yearId')
+    json_data=json.loads(request.body)
+    department_id = json_data['departmentId']
+    year_id = json_data['yearId']
+    semester_ids = json_data['semesterIds']
+
+
+
+    print('dept id: ', department_id)
+    print('year id: ', year_id)
+    print('semester ids:', semester_ids)
+
+    department = Department.objects.get(pk = department_id)
+    #academic_year = AcademicYear.objects.get(pk = year_id)
 
     semester_fractions = {
         'full': CourseOffering.FULL_SEMESTER,
         'first_half': CourseOffering.FIRST_HALF_SEMESTER,
         'second_half': CourseOffering.SECOND_HALF_SEMESTER
     }
+
+    # process:
+    # loop through all banner course offerings and try to assign CRNs to iChair course offerings
+    #   - if banner course offering is _linked_ (i.e., it has an ichair_id that is non-null), find the iChair course and make sure it still has the appropriate linking criteria (see below)
+    #       - if the criteria are not satisfied, set ichair_id back to None (course_offering.ichair_id = None) (so the "is_linked" property is false), and follow the procedure below....
+    #   - if a banner course offering is not linked...
+    #       - assign CRN if following criteria are satisfied:
+    #           - course itself agrees (subject, number, credit hours, title or banner_title)
+    #           - semester agrees
+    #       - if multiple iChair course offerings match according to the above criteria, find the "best" fit, based on days, times and instructors
+    #           - if there is an exact fit on days and times, assign the CRN to the iChair offering
+    #           - if not, have a list of iChair courses for that 
+    #       - the following can disagree:
+    #           - semester_fraction
+    #           - days, times, instructors
+    # look through all iChair course offerings; if an iChair offering _has_ a CRN, but that course offering no longer exists in banner, remove the CRN from the offering in iChair
+
+    for semester_id in semester_ids:
+        semester = Semester.objects.get(pk = semester_id)
+        term_code = semester.banner_code
+        for subject in department.subjects.all(): # eventually expand this to include extra-departmental courses taught by dept...?
+            # first should reset all crns of the iChair course offerings, so we start with a clean slate
+            # should also reset all ichair_ids for the Banner course offerings, for the same reason (that's done below)
+
+            # RESET........
+            for course_offering in CourseOffering.objects.filter(
+                    Q(semester = semester)&
+                    Q(course__subject = subject)):
+                course_offering.crn = None
+                course_offering.save()
+
+            banner_course_offerings = BannerCourseOffering.objects.filter(Q(course__subject__abbrev = subject.abbrev)&Q(term_code = term_code))
+
+            # the following is an initial round of attempting to link up banner courses with iChair courses
+            # once this is done, we can cycle through the linked courses (which should be 1-to-1 at that point) and add them to a list
+            # then we can cycle through any unlinked courses on both sides and add them to the list
+            # then we should sort the list so the order doesn't seem crazy
+
+            for bco in banner_course_offerings:
+                find_ichair_course_offering(bco, semester, subject)
+                # print(bco, bco.crn, bco.course.credit_hours)
+                # if not bco.is_linked:
+                #     print('...not linked yet')
+                # # at this stage, let's unlink for starters....
+                # bco.ichair_id = None
+                # bco.save()
+                # print('bco linked: ', bco.is_linked)
+                # # search for candidate course offerings
+                # candidate_ichair_matches = CourseOffering.objects.filter(
+                #     Q(semester = semester)&
+                #     Q(course__subject = subject)&
+                #     Q(course__number__startswith = bco.course.number)&
+                #     Q(course__credit_hours = bco.course.credit_hours)&
+                #     Q(crn__isnull=True)&
+                #     (Q(course__title = bco.course.title)|Q(course__banner_title = bco.course.title)))
+        
+                # if len(candidate_ichair_matches) == 0:
+                #     print('------------')
+                #     print('no matches....')
+                #     print('------------')
+                # elif len(candidate_ichair_matches) == 1:
+                #     ichair_course_offering = candidate_ichair_matches[0]
+                #     # if only one potential match at this stage, link the banner course to the ichair one
+                #     bco.ichair_id = ichair_course_offering.id
+                #     bco.save()
+                #     ichair_course_offering.crn = bco.crn
+                #     ichair_course_offering.save()
+                #     print('>>> Exactly one candidate match...banner course offering is now linked to corresponding iChair course offering!')
+                #     print('>>> scheduled classes agree: ', scheduled_classes_match(ichair_course_offering, bco))
+                # else:
+                #     print('<<< More than one candidate match...checking to see if meeting times match for any of them')
+                #     # at this point we have several candidate matches...which one is closest?
+                #     second_cut_ichair_matches = [] # meet above criteria, as well as being a match on meeting days and times
+                #     for ichair_match in candidate_ichair_matches:
+                #         print(ichair_match)
+                #         print('banner_title of iChair course:', ichair_match.course.banner_title)
+                #         if scheduled_classes_match(ichair_match, bco):
+                #             second_cut_ichair_matches.append(ichair_match)
+                #     if len(second_cut_ichair_matches) == 0:
+                #         print('------------')
+                #         print('no meeting time matches....')
+                #         print('------------')
+                #     elif len(second_cut_ichair_matches) == 1:
+                #         ichair_course_offering = second_cut_ichair_matches[0]
+                #         # if only one potential match at this stage, link the banner course to the ichair one
+                #         bco.ichair_id = ichair_course_offering.id
+                #         bco.save()
+                #         ichair_course_offering.crn = bco.crn
+                #         ichair_course_offering.save()
+                #         print('>>><<<>>> Exactly one candidate match...banner course offering is now linked to corresponding iChair course offering!')
+                #     else:
+                #         # at this point, see if the instructors are an exact match...
+                #         # then can also check semester_fractions(!)
+                #         # if only one match, assign that; if several, just choose one and move on
+
+                #         # NEED TO DO THIS YET!!!!!!!!!!
+                #         print('~~~~~~~~~~~~')
+                #         print('<<<there are several meeting time options')
+                #         print('~~~~~~~~~~~~')
+
+                #         ##### need to assign pidms first
+                #         ##### then can do some testing with PHY203L, multiple instructor(s), fractional semesters, etc.
+
+
+                        
+
+                
+
+
+
+
+
+
+
+
+
+
+
 
     courses = [
         Course.objects.filter(title='Modern Physics')[0],
@@ -266,6 +401,98 @@ def banner_comparison_data(request):
     }
     return JsonResponse(data)
 
+def find_ichair_course_offering(bco, semester, subject):
+    """Start the process of linking up this banner course offering (bco) with one in iChair."""
+
+    print('inside find_ichair_course_offering!')
+    print(bco, bco.crn, bco.course.credit_hours)
+    if not bco.is_linked:
+        print('...not linked yet')
+    # at this stage, let's unlink for starters....
+    bco.ichair_id = None
+    bco.save()
+    print('bco linked: ', bco.is_linked)
+    # search for candidate course offerings
+    candidate_ichair_matches = CourseOffering.objects.filter(
+        Q(semester = semester)&
+        Q(course__subject = subject)&
+        Q(course__number__startswith = bco.course.number)&
+        Q(course__credit_hours = bco.course.credit_hours)&
+        Q(crn__isnull=True)&
+        (Q(course__title = bco.course.title)|Q(course__banner_title = bco.course.title)))
+
+    if len(candidate_ichair_matches) == 0:
+        print('------------')
+        print('no matches....')
+        print('------------')
+    elif len(candidate_ichair_matches) == 1:
+        ichair_course_offering = candidate_ichair_matches[0]
+        # if only one potential match at this stage, link the banner course to the ichair one
+        bco.ichair_id = ichair_course_offering.id
+        bco.save()
+        ichair_course_offering.crn = bco.crn
+        ichair_course_offering.save()
+        print('>>> Exactly one candidate match...banner course offering is now linked to corresponding iChair course offering!')
+        print('>>> scheduled classes agree: ', scheduled_classes_match(ichair_course_offering, bco))
+    else:
+        print('<<< More than one candidate match...checking to see if meeting times match for any of them')
+        choose_course_offering_second_cut(bco, candidate_ichair_matches)
+
+    # return something...?
+    return None
+
+def choose_course_offering_second_cut(bco, candidate_ichair_matches):
+    """Check candidate iChair course matches for this banner course offering, and possibly choose one based on agreement of weekly schedules."""
+    # at this point we have several candidate matches...which one is closest?
+    
+    print('inside choose_course_offering_second_cut!')
+    second_cut_ichair_matches = [] # meet above criteria, as well as being a match on meeting days and times
+    for ichair_match in candidate_ichair_matches:
+        print(ichair_match)
+        print('banner_title of iChair course:', ichair_match.course.banner_title)
+        if scheduled_classes_match(ichair_match, bco):
+            second_cut_ichair_matches.append(ichair_match)
+    if len(second_cut_ichair_matches) == 0:
+        print('------------')
+        print('no meeting time matches....')
+        print('------------')
+    elif len(second_cut_ichair_matches) == 1:
+        ichair_course_offering = second_cut_ichair_matches[0]
+        # if only one potential match at this stage, link the banner course to the ichair one
+        bco.ichair_id = ichair_course_offering.id
+        bco.save()
+        ichair_course_offering.crn = bco.crn
+        ichair_course_offering.save()
+        print('>>><<<>>> Exactly one candidate match...banner course offering is now linked to corresponding iChair course offering!')
+    else:
+        # at this point, see if the instructors are an exact match...
+        # then can also check semester_fractions(!)
+        # if only one match, assign that; if several, just choose one and move on
+
+        # NEED TO DO THIS YET!!!!!!!!!!
+        print('~~~~~~~~~~~~')
+        print('<<<there are several meeting time options')
+        print('~~~~~~~~~~~~')
+
+        ##### need to assign pidms first
+        ##### then can do some testing with PHY203L, multiple instructor(s), fractional semesters, etc.
+        choose_course_offering_third_cut(bco, candidate_ichair_matches)
+
+    # return?
+    return None
+
+def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
+    """Check candidate iChair course matches for this banner course offering, and possibly choose one based on faculty members."""
+    print('inside 3rd cut!')
+
+    # return?
+    return None
+
+
+
+
+
+
 def construct_meeting_times_detail(course_offering):
     meeting_times_detail = []
     for sc in course_offering.scheduled_classes.all():
@@ -276,6 +503,24 @@ def construct_meeting_times_detail(course_offering):
             "id": sc.id
         })
     return meeting_times_detail
+
+def scheduled_classes_match(ichair_course_offering, banner_course_offering):
+    banner_scheduled_classes = banner_course_offering.scheduled_classes.all()
+    ichair_scheduled_classes = ichair_course_offering.scheduled_classes.all()
+    classes_match = True
+    if len(banner_scheduled_classes) != len(ichair_scheduled_classes):
+        classes_match = False
+        return classes_match
+    for bsc in banner_scheduled_classes:
+        # if the # of scheduled classes agree and there is an isc match for each bsc match, then the overall schedules agree
+        one_fits = False
+        for isc in ichair_scheduled_classes:
+            if bsc.day == isc.day and bsc.begin_at == isc.begin_at and bsc.end_at == isc.end_at:
+                one_fits = True
+        if not one_fits:
+            classes_match = False
+    return classes_match
+
 
 @login_required
 @csrf_exempt

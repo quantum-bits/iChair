@@ -76,9 +76,15 @@ class CourseOffering(StampedModel):
     max_enrollment = models.PositiveIntegerField(default=10)
     banner_comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.CharField(max_length=5)
+    ichair_id = models.PositiveIntegerField(blank=True, null=True) # id of corresponding ichair course offering, if it exists
 
     def __str__(self):
         return "{0} ({1})".format(self.course, self.term_code)
+
+    @property
+    def is_linked(self):
+        """True if there is a (unique) course offering in the iChair database that has been identified with the current (banner) course offering.""" 
+        return self.ichair_id is not None
 
 
 class OfferingInstructor(StampedModel):
