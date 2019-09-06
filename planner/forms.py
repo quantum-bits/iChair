@@ -123,7 +123,7 @@ class CourseSelectForm(forms.ModelForm):
     
     class Meta:
         model = CourseOffering
-        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction')
+        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction',)
 
     def clean(self):
         return self.cleaned_data
@@ -162,7 +162,7 @@ class DynamicCourseSelectForm(forms.ModelForm):
     
     class Meta:
         model = CourseOffering
-        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction')
+        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction',)
 
     def clean(self):
         return self.cleaned_data
@@ -178,7 +178,7 @@ class CourseOfferingForm(forms.ModelForm):
 
     class Meta:
         model = CourseOffering
-        exclude = ('course', 'semester','instructor','crn','semester_fraction')
+        exclude = ('course', 'semester','instructor','crn','semester_fraction',)
 
     def clean(self):
         instructor = self.cleaned_data.get('instructor')
@@ -245,7 +245,9 @@ class InstructorForm(forms.ModelForm):
 
     class Meta:
         model = OfferingInstructor
-        fields = "__all__"
+        # may want to have "is_primary" back in at some point....
+        exclude = ('is_primary',)
+        #fields = "__all__"
 
 
 #class ManageCourseOfferingForm(forms.ModelForm):
