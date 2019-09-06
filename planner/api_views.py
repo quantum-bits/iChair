@@ -172,19 +172,19 @@ def banner_comparison_data(request):
 
     # process:
     # loop through all banner course offerings and try to assign CRNs to iChair course offerings
-    #   - if banner course offering is _linked_ (i.e., it has an ichair_id that is non-null), find the iChair course and make sure it still has the appropriate linking criteria (see below)
-    #       - if the criteria are not satisfied, set ichair_id back to None (course_offering.ichair_id = None) (so the "is_linked" property is false), and follow the procedure below....
-    #   - if a banner course offering is not linked...
-    #       - assign CRN if following criteria are satisfied:
+    #   - first, unlink the courses (i.e., basically start from scratch, in case things have changed either in banner or ichair)
+    #   - for each banner course, check iChair course candidates
+    #       - assign CRN to iChair course (and ichair_id to banner course) if following criteria are satisfied:
     #           - course itself agrees (subject, number, credit hours, title or banner_title)
     #           - semester agrees
+    #           - iChair course has not already been assigned a CRN
     #       - if multiple iChair course offerings match according to the above criteria, find the "best" fit, based on days, times and instructors
     #           - if there is an exact fit on days and times, assign the CRN to the iChair offering
-    #           - if not, have a list of iChair courses for that 
-    #       - the following can disagree:
-    #           - semester_fraction
-    #           - days, times, instructors
-    # look through all iChair course offerings; if an iChair offering _has_ a CRN, but that course offering no longer exists in banner, remove the CRN from the offering in iChair
+    #           - if multiple fits on days and times, proceed to check instructors
+    #               - if instructors agree for exactly one course offering, assign the CRN to the iChair offering
+    #               - if zero or multiple course offerings agree, proceed to check semester fraction
+
+    course_offering_data = []
 
     for semester_id in semester_ids:
         semester = Semester.objects.get(pk = semester_id)
@@ -193,7 +193,7 @@ def banner_comparison_data(request):
             # first should reset all crns of the iChair course offerings, so we start with a clean slate
             # should also reset all ichair_ids for the Banner course offerings, for the same reason (that's done below)
 
-            # RESET........
+            # RESET CRNs of all corresponding iChair course offerings (i.e., start from scratch)
             for course_offering in CourseOffering.objects.filter(
                     Q(semester = semester)&
                     Q(course__subject = subject)):
@@ -208,8 +208,73 @@ def banner_comparison_data(request):
             # then we should sort the list so the order doesn't seem crazy
 
             for bco in banner_course_offerings:
+                # attempt to assign an iChair course offering to the banner one
                 find_ichair_course_offering(bco, semester, subject)
-                
+            
+            # once all of the course offerings have been cycled through, we have done as much matching as possible between iChair and banner courses for this subject and semester
+            # now we can go again, and simply pick out the ones that have been matched, etc.
+
+            for bco in banner_course_offerings:
+
+                bco_meeting_times_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = False)
+                bco_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in bco.offering_instructors.all()]
+
+                if bco.is_linked:
+                    # get the corresponding iChair course offering
+                    try:
+                        ico = CourseOffering.objects.get(pk = bco.ichair_id)
+                        ico_meeting_times_list, ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all())
+                        ico_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in ico.offering_instructors.all()]
+                        meeting_times_detail = construct_meeting_times_detail(ico)
+
+                        schedules_match = scheduled_classes_match(bco, ico)
+                        inst_match = instructors_match(bco, ico)
+                        sem_fractions_match = semester_fractions_match(bco, ico)
+
+                        #######
+                        # now use the functions already defined to say whether various properties agree or not!
+                        # EASY!!!!!
+                        #######
+                        course_offering_data.append({
+                            "semester": semester.name.name,
+                            "course_id": ico.course.id,
+                            "course": ico.course.subject.abbrev+' '+ico.course.number,
+                            "course_title": ico.course.title,
+                            "schedules_match": schedules_match,
+                            "instructors_match": inst_match,
+                            "semester_fractions_match": sem_fractions_match,
+                            "banner": { 
+                                "course_offering_id": bco.id,
+                                "meeting_times": bco_meeting_times_list,
+                                "rooms": [],
+                                "instructors": bco_instructors,
+                                "term_code": bco.term_code,
+                                "semester_fraction": bco.semester_fraction
+                            },
+                            "ichair": { 
+                                "course_offering_id": ico.id,
+                                "meeting_times": ico_meeting_times_list,
+                                "meeting_times_detail": meeting_times_detail,
+                                "rooms": ico_room_list,
+                                "instructors": ico_instructors,
+                                "semester": ico.semester.name.name,
+                                "semester_fraction": ico.semester_fraction
+                            },
+                            "has_banner": True,
+                            "has_ichair": True,
+                            "linked": True,
+                            "delta": None,
+                            "all_OK": schedules_match and inst_match and sem_fractions_match,
+                            "crn": bco.crn
+                        })
+                    except CourseOffering.DoesNotExist:
+                        print('OOPS!  Looking for a course offering that does not exist....')
+                        print(bco)
+
+
+        
+
+
 
 
     courses = [
@@ -320,7 +385,7 @@ def banner_comparison_data(request):
 
     data = {
         "message": "hello!",
-        "course_data": course_data,
+        "course_data": course_offering_data,
         "semester_fractions": semester_fractions
     }
     return JsonResponse(data)
@@ -328,15 +393,12 @@ def banner_comparison_data(request):
 def find_ichair_course_offering(bco, semester, subject):
     """Start the process of linking up this banner course offering (bco) with one in iChair."""
 
-    #print('inside find_ichair_course_offering!')
-    #print(bco, bco.crn, bco.course.credit_hours)
-    if not bco.is_linked:
-        print('...not linked yet')
-    # at this stage, let's unlink for starters....
+    # start by unlinking the banner course offering
     bco.ichair_id = None
     bco.save()
-    #print('bco linked: ', bco.is_linked)
+
     # search for candidate course offerings
+    # https://stackoverflow.com/questions/844556/filtering-for-empty-or-null-names-in-a-queryset
     candidate_ichair_matches = CourseOffering.objects.filter(
         Q(semester = semester)&
         Q(course__subject = subject)&

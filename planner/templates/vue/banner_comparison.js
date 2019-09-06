@@ -27,7 +27,7 @@ var app = new Vue({
       showAllCourses: false,
       buttonRipple: false,
       headers: [
-        { text: "Semester - Fraction", value: "semester" },
+        { text: "Semester", value: "semester" },
         { text: "CRN", value: "crn" },
         {
           text: "Number",
@@ -218,15 +218,19 @@ var app = new Vue({
                   number: course.course,
                   name: course.course_title,
                   crn: course.crn,
+                  schedulesMatch: course.schedules_match,
+                  instructorsMatch: course.instructors_match,
+                  semesterFractionsMatch: course.semester_fractions_match,
                   ichair: course.ichair,
                   banner: course.banner,
                   hasIChair: course.has_ichair,
                   hasBanner: course.has_banner,
                   linked: course.linked,
-                  needsWork: course.needs_work
+                  allOK: course.all_OK
                 });
               });
               _this.courseOfferingAlignmentPhaseReady = true;
+              console.log('course offering data: ', _this.courseOfferings);
             }
           });
 
@@ -260,6 +264,9 @@ var app = new Vue({
       this.initialMeetingData = meetingDetails;
       this.addMeetingTime();
       this.addMeetingTime();
+    },
+    editSemesterFraction(courseInfo) {
+        console.log('edit semester fraction!');
     },
     addNewMeetingTimes(courseInfo) {
       console.log(courseInfo);

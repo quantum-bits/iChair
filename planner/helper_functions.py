@@ -1,6 +1,6 @@
 
 
-def class_time_and_room_summary(scheduled_classes):
+def class_time_and_room_summary(scheduled_classes, include_rooms = True):
 # Returns a class time summary list and an accompanying room list, such as ['MWF 9-9:50','T 10-10:50'] and ['NS 210', 'ESC 141']
 # scheduled_classes is assumed to be a list of ScheduledClass objects with at least one element
 
@@ -11,10 +11,13 @@ def class_time_and_room_summary(scheduled_classes):
     schedule_list = []
     for sc in scheduled_classes:
         time_string=start_end_time_string(sc.begin_at.hour, sc.begin_at.minute, sc.end_at.hour, sc.end_at.minute)
-        if sc.room != None:
-            room = sc.room.building.abbrev+' '+sc.room.number
+        if include_rooms:
+            if sc.room != None:
+                room = sc.room.building.abbrev+' '+sc.room.number
+            else:
+                room = '---'
         else:
-            room = '---'
+            room = ''
         schedule_list.append([sc.day, time_string, room])
         day_dict[time_string+room]=''
         room_dict[time_string+room] = room
@@ -31,7 +34,10 @@ def class_time_and_room_summary(scheduled_classes):
         class_times_list.append(day_dict[key]+' '+time_dict[key])
         room_list.append(room_dict[key])
 
-    return class_times_list, room_list
+    if include_rooms:
+        return class_times_list, room_list
+    else:
+        return class_times_list
 
 
 
