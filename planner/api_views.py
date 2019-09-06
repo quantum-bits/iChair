@@ -402,6 +402,7 @@ def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
     
     if len(third_cut_ichair_matches) == 0:
         # see if semester fraction helps to sort things out....
+        print('instructors do not match exactly, going to check semester fractions instead!')
         choose_course_offering_fourth_cut(bco, second_cut_ichair_matches)
 
     if len(third_cut_ichair_matches) == 1:
