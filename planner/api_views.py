@@ -155,7 +155,13 @@ def banner_comparison_data(request):
     year_id = json_data['yearId']
     semester_ids = json_data['semesterIds']
 
-
+    day_sorter_dict = {
+        'M': 0,
+        'T': 1,
+        'W': 2,
+        'R': 3,
+        'F': 4
+    }
 
     print('dept id: ', department_id)
     print('year id: ', year_id)
@@ -169,6 +175,9 @@ def banner_comparison_data(request):
         'first_half': CourseOffering.FIRST_HALF_SEMESTER,
         'second_half': CourseOffering.SECOND_HALF_SEMESTER
     }
+
+    # https://stackoverflow.com/questions/483666/python-reverse-invert-a-mapping
+    semester_fractions_reverse = {v: k for k, v in semester_fractions.items()}
 
     # process:
     # loop through all banner course offerings and try to assign CRNs to iChair course offerings
@@ -216,14 +225,25 @@ def banner_comparison_data(request):
 
             for bco in banner_course_offerings:
 
-                bco_meeting_times_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = False)
+                presorted_bco_meeting_times_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = False)
+                # >>> Note: if the room list is ever included in the above, will need to be more careful about the sorting
+                # >>> that is done below, since the room list order and the meeting times order are correlated!
+                bco_meeting_times_list = sorted(presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                # https://stackoverflow.com/questions/7108080/python-get-the-first-character-of-the-first-string-in-a-list
+                # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                 bco_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in bco.offering_instructors.all()]
 
                 if bco.is_linked:
                     # get the corresponding iChair course offering
                     try:
                         ico = CourseOffering.objects.get(pk = bco.ichair_id)
-                        ico_meeting_times_list, ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all())
+                        #ico_meeting_times_list, ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
+                        # >>> Note: if the room list is ever included (as above), will need to be more careful about the sorting
+                        # >>> that is done below, since the room list order and the meeting times order are correlated!
+                        presorted_ico_meeting_times_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
+                        # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
+                        ico_meeting_times_list = sorted(presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+
                         ico_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in ico.offering_instructors.all()]
                         meeting_times_detail = construct_meeting_times_detail(ico)
 
@@ -231,10 +251,6 @@ def banner_comparison_data(request):
                         inst_match = instructors_match(bco, ico)
                         sem_fractions_match = semester_fractions_match(bco, ico)
 
-                        #######
-                        # now use the functions already defined to say whether various properties agree or not!
-                        # EASY!!!!!
-                        #######
                         course_offering_data.append({
                             "semester": semester.name.name,
                             "course_id": ico.course.id,
@@ -249,16 +265,16 @@ def banner_comparison_data(request):
                                 "rooms": [],
                                 "instructors": bco_instructors,
                                 "term_code": bco.term_code,
-                                "semester_fraction": bco.semester_fraction
+                                "semester_fraction": int(bco.semester_fraction)
                             },
                             "ichair": { 
                                 "course_offering_id": ico.id,
                                 "meeting_times": ico_meeting_times_list,
                                 "meeting_times_detail": meeting_times_detail,
-                                "rooms": ico_room_list,
+                                #"rooms": ico_room_list,
                                 "instructors": ico_instructors,
                                 "semester": ico.semester.name.name,
-                                "semester_fraction": ico.semester_fraction
+                                "semester_fraction": int(ico.semester_fraction)
                             },
                             "has_banner": True,
                             "has_ichair": True,
@@ -272,121 +288,12 @@ def banner_comparison_data(request):
                         print(bco)
 
 
-        
-
-
-
-
-    courses = [
-        Course.objects.filter(title='Modern Physics')[0],
-        Course.objects.filter(title='University Physics II')[0],
-        Course.objects.filter(title='Engineering Thermodynamics')[0],
-        Course.objects.filter(title='Analytical Mechanics')[0]
-    ]
-    
-    course_data = []
-    for course in courses:
-        num_offerings = len(course.offerings.all())
-        
-        co1 = course.offerings.all()[num_offerings-1]
-        co2 = course.offerings.all()[num_offerings-2]
-        co1meeting_times_list, co1room_list = class_time_and_room_summary(co1.scheduled_classes.all())
-        co2meeting_times_list, co2room_list = class_time_and_room_summary(co2.scheduled_classes.all())
-        instructors1 = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co1.offering_instructors.all()]
-        instructors2 = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co2.offering_instructors.all()]
-        meeting_times_detail = construct_meeting_times_detail(co2)
-        
-        course_data.append({
-            "semester": 'Fall',
-            "course_id": co1.course.id,
-            "course": co1.course.subject.abbrev+' '+co1.course.number,
-            "course_title": co1.course.title,
-            "banner": { 
-                "course_offering_id": co1.id,
-                "meeting_times": co1meeting_times_list,
-                "rooms": co1room_list,
-                "instructors": instructors1,
-                "semester": co1.semester.name.name,
-                "semester_fraction": co1.semester_fraction
-            },
-            "ichair": { 
-                "course_offering_id": co2.id,
-                "meeting_times": co2meeting_times_list,
-                "meeting_times_detail": meeting_times_detail,
-                "rooms": co2room_list,
-                "instructors": instructors2,
-                "semester": co2.semester.name.name,
-                "semester_fraction": co2.semester_fraction
-            },
-            "has_banner": True,
-            "has_ichair": True,
-            "linked": True,
-            "delta": None,
-            "needs_work": True,
-            "crn": '12354'
-        })
-
-    course = Course.objects.filter(title='Quantum Mechanics I')[0]
-    num_offerings = len(course.offerings.all())
-    co = course.offerings.all()[num_offerings-1]
-    meeting_times_list, room_list = class_time_and_room_summary(co1.scheduled_classes.all())
-    instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co.offering_instructors.all()]
-    course_data.append({
-        "semester": "J-term",
-        "course_id": co.course.id,
-        "course": co.course.subject.abbrev+' '+co.course.number,
-        "course_title": co.course.title,
-        "banner": { 
-                "course_offering_id": co.id,
-                "meeting_times": meeting_times_list,
-                "rooms": room_list,
-                "instructors": instructors,
-                "semester": co.semester.name.name,
-                "semester_fraction": co.semester_fraction
-            },
-        "ichair": None,
-        "has_banner": True,
-        "has_ichair": False,
-        "linked": False,
-        "delta": None,
-        "needs_work": False,
-        "crn": '52846'
-    })
-
-    course = Course.objects.filter(title='Quantum Mechanics II - SP')[0]
-    num_offerings = len(course.offerings.all())
-    co = course.offerings.all()[num_offerings-1]
-    meeting_times_list, room_list = class_time_and_room_summary(co1.scheduled_classes.all())
-    instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in co.offering_instructors.all()]
-    meeting_times_detail = construct_meeting_times_detail(co)
-   
-    course_data.append({
-        "semester": 'Spring',
-        "course_id": co.course.id,
-        "course": co.course.subject.abbrev+' '+co.course.number,
-        "course_title": co.course.title,
-        "ichair": { 
-                "course_offering_id": co.id,
-                "meeting_times": meeting_times_list,
-                 "meeting_times_detail": meeting_times_detail,
-                "rooms": room_list,
-                "instructors": instructors,
-                "semester": co.semester.name.name,
-                "semester_fraction": co.semester_fraction
-            },
-        "banner": None,
-        "has_banner": False,
-        "has_ichair": True,
-        "linked": False,
-        "delta": None,
-        "needs_work": True,
-        "crn": None
-    })
 
     data = {
         "message": "hello!",
         "course_data": course_offering_data,
-        "semester_fractions": semester_fractions
+        "semester_fractions": semester_fractions,
+        "semester_fractions_reverse": semester_fractions_reverse
     }
     return JsonResponse(data)
 
@@ -417,7 +324,7 @@ def find_ichair_course_offering(bco, semester, subject):
         #print('>>> Exactly one candidate match...banner course offering is now linked to corresponding iChair course offering!')
         #print('>>> scheduled classes agree: ', scheduled_classes_match(bco, ichair_course_offering))
     elif len(candidate_ichair_matches) > 1:
-        print('<<< More than one candidate match...checking to see if meeting times match for any of them')
+        #print('<<< More than one candidate match...checking to see if meeting times match for any of them')
         choose_course_offering_second_cut(bco, candidate_ichair_matches)
 
     return None
@@ -453,7 +360,7 @@ def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
     Check candidate iChair course matches for this banner course offering, and possibly choose one based on faculty members.
     By this point, the weekly schedules are an exact match, but there are too many course offerings that are an exact match in this respect.
     """
-    print('inside 3rd cut!  Checking instructors now....')
+    #print('inside 3rd cut!  Checking instructors now....')
 
     third_cut_ichair_matches = [] # meet above criteria, as well as being a match on meeting days and times
     for ichair_match in second_cut_ichair_matches:
@@ -464,7 +371,7 @@ def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
     
     if len(third_cut_ichair_matches) == 0:
         # see if semester fraction helps to sort things out....
-        print('instructors do not match exactly, going to check semester fractions instead!')
+        #print('instructors do not match exactly, going to check semester fractions instead!')
         choose_course_offering_fourth_cut(bco, second_cut_ichair_matches)
 
     if len(third_cut_ichair_matches) == 1:
@@ -474,26 +381,26 @@ def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
         bco.save()
         ichair_course_offering.crn = bco.crn
         ichair_course_offering.save()
-        print('>>><<<>>> Exactly one candidate match for instructors...banner course offering is now linked to corresponding iChair course offering!')
+        #print('>>><<<>>> Exactly one candidate match for instructors...banner course offering is now linked to corresponding iChair course offering!')
 
     else:
         # at this point, check semester_fractions(!)
-        print('~~~~~~~~~~~~')
-        print('<<<there are several instructors that match...checking semester fractions')
-        print('~~~~~~~~~~~~')
+        #print('~~~~~~~~~~~~')
+        #print('<<<there are several instructors that match...checking semester fractions')
+        #print('~~~~~~~~~~~~')
         choose_course_offering_fourth_cut(bco, third_cut_ichair_matches)
 
     return None
 
 def choose_course_offering_fourth_cut(bco, third_cut_ichair_matches):
     """Check candidate iChair course matches for this banner course offering, and possibly choose one based on semester fraction."""
-    print('inside 4th cut!  Checking semester fractions now....')
+    #print('inside 4th cut!  Checking semester fractions now....')
 
     fourth_cut_ichair_matches = [] 
     for ichair_match in third_cut_ichair_matches:
-        print(ichair_match)
+        #print(ichair_match)
         if semester_fractions_match(bco, ichair_match):
-            print('semester fractions match exactly!')
+            #print('semester fractions match exactly!')
             fourth_cut_ichair_matches.append(ichair_match)
     
     if len(fourth_cut_ichair_matches) == 1:
@@ -503,7 +410,7 @@ def choose_course_offering_fourth_cut(bco, third_cut_ichair_matches):
         bco.save()
         ichair_course_offering.crn = bco.crn
         ichair_course_offering.save()
-        print('>>><<<>>> Exactly one candidate match for semester fractions...banner course offering is now linked to corresponding iChair course offering!')
+        #print('>>><<<>>> Exactly one candidate match for semester fractions...banner course offering is now linked to corresponding iChair course offering!')
 
     # at this point we give up...!
 
@@ -544,31 +451,23 @@ def instructors_match(banner_course_offering, ichair_course_offering):
     banner_instructors = banner_course_offering.offering_instructors.all()
     ichair_instructors = ichair_course_offering.offering_instructors.all()
 
-    print('banner instructors: ')
-    for bi in banner_instructors:
-        print(bi.instructor, bi.instructor.pidm)
-    
-    print('ichair instructors: ')
-    for ii in ichair_instructors:
-        print(ii.instructor, ii.instructor.pidm)
-
     inst_match = True
     if len(banner_instructors) != len(ichair_instructors):
         inst_match = False
-        print('instructors match: ', inst_match)
+        #print('instructors match: ', inst_match)
         return inst_match
     for banner_instructor in banner_instructors:
-        print('banner instructor: ', banner_instructor.instructor)
+        #print('banner instructor: ', banner_instructor.instructor)
         # if the # of instructors agree and there is an iChair instructor match for each banner instructor, then the overall set of instructors agrees
         one_fits = False
         for ichair_instructor in ichair_instructors:
             if banner_instructor.instructor.pidm == ichair_instructor.instructor.pidm:
-                print('ichair instructor: ', ichair_instructor.instructor)
+                #print('ichair instructor: ', ichair_instructor.instructor)
                 one_fits = True
         if not one_fits:
             inst_match = False
 
-    print('instructors match: ', inst_match)
+    #print('instructors match: ', inst_match)
     return inst_match
 
 def semester_fractions_match(banner_course_offering, ichair_course_offering):

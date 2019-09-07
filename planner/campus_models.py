@@ -602,6 +602,9 @@ class OfferingInstructor(StampedModel):
     load_credit = models.FloatField(validators = [MinValueValidator(0.0), MaxValueValidator(100.0)])
     is_primary = models.BooleanField(default=True)
 
+    class Meta:
+        ordering = ['instructor__last_name','instructor__first_name']
+
 
 class ClassMeeting(StampedModel):
     """A single meeting of a class, which takes place on a given day, in a period of clock

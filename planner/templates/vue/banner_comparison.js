@@ -8,6 +8,8 @@ var app = new Vue({
   vuetify: new Vuetify(),
   data() {
     return {
+        semesterFractionsReverse: {}, // used to convert 
+        semesterFractions: {},
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
       chosenSemesters: [], // ids of semesters chosen to work on
@@ -228,9 +230,15 @@ var app = new Vue({
                   linked: course.linked,
                   allOK: course.all_OK
                 });
+                console.log(course.ichair.semester_fraction);
+                console.log(typeof(course.ichair.semester_fraction));
               });
+              _this.semesterFractionsReverse = incomingData.semester_fractions_reverse;
+              _this.semesterFractions = incomingData.semester_fractions;
               _this.courseOfferingAlignmentPhaseReady = true;
               console.log('course offering data: ', _this.courseOfferings);
+              console.log('sem fractions: ', _this.semesterFractions);
+              console.log(typeof(_this.semesterFractions.full))
             }
           });
 

@@ -96,6 +96,9 @@ class OfferingInstructor(StampedModel):
     instructor = models.ForeignKey(FacultyMember,related_name='offering_instructors', on_delete=models.CASCADE)
     is_primary = models.BooleanField(default=True)
     
+    class Meta:
+        ordering = ['instructor__last_name','instructor__first_name']
+        
 class ScheduledClass(StampedModel):
     """A scheduled meeting of a class, which takes place on a given
     day of the week, in a period of clock time, in a certain room, and

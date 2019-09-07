@@ -17,7 +17,7 @@ def class_time_and_room_summary(scheduled_classes, include_rooms = True):
             else:
                 room = '---'
         else:
-            room = ''
+            room = '---'
         schedule_list.append([sc.day, time_string, room])
         day_dict[time_string+room]=''
         room_dict[time_string+room] = room

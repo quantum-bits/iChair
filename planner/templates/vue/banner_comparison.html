@@ -40,7 +40,7 @@
                     This can happen due to small differences
                     in the wording of the title. Please make selections in the
                     following table, as appropriate, and then click 'Continue'.
-                </div>    
+                </div>
             </v-flex>
         </v-layout>
         <v-layout row wrap align-center>
@@ -59,7 +59,7 @@
                             <td class="course-align-td">
                                 [[course.banner_course.subject]] [[course.banner_course.number]]:
                                 [[course.banner_course.title]]
-                                ([[course.banner_course.credit_hours]] 
+                                ([[course.banner_course.credit_hours]]
                                 <span v-if="course.banner_course.credit_hours == 1">credit hour)</span>
                                 <span v-else>credit hours)</span>
                             </td>
@@ -87,17 +87,17 @@
     </template>
 
     <template v-if="displayCreateUpdateErrorMessage">
-            <v-layout row wrap align-center>
-                    <v-flex xs10 offset-xs1>
-                        <div class="headline">
-                            Sorry, there appears to have been a problem creating/updating courses.
-                        </div>
-                        <div class="mt-2 subtitle-1">
-                            Please contact the site administrator if the problem persists.
-                        </div>    
-                        <v-btn class="my-4" color="primary" @click.stop="alignCourseOfferings()">Continue</v-btn>
-                    </v-flex>
-                </v-layout>
+        <v-layout row wrap align-center>
+            <v-flex xs10 offset-xs1>
+                <div class="headline">
+                    Sorry, there appears to have been a problem creating/updating courses.
+                </div>
+                <div class="mt-2 subtitle-1">
+                    Please contact the site administrator if the problem persists.
+                </div>
+                <v-btn class="my-4" color="primary" @click.stop="alignCourseOfferings()">Continue</v-btn>
+            </v-flex>
+        </v-layout>
     </template>
 
 
@@ -110,9 +110,9 @@
                 <v-switch v-model="singleExpand" label="Single expand" class="mt-2"></v-switch>
             </v-toolbar>
         </template>
-        <v-data-table :headers="headers" :items="courseOfferings" :single-expand="singleExpand" :expanded.sync="expanded"
-            show-expand :page.sync="page" :items-per-page="itemsPerPage" hide-default-footer item-key="name"
-            class="elevation-1" @page-count="pageCount = $event">
+        <v-data-table :headers="headers" :items="courseOfferings" :single-expand="singleExpand"
+            :expanded.sync="expanded" show-expand :page.sync="page" :items-per-page="itemsPerPage" hide-default-footer
+            item-key="name" class="elevation-1" @page-count="pageCount = $event">
             <template v-slot:item="{ item, expand }">
                 <tr>
                     <td>
@@ -239,16 +239,18 @@
                                                 ---
                                             </td>
                                             <td class="text-center">
-                                                <a @click="addNewMeetingTimes(item)">
+                                                <v-btn small color="primary" @click="addNewMeetingTimes(item)">
                                                     iChair
-                                                </a> |
-                                                <a @click="addNewMeetingTimes(item)">
+                                                </v-btn>
+                                                <v-btn small color="primary" @click="addNewMeetingTimes(item)">
                                                     Registrar
-                                                </a>
+                                                </v-btn>
+                                        
                                             </td>
                                             <td class="text-center"> change to: MW 9-9:50; R 11-11:35</td>
                                             <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.schedulesMatch">mdi-check-circle</v-icon>
+                                                <v-icon class="green--text" v-if="item.schedulesMatch">mdi-check-circle
+                                                </v-icon>
                                                 <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
                                             </td>
 
@@ -277,52 +279,75 @@
                                                 ---
                                             </td>
                                             <td class="text-center">
-                                                <a @click="addNewMeetingTimes(item)">
+                                                <v-btn v-if="!item.instructorsMatch" small color="primary" @click="addNewMeetingTimes(item)">
                                                     iChair
-                                                </a> |
-                                                <a @click="addNewMeetingTimes(item)">
+                                                </v-btn>
+                                                <v-btn v-else small disabled @click="addNewMeetingTimes(item)">
+                                                    iChair
+                                                </v-btn>
+                                                <v-btn small color="primary" @click="addNewMeetingTimes(item)">
                                                     Registrar
-                                                </a>
+                                                </v-btn>
                                             </td>
                                             <td></td>
                                             <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.instructorsMatch">mdi-check-circle</v-icon>
+                                                <v-icon class="green--text" v-if="item.instructorsMatch">
+                                                    mdi-check-circle</v-icon>
                                                 <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
                                             </td>
                                         </tr>
                                         <tr>
-                                                <td>Semester Fraction</td>
-                                                <td v-if="item.hasIChair" class="text-center">
-                                                    <a @click="editSemesterFraction(item)">
-                                                        [[item.ichair.semester_fraction]]
-                                                    </a>
-                                                </td>
-                                                <td v-else class="text-center">
-                                                    <a @click="addNewMeetingTimes(item)">
-                                                        ---
-                                                    </a>
-                                                </td>
-                                                <td v-if="item.hasBanner" class="text-center">
-                                                    <div>
-                                                        [[item.banner.semester_fraction]]
+                                            <td>Semester Fraction</td>
+                                            <td v-if="item.hasIChair" class="text-center">
+                                                <a @click="editSemesterFraction(item)">
+                                                    <div v-if="item.ichair.semester_fraction == semesterFractions.full">
+                                                        Full
                                                     </div>
-                                                </td>
-                                                <td v-else class="text-center">
+                                                    <div
+                                                        v-if="item.ichair.semester_fraction == semesterFractions.first_half">
+                                                        First Half
+                                                    </div>
+                                                    <div
+                                                        v-if="item.ichair.semester_fraction == semesterFractions.second_half">
+                                                        Second Half
+                                                    </div>
+                                                </a>
+                                            </td>
+                                            <td v-else class="text-center">
+                                                <a @click="addNewMeetingTimes(item)">
                                                     ---
-                                                </td>
-                                                <td class="text-center">
-                                                    <a @click="addNewMeetingTimes(item)">
-                                                        iChair
-                                                    </a> |
-                                                    <a @click="addNewMeetingTimes(item)">
-                                                        Registrar
-                                                    </a>
-                                                </td>
-                                                <td class="text-center"> </td>
-                                                <td class="text-center">
-                                                    <v-icon class="green--text" v-if="item.semesterFractionsMatch">mdi-check-circle</v-icon>
-                                                    <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
-                                                </td>
+                                                </a>
+                                            </td>
+                                            <td v-if="item.hasBanner" class="text-center">
+                                                <div v-if="item.banner.semester_fraction == semesterFractions.full">
+                                                    Full
+                                                </div>
+                                                <div
+                                                    v-if="item.banner.semester_fraction == semesterFractions.first_half">
+                                                    First Half
+                                                </div>
+                                                <div
+                                                    v-if="item.banner.semester_fraction == semesterFractions.second_half">
+                                                    Second Half
+                                                </div>
+                                            </td>
+                                            <td v-else class="text-center">
+                                                ---
+                                            </td>
+                                            <td class="text-center">
+                                                <v-btn small color="primary" @click="addNewMeetingTimes(item)">
+                                                    iChair
+                                                </v-btn>
+                                                <v-btn small color="primary" @click="addNewMeetingTimes(item)">
+                                                    Registrar
+                                                </v-btn>
+                                            </td>
+                                            <td class="text-center"> </td>
+                                            <td class="text-center">
+                                                <v-icon class="green--text" v-if="item.semesterFractionsMatch">
+                                                    mdi-check-circle</v-icon>
+                                                <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
+                                            </td>
                                         </tr>
 
 

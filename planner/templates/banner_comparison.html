@@ -1,76 +1,75 @@
 {% extends "base.html" %}
 {% block extrahead %}
-    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@3.x/css/materialdesignicons.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+<link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@mdi/font@3.x/css/materialdesignicons.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
 
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
 {% endblock %}
 {% block content %}
-    {% load static %}
-    <style>
-        * {
-            outline
-        }
-    </style>
+{% load static %}
+<style>
+    * {
+        outline
+    }
+</style>
 
-    <script type='text/javascript'>
-        var json_data = {{ json_data| safe }};
-    </script>
+<script type='text/javascript'>
+    var json_data = {{ json_data| safe }};
+</script>
 
-    <div class="container">
-        
-    </div>
+<div class="container">
 
-    <div id="app">
-        {% include "vue/banner_comparison.html" %}
-    </div>
+</div>
 
-    <script>
-        {% include "vue/banner_comparison.js" %}
-    </script>
+<div id="app">
+    {% include "vue/banner_comparison.html" %}
+</div>
 
-    <!-- https://stackoverflow.com/questions/49421170/change-font-size-of-v-radio-vuetify?rq=1 -->
-    <!-- https://www.w3schools.com/css/tryit.asp?filename=trycss_table_width -->
-    <style scoped>
-        
-        .course-align-table {
-            border: 1px solid red;
-            border-collapse: collapse;
-            width: 100%;
-        }
+<script>
+    {% include "vue/banner_comparison.js" %}
+</script>
 
-        .course-align-td {
-            border: 1px solid grey;
-            padding-left: 10px;
-        }
+<!-- https://stackoverflow.com/questions/49421170/change-font-size-of-v-radio-vuetify?rq=1 -->
+<!-- https://www.w3schools.com/css/tryit.asp?filename=trycss_table_width -->
+<style scoped>
+    
+    .course-align-table {
+        border-collapse: collapse;
+        width: 100%;
+    }
 
-        .course-align-th {
-            border: 1px solid grey;
-            height: 50px;
-        }
+    .course-align-td {
+        border: 1px solid grey;
+        padding-left: 10px;
+    }
 
-        .v-label {
-            font-size: 14px;
-            margin-left: 2px;
-        }
+    .course-align-th {
+        border: 1px solid grey;
+        height: 50px;
+    }
 
-        .v-input input {
-            height: 32px;
-            margin-bottom: 4px;
-        }
-    </style>
+    .v-label {
+        font-size: 14px;
+        margin-left: 2px;
+    }
+
+    .v-input input {
+        height: 32px;
+        margin-bottom: 4px;
+    }
+</style>
 
 
-    <script>
-        //window.addEventListener("resize",function(){alertMessage();},true);
-        $(window).load(function () {
-            $("#nav-bannercomparison").addClass("current");
-            $('.page-name').find('h1').replaceWith('<h1>Banner Comparison</h1><h2>{{department}}, {{academic_year_string}}</h2>');
-            $(".page-name").stop().animate({opacity: 1, 'margin-left': '5%'}, 700);
-        });
-    </script>
+<script>
+    //window.addEventListener("resize",function(){alertMessage();},true);
+    $(window).load(function () {
+        $("#nav-bannercomparison").addClass("current");
+        $('.page-name').find('h1').replaceWith('<h1>Banner Comparison</h1><h2>{{department}}, {{academic_year_string}}</h2>');
+        $(".page-name").stop().animate({ opacity: 1, 'margin-left': '5%' }, 700);
+    });
+</script>
 
 {% endblock %}
