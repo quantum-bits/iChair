@@ -19,13 +19,13 @@ var app = new Vue({
       unmatchedCourses: [], // filled in via an ajax request after one or more semesters are chosen; also used to populate radio select elements in the table used for aligning courses
       displayCreateUpdateErrorMessage: false,
       expanded: [],
-      singleExpand: false,
+      singleExpand: true,
       message: "Hello Vue!",
       search: "",
       json_data: json_data,
       page: 1,
       pageCount: 0,
-      itemsPerPage: 2,
+      itemsPerPage: 15,
       showAllCourses: false,
       buttonRipple: false,
       headers: [
@@ -253,7 +253,7 @@ var app = new Vue({
       this.showAllCourses = true;
     },
     showFewer() {
-      this.itemsPerPage = 3;
+      this.itemsPerPage = 15;
       this.showAllCourses = false;
     },
     editMeetingTimes(courseInfo) {

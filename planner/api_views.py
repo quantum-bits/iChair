@@ -167,6 +167,15 @@ def banner_comparison_data(request):
     print('year id: ', year_id)
     print('semester ids:', semester_ids)
 
+    semester_sorter_dict = {}
+    counter = 0
+    for semester_id in semester_ids:
+        semester_sorter_dict[semester_id] = counter
+        counter = counter+1
+
+    print('semesters')
+    print(semester_sorter_dict)
+
     department = Department.objects.get(pk = department_id)
     #academic_year = AcademicYear.objects.get(pk = year_id)
 
@@ -220,11 +229,8 @@ def banner_comparison_data(request):
                 # attempt to assign an iChair course offering to the banner one
                 find_ichair_course_offering(bco, semester, subject)
             
-            # once all of the course offerings have been cycled through, we have done as much matching as possible between iChair and banner courses for this subject and semester
-            # now we can go again, and simply pick out the ones that have been matched, etc.
-
+            # now we cycle through all the banner course offerings and add them to the list
             for bco in banner_course_offerings:
-
                 presorted_bco_meeting_times_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = False)
                 # >>> Note: if the room list is ever included in the above, will need to be more careful about the sorting
                 # >>> that is done below, since the room list order and the meeting times order are correlated!
@@ -232,6 +238,33 @@ def banner_comparison_data(request):
                 # https://stackoverflow.com/questions/7108080/python-get-the-first-character-of-the-first-string-in-a-list
                 # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                 bco_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in bco.offering_instructors.all()]
+
+                course_offering_item = {
+                            "semester": semester.name.name,
+                            "semester_id": semester.id,
+                            "course": bco.course.subject.abbrev+' '+bco.course.number,
+                            "course_title": bco.course.title,
+                            "schedules_match": False,
+                            "instructors_match": False,
+                            "semester_fractions_match": False,
+                            "banner": { 
+                                "course_offering_id": bco.id,
+                                "meeting_times": bco_meeting_times_list,
+                                "rooms": [],
+                                "instructors": bco_instructors,
+                                "term_code": bco.term_code,
+                                "semester_fraction": int(bco.semester_fraction)
+                            },
+                            "ichair": {},
+                            "ichair_options": [], # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
+                            "banner_options": [],
+                            "has_banner": True,
+                            "has_ichair": False,
+                            "linked": False,
+                            "delta": None,
+                            "all_OK": False,
+                            "crn": bco.crn
+                        }
 
                 if bco.is_linked:
                     # get the corresponding iChair course offering
@@ -251,22 +284,51 @@ def banner_comparison_data(request):
                         inst_match = instructors_match(bco, ico)
                         sem_fractions_match = semester_fractions_match(bco, ico)
 
-                        course_offering_data.append({
+                        course_offering_item["ichair"] = { 
+                                "course_offering_id": ico.id,
+                                "meeting_times": ico_meeting_times_list,
+                                "meeting_times_detail": meeting_times_detail,
+                                #"rooms": ico_room_list,
+                                "instructors": ico_instructors,
+                                "semester": ico.semester.name.name,
+                                "semester_fraction": int(ico.semester_fraction)
+                            }
+                        course_offering_item["has_ichair"] = True
+                        course_offering_item["linked"] = True
+                        course_offering_item["schedules_match"] = schedules_match
+                        course_offering_item["instructors_match"] = inst_match
+                        course_offering_item["semester_fractions_match"] = sem_fractions_match
+                        course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match
+                    except CourseOffering.DoesNotExist:
+                        print('OOPS!  Looking for a course offering that does not exist....')
+                        print(bco)
+                course_offering_data.append(course_offering_item)
+            
+            # and now we go through the remaining iChair course offerings (i.e., the ones that have not been linked to banner course offerings)
+            for ico in CourseOffering.objects.filter(
+                    Q(semester = semester)&
+                    Q(course__subject = subject)&
+                    Q(crn__isnull=True)):
+                
+                #ico_meeting_times_list, ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
+                # >>> Note: if the room list is ever included (as above), will need to be more careful about the sorting
+                # >>> that is done below, since the room list order and the meeting times order are correlated!
+                presorted_ico_meeting_times_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
+                # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
+                ico_meeting_times_list = sorted(presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+
+                ico_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in ico.offering_instructors.all()]
+                meeting_times_detail = construct_meeting_times_detail(ico)
+
+                course_offering_item = {
                             "semester": semester.name.name,
-                            "course_id": ico.course.id,
+                            "semester_id": semester.id,
                             "course": ico.course.subject.abbrev+' '+ico.course.number,
                             "course_title": ico.course.title,
-                            "schedules_match": schedules_match,
-                            "instructors_match": inst_match,
-                            "semester_fractions_match": sem_fractions_match,
-                            "banner": { 
-                                "course_offering_id": bco.id,
-                                "meeting_times": bco_meeting_times_list,
-                                "rooms": [],
-                                "instructors": bco_instructors,
-                                "term_code": bco.term_code,
-                                "semester_fraction": int(bco.semester_fraction)
-                            },
+                            "schedules_match": False,
+                            "instructors_match": False,
+                            "semester_fractions_match": False,
+                            "banner": {},
                             "ichair": { 
                                 "course_offering_id": ico.id,
                                 "meeting_times": ico_meeting_times_list,
@@ -276,22 +338,24 @@ def banner_comparison_data(request):
                                 "semester": ico.semester.name.name,
                                 "semester_fraction": int(ico.semester_fraction)
                             },
-                            "has_banner": True,
+                            "ichair_options": [], # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
+                            "banner_options": [],
+                            "has_banner": False,
                             "has_ichair": True,
-                            "linked": True,
+                            "linked": False,
                             "delta": None,
-                            "all_OK": schedules_match and inst_match and sem_fractions_match,
-                            "crn": bco.crn
-                        })
-                    except CourseOffering.DoesNotExist:
-                        print('OOPS!  Looking for a course offering that does not exist....')
-                        print(bco)
+                            "all_OK": False,
+                            "crn": None
+                        }
+                course_offering_data.append(course_offering_item)
 
 
+
+    sorted_course_offerings = sorted(course_offering_data, key=lambda item: (semester_sorter_dict[item["semester_id"]], item["course"]))
 
     data = {
         "message": "hello!",
-        "course_data": course_offering_data,
+        "course_data": sorted_course_offerings, #course_offering_data,
         "semester_fractions": semester_fractions,
         "semester_fractions_reverse": semester_fractions_reverse
     }
