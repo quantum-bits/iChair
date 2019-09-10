@@ -578,6 +578,61 @@ class CourseOffering(StampedModel):
             return '2nd Half'
 
 
+class DeltaCourseOffering(StampedModel):
+    """Proposed change to a banner version of a course offering.  Used for communication with the registrar."""
+
+    CREATE = 0
+    UPDATE = 1
+    DELETE = 2
+
+    ACTION_CHOICES = (
+        (CREATE, 'Create'),
+        (UPDATE, 'Update'),
+        (DELETE, 'Delete')
+    )
+
+    # CREATE: - only has a course_offering
+    # UPDATE: - has both a crn and a course_offering (need both for the diff)
+    # DELETE: - only has a crn
+    #
+    # could get messy in the UPDATE cases if the crn and course_offering fall out of sync with each other.  (We're aligning these dynamically, so it's conceivable.)
+    #   - before submitting to the registrar, need to check that the crn/course offering (as applicable) of the "delta" object agree with 
+    #     those that are currently in the two databases.  if not, trash the delta object.  in particular, for an UPDATE, check that the
+    #     course offering has the right crn and that the banner course offering has the right course_offering_id
+
+    crn = models.CharField(max_length=5, blank=True, null=True) # crn of the banner course offering, if it exists
+    semester = models.ForeignKey(Semester, related_name='delta_offerings', on_delete=models.CASCADE) # this allows us to get the term_code as well, for finding the banner course offering
+    course_offering = models.ForeignKey(CourseOffering, related_name='delta_offerings', blank=True, null=True, on_delete=models.CASCADE)
+
+    extra_comment = models.CharField(max_length=200, blank=True, null=True, help_text="(optional comment for the registrar)")
+
+    # the action requested of the registrar
+    requested_action = models.IntegerField(choices = ACTION_CHOICES, default = UPDATE)
+
+    # the following are used only for UPDATEs, and specify which of the course offering fields should be aligned with the iChair versions
+    # (some may not need to be updated, others could be updated, but the user is not electing to do so at present)
+
+    update_meeting_times = models.BooleanField(default=False)
+    update_instructors = models.BooleanField(default=False)
+    update_semester_fraction = models.BooleanField(default=False)
+    update_max_enrollment = models.BooleanField(default=False)
+
+    def __str__(self):
+        if self.course_offering is not None:
+            return "{0} ({1})".format(self.course_offering, self.semester)
+        elif self.crn is not None:
+            return "{0} ({1})".format(self.crn, self.semester)
+        else:
+            return "{0} ({1})".format('Unknown course offering', self.semester)
+
+    @classmethod
+    def actions(cls):
+        return {
+            'create': cls.CREATE,
+            'update': cls.UPDATE,
+            'delete': cls.DELETE
+        }
+
 class Grade(models.Model):
     letter_grade = models.CharField(max_length=5)
     grade_points = models.FloatField()

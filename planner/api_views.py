@@ -19,7 +19,6 @@ import json
 import re
 
 
-
 @login_required
 def fetch_semesters(request):
     department_id = request.GET.get('departmentId')
@@ -33,42 +32,45 @@ def fetch_semesters(request):
             "semester_name": '{0} {1}'.format(semester.name, semester.year),
             "id": semester.id,
             "banner_code": semester.banner_code
-            })
+        })
     data = {
         "semester_choices": semester_choices
     }
     return JsonResponse(data)
 
+
 @login_required
 def fetch_courses_to_be_aligned(request):
     department_id = request.GET.get('departmentId')
     year_id = request.GET.get('yearId')
-    academic_year = AcademicYear.objects.get(pk = year_id)
-    department = Department.objects.get(pk = department_id)
+    academic_year = AcademicYear.objects.get(pk=year_id)
+    department = Department.objects.get(pk=department_id)
 
     unmatched_courses = []
     for subject in department.subjects.all():
         print(subject, subject.abbrev)
-        #print(BannerCourse.objects.all
-        for banner_course in BannerCourse.objects.filter(subject__abbrev = subject.abbrev):
+        # print(BannerCourse.objects.all
+        for banner_course in BannerCourse.objects.filter(subject__abbrev=subject.abbrev):
             ichair_courses = Course.objects.filter(
-                Q(subject__abbrev = banner_course.subject.abbrev)&
-                Q(number__startswith = banner_course.number)&
-                Q(credit_hours = banner_course.credit_hours))
-            
+                Q(subject__abbrev=banner_course.subject.abbrev) &
+                Q(number__startswith=banner_course.number) &
+                Q(credit_hours=banner_course.credit_hours))
+
             exact_match = False
             multiple_potential_matches = False
 
             for ichair_course in ichair_courses:
-                if (banner_course.title == ichair_course.title) or (banner_course.title == ichair_course.banner_title): # found a match...
-                    if (exact_match == True) and (multiple_potential_matches == False): # uh-oh...we had already found a match -- this means we have more than one potential match, so we will list them all
+                # found a match...
+                if (banner_course.title == ichair_course.title) or (banner_course.title == ichair_course.banner_title):
+                    # uh-oh...we had already found a match -- this means we have more than one potential match, so we will list them all
+                    if (exact_match == True) and (multiple_potential_matches == False):
                         exact_match = False
                         multiple_potential_matches = True
                     elif (exact_match == False) and (multiple_potential_matches == False):
                         exact_match = True
 
             if exact_match == False:
-                ichair_course_data = [ # all the candidate iChair courses
+                ichair_course_data = [  # all the candidate iChair courses
                     {
                         "subject": c.subject.abbrev,
                         "number": c.number,
@@ -88,9 +90,8 @@ def fetch_courses_to_be_aligned(request):
                         "title": banner_course.title
                     },
                     "ichair_courses": ichair_course_data
-                    })
+                })
 
-            
     for bc in unmatched_courses:
         print(bc)
 
@@ -99,11 +100,12 @@ def fetch_courses_to_be_aligned(request):
     }
     return JsonResponse(data)
 
+
 @login_required
 @csrf_exempt
 def create_update_courses(request):
 
-    json_data=json.loads(request.body)
+    json_data = json.loads(request.body)
     update_dict = json_data['update']
     create_dict = json_data['create']
 
@@ -117,7 +119,7 @@ def create_update_courses(request):
         print(update_item)
         #course = Course.objects.get(pk = update_item.ichair_course_id)
         try:
-            course = Course.objects.get(pk = update_item["ichair_course_id"])
+            course = Course.objects.get(pk=update_item["ichair_course_id"])
             print(course)
             course.banner_title = update_item["banner_title"]
             course.save()
@@ -128,29 +130,30 @@ def create_update_courses(request):
     for create_item in create_dict:
         print(create_item)
         try:
-            subject = Subject.objects.get(pk = create_item["subject_id"])
+            subject = Subject.objects.get(pk=create_item["subject_id"])
             print(subject)
             course = Course.objects.create(
-                title = create_item["title"],
-                credit_hours = create_item["credit_hours"],
-                subject = subject,
-                number = create_item["number"])
+                title=create_item["title"],
+                credit_hours=create_item["credit_hours"],
+                subject=subject,
+                number=create_item["number"])
             course.save()
             print(course)
         except:
             updates_successful = False
-       
+
     data = {
         'updates_successful': updates_successful,
         'creates_successful': creates_successful
     }
     return JsonResponse(data)
 
+
 @login_required
 @csrf_exempt
 def banner_comparison_data(request):
 
-    json_data=json.loads(request.body)
+    json_data = json.loads(request.body)
     department_id = json_data['departmentId']
     year_id = json_data['yearId']
     semester_ids = json_data['semesterIds']
@@ -176,7 +179,7 @@ def banner_comparison_data(request):
     print('semesters')
     print(semester_sorter_dict)
 
-    department = Department.objects.get(pk = department_id)
+    department = Department.objects.get(pk=department_id)
     #academic_year = AcademicYear.objects.get(pk = year_id)
 
     semester_fractions = {
@@ -205,20 +208,22 @@ def banner_comparison_data(request):
     course_offering_data = []
 
     for semester_id in semester_ids:
-        semester = Semester.objects.get(pk = semester_id)
+        semester = Semester.objects.get(pk=semester_id)
         term_code = semester.banner_code
-        for subject in department.subjects.all(): # eventually expand this to include extra-departmental courses taught by dept...?
+        # eventually expand this to include extra-departmental courses taught by dept...?
+        for subject in department.subjects.all():
             # first should reset all crns of the iChair course offerings, so we start with a clean slate
             # should also reset all ichair_ids for the Banner course offerings, for the same reason (that's done below)
 
             # RESET CRNs of all corresponding iChair course offerings (i.e., start from scratch)
             for course_offering in CourseOffering.objects.filter(
-                    Q(semester = semester)&
-                    Q(course__subject = subject)):
+                    Q(semester=semester) &
+                    Q(course__subject=subject)):
                 course_offering.crn = None
                 course_offering.save()
 
-            banner_course_offerings = BannerCourseOffering.objects.filter(Q(course__subject__abbrev = subject.abbrev)&Q(term_code = term_code))
+            banner_course_offerings = BannerCourseOffering.objects.filter(
+                Q(course__subject__abbrev=subject.abbrev) & Q(term_code=term_code))
 
             # the following is an initial round of attempting to link up banner courses with iChair courses
             # once this is done, we can cycle through the linked courses (which should be 1-to-1 at that point) and add them to a list
@@ -226,140 +231,197 @@ def banner_comparison_data(request):
             # then we should sort the list so the order doesn't seem crazy
 
             for bco in banner_course_offerings:
+                print(bco)
                 # attempt to assign an iChair course offering to the banner one
                 find_ichair_course_offering(bco, semester, subject)
-            
+
             # now we cycle through all the banner course offerings and add them to the list
             for bco in banner_course_offerings:
-                presorted_bco_meeting_times_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = False)
+                presorted_bco_meeting_times_list = class_time_and_room_summary(
+                    bco.scheduled_classes.all(), include_rooms=False)
                 # >>> Note: if the room list is ever included in the above, will need to be more careful about the sorting
                 # >>> that is done below, since the room list order and the meeting times order are correlated!
-                bco_meeting_times_list = sorted(presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                bco_meeting_times_list = sorted(
+                    presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
                 # https://stackoverflow.com/questions/7108080/python-get-the-first-character-of-the-first-string-in-a-list
                 # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
-                bco_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in bco.offering_instructors.all()]
+                bco_instructors = [instr.instructor.first_name+' ' +
+                                   instr.instructor.last_name for instr in bco.offering_instructors.all()]
 
                 course_offering_item = {
-                            "semester": semester.name.name,
-                            "semester_id": semester.id,
-                            "course": bco.course.subject.abbrev+' '+bco.course.number,
-                            "course_title": bco.course.title,
-                            "schedules_match": False,
-                            "instructors_match": False,
-                            "semester_fractions_match": False,
-                            "banner": { 
-                                "course_offering_id": bco.id,
-                                "meeting_times": bco_meeting_times_list,
-                                "rooms": [],
-                                "instructors": bco_instructors,
-                                "term_code": bco.term_code,
-                                "semester_fraction": int(bco.semester_fraction)
-                            },
-                            "ichair": {},
-                            "ichair_options": [], # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
-                            "banner_options": [],
-                            "has_banner": True,
-                            "has_ichair": False,
-                            "linked": False,
-                            "delta": None,
-                            "all_OK": False,
-                            "crn": bco.crn
-                        }
+                    "semester": semester.name.name,
+                    "semester_id": semester.id,
+                    "course": bco.course.subject.abbrev+' '+bco.course.number,
+                    "credit_hours": bco.course.credit_hours,
+                    "course_title": bco.course.title,
+                    "schedules_match": False,
+                    "instructors_match": False,
+                    "semester_fractions_match": False,
+                    "enrollment_caps_match": False,
+                    "banner": {
+                        "course_offering_id": bco.id,
+                        "meeting_times": bco_meeting_times_list,
+                        "rooms": [],
+                        "instructors": bco_instructors,
+                        "term_code": bco.term_code,
+                        "semester_fraction": int(bco.semester_fraction),
+                        "max_enrollment": int(bco.max_enrollment)
+                    },
+                    "ichair": {},
+                    # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
+                    "ichair_options": [],
+                    "banner_options": [],
+                    "has_banner": True,
+                    "has_ichair": False,
+                    "linked": False,
+                    "delta": None,
+                    "all_OK": False,
+                    "crn": bco.crn
+                }
 
                 if bco.is_linked:
                     # get the corresponding iChair course offering
                     try:
-                        ico = CourseOffering.objects.get(pk = bco.ichair_id)
+                        ico = CourseOffering.objects.get(pk=bco.ichair_id)
                         #ico_meeting_times_list, ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
                         # >>> Note: if the room list is ever included (as above), will need to be more careful about the sorting
                         # >>> that is done below, since the room list order and the meeting times order are correlated!
-                        presorted_ico_meeting_times_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
+                        presorted_ico_meeting_times_list = class_time_and_room_summary(
+                            ico.scheduled_classes.all(), include_rooms=False)
                         # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
-                        ico_meeting_times_list = sorted(presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                        ico_meeting_times_list = sorted(
+                            presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
-                        ico_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in ico.offering_instructors.all()]
-                        meeting_times_detail = construct_meeting_times_detail(ico)
+                        ico_instructors = [instr.instructor.first_name+' ' +
+                                           instr.instructor.last_name for instr in ico.offering_instructors.all()]
+                        meeting_times_detail = construct_meeting_times_detail(
+                            ico)
 
                         schedules_match = scheduled_classes_match(bco, ico)
                         inst_match = instructors_match(bco, ico)
-                        sem_fractions_match = semester_fractions_match(bco, ico)
+                        sem_fractions_match = semester_fractions_match(
+                            bco, ico)
+                        enrollment_caps_match = max_enrollments_match(bco, ico)
 
-                        course_offering_item["ichair"] = { 
-                                "course_offering_id": ico.id,
-                                "meeting_times": ico_meeting_times_list,
-                                "meeting_times_detail": meeting_times_detail,
-                                #"rooms": ico_room_list,
-                                "instructors": ico_instructors,
-                                "semester": ico.semester.name.name,
-                                "semester_fraction": int(ico.semester_fraction)
-                            }
+                        # check to see if there are relevant delta objects
+
+                        delta_objects = DeltaCourseOffering.objects.filter(
+                            Q(crn=bco.crn)&
+                            Q(course_offering=ico))
+
+
+                        if len(delta_objects) > 0:
+                            print('delta object(s) found for', bco)
+                            recent_delta_object = delta_objects[0]
+                            for delta_object in delta_objects:
+                                print(delta_object, delta_object.updated_at)
+                                if delta_object.updated_at > recent_delta_object.updated_at:
+                                    recent_delta_object = delta_object
+                                    print('found more recent!',recent_delta_object.updated_at)
+                                
+                        # WORKING HERE!!!!
+                        # next: find a way to get the delta object to inspect itself and return helpful phrases
+                        # then return those helpful phrases....
+                        # what to do with old delta objects?!?  maybe nothing...?
+                        # in some sense, if we keep the delta object and there is no longer an actual delta (b/c the registrar made the change)
+                        # then the delta object will just do nothing, i guess?!?
+                            
+                        # write a function that takes a delta_object, bco and ico, and then uses the comparison functions
+                        # to check if things are equal, and if not, returns a 'was' and 'change to' string
+                        # then put that all in the delta object here, along with the delta id;
+                        # make things like 'instructors': ['was...', 'change to']
+            
+
+
+
+                        course_offering_item["ichair"] = {
+                            "course_offering_id": ico.id,
+                            "meeting_times": ico_meeting_times_list,
+                            "meeting_times_detail": meeting_times_detail,
+                            # "rooms": ico_room_list,
+                            "instructors": ico_instructors,
+                            "semester": ico.semester.name.name,
+                            "semester_fraction": int(ico.semester_fraction),
+                            "max_enrollment": int(ico.max_enrollment)
+                        }
                         course_offering_item["has_ichair"] = True
                         course_offering_item["linked"] = True
                         course_offering_item["schedules_match"] = schedules_match
                         course_offering_item["instructors_match"] = inst_match
                         course_offering_item["semester_fractions_match"] = sem_fractions_match
-                        course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match
+                        course_offering_item["enrollment_caps_match"] = enrollment_caps_match
+
+                        course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match and enrollment_caps_match
+
                     except CourseOffering.DoesNotExist:
-                        print('OOPS!  Looking for a course offering that does not exist....')
+                        print(
+                            'OOPS!  Looking for a course offering that does not exist....')
                         print(bco)
                 course_offering_data.append(course_offering_item)
-            
+
             # and now we go through the remaining iChair course offerings (i.e., the ones that have not been linked to banner course offerings)
             for ico in CourseOffering.objects.filter(
-                    Q(semester = semester)&
-                    Q(course__subject = subject)&
+                    Q(semester=semester) &
+                    Q(course__subject=subject) &
                     Q(crn__isnull=True)):
-                
+
                 #ico_meeting_times_list, ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
                 # >>> Note: if the room list is ever included (as above), will need to be more careful about the sorting
                 # >>> that is done below, since the room list order and the meeting times order are correlated!
-                presorted_ico_meeting_times_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
+                presorted_ico_meeting_times_list = class_time_and_room_summary(
+                    ico.scheduled_classes.all(), include_rooms=False)
                 # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
-                ico_meeting_times_list = sorted(presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                ico_meeting_times_list = sorted(
+                    presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
-                ico_instructors = [instr.instructor.first_name+' '+instr.instructor.last_name for instr in ico.offering_instructors.all()]
+                ico_instructors = [instr.instructor.first_name+' ' +
+                                   instr.instructor.last_name for instr in ico.offering_instructors.all()]
                 meeting_times_detail = construct_meeting_times_detail(ico)
 
                 course_offering_item = {
-                            "semester": semester.name.name,
-                            "semester_id": semester.id,
-                            "course": ico.course.subject.abbrev+' '+ico.course.number,
-                            "course_title": ico.course.title,
-                            "schedules_match": False,
-                            "instructors_match": False,
-                            "semester_fractions_match": False,
-                            "banner": {},
-                            "ichair": { 
-                                "course_offering_id": ico.id,
-                                "meeting_times": ico_meeting_times_list,
-                                "meeting_times_detail": meeting_times_detail,
-                                #"rooms": ico_room_list,
-                                "instructors": ico_instructors,
-                                "semester": ico.semester.name.name,
-                                "semester_fraction": int(ico.semester_fraction)
-                            },
-                            "ichair_options": [], # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
-                            "banner_options": [],
-                            "has_banner": False,
-                            "has_ichair": True,
-                            "linked": False,
-                            "delta": None,
-                            "all_OK": False,
-                            "crn": None
-                        }
+                    "semester": semester.name.name,
+                    "semester_id": semester.id,
+                    "course": ico.course.subject.abbrev+' '+ico.course.number,
+                    "credit_hours": ico.course.credit_hours,
+                    "course_title": ico.course.title,
+                    "schedules_match": False,
+                    "instructors_match": False,
+                    "semester_fractions_match": False,
+                    "enrollment_caps_match": False,
+                    "banner": {},
+                    "ichair": {
+                        "course_offering_id": ico.id,
+                        "meeting_times": ico_meeting_times_list,
+                        "meeting_times_detail": meeting_times_detail,
+                        # "rooms": ico_room_list,
+                        "instructors": ico_instructors,
+                        "semester": ico.semester.name.name,
+                        "semester_fraction": int(ico.semester_fraction),
+                        "max_enrollment": int(ico.max_enrollment)
+                    },
+                    # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
+                    "ichair_options": [],
+                    "banner_options": [],
+                    "has_banner": False,
+                    "has_ichair": True,
+                    "linked": False,
+                    "delta": None,
+                    "all_OK": False,
+                    "crn": None
+                }
                 course_offering_data.append(course_offering_item)
 
-
-
-    sorted_course_offerings = sorted(course_offering_data, key=lambda item: (semester_sorter_dict[item["semester_id"]], item["course"]))
+    sorted_course_offerings = sorted(course_offering_data, key=lambda item: (
+        semester_sorter_dict[item["semester_id"]], item["course"]))
 
     data = {
         "message": "hello!",
-        "course_data": sorted_course_offerings, #course_offering_data,
+        "course_data": sorted_course_offerings,  # course_offering_data,
         "semester_fractions": semester_fractions,
         "semester_fractions_reverse": semester_fractions_reverse
     }
     return JsonResponse(data)
+
 
 def find_ichair_course_offering(bco, semester, subject):
     """Start the process of linking up this banner course offering (bco) with one in iChair."""
@@ -371,12 +433,12 @@ def find_ichair_course_offering(bco, semester, subject):
     # search for candidate course offerings
     # https://stackoverflow.com/questions/844556/filtering-for-empty-or-null-names-in-a-queryset
     candidate_ichair_matches = CourseOffering.objects.filter(
-        Q(semester = semester)&
-        Q(course__subject = subject)&
-        Q(course__number__startswith = bco.course.number)&
-        Q(course__credit_hours = bco.course.credit_hours)&
-        Q(crn__isnull=True)&
-        (Q(course__title = bco.course.title)|Q(course__banner_title = bco.course.title)))
+        Q(semester=semester) &
+        Q(course__subject=subject) &
+        Q(course__number__startswith=bco.course.number) &
+        Q(course__credit_hours=bco.course.credit_hours) &
+        Q(crn__isnull=True) &
+        (Q(course__title=bco.course.title) | Q(course__banner_title=bco.course.title)))
 
     if len(candidate_ichair_matches) == 1:
         ichair_course_offering = candidate_ichair_matches[0]
@@ -393,18 +455,20 @@ def find_ichair_course_offering(bco, semester, subject):
 
     return None
 
+
 def choose_course_offering_second_cut(bco, candidate_ichair_matches):
     """Check candidate iChair course matches for this banner course offering, and possibly choose one based on agreement of weekly schedules."""
     # at this point we have several candidate matches...which one is closest?
-    
+
     #print('inside choose_course_offering_second_cut!')
-    second_cut_ichair_matches = [] # meet above criteria, as well as being a match on meeting days and times
+    # meet above criteria, as well as being a match on meeting days and times
+    second_cut_ichair_matches = []
     for ichair_match in candidate_ichair_matches:
-        #print(ichair_match)
+        # print(ichair_match)
         #print('banner_title of iChair course:', ichair_match.course.banner_title)
         if scheduled_classes_match(bco, ichair_match):
             second_cut_ichair_matches.append(ichair_match)
-    
+
     if len(second_cut_ichair_matches) == 1:
         ichair_course_offering = second_cut_ichair_matches[0]
         # if only one potential match at this stage, link the banner course to the ichair one
@@ -416,8 +480,9 @@ def choose_course_offering_second_cut(bco, candidate_ichair_matches):
     elif len(second_cut_ichair_matches) > 1:
         # at this point, see if the instructors are an exact match...
         choose_course_offering_third_cut(bco, second_cut_ichair_matches)
-       
+
     return None
+
 
 def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
     """
@@ -426,13 +491,14 @@ def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
     """
     #print('inside 3rd cut!  Checking instructors now....')
 
-    third_cut_ichair_matches = [] # meet above criteria, as well as being a match on meeting days and times
+    # meet above criteria, as well as being a match on meeting days and times
+    third_cut_ichair_matches = []
     for ichair_match in second_cut_ichair_matches:
-        #print(ichair_match)
+        # print(ichair_match)
         if instructors_match(bco, ichair_match):
             #print('instructors match exactly!')
             third_cut_ichair_matches.append(ichair_match)
-    
+
     if len(third_cut_ichair_matches) == 0:
         # see if semester fraction helps to sort things out....
         #print('instructors do not match exactly, going to check semester fractions instead!')
@@ -449,24 +515,25 @@ def choose_course_offering_third_cut(bco, second_cut_ichair_matches):
 
     else:
         # at this point, check semester_fractions(!)
-        #print('~~~~~~~~~~~~')
+        # print('~~~~~~~~~~~~')
         #print('<<<there are several instructors that match...checking semester fractions')
-        #print('~~~~~~~~~~~~')
+        # print('~~~~~~~~~~~~')
         choose_course_offering_fourth_cut(bco, third_cut_ichair_matches)
 
     return None
+
 
 def choose_course_offering_fourth_cut(bco, third_cut_ichair_matches):
     """Check candidate iChair course matches for this banner course offering, and possibly choose one based on semester fraction."""
     #print('inside 4th cut!  Checking semester fractions now....')
 
-    fourth_cut_ichair_matches = [] 
+    fourth_cut_ichair_matches = []
     for ichair_match in third_cut_ichair_matches:
-        #print(ichair_match)
+        # print(ichair_match)
         if semester_fractions_match(bco, ichair_match):
             #print('semester fractions match exactly!')
             fourth_cut_ichair_matches.append(ichair_match)
-    
+
     if len(fourth_cut_ichair_matches) == 1:
         ichair_course_offering = fourth_cut_ichair_matches[0]
         # if only one potential match at this stage, link the banner course to the ichair one
@@ -492,6 +559,7 @@ def construct_meeting_times_detail(course_offering):
         })
     return meeting_times_detail
 
+
 def scheduled_classes_match(banner_course_offering, ichair_course_offering):
     """Returns true if the scheduled class objects for an iChair course offering exactly match those for the corresponding banner course offering."""
     banner_scheduled_classes = banner_course_offering.scheduled_classes.all()
@@ -509,6 +577,7 @@ def scheduled_classes_match(banner_course_offering, ichair_course_offering):
         if not one_fits:
             classes_match = False
     return classes_match
+
 
 def instructors_match(banner_course_offering, ichair_course_offering):
     """Returns true if the instructors for an iChair course offering exactly match those for the corresponding banner course offering."""
@@ -534,8 +603,83 @@ def instructors_match(banner_course_offering, ichair_course_offering):
     #print('instructors match: ', inst_match)
     return inst_match
 
+
 def semester_fractions_match(banner_course_offering, ichair_course_offering):
     return banner_course_offering.semester_fraction == ichair_course_offering.semester_fraction
+
+
+def max_enrollments_match(banner_course_offering, ichair_course_offering):
+    return banner_course_offering.max_enrollment == ichair_course_offering.max_enrollment
+
+
+@login_required
+@csrf_exempt
+def generate_delta(request):
+
+    json_data = json.loads(request.body)
+    delta_types = json_data['deltaTypes']
+
+    action = json_data['action']
+
+    semester_id = json_data['semesterId']
+    crn = json_data['crn']
+    ichair_course_offering_id = json_data['iChairCourseOfferingId']
+
+    delta_generation_successful = True
+
+
+    # WORKING HERE
+    # before doing anything...should pass in the existing delta id if there is one, and then update that
+    # rather than creating a new one!
+
+
+
+    print(delta_types)
+
+    print('action: ', action)
+    print('crn: ', crn)
+    print('ichair id: ', ichair_course_offering_id)
+    print('semester_id: ', semester_id)
+
+    try:
+        semester = Semester.objects.get(pk=semester_id)
+        ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+    except:
+        delta_generation_successful = False
+        print("Problem finding the semester or iChair course offering...!")
+
+    delta_course_offering_actions = DeltaCourseOffering.actions()
+
+    if action == 'create':
+        requested_action = delta_course_offering_actions["create"]
+    elif action == 'update':
+        requested_action = delta_course_offering_actions["update"]
+    elif action == 'delete':
+        requested_action = delta_course_offering_actions["delete"]
+    else:
+        delta_generation_successful = False
+
+
+    print(delta_course_offering_actions)
+
+    if delta_generation_successful:
+        dco = DeltaCourseOffering.objects.create(
+            course_offering=ico,
+            semester=semester,
+            crn=crn,
+            requested_action=requested_action,
+            update_meeting_times=delta_types["meetingTimes"],
+            update_instructors=delta_types["instructors"],
+            update_semester_fraction=delta_types["semesterFraction"],
+            update_max_enrollment=delta_types["enrollmentCap"])
+        dco.save()
+
+    data = {
+        'delta_generation_successful': delta_generation_successful
+    }
+
+    return JsonResponse(data)
+
 
 @login_required
 @csrf_exempt
@@ -544,13 +688,13 @@ def update_class_schedule_api(request):
     #user = request.user
     #user_preferences = user.user_preferences.all()[0]
 
-    json_data=json.loads(request.body)
-    
+    json_data = json.loads(request.body)
+
     course_offering_id = json_data['courseOfferingId']
     delete_ids = json_data['delete']
     update_dict = json_data['update']
     create_dict = json_data['create']
- 
+
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
     except:
@@ -564,7 +708,8 @@ def update_class_schedule_api(request):
             sc = ScheduledClass.objects.get(pk=delete_id)
             sc.delete()
         except ScheduledClass.DoesNotExist:
-            print('unable to delete scheduled class id = ', delete_id,'; it may be that the object no longer exists.')
+            print('unable to delete scheduled class id = ', delete_id,
+                  '; it may be that the object no longer exists.')
             deletes_successful = False
 
     # define a regular expression to use for matching times....
@@ -576,7 +721,8 @@ def update_class_schedule_api(request):
     for meeting in update_dict:
         try:
             sc = ScheduledClass.objects.get(pk=meeting['id'])
-            begin = p.match(meeting['begin_at']) # if begin_at or end_at does not match, begin or end evaluates to None
+            # if begin_at or end_at does not match, begin or end evaluates to None
+            begin = p.match(meeting['begin_at'])
             end = p.match(meeting['end_at'])
             day = int(meeting['day'])
             if (begin and end and (day <= 4) and (day >= 0)):
@@ -584,25 +730,26 @@ def update_class_schedule_api(request):
                 sc.end_at = meeting['end_at']
                 sc.day = day
                 sc.save()
-            else: 
+            else:
                 updates_successful = False
         except:
             updates_successful = False
             print('not able to complete class schedule updates')
-        
+
     # now create new scheduled classes
     if course_offering:
         creates_successful = True
         for meeting in create_dict:
-            begin = p.match(meeting['begin_at']) # if begin_at or end_at does not match, begin or end evaluates to None
+            # if begin_at or end_at does not match, begin or end evaluates to None
+            begin = p.match(meeting['begin_at'])
             end = p.match(meeting['end_at'])
             day = int(meeting['day'])
             if (begin and end and (day <= 4) and (day >= 0)):
                 sc = ScheduledClass.objects.create(
-                        course_offering = course_offering,
-                        day = day,
-                        begin_at = meeting['begin_at'],
-                        end_at = meeting['end_at'])
+                    course_offering=course_offering,
+                    day=day,
+                    begin_at=meeting['begin_at'],
+                    end_at=meeting['end_at'])
                 sc.save()
             else:
                 creates_successful = False
@@ -612,7 +759,8 @@ def update_class_schedule_api(request):
 
     # now retrieve the scheduled classes from the db again
     if course_offering:
-        meeting_times_list, room_list = class_time_and_room_summary(course_offering.scheduled_classes.all())
+        meeting_times_list, room_list = class_time_and_room_summary(
+            course_offering.scheduled_classes.all())
         meeting_times_detail = construct_meeting_times_detail(course_offering)
     else:
         meeting_times_list = []
@@ -628,6 +776,7 @@ def update_class_schedule_api(request):
 
     return JsonResponse(data)
 
+
 @login_required
 @csrf_exempt
 def update_view_list(request):
@@ -635,9 +784,9 @@ def update_view_list(request):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     faculty_id = request.POST.get('facultyId')
-    
+
     try:
-        faculty = FacultyMember.objects.get(pk = faculty_id)
+        faculty = FacultyMember.objects.get(pk=faculty_id)
     except FacultyMember.DoesNotExist:
         data = {
             'success': False,
@@ -659,15 +808,15 @@ def update_view_list(request):
         return JsonResponse(data)
 
     data = {
-            'success': False,
-            'message': 'Sorry, we were not able to process this request.'
+        'success': False,
+        'message': 'Sorry, we were not able to process this request.'
     }
     return JsonResponse(data)
 
+
 @login_required
 def load_courses(request):
-    
-    subject_id = request.GET.get('subjectId')
-    courses = Course.objects.filter(subject__id = subject_id).order_by('number')
-    return render(request, 'course_dropdown_list_options.html', {'courses': courses})
 
+    subject_id = request.GET.get('subjectId')
+    courses = Course.objects.filter(subject__id=subject_id).order_by('number')
+    return render(request, 'course_dropdown_list_options.html', {'courses': courses})

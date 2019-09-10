@@ -83,6 +83,9 @@ class BannerScheduledClassAdmin(admin.ModelAdmin):
 class RequirementAdmin(admin.ModelAdmin):
     form = RequirementForm
 
+class DeltaCourseOfferingAdmin(admin.ModelAdmin):
+    list_display = ('crn', 'course_offering', 'semester', 'requested_action', 'update_meeting_times', 'update_instructors', 'update_semester_fraction',)
+
 class SemesterAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'banner_code',)
 
@@ -186,6 +189,7 @@ admin.site.register(TransferCourse)
 admin.site.register(University)
 admin.site.register(Constraint)
 admin.site.register(UserPreferences, UserPreferencesAdmin)
+admin.site.register(DeltaCourseOffering, DeltaCourseOfferingAdmin)
 admin.site.register(BannerSubject, BannerSubjectAdmin)
 admin.site.register(BannerCourse, BannerCourseAdmin)
 admin.site.register(BannerFacultyMember, BannerFacultyMemberAdmin)

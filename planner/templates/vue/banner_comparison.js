@@ -2,14 +2,18 @@
 const CREATE_NEW_COURSE = -2;
 const DO_NOTHING = -1;
 
+const DELTA_ACTION_CREATE = 'create';// used for delta course offerings; note that these are actions that the registrar is being asked to 
+const DELTA_ACTION_UPDATE = 'update';// perform, not the actions that are being performed here on the delta objects
+const DELTA_ACTION_DELETE = 'delete';
+
 var app = new Vue({
   delimiters: ["[[", "]]"],
   el: "#app",
   vuetify: new Vuetify(),
   data() {
     return {
-        semesterFractionsReverse: {}, // used to convert 
-        semesterFractions: {},
+      semesterFractionsReverse: {}, // used to convert
+      semesterFractions: {},
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
       chosenSemesters: [], // ids of semesters chosen to work on
@@ -38,6 +42,7 @@ var app = new Vue({
           value: "number"
         },
         { text: "Name", value: "name", align: "left" },
+        { text: "Credit Hours", value: "creditHours", align: "left" },
         { text: "Status", value: "status", align: "center" }
       ],
       courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
@@ -56,7 +61,7 @@ var app = new Vue({
   methods: {
     alignCourses() {
       // second step of the process...so we turn off the 'select semesters' template
-      console.log('inside align courses');
+      console.log("inside align courses");
       var _this = this;
       this.choosingSemesters = false;
       $.ajax({
@@ -70,181 +75,196 @@ var app = new Vue({
         },
         success: function(incomingData) {
           console.log(incomingData);
-            //this.unmatchedCourses = incomingData.unmatched_courses;
-            console.log(incomingData.unmatched_courses);
-            _this.unmatchedCourses = [];
-            let unmatchedCourse = null;
-            let choices = null;
-            let num_offerings = '';
-            let max_num_offerings = 0;
-            let credit_text = '';
-            /**
-             * course.choice = -1 ==> do nothing
-             * course.choice = -2 ==> create new course
-             * course.choice = iChair course id ==> set banner_title in iChair course to banner title (in data warehouse database)
-             */
-            incomingData.unmatched_courses.forEach( course => {
-                unmatchedCourse = course;
-                choices = [];
-                if (course.ichair_courses.length === 0) {
-                    unmatchedCourse.choice = CREATE_NEW_COURSE; // default is to create a new course
-                    choices.push({
-                        bannerCourseId: course.banner_course.id,
-                        selectionId: CREATE_NEW_COURSE,//assuming actual db ids will never be negative
-                        text: "Create a new matching course (recommended, since there is currently no matching course in iChair)"
-                    })
-                } else {
-                    max_num_offerings = 0;
-                    unmatchedCourse.choice = DO_NOTHING; // default starts as "do nothing"
-                    course.ichair_courses.forEach( item => {
-                        if (item.number_offerings_this_year > max_num_offerings) {
-                            max_num_offerings = item.number_offerings_this_year;
-                            unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
-                        }
-                        if (item.credit_hours == 1) {
-                            credit_text = ' credit hour; ';
-                        } else {
-                            credit_text = ' credit hours; ';
-                        }
-                        item.number_offerings_this_year == 1 ? num_offerings = ' offering ' : num_offerings = ' offerings ';
-                        choices.push({
-                            bannerCourseId: course.banner_course.id,
-                            selectionId: item.id,//assuming actual db ids will never be negative
-                            text: item.subject+' '+item.number+': '+item.title+' ('+item.credit_hours+credit_text+
-                                item.number_offerings_this_year+num_offerings+'this year)'
-                        })
-                    });
-                    choices.push({
-                        bannerCourseId: course.banner_course.id,
-                        selectionId: CREATE_NEW_COURSE,//assuming actual db ids will never be negative
-                        text: "Create a new matching course (not recommended in this case)"
-                    })
+          //this.unmatchedCourses = incomingData.unmatched_courses;
+          console.log(incomingData.unmatched_courses);
+          _this.unmatchedCourses = [];
+          let unmatchedCourse = null;
+          let choices = null;
+          let num_offerings = "";
+          let max_num_offerings = 0;
+          let credit_text = "";
+          /**
+           * course.choice = -1 ==> do nothing
+           * course.choice = -2 ==> create new course
+           * course.choice = iChair course id ==> set banner_title in iChair course to banner title (in data warehouse database)
+           */
+          incomingData.unmatched_courses.forEach(course => {
+            unmatchedCourse = course;
+            choices = [];
+            if (course.ichair_courses.length === 0) {
+              unmatchedCourse.choice = CREATE_NEW_COURSE; // default is to create a new course
+              choices.push({
+                bannerCourseId: course.banner_course.id,
+                selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
+                text:
+                  "Create a new matching course (recommended, since there is currently no matching course in iChair)"
+              });
+            } else {
+              max_num_offerings = 0;
+              unmatchedCourse.choice = DO_NOTHING; // default starts as "do nothing"
+              course.ichair_courses.forEach(item => {
+                if (item.number_offerings_this_year > max_num_offerings) {
+                  max_num_offerings = item.number_offerings_this_year;
+                  unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
                 }
+                if (item.credit_hours == 1) {
+                  credit_text = " credit hour; ";
+                } else {
+                  credit_text = " credit hours; ";
+                }
+                item.number_offerings_this_year == 1
+                  ? (num_offerings = " offering ")
+                  : (num_offerings = " offerings ");
                 choices.push({
-                    bannerCourseId: course.banner_course.id,
-                    selectionId: DO_NOTHING,//assuming actual db ids will never be negative
-                    text: "Do nothing for now...."
+                  bannerCourseId: course.banner_course.id,
+                  selectionId: item.id, //assuming actual db ids will never be negative
+                  text:
+                    item.subject +
+                    " " +
+                    item.number +
+                    ": " +
+                    item.title +
+                    " (" +
+                    item.credit_hours +
+                    credit_text +
+                    item.number_offerings_this_year +
+                    num_offerings +
+                    "this year)"
                 });
-                unmatchedCourse.choices = choices;
-                _this.unmatchedCourses.push(unmatchedCourse);
-        });
-        //_this.unmatchedCourses = cAC;
-        console.log(_this.unmatchedCourses);
-        _this.courseAlignmentPhaseReady = true;
-        console.log(_this.courseAlignmentPhaseReady);
+              });
+              choices.push({
+                bannerCourseId: course.banner_course.id,
+                selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
+                text:
+                  "Create a new matching course (not recommended in this case)"
+              });
+            }
+            choices.push({
+              bannerCourseId: course.banner_course.id,
+              selectionId: DO_NOTHING, //assuming actual db ids will never be negative
+              text: "Do nothing for now...."
+            });
+            unmatchedCourse.choices = choices;
+            _this.unmatchedCourses.push(unmatchedCourse);
+          });
+          //_this.unmatchedCourses = cAC;
+          console.log(_this.unmatchedCourses);
+          _this.courseAlignmentPhaseReady = true;
+          console.log(_this.courseAlignmentPhaseReady);
         }
       });
-  
     },
     performCourseAlignment() {
-        console.log(this.unmatchedCourses);
-        var _this = this;
-        let dataForPost = {
-            create: [],
-            update: []
-        };
-        this.unmatchedCourses.forEach( course => {
-            if (course.choice == CREATE_NEW_COURSE) {
-                dataForPost.create.push({
-                    title: course.banner_course.title,
-                    credit_hours: course.banner_course.credit_hours,
-                    number: course.banner_course.number,
-                    subject_id: course.ichair_subject_id
-                })
-            } else if (course.choice == DO_NOTHING) {
-                console.log('do nothing: ', course.banner_course.title);
-            } else {
-                dataForPost.update.push({
-                    ichair_course_id: course.choice,
-                    banner_title: course.banner_course.title
-                })
-            }
-        });
-        if ((dataForPost.create.length == 0) && (dataForPost.update.length == 0)) {
-            //nothing to do; move on to the next step....
-            this.alignCourseOfferings();
-        }
-        $.ajax({
-            // initialize an AJAX request
-            type: "POST",
-            url: "/planner/ajax/create-update-courses/",
-            dataType: "json",
-            data: JSON.stringify(dataForPost),
-            success: function(jsonResponse) {
-                console.log('response: ', jsonResponse);
-                if (!(jsonResponse.updates_successful && jsonResponse.creates_successful)) {
-                    _this.showCreateUpdateErrorMessage();
-                } else {
-                    _this.alignCourseOfferings();
-                }
-            },
-            error: function(jqXHR, exception) {
-              // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
-              console.log(jqXHR);
-              _this.showCreateUpdateErrorMessage();
-              //_this.meetingFormErrorMessage =
-              //  "Sorry, there appears to have been an error.";
-            }
+      console.log(this.unmatchedCourses);
+      var _this = this;
+      let dataForPost = {
+        create: [],
+        update: []
+      };
+      this.unmatchedCourses.forEach(course => {
+        if (course.choice == CREATE_NEW_COURSE) {
+          dataForPost.create.push({
+            title: course.banner_course.title,
+            credit_hours: course.banner_course.credit_hours,
+            number: course.banner_course.number,
+            subject_id: course.ichair_subject_id
           });
-
-
+        } else if (course.choice == DO_NOTHING) {
+          console.log("do nothing: ", course.banner_course.title);
+        } else {
+          dataForPost.update.push({
+            ichair_course_id: course.choice,
+            banner_title: course.banner_course.title
+          });
+        }
+      });
+      if (dataForPost.create.length == 0 && dataForPost.update.length == 0) {
+        //nothing to do; move on to the next step....
+        this.alignCourseOfferings();
+      }
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/create-update-courses/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          if (
+            !(
+              jsonResponse.updates_successful && jsonResponse.creates_successful
+            )
+          ) {
+            _this.showCreateUpdateErrorMessage();
+          } else {
+            _this.alignCourseOfferings();
+          }
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          _this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
     },
     showCreateUpdateErrorMessage() {
-        this.displayCreateUpdateErrorMessage = true;
-        this.courseAlignmentPhaseReady = false;
+      this.displayCreateUpdateErrorMessage = true;
+      this.courseAlignmentPhaseReady = false;
     },
     alignCourseOfferings() {
-        this.courseAlignmentPhaseReady = false;
-        this.displayCreateUpdateErrorMessage = false;
-        console.log('align course offerings!');
-        var _this = this;
+      this.courseAlignmentPhaseReady = false;
+      this.displayCreateUpdateErrorMessage = false;
+      console.log("align course offerings!");
+      var _this = this;
 
-        let dataForPost = {
-            departmentId: json_data.departmentId, // add the faculty id to the GET parameters
-            yearId: json_data.yearId,
-            semesterIds: this.chosenSemesters
-        }
+      let dataForPost = {
+        departmentId: json_data.departmentId, // add the faculty id to the GET parameters
+        yearId: json_data.yearId,
+        semesterIds: this.chosenSemesters
+      };
 
-        $.ajax({
-            // initialize an AJAX request
-            // seems like this should be a GET request, but I'm having trouble sending along the json data that way....
-            type: "POST",
-            url: "/planner/ajax/fetch-banner-comparison-data/", // set the url of the request
-            dataType: "json",
-            data: JSON.stringify(dataForPost),
-            success: function(incomingData) {
-              // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
-              incomingData.course_data.forEach(course => {
-                _this.courseOfferings.push({
-                  semester: course.semester,
-                  number: course.course,
-                  name: course.course_title,
-                  crn: course.crn,
-                  schedulesMatch: course.schedules_match,
-                  instructorsMatch: course.instructors_match,
-                  semesterFractionsMatch: course.semester_fractions_match,
-                  ichair: course.ichair,
-                  banner: course.banner,
-                  hasIChair: course.has_ichair,
-                  hasBanner: course.has_banner,
-                  linked: course.linked,
-                  allOK: course.all_OK
-                });
-                console.log(course.ichair.semester_fraction);
-                console.log(typeof(course.ichair.semester_fraction));
-              });
-              _this.semesterFractionsReverse = incomingData.semester_fractions_reverse;
-              _this.semesterFractions = incomingData.semester_fractions;
-              _this.courseOfferingAlignmentPhaseReady = true;
-              console.log('course offering data: ', _this.courseOfferings);
-              console.log('sem fractions: ', _this.semesterFractions);
-              console.log(typeof(_this.semesterFractions.full))
-            }
+      $.ajax({
+        // initialize an AJAX request
+        // seems like this should be a GET request, but I'm having trouble sending along the json data that way....
+        type: "POST",
+        url: "/planner/ajax/fetch-banner-comparison-data/", // set the url of the request
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(incomingData) {
+          // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
+          incomingData.course_data.forEach(course => {
+            _this.courseOfferings.push({
+              semester: course.semester,
+              semesterId: course.semester_id,
+              number: course.course,
+              creditHours: course.credit_hours,
+              name: course.course_title,
+              crn: course.crn,
+              schedulesMatch: course.schedules_match,
+              instructorsMatch: course.instructors_match,
+              semesterFractionsMatch: course.semester_fractions_match,
+              enrollmentCapsMatch: course.enrollment_caps_match,
+              ichair: course.ichair,
+              banner: course.banner,
+              hasIChair: course.has_ichair,
+              hasBanner: course.has_banner,
+              linked: course.linked,
+              allOK: course.all_OK
+            });
+            console.log(course.ichair.semester_fraction);
+            console.log(typeof course.ichair.semester_fraction);
           });
-
-
-
-
+          _this.semesterFractionsReverse =
+            incomingData.semester_fractions_reverse;
+          _this.semesterFractions = incomingData.semester_fractions;
+          _this.courseOfferingAlignmentPhaseReady = true;
+          console.log("course offering data: ", _this.courseOfferings);
+          console.log("sem fractions: ", _this.semesterFractions);
+          console.log(typeof _this.semesterFractions.full);
+        }
+      });
     },
 
     showAll() {
@@ -274,10 +294,61 @@ var app = new Vue({
       this.addMeetingTime();
     },
     editSemesterFraction(courseInfo) {
-        console.log('edit semester fraction!');
+      console.log("edit semester fraction!");
     },
     addNewMeetingTimes(courseInfo) {
       console.log(courseInfo);
+    },
+    deltaUpdateInstructors(item) {
+        // we have both an iChair course offering and a banner course offering, so pass along both ids
+        console.log('generate delta for instructors');
+        console.log('item', item);
+        let deltaTypes = {
+            instructors: true,
+            meetingTimes: false,
+            semesterFraction: false,
+            enrollmentCap: false
+        }
+        let action = DELTA_ACTION_UPDATE;
+        let crn = item.crn;
+        let iChairCourseOfferingId = item.ichair.course_offering_id;
+        let semesterId = item.semesterId;
+
+        // should actually look at the current delta object and see if there are things to update, etc.
+        // pass along the delta id if it is available, and otherwise None
+
+        this.generateDelta(crn, iChairCourseOfferingId, semesterId, deltaTypes, action);
+    },
+    generateDelta(crn, iChairCourseOfferingId, semesterId, deltaTypes, action) {
+
+        let dataForPost = {
+            deltaTypes: deltaTypes,
+            action: action,
+            crn: crn,
+            iChairCourseOfferingId: iChairCourseOfferingId,
+            semesterId: semesterId,
+        }
+        $.ajax({
+            // initialize an AJAX request
+            type: "POST",
+            url: "/planner/ajax/generate-delta/",
+            dataType: "json",
+            data: JSON.stringify(dataForPost),
+            success: function(jsonResponse) {
+              console.log("response: ", jsonResponse);
+              
+            },
+            error: function(jqXHR, exception) {
+              // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+              console.log(jqXHR);
+              _this.showCreateUpdateErrorMessage();
+              //_this.meetingFormErrorMessage =
+              //  "Sorry, there appears to have been an error.";
+            }
+          });
+
+
+
     },
     addMeetingTime() {
       this.editMeetings.push({
@@ -528,6 +599,5 @@ var app = new Vue({
         _this.semesterChoices = incomingData.semester_choices;
       }
     });
-
   }
 });
