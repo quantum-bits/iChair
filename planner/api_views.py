@@ -188,6 +188,9 @@ def banner_comparison_data(request):
         'second_half': CourseOffering.SECOND_HALF_SEMESTER
     }
 
+    # delta course offering actions from the model itself:
+    delta_course_offering_actions = DeltaCourseOffering.actions()
+
     # https://stackoverflow.com/questions/483666/python-reverse-invert-a-mapping
     semester_fractions_reverse = {v: k for k, v in semester_fractions.items()}
 
@@ -245,8 +248,7 @@ def banner_comparison_data(request):
                     presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
                 # https://stackoverflow.com/questions/7108080/python-get-the-first-character-of-the-first-string-in-a-list
                 # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
-                bco_instructors = [instr.instructor.first_name+' ' +
-                                   instr.instructor.last_name for instr in bco.offering_instructors.all()]
+                bco_instructors = construct_instructor_list(bco)
 
                 course_offering_item = {
                     "semester": semester.name.name,
@@ -292,10 +294,12 @@ def banner_comparison_data(request):
                         ico_meeting_times_list = sorted(
                             presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
-                        ico_instructors = [instr.instructor.first_name+' ' +
-                                           instr.instructor.last_name for instr in ico.offering_instructors.all()]
+                        
+                        ico_instructors = construct_instructor_list(ico)
+                        
                         meeting_times_detail = construct_meeting_times_detail(
                             ico)
+
 
                         schedules_match = scheduled_classes_match(bco, ico)
                         inst_match = instructors_match(bco, ico)
@@ -304,13 +308,19 @@ def banner_comparison_data(request):
                         enrollment_caps_match = max_enrollments_match(bco, ico)
 
                         # check to see if there are relevant delta objects
+                        # we're only interested in "update" types of delta objects, since 
+                        # they are the only ones that include a crn (for a banner course offering)
+                        # and are tied to a course offering in the iChair database
+                        # (the create and delete deltas only have an iChair course offering and a crn, respectively)
 
                         delta_objects = DeltaCourseOffering.objects.filter(
                             Q(crn=bco.crn)&
-                            Q(course_offering=ico))
+                            Q(course_offering=ico)&
+                            Q(requested_action=delta_course_offering_actions["update"]))
 
-
+                        delta_exists = False
                         if len(delta_objects) > 0:
+                            delta_exists = True
                             print('delta object(s) found for', bco)
                             recent_delta_object = delta_objects[0]
                             for delta_object in delta_objects:
@@ -318,21 +328,23 @@ def banner_comparison_data(request):
                                 if delta_object.updated_at > recent_delta_object.updated_at:
                                     recent_delta_object = delta_object
                                     print('found more recent!',recent_delta_object.updated_at)
-                                
-                        # WORKING HERE!!!!
-                        # next: find a way to get the delta object to inspect itself and return helpful phrases
-                        # then return those helpful phrases....
-                        # what to do with old delta objects?!?  maybe nothing...?
-                        # in some sense, if we keep the delta object and there is no longer an actual delta (b/c the registrar made the change)
-                        # then the delta object will just do nothing, i guess?!?
                             
-                        # write a function that takes a delta_object, bco and ico, and then uses the comparison functions
-                        # to check if things are equal, and if not, returns a 'was' and 'change to' string
-                        # then put that all in the delta object here, along with the delta id;
-                        # make things like 'instructors': ['was...', 'change to']
-            
-
-
+                            delta_response = delta_update_status(bco, ico, recent_delta_object)
+                            course_offering_item["delta"] = delta_response
+                            
+                        if delta_exists:
+                            # either these properties already match, or we are going to request a change from the registrar so that they do match
+                            schedules_match = scheduled_classes_match(bco, ico) or delta_response["request_update_meeting_times"]
+                            inst_match = instructors_match(bco, ico) or delta_response["request_update_instructors"]
+                            sem_fractions_match = semester_fractions_match(
+                                bco, ico) or delta_response["request_update_semester_fraction"]
+                            enrollment_caps_match = max_enrollments_match(bco, ico) or delta_response["request_update_max_enrollment"]
+                        else:
+                            schedules_match = scheduled_classes_match(bco, ico)
+                            inst_match = instructors_match(bco, ico)
+                            sem_fractions_match = semester_fractions_match(
+                                bco, ico)
+                            enrollment_caps_match = max_enrollments_match(bco, ico)
 
                         course_offering_item["ichair"] = {
                             "course_offering_id": ico.id,
@@ -374,8 +386,7 @@ def banner_comparison_data(request):
                 ico_meeting_times_list = sorted(
                     presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
-                ico_instructors = [instr.instructor.first_name+' ' +
-                                   instr.instructor.last_name for instr in ico.offering_instructors.all()]
+                ico_instructors = construct_instructor_list(ico)
                 meeting_times_detail = construct_meeting_times_detail(ico)
 
                 course_offering_item = {
@@ -422,6 +433,55 @@ def banner_comparison_data(request):
     }
     return JsonResponse(data)
 
+def construct_instructor_list(course_offering):
+    """Constructs a list of instructors for a given (banner or iChair) course offering."""
+    return [instr.instructor.first_name+' ' +
+                                   instr.instructor.last_name for instr in course_offering.offering_instructors.all()]
+
+def delta_update_status(bco, ico, delta):
+    """Uses a delta object to compare the current status of a banner course offering compared to its corresponding iChair course offering."""
+    # at this point it is assumed that the delta object is of the "update" variety
+
+    delta_response = {
+        "id": delta.id,
+        "request_update_meeting_times": delta.update_meeting_times, # True if this update is being requested by the user
+        "request_update_instructors": delta.update_instructors, # True if this update is being requested by the user
+        "request_update_semester_fraction": delta.update_semester_fraction, # True if this update is being requested by the user
+        "request_update_max_enrollment": delta.update_max_enrollment, # True if this update is being requested by the user
+        "meeting_times": None,
+        "instructors": None,
+        "semester_fraction": None,
+        "max_enrollment": None
+    }
+    
+    # we only check if the meetings agree if the user has requested that a message be generated for this property
+    if delta.update_meeting_times and (not scheduled_classes_match(bco, ico)):
+        delta_response["meeting_times"] = {
+                "was": class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms=False),
+                "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)
+                }
+    
+    if delta.update_instructors and (not instructors_match(bco, ico)):
+        delta_response["instructors"] = {
+                "was": construct_instructor_list(bco),
+                "change_to": construct_instructor_list(ico)
+                }
+
+    if delta.update_semester_fraction and (not semester_fractions_match(bco, ico)):
+        delta_response["instructors"] = {
+                "was": bco.semester_fraction,
+                "change_to": ico.semester_fraction
+                }
+
+    if delta.update_max_enrollment and (not max_enrollments_match(bco, ico)):
+        delta_response["max_enrollment"] = {
+                "was": bco.max_enrollment,
+                "change_to": ico.max_enrollment
+                }
+
+    print(delta_response)
+    
+    return delta_response
 
 def find_ichair_course_offering(bco, semester, subject):
     """Start the process of linking up this banner course offering (bco) with one in iChair."""
@@ -614,68 +674,120 @@ def max_enrollments_match(banner_course_offering, ichair_course_offering):
 
 @login_required
 @csrf_exempt
-def generate_delta(request):
+def generate_update_delta(request):
+    """Generates a new delta object or modifies an existing one, depending on whether or not deltaId is None."""
 
     json_data = json.loads(request.body)
-    delta_types = json_data['deltaTypes']
+    delta_mods = json_data['deltaMods']
 
     action = json_data['action']
 
     semester_id = json_data['semesterId']
     crn = json_data['crn']
     ichair_course_offering_id = json_data['iChairCourseOfferingId']
+    banner_course_offering_id = json_data['bannerCourseOfferingId']
 
-    delta_generation_successful = True
+    delta_id = json_data['deltaId'] # None if null in the UI code (i.e., if creating a new delta) 
 
-
-    # WORKING HERE
-    # before doing anything...should pass in the existing delta id if there is one, and then update that
-    # rather than creating a new one!
-
-
-
-    print(delta_types)
+    print(delta_mods)
 
     print('action: ', action)
     print('crn: ', crn)
     print('ichair id: ', ichair_course_offering_id)
+    print('banner id: ', banner_course_offering_id)
     print('semester_id: ', semester_id)
+    print('delta id: ', delta_id)
 
-    try:
-        semester = Semester.objects.get(pk=semester_id)
-        ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-    except:
-        delta_generation_successful = False
-        print("Problem finding the semester or iChair course offering...!")
+    delta_generation_successful = True
 
-    delta_course_offering_actions = DeltaCourseOffering.actions()
+    if delta_id is None:
+        print('creating a new delta!')
+        try:
+            semester = Semester.objects.get(pk=semester_id)
+            ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+        except:
+            delta_generation_successful = False
+            print("Problem finding the semester or iChair course offering...!")
 
-    if action == 'create':
-        requested_action = delta_course_offering_actions["create"]
-    elif action == 'update':
-        requested_action = delta_course_offering_actions["update"]
-    elif action == 'delete':
-        requested_action = delta_course_offering_actions["delete"]
+        # delta course offering actions from the model itself:
+        delta_course_offering_actions = DeltaCourseOffering.actions()
+
+        if action == 'create':
+            requested_action = delta_course_offering_actions["create"]
+        elif action == 'update':
+            requested_action = delta_course_offering_actions["update"]
+        elif action == 'delete':
+            requested_action = delta_course_offering_actions["delete"]
+        else:
+            delta_generation_successful = False
+
+        print(delta_course_offering_actions)
+
+        if delta_generation_successful:
+            # https://www.geeksforgeeks.org/python-check-whether-given-key-already-exists-in-a-dictionary/
+            if 'meetingTimes' in delta_mods.keys():
+                update_meeting_times = delta_mods['meetingTimes']
+            else:
+                update_meeting_times = False
+
+            if 'instructors' in delta_mods.keys():
+                update_instructors = delta_mods['instructors']
+            else:
+                update_instructors = False
+
+            if 'semesterFraction' in delta_mods.keys():
+                update_semester_fraction = delta_mods['semesterFraction']
+            else:
+                update_semester_fraction = False
+
+            if 'enrollmentCap' in delta_mods.keys():
+                update_max_enrollment = delta_mods['enrollmentCap']
+            else:
+                update_max_enrollment = False
+
+            dco = DeltaCourseOffering.objects.create(
+                course_offering=ico,
+                semester=semester,
+                crn=crn,
+                requested_action=requested_action,
+                update_meeting_times=update_meeting_times,
+                update_instructors=update_instructors,
+                update_semester_fraction=update_semester_fraction,
+                update_max_enrollment=update_max_enrollment)
+            dco.save()
+
     else:
-        delta_generation_successful = False
+        creating_new_delta = False
+        dco = DeltaCourseOffering.objects.get(pk = delta_id)
+        print('got delta object!')
+        print(dco)
+        if 'meetingTimes' in delta_mods.keys():
+            dco.update_meeting_times = delta_mods['meetingTimes']
+            
+        if 'instructors' in delta_mods.keys():
+            dco.update_instructors = delta_mods['instructors']
+       
+        if 'semesterFraction' in delta_mods.keys():
+            dco.update_semester_fraction = delta_mods['semesterFraction']
 
-
-    print(delta_course_offering_actions)
-
-    if delta_generation_successful:
-        dco = DeltaCourseOffering.objects.create(
-            course_offering=ico,
-            semester=semester,
-            crn=crn,
-            requested_action=requested_action,
-            update_meeting_times=delta_types["meetingTimes"],
-            update_instructors=delta_types["instructors"],
-            update_semester_fraction=delta_types["semesterFraction"],
-            update_max_enrollment=delta_types["enrollmentCap"])
+        if 'enrollmentCap' in delta_mods.keys():
+            dco.update_max_enrollment = delta_mods['enrollmentCap']
+       
         dco.save()
 
+    delta_response = {}
+    if delta_generation_successful:
+        if action == 'update':
+            # in this case we should have both a banner id and an ichair id....
+            bco = BannerCourseOffering.objects.get(pk = banner_course_offering_id)
+            ico = CourseOffering.objects.get(pk = ichair_course_offering_id)
+            delta_response = delta_update_status(bco, ico, dco)
+
+        # WORKING HERE: need to add some other functionality for the 'create' and 'delete' actions....
+
     data = {
-        'delta_generation_successful': delta_generation_successful
+        'delta_generation_successful': delta_generation_successful,
+        'delta': delta_response
     }
 
     return JsonResponse(data)

@@ -49,7 +49,7 @@ urlpatterns = [
     url(r'^ajax/fetch-banner-comparison-data/$', api_views.banner_comparison_data, name='banner_comparison_data'),
     url(r'^ajax/update-class-schedule/$', api_views.update_class_schedule_api, name='update_class_schedule_api'),
     url(r'^ajax/create-update-courses/$', api_views.create_update_courses, name='create_update_courses'),
-    url(r'^ajax/generate-delta/$', api_views.generate_delta, name='generate_delta'),
+    url(r'^ajax/generate-update-delta/$', api_views.generate_update_delta, name='generate_update_delta'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', myapp_views.choose_year_course_copy, name='choose_year_course_copy'),

@@ -2,9 +2,16 @@
 const CREATE_NEW_COURSE = -2;
 const DO_NOTHING = -1;
 
-const DELTA_ACTION_CREATE = 'create';// used for delta course offerings; note that these are actions that the registrar is being asked to 
-const DELTA_ACTION_UPDATE = 'update';// perform, not the actions that are being performed here on the delta objects
-const DELTA_ACTION_DELETE = 'delete';
+const DELTA_ACTION_CREATE = "create"; // used for delta course offerings; note that these are actions that the registrar is being asked to
+const DELTA_ACTION_UPDATE = "update"; // perform, not the actions that are being performed here on the delta objects
+const DELTA_ACTION_DELETE = "delete";
+const DELTA_ACTION_SET = "deltaUpdateSet"; // turn off the update
+const DELTA_ACTION_UNSET = "deltaUpdateUnset"; // turn off the update
+
+const DELTA_UPDATE_TYPE_MEETING_TIMES = "meetingTimes";
+const DELTA_UPDATE_TYPE_INSTRUCTORS = "instructors";
+const DELTA_UPDATE_TYPE_SEMESTER_FRACTION = "semesterFraction";
+const DELTA_UPDATE_TYPE_ENROLLMENT_CAP = "enrollmentCap";
 
 var app = new Vue({
   delimiters: ["[[", "]]"],
@@ -12,6 +19,12 @@ var app = new Vue({
   vuetify: new Vuetify(),
   data() {
     return {
+      DELTA_UPDATE_TYPE_MEETING_TIMES: DELTA_UPDATE_TYPE_MEETING_TIMES,// so that this is available in the template....
+      DELTA_UPDATE_TYPE_INSTRUCTORS: DELTA_UPDATE_TYPE_INSTRUCTORS,
+      DELTA_UPDATE_TYPE_SEMESTER_FRACTION: DELTA_UPDATE_TYPE_SEMESTER_FRACTION,
+      DELTA_UPDATE_TYPE_ENROLLMENT_CAP: DELTA_UPDATE_TYPE_ENROLLMENT_CAP,
+      DELTA_ACTION_SET: DELTA_ACTION_SET,
+      DELTA_ACTION_UNSET: DELTA_ACTION_UNSET,
       semesterFractionsReverse: {}, // used to convert
       semesterFractions: {},
       choosingSemesters: true, // set to false once semesters have been chosen to work on
@@ -246,6 +259,7 @@ var app = new Vue({
               instructorsMatch: course.instructors_match,
               semesterFractionsMatch: course.semester_fractions_match,
               enrollmentCapsMatch: course.enrollment_caps_match,
+              delta: course.delta,
               ichair: course.ichair,
               banner: course.banner,
               hasIChair: course.has_ichair,
@@ -299,56 +313,107 @@ var app = new Vue({
     addNewMeetingTimes(courseInfo) {
       console.log(courseInfo);
     },
-    deltaUpdateInstructors(item) {
-        // we have both an iChair course offering and a banner course offering, so pass along both ids
-        console.log('generate delta for instructors');
-        console.log('item', item);
-        let deltaTypes = {
-            instructors: true,
-            meetingTimes: false,
-            semesterFraction: false,
-            enrollmentCap: false
-        }
-        let action = DELTA_ACTION_UPDATE;
-        let crn = item.crn;
-        let iChairCourseOfferingId = item.ichair.course_offering_id;
-        let semesterId = item.semesterId;
+    deltaUpdate(item, updateType, updateSetOrUnset) {
+      // we have both an iChair course offering and a banner course offering; pass along the item so that generateUpdateDelta() has them;
+      // updateType is one of:
+      //  - DELTA_UPDATE_TYPE_INSTRUCTORS
+      //  - DELTA_UPDATE_TYPE_MEETING_TIMES
+      //  - DELTA_UPDATE_TYPE_ENROLLMENT_CAP
+      //  - DELTA_UPDATE_TYPE_SEMESTER_FRACTION
+      // updateOrUndo is DELTA_ACTION_UPDATE or DELTA_ACTION_UNDO_UPDATE
+      //
+      // https://www.w3schools.com/jsref/jsref_switch.asp
 
-        // should actually look at the current delta object and see if there are things to update, etc.
-        // pass along the delta id if it is available, and otherwise None
+      let updateTypeOK = true;
+      let deltaMods = {};
+      switch (updateType) {
+        case DELTA_UPDATE_TYPE_INSTRUCTORS:
+          deltaMods = {
+            instructors: updateSetOrUnset === DELTA_ACTION_SET ? true : false
+          };
+          break;
+        case DELTA_UPDATE_TYPE_MEETING_TIMES:
+          deltaMods = {
+            meetingTimes: updateSetOrUnset === DELTA_ACTION_SET ? true : false
+          };
+          break;
+        case DELTA_UPDATE_TYPE_ENROLLMENT_CAP:
+          deltaMods = {
+            enrollmentCap: updateSetOrUnset === DELTA_ACTION_SET ? true : false
+          };
+          break;
+        case DELTA_UPDATE_TYPE_SEMESTER_FRACTION:
+          deltaMods = {
+            semesterFraction:
+              updateSetOrUnset === DELTA_ACTION_SET ? true : false
+          };
+          break;
+        default:
+          updateTypeOK = false;
+      }
 
-        this.generateDelta(crn, iChairCourseOfferingId, semesterId, deltaTypes, action);
+      if (updateTypeOK) {
+        console.log("generate delta: ", updateType);
+        console.log("item", item);
+        this.generateUpdateDelta(item, deltaMods, DELTA_ACTION_UPDATE);
+      }
     },
-    generateDelta(crn, iChairCourseOfferingId, semesterId, deltaTypes, action) {
 
-        let dataForPost = {
-            deltaTypes: deltaTypes,
-            action: action,
-            crn: crn,
-            iChairCourseOfferingId: iChairCourseOfferingId,
-            semesterId: semesterId,
+    generateUpdateDelta(item, deltaMods, action) {
+      // WORKING HERE: need to modify this for the other actions!!!
+      // NEXT: add in other types of updates!!!
+
+      let dataForPost = {};
+      let deltaId = null;
+      if (item.delta !== null) {
+        deltaId = item.delta.id;
+      }
+
+      if (action === DELTA_ACTION_UPDATE) {
+        dataForPost = {
+          deltaMods: deltaMods,
+          deltaId: deltaId,
+          action: action,
+          crn: item.crn,
+          iChairCourseOfferingId: item.ichair.course_offering_id,
+          bannerCourseOfferingId: item.banner.course_offering_id,
+          semesterId: item.semesterId
+        };
+      }
+
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/generate-update-delta/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          item.delta = jsonResponse.delta;
+          item.enrollmentCapsMatch =
+            item.enrollmentCapsMatch ||
+            item.delta.request_update_max_enrollment;
+          item.instructorsMatch =
+            item.instructorsMatch || item.delta.request_update_instructors;
+          item.schedulesMatch =
+            item.schedulesMatch || item.delta.request_update_meeting_times;
+          item.semesterFractionsMatch =
+            item.semesterFractionsMatch ||
+            item.delta.request_update_semster_fraction;
+          item.allOK =
+            item.enrollmentCapsMatch &&
+            item.instructorsMatch &&
+            item.schedulesMatch &&
+            item.semesterFractionsMatch;
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          _this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
         }
-        $.ajax({
-            // initialize an AJAX request
-            type: "POST",
-            url: "/planner/ajax/generate-delta/",
-            dataType: "json",
-            data: JSON.stringify(dataForPost),
-            success: function(jsonResponse) {
-              console.log("response: ", jsonResponse);
-              
-            },
-            error: function(jqXHR, exception) {
-              // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
-              console.log(jqXHR);
-              _this.showCreateUpdateErrorMessage();
-              //_this.meetingFormErrorMessage =
-              //  "Sorry, there appears to have been an error.";
-            }
-          });
-
-
-
+      });
     },
     addMeetingTime() {
       this.editMeetings.push({
