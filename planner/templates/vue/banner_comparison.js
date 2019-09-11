@@ -19,7 +19,7 @@ var app = new Vue({
   vuetify: new Vuetify(),
   data() {
     return {
-      DELTA_UPDATE_TYPE_MEETING_TIMES: DELTA_UPDATE_TYPE_MEETING_TIMES,// so that this is available in the template....
+      DELTA_UPDATE_TYPE_MEETING_TIMES: DELTA_UPDATE_TYPE_MEETING_TIMES, // so that this is available in the template....
       DELTA_UPDATE_TYPE_INSTRUCTORS: DELTA_UPDATE_TYPE_INSTRUCTORS,
       DELTA_UPDATE_TYPE_SEMESTER_FRACTION: DELTA_UPDATE_TYPE_SEMESTER_FRACTION,
       DELTA_UPDATE_TYPE_ENROLLMENT_CAP: DELTA_UPDATE_TYPE_ENROLLMENT_CAP,
@@ -267,16 +267,12 @@ var app = new Vue({
               linked: course.linked,
               allOK: course.all_OK
             });
-            console.log(course.ichair.semester_fraction);
-            console.log(typeof course.ichair.semester_fraction);
           });
           _this.semesterFractionsReverse =
             incomingData.semester_fractions_reverse;
           _this.semesterFractions = incomingData.semester_fractions;
           _this.courseOfferingAlignmentPhaseReady = true;
           console.log("course offering data: ", _this.courseOfferings);
-          console.log("sem fractions: ", _this.semesterFractions);
-          console.log(typeof _this.semesterFractions.full);
         }
       });
     },
@@ -391,15 +387,17 @@ var app = new Vue({
           console.log("response: ", jsonResponse);
           item.delta = jsonResponse.delta;
           item.enrollmentCapsMatch =
-            item.enrollmentCapsMatch ||
+            jsonResponse.agreement_update.max_enrollments_match ||
             item.delta.request_update_max_enrollment;
           item.instructorsMatch =
-            item.instructorsMatch || item.delta.request_update_instructors;
+            jsonResponse.agreement_update.instructors_match ||
+            item.delta.request_update_instructors;
           item.schedulesMatch =
-            item.schedulesMatch || item.delta.request_update_meeting_times;
+            jsonResponse.agreement_update.meeting_times_match ||
+            item.delta.request_update_meeting_times;
           item.semesterFractionsMatch =
-            item.semesterFractionsMatch ||
-            item.delta.request_update_semster_fraction;
+            jsonResponse.agreement_update.semester_fractions_match ||
+            item.delta.request_update_semester_fraction;
           item.allOK =
             item.enrollmentCapsMatch &&
             item.instructorsMatch &&
@@ -646,6 +644,13 @@ var app = new Vue({
     },
     checkboxVal(col) {
       return this.headers.find(h => h.value === col).selected;
+    },
+    // https://github.com/vuetifyjs/vuetify/issues/3897
+    indexedCourseOfferings() {
+      return this.courseOfferings.map((item, index) => ({
+        id: index,
+        ...item
+      }))
     }
   },
   mounted: function() {

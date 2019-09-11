@@ -451,7 +451,8 @@ def delta_update_status(bco, ico, delta):
         "meeting_times": None,
         "instructors": None,
         "semester_fraction": None,
-        "max_enrollment": None
+        "max_enrollment": None,
+        "messages_exist": False
     }
     
     # we only check if the meetings agree if the user has requested that a message be generated for this property
@@ -468,7 +469,7 @@ def delta_update_status(bco, ico, delta):
                 }
 
     if delta.update_semester_fraction and (not semester_fractions_match(bco, ico)):
-        delta_response["instructors"] = {
+        delta_response["semester_fraction"] = {
                 "was": bco.semester_fraction,
                 "change_to": ico.semester_fraction
                 }
@@ -478,6 +479,9 @@ def delta_update_status(bco, ico, delta):
                 "was": bco.max_enrollment,
                 "change_to": ico.max_enrollment
                 }
+
+    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None):
+        delta_response["messages_exist"] = True
 
     print(delta_response)
     
@@ -757,7 +761,6 @@ def generate_update_delta(request):
             dco.save()
 
     else:
-        creating_new_delta = False
         dco = DeltaCourseOffering.objects.get(pk = delta_id)
         print('got delta object!')
         print(dco)
@@ -782,12 +785,19 @@ def generate_update_delta(request):
             bco = BannerCourseOffering.objects.get(pk = banner_course_offering_id)
             ico = CourseOffering.objects.get(pk = ichair_course_offering_id)
             delta_response = delta_update_status(bco, ico, dco)
+            agreement_update = {
+                "instructors_match": instructors_match(bco, ico),
+                "meeting_times_match": scheduled_classes_match(bco, ico),
+                "max_enrollments_match": max_enrollments_match(bco, ico),
+                "semester_fractions_match": semester_fractions_match(bco, ico)
+            }
 
         # WORKING HERE: need to add some other functionality for the 'create' and 'delete' actions....
 
     data = {
         'delta_generation_successful': delta_generation_successful,
-        'delta': delta_response
+        'delta': delta_response,
+        'agreement_update': agreement_update
     }
 
     return JsonResponse(data)

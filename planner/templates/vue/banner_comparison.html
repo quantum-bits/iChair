@@ -110,9 +110,9 @@
                 <v-switch v-model="singleExpand" label="Single expand" class="mt-2"></v-switch>
             </v-toolbar>
         </template>
-        <v-data-table :headers="headers" :items="courseOfferings" :single-expand="singleExpand"
+        <v-data-table :headers="headers" :items="indexedCourseOfferings" :single-expand="singleExpand"
             :expanded.sync="expanded" show-expand :page.sync="page" :items-per-page="itemsPerPage" hide-default-footer
-            item-key="name" class="elevation-1" @page-count="pageCount = $event">
+            item-key="id" class="elevation-1" @page-count="pageCount = $event">
             <template v-slot:item="{ item, expand }">
                 <tr>
                     <td>
@@ -125,7 +125,8 @@
                     <td class="text-xs-left">[[item.creditHours]] </td>
                     <td class="text-xs-center">
                         <v-icon class="green--text" v-if="item.allOK">mdi-check-circle</v-icon>
-                        <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
+                        <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                        <v-icon class="green--text" v-if="item.delta && item.delta.messages_exist">mdi-message-text-outline</v-icon>
                     </td>
                 </tr>
             </template>
@@ -212,7 +213,7 @@
                                             <th class="text-center">iChair</th>
                                             <th class="text-center">Actions</th>
                                             <th class="text-center">Registrar</th>
-                                            <th class="text-center">Message for Registrar</th>
+                                            <th class="text-center"><v-icon>mdi-message-text-outline</v-icon> Message(s) for Registrar </th>
                                             <th class="text-center">Status</th>
                                         </tr>
                                     </thead>
@@ -232,19 +233,46 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <div>
-                                                    <a>
-                                                        <v-icon>
-                                                            mdi-arrow-left-bold
+                                                <div v-if="item.schedulesMatch" class="arrow-group">
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-left-bold-circle
                                                         </v-icon>
-                                                    </a>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-right-bold-circle
+                                                        </v-icon>
+                                                    </div>
+
                                                 </div>
-                                                <div>
-                                                    <a>
-                                                        <v-icon>
-                                                            mdi-arrow-right-bold
-                                                        </v-icon>
-                                                    </a>
+                                                <div v-else class="arrow-group">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    v-on="on">
+                                                                    mdi-arrow-left-bold-circle
+                                                                </v-icon>
+                                                            </div>
+
+                                                        </template>
+                                                        <span>Copy the registrar's version to iChair</span>
+                                                    </v-tooltip>
+                                                    <v-tooltip bottom>
+                                                        <template v-slot:activator="{ on }">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_SET)"
+                                                                    v-on="on">
+                                                                    mdi-arrow-right-bold-circle
+                                                                </v-icon>
+                                                            </div>
+
+                                                        </template>
+                                                        <span>Create a message for the registrar, requesting a
+                                                            change</span>
+                                                    </v-tooltip>
                                                 </div>
                                             </td>
                                             <td v-if="item.hasBanner" class="text-center">
@@ -255,33 +283,42 @@
                                             <td v-else class="text-center">
                                                 ---
                                             </td>
+
                                             <td
                                                 v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times">
-                                                <v-layout>
-                                                    <v-flex xs4>Was:</v-flex>
-                                                    <v-flex xs8>
-                                                        <div v-for="meetingTime in item.delta.meeting_times.was">
-                                                            <div>
-                                                                [[meetingTime]]
-                                                            </div>
-                                                        </div>
-                                                    </v-flex>
-                                                    <v-flex xs4>Change to:</v-flex>
-                                                    <v-flex xs8>
-                                                        <div v-for="meetingTime in item.delta.meeting_times.change_to">
-                                                            <div>
-                                                                [[meetingTime]]
-                                                            </div>
-                                                        </div>
-                                                    </v-flex>
-                                                </v-layout>
-
+                                                <div>
+                                                    <strong>Was:</strong>
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer icon-padding-top"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                    <div class="delta-detail-list"
+                                                        v-for="meetingTime in item.delta.meeting_times.was">
+                                                        [[meetingTime]]
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <strong>Change to:</strong>
+                                                    <div class="delta-detail-list"
+                                                        v-for="meetingTime in item.delta.meeting_times.change_to">
+                                                        [[meetingTime]]
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td v-else></td>
                                             <td class="text-center">
                                                 <v-icon class="green--text" v-if="item.schedulesMatch">mdi-check-circle
                                                 </v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
+                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
                                             </td>
 
                                         </tr>
@@ -300,33 +337,47 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                    <div class="arrow-group">
-                                                            <v-tooltip top>
-                                                                <template v-slot:activator="{ on }">
-                                                                    <div class="text-center">
-                                                                        <v-icon class="include-pointer" color="primary" v-on="on">
-                                                                            mdi-arrow-left-bold-circle
-                                                                        </v-icon>
-                                                                    </div>
-        
-                                                                </template>
-                                                                <span>Copy the registrar's version to iChair</span>
-                                                            </v-tooltip>
-                                                            <v-tooltip bottom>
-                                                                <template v-slot:activator="{ on }">
-                                                                    <div class="text-center">
-                                                                        <v-icon class="include-pointer" color="primary" @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_SET)" v-on="on">
-                                                                            mdi-arrow-right-bold-circle
-                                                                        </v-icon>
-                                                                    </div>
-        
-                                                                </template>
-                                                                <span>Create a message for the registrar, requesting a
-                                                                    change</span>
-                                                            </v-tooltip>
-        
-                                                        </div>
-        
+                                                <div v-if="item.instructorsMatch" class="arrow-group">
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-left-bold-circle
+                                                        </v-icon>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-right-bold-circle
+                                                        </v-icon>
+                                                    </div>
+
+                                                </div>
+                                                <div v-else class="arrow-group">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    v-on="on">
+                                                                    mdi-arrow-left-bold-circle
+                                                                </v-icon>
+                                                            </div>
+
+                                                        </template>
+                                                        <span>Copy the registrar's version to iChair</span>
+                                                    </v-tooltip>
+                                                    <v-tooltip bottom>
+                                                        <template v-slot:activator="{ on }">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_SET)"
+                                                                    v-on="on">
+                                                                    mdi-arrow-right-bold-circle
+                                                                </v-icon>
+                                                            </div>
+
+                                                        </template>
+                                                        <span>Create a message for the registrar, requesting a
+                                                            change</span>
+                                                    </v-tooltip>
+                                                </div>
                                             </td>
                                             <td v-if="item.hasBanner" class="text-center">
                                                 <div v-for="instructor in item.banner.instructors">
@@ -341,6 +392,19 @@
                                                 v-if="item.delta && item.delta.request_update_instructors && item.delta.instructors">
                                                 <div>
                                                     <strong>Was:</strong>
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer icon-padding-top"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
                                                     <div class="delta-detail-list"
                                                         v-for="instructor in item.delta.instructors.was">
                                                         [[instructor]]
@@ -358,7 +422,7 @@
                                             <td class="text-center">
                                                 <v-icon class="green--text" v-if="item.instructorsMatch">
                                                     mdi-check-circle</v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
+                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
                                             </td>
                                         </tr>
                                         <tr>
@@ -374,19 +438,46 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <div>
-                                                    <a>
-                                                        <v-icon>
-                                                            mdi-arrow-left-bold
+                                                <div v-if="item.enrollmentCapsMatch" class="arrow-group">
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-left-bold-circle
                                                         </v-icon>
-                                                    </a>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-right-bold-circle
+                                                        </v-icon>
+                                                    </div>
+
                                                 </div>
-                                                <div>
-                                                    <a>
-                                                        <v-icon>
-                                                            mdi-arrow-right-bold
-                                                        </v-icon>
-                                                    </a>
+                                                <div v-else class="arrow-group">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    v-on="on">
+                                                                    mdi-arrow-left-bold-circle
+                                                                </v-icon>
+                                                            </div>
+
+                                                        </template>
+                                                        <span>Copy the registrar's version to iChair</span>
+                                                    </v-tooltip>
+                                                    <v-tooltip bottom>
+                                                        <template v-slot:activator="{ on }">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_SET)"
+                                                                    v-on="on">
+                                                                    mdi-arrow-right-bold-circle
+                                                                </v-icon>
+                                                            </div>
+
+                                                        </template>
+                                                        <span>Create a message for the registrar, requesting a
+                                                            change</span>
+                                                    </v-tooltip>
                                                 </div>
                                             </td>
                                             <td v-if="item.hasBanner" class="text-center">
@@ -395,11 +486,34 @@
                                             <td v-else class="text-center">
                                                 ---
                                             </td>
-                                            <td class="text-center"> </td>
+                                            <td
+                                                v-if="item.delta && item.delta.request_update_max_enrollment && item.delta.max_enrollment">
+                                                <div>
+                                                    <strong>Was:</strong>
+                                                    [[item.delta.max_enrollment.was]]
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer icon-padding-top"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                </div>
+                                                <div>
+                                                    <strong>Change to:</strong> [[item.delta.max_enrollment.change_to]]
+                                                </div>
+                                            </td>
+                                            <td v-else></td>
                                             <td class="text-center">
                                                 <v-icon class="green--text" v-if="item.enrollmentCapsMatch">
                                                     mdi-check-circle</v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
+                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
                                             </td>
                                         </tr>
 
@@ -428,11 +542,25 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <div class="arrow-group">
+                                                <div v-if="item.semesterFractionsMatch" class="arrow-group">
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-left-bold-circle
+                                                        </v-icon>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <v-icon class="grey--text text--lighten-1">
+                                                            mdi-arrow-right-bold-circle
+                                                        </v-icon>
+                                                    </div>
+
+                                                </div>
+                                                <div v-else class="arrow-group">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
-                                                            <div class="text-center" v-on="on">
-                                                                <v-icon class="include-pointer" color="primary">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
                                                             </div>
@@ -442,8 +570,10 @@
                                                     </v-tooltip>
                                                     <v-tooltip bottom>
                                                         <template v-slot:activator="{ on }">
-                                                            <div class="text-center" v-on="on">
-                                                                <v-icon class="include-pointer" color="primary">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_SET)"
+                                                                    v-on="on">
                                                                     mdi-arrow-right-bold-circle
                                                                 </v-icon>
                                                             </div>
@@ -452,7 +582,6 @@
                                                         <span>Create a message for the registrar, requesting a
                                                             change</span>
                                                     </v-tooltip>
-
                                                 </div>
 
 
@@ -473,11 +602,57 @@
                                             <td v-else class="text-center">
                                                 ---
                                             </td>
-                                            <td class="text-center"> </td>
+                                            <td
+                                                v-if="item.delta && item.delta.request_update_semester_fraction && item.delta.semester_fraction">
+                                                <div>
+                                                    <strong>Was:</strong>
+                                                    <span
+                                                        v-if="item.delta.semester_fraction.was == semesterFractions.full">
+                                                        Full
+                                                    </span>
+                                                    <span
+                                                        v-if="item.delta.semester_fraction.was == semesterFractions.first_half">
+                                                        First Half
+                                                    </span>
+                                                    <span
+                                                        v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
+                                                        Second Half
+                                                    </span>
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer icon-padding-top"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                </div>
+                                                <div>
+                                                    <strong>Change to:</strong>
+                                                    <span
+                                                        v-if="item.delta.semester_fraction.change_to == semesterFractions.full">
+                                                        Full
+                                                    </span>
+                                                    <span
+                                                        v-if="item.delta.semester_fraction.change_to == semesterFractions.first_half">
+                                                        First Half
+                                                    </span>
+                                                    <span
+                                                        v-if="item.delta.semester_fraction.change_to == semesterFractions.second_half">
+                                                        Second Half
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td v-else></td>
                                             <td class="text-center">
                                                 <v-icon class="green--text" v-if="item.semesterFractionsMatch">
                                                     mdi-check-circle</v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-help-circle</v-icon>
+                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
                                             </td>
                                         </tr>
 
