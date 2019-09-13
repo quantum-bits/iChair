@@ -354,7 +354,7 @@
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
+                                                                <v-icon class="include-pointer" color="primary" @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -455,7 +455,7 @@
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
+                                                                <v-icon class="include-pointer" color="primary" @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -559,7 +559,7 @@
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
+                                                                <v-icon class="include-pointer" color="primary" @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -659,7 +659,8 @@
 
                                     </tbody>
                                 </table>
-
+                                <strong class="green--text" v-if="item.loadsAdjustedWarning">[[item.loadsAdjustedWarning]]</strong>
+                                <strong class="red--text" v-if="item.errorMessage">[[item.errorMessage]]</strong>
                             </v-flex>
                         </v-layout>
 

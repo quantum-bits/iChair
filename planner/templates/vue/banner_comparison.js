@@ -13,6 +13,11 @@ const DELTA_UPDATE_TYPE_INSTRUCTORS = "instructors";
 const DELTA_UPDATE_TYPE_SEMESTER_FRACTION = "semesterFraction";
 const DELTA_UPDATE_TYPE_ENROLLMENT_CAP = "enrollmentCap";
 
+const COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT = "enrollmentCap";
+const COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION = "semesterFraction";
+const COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS = "instructors";
+const COPY_REGISTRAR_TO_ICHAIR_ALL = "all";
+
 var app = new Vue({
   delimiters: ["[[", "]]"],
   el: "#app",
@@ -25,6 +30,10 @@ var app = new Vue({
       DELTA_UPDATE_TYPE_ENROLLMENT_CAP: DELTA_UPDATE_TYPE_ENROLLMENT_CAP,
       DELTA_ACTION_SET: DELTA_ACTION_SET,
       DELTA_ACTION_UNSET: DELTA_ACTION_UNSET,
+      COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT: COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT,
+      COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION: COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION,
+      COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS: COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS,
+      COPY_REGISTRAR_TO_ICHAIR_ALL: COPY_REGISTRAR_TO_ICHAIR_ALL,
       semesterFractionsReverse: {}, // used to convert
       semesterFractions: {},
       choosingSemesters: true, // set to false once semesters have been chosen to work on
@@ -265,7 +274,9 @@ var app = new Vue({
               hasIChair: course.has_ichair,
               hasBanner: course.has_banner,
               linked: course.linked,
-              allOK: course.all_OK
+              allOK: course.all_OK,
+              errorMessage: '',
+              loadsAdjustedWarning: ''
             });
           });
           _this.semesterFractionsReverse =
@@ -412,6 +423,93 @@ var app = new Vue({
           //  "Sorry, there appears to have been an error.";
         }
       });
+    },
+    copyRegistrarDataToiChair(item, dataToUpdate) {
+      // assume for now that an iChair course offering object exists already, but maybe could generalize...(?)
+      // also assume that a banner course offering exists, or else we have nothing to copy from....
+      console.log("item: ", item);
+      console.log('data to update: ', dataToUpdate)
+      let dataForPost = {};
+      let deltaId = null;
+      if (item.delta !== null) {
+        deltaId = item.delta.id;
+      }
+      dataForPost = {
+        action: "update",
+        // if 'update', then an ichair course offering id must be provided
+        // if 'create', then the ichair course offering id should be set to null
+        iChairCourseOfferingId: item.ichair.course_offering_id,
+        bannerCourseOfferingId: item.banner.course_offering_id,
+        deltaId: deltaId,
+        propertiesToUpdate: []
+      };
+      if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT) {
+        dataForPost.propertiesToUpdate.push("max_enrollment")
+      } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION) {
+        dataForPost.propertiesToUpdate.push("semester_fraction")
+      } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS) {
+        console.log('aligning instructors!');
+        dataForPost.propertiesToUpdate.push("instructors")
+      }
+      // COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/copy-registrar-course-offering-data-to-ichair/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          item.delta = jsonResponse.delta_response;
+          item.enrollmentCapsMatch =
+            jsonResponse.agreement_update.max_enrollments_match; // don't need to check item.delta.request_update_max_enrollment, since this was already sorted out by the server-side code....
+          item.instructorsMatch =
+            jsonResponse.agreement_update.instructors_match;
+          item.schedulesMatch =
+            jsonResponse.agreement_update.meeting_times_match;
+          item.semesterFractionsMatch =
+            jsonResponse.agreement_update.semester_fractions_match;
+          item.allOK =
+            item.enrollmentCapsMatch &&
+            item.instructorsMatch &&
+            item.schedulesMatch &&
+            item.semesterFractionsMatch;
+          item.ichair = jsonResponse.course_offering_update;
+
+          if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS || dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ALL) {
+            if (jsonResponse.offering_instructors_copied_successfully === false) {
+              console.log('error copying instructors!')
+              item.errorMessage = "There was an error trying to copy the instructor data from the registrar's database.  It may be that one or more of the iChair instructors does not exist in the Registrar's database.  If this seems incorrect, please contact the iChair administrator."
+            }
+            if (jsonResponse.load_manipulation_performed === true) {
+              console.log('loads were adjusted!')
+              item.loadsAdjustedWarning = "One or more loads were adjusted automatically in the process of copying instructors from the registrar's database.  You may wish to check that this was done correctly."
+            }
+            // WORKING HERE....
+            // check if offering_instructors_copied_successfully === true; if not, display an error message (which should be added as a new property
+            // to the item....)
+            // this can happen if the iChair version of the instructor doesn't match the banner version (e.g., "Math TBA" or an instructor without a pidm)
+            // tell the user they can't use the copy feature in this case and can try to edit by hand instead
+
+            // also, in general, add a comment that the loads may need to be tweaked (or maybe flash up a dialog at the end to allow the user
+            // to specify loads right away...?)
+          }
+
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+        }
+      });
+
+      // action = json_data['action'] ('create' or 'update')
+      // course_offering_properties = json_data['courseOfferingProperties']
+      // banner_course_offering_id = json_data['bannerCourseOfferingId']
+      // ichair_course_offering_id = course_offering_properties.course_offering_id
+      // delta_id = json_data['deltaId']
+      // 'max_enrollment' within courseOfferingProperties
+
+      //ajax/copy-registrar-course-offering-data-to-ichair/
     },
     addMeetingTime() {
       this.editMeetings.push({
@@ -650,7 +748,7 @@ var app = new Vue({
       return this.courseOfferings.map((item, index) => ({
         id: index,
         ...item
-      }))
+      }));
     }
   },
   mounted: function() {
