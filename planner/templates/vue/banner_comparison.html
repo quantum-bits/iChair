@@ -126,7 +126,8 @@
                     <td class="text-xs-center">
                         <v-icon class="green--text" v-if="item.allOK">mdi-check-circle</v-icon>
                         <v-icon class="orange--text" v-else>mdi-alert</v-icon>
-                        <v-icon class="green--text" v-if="item.delta && item.delta.messages_exist">mdi-message-text-outline</v-icon>
+                        <v-icon class="green--text" v-if="item.delta && item.delta.messages_exist">
+                            mdi-message-text-outline</v-icon>
                     </td>
                 </tr>
             </template>
@@ -201,7 +202,17 @@
 
                         <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
 
-
+                        <v-layout v-if="item.showCourseOfferingRadioSelect" row wrap>
+                            <v-flex xs10 offset-xs1 class="mt-5">
+                                This course offering exists in the Registrar's database, but it is currently
+                                not linked to a corresponding course offering in iChair. What would you like to do?
+                                <v-radio-group v-model="item.ichairChoice" v-on:change="onCourseOfferingOptionChosen(item)">
+                                    <v-radio v-for="choiceItem in item.ichairChoices" :key="choiceItem.selectionId" :label="choiceItem.text"
+                                        :value="choiceItem.selectionId" color="success"></v-radio>
+                                </v-radio-group>
+                                </iChair>
+                            </v-flex>
+                        </v-layout>
 
                         <v-layout row wrap align-center>
                             <v-flex xs12>
@@ -213,7 +224,9 @@
                                             <th class="text-center">iChair</th>
                                             <th class="text-center">Actions</th>
                                             <th class="text-center">Registrar</th>
-                                            <th class="text-center"><v-icon>mdi-message-text-outline</v-icon> Message(s) for Registrar </th>
+                                            <th class="text-center">
+                                                <v-icon>mdi-message-text-outline</v-icon> Message(s) for Registrar
+                                            </th>
                                             <th class="text-center">Status</th>
                                         </tr>
                                     </thead>
@@ -251,6 +264,7 @@
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
                                                                 <v-icon class="include-pointer" color="primary"
+                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -354,7 +368,8 @@
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary" @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS)"
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -455,7 +470,8 @@
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary" @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT)"
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -559,7 +575,8 @@
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary" @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION)"
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -655,12 +672,17 @@
                                                 <v-icon class="orange--text" v-else>mdi-alert</v-icon>
                                             </td>
                                         </tr>
-
-
                                     </tbody>
                                 </table>
-                                <strong class="green--text" v-if="item.loadsAdjustedWarning">[[item.loadsAdjustedWarning]]</strong>
-                                <strong class="red--text" v-if="item.errorMessage">[[item.errorMessage]]</strong>
+                                <div v-if="item.classroomsUnassignedWarning">
+                                    <strong class="green--text">[[item.classroomsUnassignedWarning]]</strong>
+                                </div>
+                                <div v-if="item.loadsAdjustedWarning">
+                                    <strong class="green--text">[[item.loadsAdjustedWarning]]</strong>
+                                </div>
+                                <div v-if="item.errorMessage">
+                                    <strong class="red--text">[[item.errorMessage]]</strong>
+                                </div>
                             </v-flex>
                         </v-layout>
 

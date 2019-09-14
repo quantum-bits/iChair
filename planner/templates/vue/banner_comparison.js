@@ -2,6 +2,9 @@
 const CREATE_NEW_COURSE = -2;
 const DO_NOTHING = -1;
 
+const CREATE_NEW_COURSE_OFFERING = -2;
+const DELETE_BANNER_COURSE_OFFERING = -3;
+
 const DELTA_ACTION_CREATE = "create"; // used for delta course offerings; note that these are actions that the registrar is being asked to
 const DELTA_ACTION_UPDATE = "update"; // perform, not the actions that are being performed here on the delta objects
 const DELTA_ACTION_DELETE = "delete";
@@ -16,6 +19,7 @@ const DELTA_UPDATE_TYPE_ENROLLMENT_CAP = "enrollmentCap";
 const COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT = "enrollmentCap";
 const COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION = "semesterFraction";
 const COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS = "instructors";
+const COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES = "meetingTimes";
 const COPY_REGISTRAR_TO_ICHAIR_ALL = "all";
 
 var app = new Vue({
@@ -33,6 +37,7 @@ var app = new Vue({
       COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT: COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT,
       COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION: COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION,
       COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS: COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS,
+      COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES: COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES,
       COPY_REGISTRAR_TO_ICHAIR_ALL: COPY_REGISTRAR_TO_ICHAIR_ALL,
       semesterFractionsReverse: {}, // used to convert
       semesterFractions: {},
@@ -255,8 +260,86 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(incomingData) {
+          
+          
+        //   course.ichair_courses.forEach(item => {
+        //     if (item.number_offerings_this_year > max_num_offerings) {
+        //       max_num_offerings = item.number_offerings_this_year;
+        //       unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
+        //     }
+        //     if (item.credit_hours == 1) {
+        //       credit_text = " credit hour; ";
+        //     } else {
+        //       credit_text = " credit hours; ";
+        //     }
+        //     item.number_offerings_this_year == 1
+        //       ? (num_offerings = " offering ")
+        //       : (num_offerings = " offerings ");
+        //     choices.push({
+        //       bannerCourseId: course.banner_course.id,
+        //       selectionId: item.id, //assuming actual db ids will never be negative
+        //       text:
+        //         item.subject +
+        //         " " +
+        //         item.number +
+        //         ": " +
+        //         item.title +
+        //         " (" +
+        //         item.credit_hours +
+        //         credit_text +
+        //         item.number_offerings_this_year +
+        //         num_offerings +
+        //         "this year)"
+        //     });
+        //   });
+        //   choices.push({
+        //     bannerCourseId: course.banner_course.id,
+        //     selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
+        //     text:
+        //       "Create a new matching course (not recommended in this case)"
+        //   });
+        // }
+        // choices.push({
+        //   bannerCourseId: course.banner_course.id,
+        //   selectionId: DO_NOTHING, //assuming actual db ids will never be negative
+        //   text: "Do nothing for now...."
+        // });
+        // unmatchedCourse.choices = choices;
+        // _this.unmatchedCourses.push(unmatchedCourse);
+
           // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
           incomingData.course_data.forEach(course => {
+            let ichairChoices = []
+           
+            if (!course.has_ichair) {
+              course.ichair_options.forEach(ichairOption => {
+                let creditText = ichairOption.credit_hours == 1 ? " credit hour" :  " credit hours" ;
+                let meetingTimes = ichairOption.meeting_times.length === 0 ? ")" : "; ";
+                ichairOption.meeting_times.forEach(mT => {
+                  meetingTimes = meetingTimes + mT + "; ";
+                })
+                if (meetingTimes.length >= 2) {
+                  // https://tecadmin.net/remove-last-character-from-string-in-javascript/
+                  console.log('meeting times:', meetingTimes);
+                  meetingTimes = meetingTimes.substring(0, meetingTimes.length - 2);// get rid of last trailing "; "
+                  meetingTimes = meetingTimes +")";
+                }
+                ichairChoices.push({
+                  selectionId: ichairOption.course_offering_id,
+                  text: "Link with: "+ichairOption.course + ": " + ichairOption.course_title + " (" + ichairOption.credit_hours + creditText + meetingTimes,
+                })
+              });
+              ichairChoices.push({
+                selectionId: CREATE_NEW_COURSE_OFFERING,//assuming that course offering ids are always non-negative
+                text: "Create a new course offering to match the Registrar's version"
+              });
+              ichairChoices.push({
+                selectionId: DELETE_BANNER_COURSE_OFFERING,
+                text: "Request that the Registrar delete this course offering"
+              });
+            }
+
+
             _this.courseOfferings.push({
               semester: course.semester,
               semesterId: course.semester_id,
@@ -270,13 +353,18 @@ var app = new Vue({
               enrollmentCapsMatch: course.enrollment_caps_match,
               delta: course.delta,
               ichair: course.ichair,
+              ichairOptions: course.ichair_options,//these are potential iChair matches, which might be there if hasIChair is false
+              ichairChoices: ichairChoices, // used for radio select if the user going to choose from among iChair options
+              ichairChoice: null,//used by a radio select to choose one of the ichairChoices
+              showCourseOfferingRadioSelect: !course.has_ichair,
               banner: course.banner,
               hasIChair: course.has_ichair,
               hasBanner: course.has_banner,
               linked: course.linked,
               allOK: course.all_OK,
               errorMessage: '',
-              loadsAdjustedWarning: ''
+              loadsAdjustedWarning: '',
+              classroomsUnassignedWarning: ''
             });
           });
           _this.semesterFractionsReverse =
@@ -287,7 +375,6 @@ var app = new Vue({
         }
       });
     },
-
     showAll() {
       this.itemsPerPage = this.courseOfferings.length;
       this.page = 1;
@@ -297,6 +384,108 @@ var app = new Vue({
       this.itemsPerPage = 15;
       this.showAllCourses = false;
     },
+    onCourseOfferingOptionChosen(item) {
+      var _this = this;
+      console.log('item chosen!', item.ichairChoice);
+      if (item.ichairChoice === CREATE_NEW_COURSE_OFFERING) {
+        console.log('create a new course offering!');
+      } else if (item.ichairChoice === DELETE_BANNER_COURSE_OFFERING) {
+        console.log('delete banner course offering!');
+      } else {
+        console.log('add existing iChair course offering');
+        // now need to pop this item out of the list of this.courseOfferings
+        // add this as the ichair element for this particular item
+        item.showCourseOfferingRadioSelect = false;
+        item.ichairOptions.forEach( iChairOption => {
+          if (iChairOption.course_offering_id === item.ichairChoice) {
+            item.ichair = iChairOption;//this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
+          }
+        });
+        console.log('item: ', item);
+        item.hasIChair = true;
+        item.linked = true; // not sure if this is used anywhere, but OK....
+        // generate a delta object for the item; not necessary, strictly speaking, but then we can also 
+        // use the endpoint to check the agreement between the bco and the ico....
+        dataForPost = {
+          deltaMods: {}, // don't request any delta mods at this point, just create the delta object
+          deltaId: null, // shouldn't exist at this point, since we have only just linked the iChair course offering with the Banner one
+          action: DELTA_ACTION_UPDATE,
+          crn: item.crn,
+          iChairCourseOfferingId: item.ichair.course_offering_id,
+          bannerCourseOfferingId: item.banner.course_offering_id,
+          semesterId: item.semesterId
+        };
+        
+        // the code works well if you comment out the following line....
+        this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
+        console.log('back from popping item....');
+        $.ajax({
+          // initialize an AJAX request
+          type: "POST",
+          url: "/planner/ajax/generate-update-delta/",
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(jsonResponse) {
+            console.log("response: ", jsonResponse);
+            item.delta = jsonResponse.delta;
+            item.enrollmentCapsMatch =
+              jsonResponse.agreement_update.max_enrollments_match ||
+              item.delta.request_update_max_enrollment;
+            item.instructorsMatch =
+              jsonResponse.agreement_update.instructors_match ||
+              item.delta.request_update_instructors;
+            item.schedulesMatch =
+              jsonResponse.agreement_update.meeting_times_match ||
+              item.delta.request_update_meeting_times;
+            item.semesterFractionsMatch =
+              jsonResponse.agreement_update.semester_fractions_match ||
+              item.delta.request_update_semester_fraction;
+            item.allOK =
+              item.enrollmentCapsMatch &&
+              item.instructorsMatch &&
+              item.schedulesMatch &&
+              item.semesterFractionsMatch;
+            console.log('item after delta update!', item);
+            console.log('all course offerings: ', _this.courseOfferings);
+            //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
+          },
+          error: function(jqXHR, exception) {
+            // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+            console.log(jqXHR);
+            _this.showCreateUpdateErrorMessage();
+            //_this.meetingFormErrorMessage =
+            //  "Sorry, there appears to have been an error.";
+          }
+        });
+      
+
+      }
+    },
+    popUnlinkedItemFromCourseOfferings(courseOfferingId) {
+      // this method is used after an iChair course offering is linked up with a banner course offering;
+      // the iChair course offering was previously in the list, but now it should be popped out;
+      // also, if it exists as a choice in ichairOptions (listing of iChair course objects) or ichairChoices (listing used for
+      // a radio select), then it should be popped from them
+      console.log('popping iChair item that is now linked....');
+      console.log('course offerings length: ', this.courseOfferings.length);
+      for(var i = 0; i < this.courseOfferings.length; i++){ 
+        console.log('course offerings length: ', this.courseOfferings.length);
+        console.log('index: ', i);
+        if (this.courseOfferings[i].hasBanner === false && this.courseOfferings[i].hasIChair === true) {
+          if (this.courseOfferings[i].ichair.course_offering_id === courseOfferingId) {
+            console.log('found the item to remove!')
+            this.courseOfferings.splice(i, 1);
+          i--;
+          }
+        }
+     }
+    //ichairChoices: selectionId
+      //ichairOptions: course_offering_id
+
+
+    },
+
+    //courseOfferings
     editMeetingTimes(courseInfo) {
       this.editCourseOfferingData = {
         courseOfferingId: courseInfo.ichair.course_offering_id,
@@ -444,12 +633,15 @@ var app = new Vue({
         propertiesToUpdate: []
       };
       if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT) {
-        dataForPost.propertiesToUpdate.push("max_enrollment")
+        dataForPost.propertiesToUpdate.push("max_enrollment");
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION) {
-        dataForPost.propertiesToUpdate.push("semester_fraction")
+        dataForPost.propertiesToUpdate.push("semester_fraction");
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS) {
         console.log('aligning instructors!');
-        dataForPost.propertiesToUpdate.push("instructors")
+        dataForPost.propertiesToUpdate.push("instructors");
+      } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES) {
+        console.log('aligning instructors!');
+        dataForPost.propertiesToUpdate.push("meeting_times");
       }
       // COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT
       $.ajax({
@@ -476,15 +668,22 @@ var app = new Vue({
             item.semesterFractionsMatch;
           item.ichair = jsonResponse.course_offering_update;
 
-          if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS || dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ALL) {
-            if (jsonResponse.offering_instructors_copied_successfully === false) {
-              console.log('error copying instructors!')
-              item.errorMessage = "There was an error trying to copy the instructor data from the registrar's database.  It may be that one or more of the iChair instructors does not exist in the Registrar's database.  If this seems incorrect, please contact the iChair administrator."
-            }
-            if (jsonResponse.load_manipulation_performed === true) {
-              console.log('loads were adjusted!')
-              item.loadsAdjustedWarning = "One or more loads were adjusted automatically in the process of copying instructors from the registrar's database.  You may wish to check that this was done correctly."
-            }
+          if (jsonResponse.offering_instructors_copied_successfully === false) {
+            console.log('error copying instructors!')
+            item.errorMessage = "There was an error trying to copy the instructor data from the registrar's database.  It may be that one or more of the iChair instructors does not exist in the Registrar's database.  If this seems incorrect, please contact the iChair administrator."
+          }
+          if (jsonResponse.load_manipulation_performed === true) {
+            console.log('loads were adjusted!')
+            item.loadsAdjustedWarning = "One or more loads were adjusted automatically in the process of copying instructors from the registrar's database.  You may wish to check that this was done correctly."
+          }
+          if (jsonResponse.classrooms_unassigned === true) {
+            console.log('schedules assigned without classrooms!')
+            item.classroomsUnassignedWarning = "One or more meeting times were scheduled within iChair, but without rooms being assigned.  If you know the appropriate room(s), you may wish to correct this."
+          }
+          //if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS || dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ALL) {
+            
+            
+
             // WORKING HERE....
             // check if offering_instructors_copied_successfully === true; if not, display an error message (which should be added as a new property
             // to the item....)
@@ -493,7 +692,7 @@ var app = new Vue({
 
             // also, in general, add a comment that the loads may need to be tweaked (or maybe flash up a dialog at the end to allow the user
             // to specify loads right away...?)
-          }
+          //}
 
         },
         error: function(jqXHR, exception) {

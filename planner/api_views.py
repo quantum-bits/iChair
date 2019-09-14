@@ -358,7 +358,7 @@ def banner_comparison_data(request):
                             "instructors": ico_instructors,
                             "semester": ico.semester.name.name,
                             "semester_fraction": int(ico.semester_fraction),
-                            "max_enrollment": int(ico.max_enrollment)
+                            "max_enrollment": int(ico.max_enrollment),
                         }
                         course_offering_item["has_ichair"] = True
                         course_offering_item["linked"] = True
@@ -373,6 +373,39 @@ def banner_comparison_data(request):
                         print(
                             'OOPS!  Looking for a course offering that does not exist....')
                         print(bco)
+
+                else:
+                    # look for possible ichair course offering matches for this unlinked banner course offering
+                    unlinked_ichair_course_offerings = find_unlinked_ichair_course_offerings(
+                        bco, semester, subject)
+                    print('bco...', bco)
+                    print('some iChair options:')
+                    for unlinked_ico in unlinked_ichair_course_offerings:
+                        print(unlinked_ico)
+                        presorted_ico_meeting_times_list = class_time_and_room_summary(
+                            unlinked_ico.scheduled_classes.all(), include_rooms=False)
+                        # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
+                        ico_meeting_times_list = sorted(
+                            presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+
+                        ico_instructors = construct_instructor_list(
+                            unlinked_ico)
+
+                        meeting_times_detail = construct_meeting_times_detail(
+                            unlinked_ico)
+                        course_offering_item["ichair_options"].append({
+                            "course_title": unlinked_ico.course.title,
+                            "course": unlinked_ico.course.subject.abbrev+' '+unlinked_ico.course.number,
+                            "credit_hours": unlinked_ico.course.credit_hours,
+                            "course_offering_id": unlinked_ico.id,
+                            "meeting_times": ico_meeting_times_list,
+                            "meeting_times_detail": meeting_times_detail,
+                            # "rooms": ico_room_list,
+                            "instructors": ico_instructors,
+                            "semester": unlinked_ico.semester.name.name,
+                            "semester_fraction": int(unlinked_ico.semester_fraction),
+                            "max_enrollment": int(unlinked_ico.max_enrollment)})
+
                 course_offering_data.append(course_offering_item)
 
             # and now we go through the remaining iChair course offerings (i.e., the ones that have not been linked to banner course offerings)
@@ -441,7 +474,7 @@ def banner_comparison_data(request):
 def construct_instructor_list(course_offering):
     """Constructs a list of instructors for a given (banner or iChair) course offering."""
     return [instr.instructor.first_name+' ' +
-                                   instr.instructor.last_name for instr in course_offering.offering_instructors.all()]
+            instr.instructor.last_name for instr in course_offering.offering_instructors.all()]
 
 
 def delta_update_status(bco, ico, delta):
@@ -468,27 +501,27 @@ def delta_update_status(bco, ico, delta):
     # we only check if the meetings agree if the user has requested that a message be generated for this property
     if delta.update_meeting_times and (not scheduled_classes_match(bco, ico)):
         delta_response["meeting_times"] = {
-                "was": class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms=False),
-                "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)
-                }
+            "was": class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms=False),
+            "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)
+        }
 
     if delta.update_instructors and (not instructors_match(bco, ico)):
         delta_response["instructors"] = {
-                "was": construct_instructor_list(bco),
-                "change_to": construct_instructor_list(ico)
-                }
+            "was": construct_instructor_list(bco),
+            "change_to": construct_instructor_list(ico)
+        }
 
     if delta.update_semester_fraction and (not semester_fractions_match(bco, ico)):
         delta_response["semester_fraction"] = {
-                "was": bco.semester_fraction,
-                "change_to": ico.semester_fraction
-                }
+            "was": bco.semester_fraction,
+            "change_to": ico.semester_fraction
+        }
 
     if delta.update_max_enrollment and (not max_enrollments_match(bco, ico)):
         delta_response["max_enrollment"] = {
-                "was": bco.max_enrollment,
-                "change_to": ico.max_enrollment
-                }
+            "was": bco.max_enrollment,
+            "change_to": ico.max_enrollment
+        }
 
     if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None):
         delta_response["messages_exist"] = True
@@ -496,6 +529,21 @@ def delta_update_status(bco, ico, delta):
     print(delta_response)
 
     return delta_response
+
+
+def find_unlinked_ichair_course_offerings(bco, semester, subject):
+    """Find the unlinked iChair course offerings that could correspond to a particular (unlinked) banner course offering."""
+    if bco.is_linked:
+        return []
+    else:
+        # we don't include the title or banner title in the filter, since we will eventually let the user decide
+        # whether or not to link one of these courses to the banner course
+        return CourseOffering.objects.filter(
+            Q(semester=semester) &
+            Q(course__subject=subject) &
+            Q(course__number__startswith=bco.course.number) &
+            Q(course__credit_hours=bco.course.credit_hours) &
+            Q(crn__isnull=True))
 
 
 def find_ichair_course_offering(bco, semester, subject):
@@ -533,7 +581,45 @@ def find_ichair_course_offering(bco, semester, subject):
 
 def choose_course_offering_second_cut(bco, candidate_ichair_matches):
     """Check candidate iChair course matches for this banner course offering, and possibly choose one based on agreement of weekly schedules."""
-    # at this point we have several candidate matches...which one is closest?
+    # at this point we have several candidate ichair matches...which one is closest?
+
+    # first check to see if any of them has a "delta object" that links it to the banner course;
+    # might need to check through several; if so, find the most recent and link up the corresponding
+    # banner and iChair course offerings
+
+    # delta course offering actions from the model itself:
+    delta_course_offering_actions = DeltaCourseOffering.actions()
+
+    print('>>>>>>>>>>>>>>>inside second cut')
+
+    recent_delta_object = None
+    chosen_ichair_match = None
+    for ichair_match in candidate_ichair_matches:
+        delta_objects = DeltaCourseOffering.objects.filter(
+            Q(crn=bco.crn) &
+            Q(course_offering=ichair_match) &
+            Q(requested_action=delta_course_offering_actions["update"]))
+        if len(delta_objects) > 0:
+            print('delta object(s) found for', ichair_match)
+            if recent_delta_object is None:
+                recent_delta_object = delta_objects[0]
+                chosen_ichair_match = ichair_match
+            for delta_object in delta_objects:
+                print(delta_object, delta_object.updated_at)
+                if delta_object.updated_at > recent_delta_object.updated_at:
+                    recent_delta_object = delta_object
+                    chosen_ichair_match = ichair_match
+                    print('found more recent!',
+                          recent_delta_object.updated_at)
+    if chosen_ichair_match is not None:
+        # we found one, based on looking at the delta(s)
+        print(
+            '<<<<>>>><<<<>>>>choosing an iChair course offering based on the delta object')
+        bco.ichair_id = chosen_ichair_match.id
+        bco.save()
+        chosen_ichair_match.crn = bco.crn
+        chosen_ichair_match.save()
+        return None
 
     # print('inside choose_course_offering_second_cut!')
     # meet above criteria, as well as being a match on meeting days and times
@@ -958,175 +1044,204 @@ def copy_registrar_course_offering_data_to_ichair(request):
     course_offering_update = None
     offering_instructors_copied_successfully = True
     load_manipulation_performed = False
+    classrooms_unassigned = False
 
     if action == 'update':
-        #try:
-            ico = CourseOffering.objects.get(
-                pk=ichair_course_offering_id)  # iChair course offering
-            bco = BannerCourseOffering.objects.get(
-                pk=banner_course_offering_id)
-            print('ichair course offering: ', ico)
-            print('banner course offering: ', bco)
-            if 'max_enrollment' in properties_to_update:
-                ico.max_enrollment = bco.max_enrollment
-                ico.save()
-            if 'semester_fraction' in properties_to_update:
-                ico.semester_fraction = bco.semester_fraction
-                ico.save()
-            if 'instructors' in properties_to_update:
-                # we take a conservative approach here:
-                # - if any of the ichair offering instructors does not have a pidm, leave things alone
-                ichair_offering_instructors = ico.offering_instructors.all()
-                banner_offering_instructors = bco.offering_instructors.all()
-                banner_instructor_pidms = [boi.instructor.pidm for boi in banner_offering_instructors]
+        # try:
+        ico = CourseOffering.objects.get(
+            pk=ichair_course_offering_id)  # iChair course offering
+        bco = BannerCourseOffering.objects.get(
+            pk=banner_course_offering_id)
+        print('ichair course offering: ', ico)
+        print('banner course offering: ', bco)
+        if 'max_enrollment' in properties_to_update:
+            ico.max_enrollment = bco.max_enrollment
+            ico.save()
+        if 'semester_fraction' in properties_to_update:
+            ico.semester_fraction = bco.semester_fraction
+            ico.save()
+        if 'instructors' in properties_to_update:
+            # we take a conservative approach here:
+            # - if any of the ichair offering instructors does not have a pidm, leave things alone for that instructor
+            ichair_offering_instructors = ico.offering_instructors.all()
+            banner_offering_instructors = bco.offering_instructors.all()
+            banner_instructor_pidms = [
+                boi.instructor.pidm for boi in banner_offering_instructors]
 
-                for ichair_oi in ichair_offering_instructors:
-                    if (ichair_oi.instructor.pidm is None) or (ichair_oi.instructor.pidm == ''):
-                        print('one of the iChair instructors does not have a pidm...bailing!')
+            for ichair_oi in ichair_offering_instructors:
+                if (ichair_oi.instructor.pidm is None) or (ichair_oi.instructor.pidm == ''):
+                    print(
+                        'one of the iChair instructors does not have a pidm...bailing!')
+                    offering_instructors_copied_successfully = False
+                    break
+                elif ichair_oi.instructor.pidm not in banner_instructor_pidms:
+                    print('the following iChair instructor is not in the banner list: ',
+                          ichair_oi.instructor.first_name, ichair_oi.instructor.last_name)
+                    print('...this instructor will be deleted')
+                    # the object may be deleted inside the loop: https://stackoverflow.com/questions/16466945/iterating-over-a-django-queryset-while-deleting-objects-in-the-same-queryset
+                    ichair_oi.delete()
+                else:
+                    # the current iChair instructor is in the banner list, so pop the person out of the banner list so we don't create them later
+                    # first, though, set the is_primary flag to the correct value
+                    matching_boi = None
+                    for boi in banner_offering_instructors:
+                        if boi.instructor.pidm == ichair_oi.instructor.pidm:
+                            matching_boi = boi
+                    if matching_boi is not None:
+                        # align the is_primary flag....
+                        ichair_oi.is_primary = matching_boi.is_primary
+                        ichair_oi.save()
+                        print('now pop out of the banner pidm list....')
+                        print('before: ', banner_instructor_pidms)
+                        # now pop the matching banner instructor out of the pidm list (https://stackoverflow.com/questions/4915920/how-to-delete-an-item-in-a-list-if-it-exists)
+                        while ichair_oi.instructor.pidm in banner_instructor_pidms:
+                            banner_instructor_pidms.remove(
+                                ichair_oi.instructor.pidm)
+                        print('after: ', banner_instructor_pidms)
+                    else:
+                        # something has gone wrong
                         offering_instructors_copied_successfully = False
                         break
-                    elif ichair_oi.instructor.pidm not in banner_instructor_pidms:
-                        print('the following iChair instructor is not in the banner list: ', ichair_oi.instructor.first_name, ichair_oi.instructor.last_name)
-                        print('...this instructor will be deleted')
-                        # the object may be deleted inside the loop: https://stackoverflow.com/questions/16466945/iterating-over-a-django-queryset-while-deleting-objects-in-the-same-queryset
-                        ichair_oi.delete()
+
+            # now that the ichair offering_instructor list has been culled, go through and add in any other instructors from the banner list
+            for boi in banner_offering_instructors:
+                if boi.instructor.pidm in banner_instructor_pidms:
+                    ichair_instructors = FacultyMember.objects.filter(
+                        pidm=boi.instructor.pidm)
+                    if len(ichair_instructors) != 1:
+                        offering_instructors_copied_successfully = False
+                        print(
+                            'there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
                     else:
-                        # the current iChair instructor is in the banner list, so pop the person out of the banner list so we don't create them later
-                        # first, though, set the is_primary flag to the correct value
-                        matching_boi = None
-                        for boi in banner_offering_instructors:
-                            if boi.instructor.pidm == ichair_oi.instructor.pidm:
-                                matching_boi = boi
-                        if matching_boi is not None:
-                            # align the is_primary flag....
-                            ichair_oi.is_primary = matching_boi.is_primary
-                            ichair_oi.save()
-                            print('now pop out of the banner pidm list....')
-                            print('before: ', banner_instructor_pidms)
-                            # now pop the matching banner instructor out of the pidm list (https://stackoverflow.com/questions/4915920/how-to-delete-an-item-in-a-list-if-it-exists)
-                            while ichair_oi.instructor.pidm in banner_instructor_pidms: banner_instructor_pidms.remove(ichair_oi.instructor.pidm)  
-                            print('after: ', banner_instructor_pidms)
-                        else:
-                            # something has gone wrong
-                            offering_instructors_copied_successfully = False
-                            break
-                
-                #WORKING HERE: should we continue here if offering_instructors_copied_successfully is already false?!?
+                        # WORKING HERE: assign load in a better way by summing up for the previous instructors and giving the remaining person what's left
+                        instructor = ichair_instructors[0]
+                        offering_instructor = OfferingInstructor.objects.create(
+                            course_offering=ico,
+                            instructor=instructor,
+                            load_credit=0,
+                            is_primary=boi.is_primary)
+                        offering_instructor.save()
 
-                # now that the ichair offering_instructor list has been culled, go through and add in any other instructors from the banner list
-                for boi in banner_offering_instructors:
-                    if boi.instructor.pidm in banner_instructor_pidms:
-                        ichair_instructors = FacultyMember.objects.filter(pidm=boi.instructor.pidm)
-                        if len(ichair_instructors) != 1:
-                            offering_instructors_copied_successfully = False
-                            print('there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
-                        else:
-                            # WORKING HERE: assign load in a better way by summing up for the previous instructors and giving the remaining person what's left
-                            instructor = ichair_instructors[0]
-                            offering_instructor = OfferingInstructor.objects.create(
-                                course_offering = ico,
-                                instructor = instructor,
-                                load_credit = 0,
-                                is_primary = boi.is_primary)
-                            offering_instructor.save()
-              
-                # now go through the list of offering instructors again and adjust loads....
-                if ico.load_difference() > 0.001:# trying to be careful about rounding and floats....
-                    print('load difference is: ', ico.load_difference())
-                    ichair_offering_instructors = ico.offering_instructors.all()
-                    for offering_instructor in ichair_offering_instructors:
-                        if len(ichair_offering_instructors) == 1:
-                            # give this person all of the load credit
-                            offering_instructor.load_credit = ico.load_available
-                            offering_instructor.save()
-                            load_manipulation_performed = True
-                        elif (offering_instructor.load_credit < 0.001) and (ico.load_difference() > 0):# trying to be careful about rounding and floats....
-                            # if there is more than one instructor, the first one in the list who doesn't have load gets the remaining load....
-                            # ...at least this way the loads add up to the correct total
-                            offering_instructor.load_credit = ico.load_difference()
-                            offering_instructor.save()
-                            print('and now load difference is: ', ico.load_difference())
-                            load_manipulation_performed = True
+            # now go through the list of offering instructors again and adjust loads....
+            # trying to be careful about rounding and floats....
+            if ico.load_difference() > 0.001:
+                print('load difference is: ', ico.load_difference())
+                ichair_offering_instructors = ico.offering_instructors.all()
+                for offering_instructor in ichair_offering_instructors:
+                    if len(ichair_offering_instructors) == 1:
+                        # give this person all of the load credit
+                        offering_instructor.load_credit = ico.load_available
+                        offering_instructor.save()
+                        load_manipulation_performed = True
+                    # trying to be careful about rounding and floats....
+                    elif (offering_instructor.load_credit < 0.001) and (ico.load_difference() > 0):
+                        # if there is more than one instructor, the first one in the list who doesn't have load gets the remaining load....
+                        # ...at least this way the loads add up to the correct total
+                        offering_instructor.load_credit = ico.load_difference()
+                        offering_instructor.save()
+                        print('and now load difference is: ',
+                              ico.load_difference())
+                        load_manipulation_performed = True
 
+        if 'meeting_times' in properties_to_update:
+            # we don't want to unintentionally lose room information, so we can't just delete all existing meeting times and start over....
+            banner_scheduled_classes = bco.scheduled_classes.all()
 
-            # the following code is copied from above...if we need it again somewhere, should 
-            # consider putting this all in a function somewhere
-            presorted_ico_meeting_times_list = class_time_and_room_summary(
-                            ico.scheduled_classes.all(), include_rooms=False)
-            ico_meeting_times_list = sorted(
-                            presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
-            ico_instructors = construct_instructor_list(ico)
-            meeting_times_detail = construct_meeting_times_detail(ico)
+            for ichair_sc in ico.scheduled_classes.all():
+                # first, check to see if there is a similar object in the banner list....
+                #  - if not, delete the scheduled class from iChair
+                #  - if it is found in the banner list, pop the corresponding item out of the banner list
+                banner_match = None
+                print('ichair meeting time: ', ichair_sc)
+                for banner_sc in banner_scheduled_classes:
+                    if (ichair_sc.day == banner_sc.day) and (ichair_sc.begin_at == banner_sc.begin_at) and (ichair_sc.end_at == banner_sc.end_at):
+                        banner_match = banner_sc
+                        print('found a banner match!', banner_match)
+                if banner_match is None:
+                    print(
+                        'no corresponding banner match; deleting iChair meeting time....')
+                    # apparently this is OK to do while iterating through the queryset....
+                    ichair_sc.delete()
+                else:
+                    print('popping the banner match out of the list')
+                    print('before: ', banner_scheduled_classes)
+                    # https://stackoverflow.com/questions/1207406/how-to-remove-items-from-a-list-while-iterating
+                    banner_scheduled_classes = [
+                        bsc for bsc in banner_scheduled_classes if not banner_match.id == bsc.id]
+                    print('after: ', banner_scheduled_classes)
 
-            if delta_id is not None:
-                dco = DeltaCourseOffering.objects.get(pk=delta_id)
-                print('delta course offering: ', dco)
-                delta_response = delta_update_status(bco, ico, dco)
+            # now we go through the remaining banner meeting times and copy them over to iChair
+            for banner_sc in banner_scheduled_classes:
+                classrooms_unassigned = True
+                isc = ScheduledClass.objects.create(
+                    day=banner_sc.day,
+                    begin_at=banner_sc.begin_at,
+                    end_at=banner_sc.end_at,
+                    course_offering=ico
+                )
+                isc.save()
 
-                schedules_match = scheduled_classes_match(
-                    bco, ico) or delta_response["request_update_meeting_times"]
-                inst_match = instructors_match(
-                    bco, ico) or delta_response["request_update_instructors"]
-                sem_fractions_match = semester_fractions_match(
-                    bco, ico) or delta_response["request_update_semester_fraction"]
-                enrollment_caps_match = max_enrollments_match(
-                    bco, ico) or delta_response["request_update_max_enrollment"]
-            else:
-                schedules_match = scheduled_classes_match(bco, ico)
-                inst_match = instructors_match(bco, ico)
-                sem_fractions_match = semester_fractions_match(
-                    bco, ico)
-                enrollment_caps_match = max_enrollments_match(bco, ico)
+        # the following code is copied from above...if we need it again somewhere, should
+        # consider putting this all in a function
+        presorted_ico_meeting_times_list = class_time_and_room_summary(
+            ico.scheduled_classes.all(), include_rooms=False)
+        ico_meeting_times_list = sorted(
+            presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+        ico_instructors = construct_instructor_list(ico)
+        meeting_times_detail = construct_meeting_times_detail(ico)
 
-            agreement_update = {
-                "instructors_match": inst_match,
-                "meeting_times_match": schedules_match,
-                "max_enrollments_match": enrollment_caps_match,
-                "semester_fractions_match": sem_fractions_match
-                }
+        if delta_id is not None:
+            dco = DeltaCourseOffering.objects.get(pk=delta_id)
+            print('delta course offering: ', dco)
+            delta_response = delta_update_status(bco, ico, dco)
 
-            course_offering_update = {
-                "course_offering_id": ico.id,
-                "meeting_times": ico_meeting_times_list,
-                "meeting_times_detail": meeting_times_detail,
-                # "rooms": ico_room_list,
-                "instructors": ico_instructors,
-                "semester": ico.semester.name.name,
-                "semester_fraction": int(ico.semester_fraction),
-                "max_enrollment": int(ico.max_enrollment)}
+            schedules_match = scheduled_classes_match(
+                bco, ico) or delta_response["request_update_meeting_times"]
+            inst_match = instructors_match(
+                bco, ico) or delta_response["request_update_instructors"]
+            sem_fractions_match = semester_fractions_match(
+                bco, ico) or delta_response["request_update_semester_fraction"]
+            enrollment_caps_match = max_enrollments_match(
+                bco, ico) or delta_response["request_update_max_enrollment"]
+        else:
+            schedules_match = scheduled_classes_match(bco, ico)
+            inst_match = instructors_match(bco, ico)
+            sem_fractions_match = semester_fractions_match(
+                bco, ico)
+            enrollment_caps_match = max_enrollments_match(bco, ico)
 
-        #except:
+        agreement_update = {
+            "instructors_match": inst_match,
+            "meeting_times_match": schedules_match,
+            "max_enrollments_match": enrollment_caps_match,
+            "semester_fractions_match": sem_fractions_match
+        }
+
+        course_offering_update = {
+            "course_offering_id": ico.id,
+            "meeting_times": ico_meeting_times_list,
+            "meeting_times_detail": meeting_times_detail,
+            # "rooms": ico_room_list,
+            "instructors": ico_instructors,
+            "semester": ico.semester.name.name,
+            "semester_fraction": int(ico.semester_fraction),
+            "max_enrollment": int(ico.max_enrollment)}
+
+        # except:
         #    ico = None
         #    print('could not find the course offering....')
-
-                      
-
-
-
-    print('agreement update: ', agreement_update)
-    print('delta response: ', delta_response)
-    # courseoffering model:
-    # course = models.ForeignKey(Course, related_name='offerings', on_delete=models.CASCADE)
-    # semester = models.ForeignKey(Semester, related_name='offerings', on_delete=models.CASCADE)
-    # 
-    # instructor = models.ManyToManyField(FacultyMember, through='OfferingInstructor',
-    #                                     blank=True,
-    #                                     related_name='course_offerings')
-    # load_available = models.FloatField(default=3)
-    # 
-    # comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
-    # crn = models.CharField(max_length=5, blank=True, null=True)
-
 
     data = {
         'delta_response': delta_response,
         'agreement_update': agreement_update,
         'course_offering_update': course_offering_update,
         'offering_instructors_copied_successfully': offering_instructors_copied_successfully,
-        'load_manipulation_performed': load_manipulation_performed
+        'load_manipulation_performed': load_manipulation_performed,
+        'classrooms_unassigned': classrooms_unassigned
     }
 
     return JsonResponse(data)
+
 
 @login_required
 @csrf_exempt
