@@ -110,9 +110,9 @@
                 <v-switch v-model="singleExpand" label="Single expand" class="mt-2"></v-switch>
             </v-toolbar>
         </template>
-        <v-data-table :headers="headers" :items="indexedCourseOfferings" :single-expand="singleExpand"
+        <v-data-table :headers="headers" :items="courseOfferings" :single-expand="singleExpand"
             :expanded.sync="expanded" show-expand :page.sync="page" :items-per-page="itemsPerPage" hide-default-footer
-            item-key="id" class="elevation-1" @page-count="pageCount = $event">
+            item-key="index" class="elevation-1" @page-count="pageCount = $event">
             <template v-slot:item="{ item, expand }">
                 <tr>
                     <td>
@@ -205,10 +205,26 @@
                         <v-layout v-if="item.showCourseOfferingRadioSelect" row wrap>
                             <v-flex xs10 offset-xs1 class="mt-5">
                                 This course offering exists in the Registrar's database, but it is currently
-                                not linked to a corresponding course offering in iChair. What would you like to do?
-                                <v-radio-group v-model="item.ichairChoice" v-on:change="onCourseOfferingOptionChosen(item)">
-                                    <v-radio v-for="choiceItem in item.ichairChoices" :key="choiceItem.selectionId" :label="choiceItem.text"
-                                        :value="choiceItem.selectionId" color="success"></v-radio>
+                                not linked to one in iChair. What would you like to do?
+                                <v-radio-group v-model="item.ichairChoice"
+                                    v-on:change="onCourseOfferingOptionChosen(item)">
+                                    <v-radio v-for="choiceItem in item.ichairChoices" :key="choiceItem.selectionId"
+                                        :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
+                                    </v-radio>
+                                </v-radio-group>
+                                </iChair>
+                            </v-flex>
+                        </v-layout>
+
+                        <v-layout v-if="item.showBannerCourseOfferingRadioSelect" row wrap>
+                            <v-flex xs10 offset-xs1 class="mt-5">
+                                This course offering exists in the iChair database, but it is currently
+                                not linked to one in the Registrar's database. What would you like to do?
+                                <v-radio-group v-model="item.bannerChoice"
+                                    v-on:change="onBannerCourseOfferingOptionChosen(item)">
+                                    <v-radio v-for="choiceItem in item.bannerChoices" :key="choiceItem.selectionId"
+                                        :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
+                                    </v-radio>
                                 </v-radio-group>
                                 </iChair>
                             </v-flex>
@@ -246,7 +262,8 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <div v-if="item.schedulesMatch" class="arrow-group">
+                                                <div v-if="item.schedulesMatch || !item.hasIChair || !item.hasBanner"
+                                                    class="arrow-group">
                                                     <div class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
@@ -351,7 +368,8 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <div v-if="item.instructorsMatch" class="arrow-group">
+                                                <div v-if="item.instructorsMatch || !item.hasIChair || !item.hasBanner"
+                                                    class="arrow-group">
                                                     <div class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
@@ -453,7 +471,8 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <div v-if="item.enrollmentCapsMatch" class="arrow-group">
+                                                <div v-if="item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner"
+                                                    class="arrow-group">
                                                     <div class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
@@ -558,7 +577,8 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <div v-if="item.semesterFractionsMatch" class="arrow-group">
+                                                <div v-if="item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner"
+                                                    class="arrow-group">
                                                     <div class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle

@@ -210,6 +210,7 @@ def banner_comparison_data(request):
 
     course_offering_data = []
 
+    index = 0
     for semester_id in semester_ids:
         semester = Semester.objects.get(pk=semester_id)
         term_code = semester.banner_code
@@ -251,6 +252,7 @@ def banner_comparison_data(request):
                 bco_instructors = construct_instructor_list(bco)
 
                 course_offering_item = {
+                    "index": index, # used in the UI as a unique key
                     "semester": semester.name.name,
                     "semester_id": semester.id,
                     "course": bco.course.subject.abbrev+' '+bco.course.number,
@@ -280,6 +282,7 @@ def banner_comparison_data(request):
                     "all_OK": False,
                     "crn": bco.crn
                 }
+                index = index + 1
 
                 if bco.is_linked:
                     # get the corresponding iChair course offering
@@ -426,7 +429,35 @@ def banner_comparison_data(request):
                 ico_instructors = construct_instructor_list(ico)
                 meeting_times_detail = construct_meeting_times_detail(ico)
 
+                unlinked_banner_course_offerings = find_unlinked_banner_course_offerings(
+                        ico, term_code, subject)
+
+                banner_options = []
+                for unlinked_bco in unlinked_banner_course_offerings:
+                        print(unlinked_bco)
+                        presorted_bco_meeting_times_list = class_time_and_room_summary(
+                            unlinked_bco.scheduled_classes.all(), include_rooms=False)
+                        # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
+                        bco_meeting_times_list = sorted(
+                            presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+
+                        bco_instructors = construct_instructor_list(
+                            unlinked_bco)
+
+                        banner_options.append({
+                            "crn": unlinked_bco.crn,
+                            "course_title": unlinked_bco.course.title,
+                            "course": unlinked_bco.course.subject.abbrev+' '+unlinked_bco.course.number,
+                            "credit_hours": unlinked_bco.course.credit_hours,
+                            "course_offering_id": unlinked_bco.id,
+                            "meeting_times": bco_meeting_times_list,
+                            "instructors": bco_instructors,
+                            "term_code": unlinked_bco.term_code,
+                            "semester_fraction": int(unlinked_bco.semester_fraction),
+                            "max_enrollment": int(unlinked_bco.max_enrollment)})
+
                 course_offering_item = {
+                    "index": index,
                     "semester": semester.name.name,
                     "semester_id": semester.id,
                     "course": ico.course.subject.abbrev+' '+ico.course.number,
@@ -449,7 +480,7 @@ def banner_comparison_data(request):
                     },
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
                     "ichair_options": [],
-                    "banner_options": [],
+                    "banner_options": banner_options,
                     "has_banner": False,
                     "has_ichair": True,
                     "linked": False,
@@ -457,6 +488,7 @@ def banner_comparison_data(request):
                     "all_OK": False,
                     "crn": None
                 }
+                index = index + 1
                 course_offering_data.append(course_offering_item)
 
     sorted_course_offerings = sorted(course_offering_data, key=lambda item: (
@@ -544,6 +576,28 @@ def find_unlinked_ichair_course_offerings(bco, semester, subject):
             Q(course__number__startswith=bco.course.number) &
             Q(course__credit_hours=bco.course.credit_hours) &
             Q(crn__isnull=True))
+
+def find_unlinked_banner_course_offerings(ico, term_code, subject):
+    """Find the unlinked banner course offerings that could correspond to a particular (unlinked) iChair course offering."""
+    if ico.crn is not None:
+        print('something is wrong...this ico should not have a CRN, but it does...!')
+        return []
+    else:
+        # we don't include the title or banner title in the filter, since we will eventually let the user decide
+        # whether or not to link one of these courses to the iChair course
+        candidate_banner_course_offerings = BannerCourseOffering.objects.filter(
+            Q(term_code = term_code) &
+            Q(course__subject__abbrev=subject.abbrev) &
+            Q(course__credit_hours=ico.course.credit_hours) &
+            Q(ichair_id__isnull=True))
+        print('finding unlinked banner course offerings for: ', ico)
+        print('found some possibilities: ', len(candidate_banner_course_offerings))
+        # now find the course number matches, truncating the iChair ones to the same # of digits (in the comparison) as the banner ones
+        # https://www.pythonforbeginners.com/basics/list-comprehensions-in-python
+        # https://www.pythoncentral.io/cutting-and-slicing-strings-in-python/
+        banner_options = [bco for bco in candidate_banner_course_offerings if bco.course.number == ico.course.number[:len(bco.course.number)]]
+        print(banner_options)
+    return banner_options
 
 
 def find_ichair_course_offering(bco, semester, subject):
