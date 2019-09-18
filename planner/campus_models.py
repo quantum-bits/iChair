@@ -609,8 +609,8 @@ class DeltaCourseOffering(StampedModel):
     # the action requested of the registrar
     requested_action = models.IntegerField(choices = ACTION_CHOICES, default = UPDATE)
 
-    # the following are used only for UPDATEs, and specify which of the course offering fields should be aligned with the iChair versions
-    # (some may not need to be updated, others could be updated, but the user is not electing to do so at present)
+    # the following are used for UPDATEs and CREATEs, and specify which of the course offering fields should be aligned with the iChair versions
+    # (some may not need to be updated, others could be updated/created, but the user is not electing to do so at present)
 
     update_meeting_times = models.BooleanField(default=False)
     update_instructors = models.BooleanField(default=False)
@@ -632,6 +632,18 @@ class DeltaCourseOffering(StampedModel):
             'update': cls.UPDATE,
             'delete': cls.DELETE
         }
+
+    @classmethod
+    def actions_reverse_lookup(cls, action_value):
+        if action_value == cls.CREATE:
+            return 'create'
+        elif action_value == cls.UPDATE:
+            return 'update'
+        elif action_value == cls.DELETE:
+            return 'delete'
+        else:
+            return None
+    
 
 class Grade(models.Model):
     letter_grade = models.CharField(max_length=5)

@@ -34,6 +34,9 @@ var app = new Vue({
       DELTA_UPDATE_TYPE_ENROLLMENT_CAP: DELTA_UPDATE_TYPE_ENROLLMENT_CAP,
       DELTA_ACTION_SET: DELTA_ACTION_SET,
       DELTA_ACTION_UNSET: DELTA_ACTION_UNSET,
+      DELTA_ACTION_CREATE: DELTA_ACTION_CREATE,
+      DELTA_ACTION_UPDATE: DELTA_ACTION_UPDATE,
+      DELTA_ACTION_DELETE: DELTA_ACTION_DELETE,
       COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT: COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT,
       COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION: COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION,
       COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS: COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS,
@@ -382,7 +385,9 @@ var app = new Vue({
                     bannerOption.course +
                     ": " +
                     bannerOption.course_title +
-                    " (CRN " + bannerOption.crn + "; " +
+                    " (CRN " +
+                    bannerOption.crn +
+                    "; " +
                     bannerOption.credit_hours +
                     creditText +
                     meetingTimes
@@ -398,6 +403,7 @@ var app = new Vue({
             _this.courseOfferings.push({
               semester: course.semester,
               semesterId: course.semester_id,
+              termCode: course.term_code,
               number: course.course,
               creditHours: course.credit_hours,
               name: course.course_title,
@@ -447,6 +453,7 @@ var app = new Vue({
     onCourseOfferingOptionChosen(item) {
       var _this = this;
       console.log("item chosen!", item.ichairChoice);
+      let dataForPost = {};
       if (item.ichairChoice === CREATE_NEW_COURSE_OFFERING) {
         console.log("create a new course offering!");
         // WORKING HERE now need to create a new course offering
@@ -457,18 +464,12 @@ var app = new Vue({
         console.log("add existing iChair course offering");
         // now need to pop this item out of the list of this.courseOfferings
         // add this as the ichair element for this particular item
-        console.log(
-          "radio select before: ",
-          item.showCourseOfferingRadioSelect
-        );
         item.showCourseOfferingRadioSelect = false;
-        console.log("radio select after: ", item.showCourseOfferingRadioSelect);
         item.ichairOptions.forEach(iChairOption => {
           if (iChairOption.course_offering_id === item.ichairChoice) {
             item.ichair = iChairOption; //this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
           }
         });
-        console.log("item: ", item);
         item.hasIChair = true;
         item.linked = true; // not sure if this is used anywhere, but OK....
         // generate a delta object for the item; not necessary, strictly speaking, but then we can also
@@ -482,13 +483,10 @@ var app = new Vue({
           bannerCourseOfferingId: item.banner.course_offering_id,
           semesterId: item.semesterId
         };
-
-        // the code works well if you comment out the following line....
-        this.hideUnlinkedItemFromCourseOfferings(
+        this.removeUnlinkedIChairItemFromCourseOfferings(
+          item.banner.course_offering_id,
           item.ichair.course_offering_id
         );
-        console.log("back from popping item....");
-        console.log("data for post: ", dataForPost);
         $.ajax({
           // initialize an AJAX request
           type: "POST",
@@ -531,53 +529,211 @@ var app = new Vue({
         });
       }
     },
-    removeIChairChoice(choice, courseOfferingId) {
+    removeChoice(choice, courseOfferingId) {
       return choice.selectionId === courseOfferingId;
     },
-    removeIChairOption(option, courseOfferingId) {
+    removeOption(option, courseOfferingId) {
       return option.course_offering_id === courseOfferingId;
     },
-    removeCourseOffering(courseOffering, courseOfferingId) {
+    removeChoicesAndOptions(bannerCourseOfferingId, iChairCourseOfferingId) {
+      // used after a banner course offering and an iChair course offering have been linked;
+      // removes these course offerings from the list of options for other course offerings
+      this.courseOfferings.forEach(item => {
+        item.bannerChoices = item.bannerChoices.filter(
+          choice => !this.removeChoice(choice, bannerCourseOfferingId)
+        );
+      });
+      this.courseOfferings.forEach(item => {
+        item.ichairChoices = item.ichairChoices.filter(
+          choice => !this.removeChoice(choice, iChairCourseOfferingId)
+        );
+      });
+      this.courseOfferings.forEach(item => {
+        item.bannerOptions = item.bannerOptions.filter(
+          option => !this.removeOption(option, bannerCourseOfferingId)
+        );
+      });
+      this.courseOfferings.forEach(item => {
+        item.ichairOptions = item.ichairOptions.filter(
+          option => !this.removeOption(option, iChairCourseOfferingId)
+        );
+      });
+    },
+    removeIChairCourseOffering(courseOffering, iChairCourseOfferingId) {
       let returnValue = false;
       if (!courseOffering.hasBanner && courseOffering.hasIChair) {
-        if (courseOffering.ichair.course_offering_id === courseOfferingId) {
+        if (
+          courseOffering.ichair.course_offering_id === iChairCourseOfferingId
+        ) {
           returnValue = true;
         }
       }
       return returnValue;
     },
-    hideUnlinkedItemFromCourseOfferings(courseOfferingId) {
+    removeUnlinkedIChairItemFromCourseOfferings(
+      bannerCourseOfferingId,
+      iChairCourseOfferingId
+    ) {
       // this method is used after an iChair course offering is linked up with a banner course offering;
-      // the iChair course offering was previously in the list, but now it should be popped out (or hidden, actually);
-      // also, if it exists as a choice in ichairOptions (listing of iChair course objects) or ichairChoices (listing used for
-      // a radio select), then it should be popped from them
+      // the iChair course offering was previously in the list, but now it should be popped out;
+      // also, the banner course offering should be deleted as a choice in bannerOptions (listing of banner course objects) and
+      // bannerChoices (listing used for a radio select), and likewise for the (now linked) iChair course offering
       console.log("popping iChair item that is now linked....");
       console.log("course offerings length: ", this.courseOfferings.length);
       this.courseOfferings = this.courseOfferings.filter(
         courseOffering =>
-          !this.removeCourseOffering(courseOffering, courseOfferingId)
+          !this.removeIChairCourseOffering(
+            courseOffering,
+            iChairCourseOfferingId
+          )
       );
-      this.courseOfferings.forEach(item => {
-        item.ichairChoices = item.ichairChoices.filter(
-          choice => !this.removeIChairChoice(choice, courseOfferingId)
+      this.removeChoicesAndOptions(
+        bannerCourseOfferingId,
+        iChairCourseOfferingId
+      );
+    },
+    onBannerCourseOfferingOptionChosen(item) {
+      console.log("banner course offering chosen!", item.bannerChoice);
+      console.log("item: ", item);
+      // now need to link the course to the corresponding banner course offering
+      // then clean up and delete it as a choice from other ichair course offerings, etc., and pop the unlinked course out of the list
+      var _this = this;
+      let dataForPost = {};
+      if (item.bannerChoice === CREATE_NEW_COURSE_OFFERING) {
+        console.log("request that the registrar create a new course offering!");
+        // WORKING HERE now need to create a new course offering
+
+        dataForPost = {
+          deltaMods: {
+            instructors: true,
+            meetingTimes: true,
+            enrollmentCap: true,
+            semesterFraction: true
+          }, // request all delta mods by default when issuing a "create" request to the registrar
+          deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
+          action: DELTA_ACTION_CREATE,
+          crn: null, // doesn't exist yet
+          iChairCourseOfferingId: item.ichair.course_offering_id,
+          bannerCourseOfferingId: null,// don't have one, since we're requesting that the registrar create one
+          semesterId: item.semesterId
+        };
+      } else {
+        console.log("add existing Banner course offering");
+        // now need to pop this item out of the list of this.courseOfferings
+        // add this as the banner element for this particular item; also, add in the crn
+        console.log(
+          "radio select before: ",
+          item.showBannerCourseOfferingRadioSelect
         );
-      });
-      this.courseOfferings.forEach(item => {
-        item.ichairOptions = item.ichairOptions.filter(
-          option => !this.removeIChairOption(option, courseOfferingId)
+        item.showBannerCourseOfferingRadioSelect = false;
+        console.log(
+          "radio select after: ",
+          item.showBannerCourseOfferingRadioSelect
         );
+        item.bannerOptions.forEach(bannerOption => {
+          if (bannerOption.course_offering_id === item.bannerChoice) {
+            item.banner = bannerOption; //this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
+            item.crn = bannerOption.crn;
+            item.number = bannerOption.course;
+            item.name = bannerOption.course_title;
+          }
+        });
+        console.log("item: ", item);
+        item.hasBanner = true;
+        item.linked = true; // not sure if this is used anywhere, but OK....
+        // generate a delta object for the item; not necessary, strictly speaking, but then we can also
+        // use the endpoint to check the agreement between the bco and the ico....
+        dataForPost = {
+          deltaMods: {}, // don't request any delta mods at this point, just create the delta object
+          deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
+          action: DELTA_ACTION_UPDATE,
+          crn: item.crn,
+          iChairCourseOfferingId: item.ichair.course_offering_id,
+          bannerCourseOfferingId: item.banner.course_offering_id,
+          semesterId: item.semesterId
+        };
+        this.removeUnlinkedBannerItemFromCourseOfferings(
+          item.banner.course_offering_id,
+          item.ichair.course_offering_id
+        );
+        console.log("back from popping item....");
+        console.log("data for post: ", dataForPost);
+      }
+
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/generate-update-delta/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("in success: ", dataForPost);
+          console.log("response: ", jsonResponse);
+          item.delta = jsonResponse.delta;
+          item.enrollmentCapsMatch =
+            jsonResponse.agreement_update.max_enrollments_match ||
+            item.delta.request_update_max_enrollment;
+          item.instructorsMatch =
+            jsonResponse.agreement_update.instructors_match ||
+            item.delta.request_update_instructors;
+          item.schedulesMatch =
+            jsonResponse.agreement_update.meeting_times_match ||
+            item.delta.request_update_meeting_times;
+          item.semesterFractionsMatch =
+            jsonResponse.agreement_update.semester_fractions_match ||
+            item.delta.request_update_semester_fraction;
+          item.allOK =
+            item.enrollmentCapsMatch &&
+            item.instructorsMatch &&
+            item.schedulesMatch &&
+            item.semesterFractionsMatch;
+          console.log("item after delta update!", item);
+          console.log("all course offerings: ", _this.courseOfferings);
+          //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          _this.showCreateUpdateErrorMessage();
+          console.log("in error: ", dataForPost);
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
       });
     },
 
-    onBannerCourseOfferingOptionChosen(item) {
-      console.log('banner course offering chosen!', item.bannerChoice);
-
-      // WORKING HERE...!  
-      // now need to link the course to the corresponding banner course offering
-      // then clean up and delete it as a choice from other ichair course offerings, and pop the unlinked course out of the list
-    
-
-
+    removeBannerCourseOffering(courseOffering, bannerCourseOfferingId) {
+      let returnValue = false;
+      if (courseOffering.hasBanner && !courseOffering.hasIChair) {
+        if (
+          courseOffering.banner.course_offering_id === bannerCourseOfferingId
+        ) {
+          returnValue = true;
+        }
+      }
+      return returnValue;
+    },
+    removeUnlinkedBannerItemFromCourseOfferings(
+      bannerCourseOfferingId,
+      iChairCourseOfferingId
+    ) {
+      // this method is used after a Banner course offering is linked up with an iChair course offering;
+      // the Banner course offering was previously in the list, but now it should be popped out;
+      // also, the banner course offering should be deleted as a choice in bannerOptions (listing of banner course objects) and
+      // bannerChoices (listing used for a radio select), and likewise for the (now linked) iChair course offering
+      console.log("popping banner item that is now linked....");
+      console.log("course offerings length: ", this.courseOfferings.length);
+      this.courseOfferings = this.courseOfferings.filter(
+        courseOffering =>
+          !this.removeBannerCourseOffering(
+            courseOffering,
+            bannerCourseOfferingId
+          )
+      );
+      this.removeChoicesAndOptions(
+        bannerCourseOfferingId,
+        iChairCourseOfferingId
+      );
     },
 
     //courseOfferings
@@ -605,7 +761,7 @@ var app = new Vue({
       console.log(courseInfo);
     },
     deltaUpdate(item, updateType, updateSetOrUnset) {
-      // we have both an iChair course offering and a banner course offering; pass along the item so that generateUpdateDelta() has them;
+      // pass along the item so that generateUpdateDelta() has access to the information about the course offering, etc.
       // updateType is one of:
       //  - DELTA_UPDATE_TYPE_INSTRUCTORS
       //  - DELTA_UPDATE_TYPE_MEETING_TIMES
@@ -646,30 +802,58 @@ var app = new Vue({
       if (updateTypeOK) {
         console.log("generate delta: ", updateType);
         console.log("item", item);
-        this.generateUpdateDelta(item, deltaMods, DELTA_ACTION_UPDATE);
+        this.generateUpdateDelta(item, deltaMods);
       }
     },
 
-    generateUpdateDelta(item, deltaMods, action) {
-      // WORKING HERE: need to modify this for the other actions!!!
-      // NEXT: add in other types of updates!!!
+    generateUpdateDelta(item, deltaMods) {
+      // this method is used to generate a new delta object of requested_action "update" type, or to (confusingly) update an existing
+      // delta object of any requested_action type ("update", "create" or "delete");
+      // creating a new delta object of requested_action "create" type is handled in another method; likewise for the "delete" type
+      //
+      // thus, if a delta object does not already exist in the item, we will generate a new one, with requested_action being "update"
+      // 
+      // the delta object has information about what type delta "requested_action" type it is, if the delta object exists....
+      // options for the requested action are:
+      //  - DELTA_ACTION_CREATE
+      //  - DELTA_ACTION_UPDATE
+      //  - DELTA_ACTION_DELETE
 
       let dataForPost = {};
-      let deltaId = null;
-      if (item.delta !== null) {
-        deltaId = item.delta.id;
-      }
-
-      if (action === DELTA_ACTION_UPDATE) {
+      if (item.delta !== null) {// there is an existing delta object, so we are updating that object; it can be of requested_action type "create", "update" or "delete"
+        if (item.delta.requested_action === DELTA_ACTION_UPDATE) {
+          dataForPost = {
+            deltaMods: deltaMods,
+            deltaId: item.delta.id,
+            action: item.delta.requested_action, // action we are requesting of the registrar
+            crn: item.crn,
+            iChairCourseOfferingId: item.ichair.course_offering_id,
+            bannerCourseOfferingId: item.banner.course_offering_id,
+            semesterId: item.semesterId
+          }
+        } else if (item.delta.requested_action === DELTA_ACTION_CREATE) {
+          dataForPost = {
+            deltaMods: deltaMods,
+            deltaId: item.delta.id,
+            action: item.delta.requested_action, // action we are requesting of the registrar
+            crn: item.crn,
+            iChairCourseOfferingId: item.ichair.course_offering_id,
+            bannerCourseOfferingId: null, // no banner course offering exists, since we are requesting that the registrar create a new one
+            semesterId: item.semesterId
+          }
+        } else if (item.delta.requested_action === DELTA_ACTION_DELETE) {
+          console.log('deleting!');
+        }
+      } else {// if there is no delta object, we are adding a new delta object, with requested_action (of the registrar) being "update"
         dataForPost = {
           deltaMods: deltaMods,
-          deltaId: deltaId,
-          action: action,
+          deltaId: null,
+          action: DELTA_ACTION_UPDATE, // action we are requesting of the registrar
           crn: item.crn,
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
           semesterId: item.semesterId
-        };
+        }
       }
 
       $.ajax({
@@ -778,7 +962,6 @@ var app = new Vue({
             item.classroomsUnassignedWarning =
               "One or more meeting times were scheduled within iChair, but without rooms being assigned.  If you know the appropriate room(s), you may wish to correct this.";
           }
-          
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function

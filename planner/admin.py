@@ -84,7 +84,7 @@ class RequirementAdmin(admin.ModelAdmin):
     form = RequirementForm
 
 class DeltaCourseOfferingAdmin(admin.ModelAdmin):
-    list_display = ('crn', 'course_offering', 'semester', 'requested_action', 'update_meeting_times', 'update_instructors', 'update_semester_fraction',)
+    list_display = ('crn', 'course_offering', 'semester', 'requested_action', 'update_meeting_times', 'update_instructors', 'update_semester_fraction','update_max_enrollment',)
 
 class SemesterAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'banner_code',)

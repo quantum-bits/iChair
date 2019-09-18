@@ -254,6 +254,7 @@ def banner_comparison_data(request):
                 course_offering_item = {
                     "index": index, # used in the UI as a unique key
                     "semester": semester.name.name,
+                    "term_code": term_code,
                     "semester_id": semester.id,
                     "course": bco.course.subject.abbrev+' '+bco.course.number,
                     "credit_hours": bco.course.credit_hours,
@@ -269,7 +270,9 @@ def banner_comparison_data(request):
                         "instructors": bco_instructors,
                         "term_code": bco.term_code,
                         "semester_fraction": int(bco.semester_fraction),
-                        "max_enrollment": int(bco.max_enrollment)
+                        "max_enrollment": int(bco.max_enrollment),
+                        "course": bco.course.subject.abbrev+' '+bco.course.number,
+                        "course_title": bco.course.title,
                     },
                     "ichair": {},
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
@@ -362,6 +365,8 @@ def banner_comparison_data(request):
                             "semester": ico.semester.name.name,
                             "semester_fraction": int(ico.semester_fraction),
                             "max_enrollment": int(ico.max_enrollment),
+                            "course": ico.course.subject.abbrev+' '+bco.course.number,
+                            "course_title": ico.course.title,
                         }
                         course_offering_item["has_ichair"] = True
                         course_offering_item["linked"] = True
@@ -460,6 +465,7 @@ def banner_comparison_data(request):
                     "index": index,
                     "semester": semester.name.name,
                     "semester_id": semester.id,
+                    "term_code": term_code,
                     "course": ico.course.subject.abbrev+' '+ico.course.number,
                     "credit_hours": ico.course.credit_hours,
                     "course_title": ico.course.title,
@@ -476,7 +482,9 @@ def banner_comparison_data(request):
                         "instructors": ico_instructors,
                         "semester": ico.semester.name.name,
                         "semester_fraction": int(ico.semester_fraction),
-                        "max_enrollment": int(ico.max_enrollment)
+                        "max_enrollment": int(ico.max_enrollment),
+                        "course": ico.course.subject.abbrev+' '+bco.course.number,
+                        "course_title": ico.course.title,
                     },
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
                     "ichair_options": [],
@@ -515,6 +523,7 @@ def delta_update_status(bco, ico, delta):
 
     delta_response = {
         "id": delta.id,
+        "requested_action": DeltaCourseOffering.actions_reverse_lookup(delta.requested_action),
         # True if this update is being requested by the user
         "request_update_meeting_times": delta.update_meeting_times,
         # True if this update is being requested by the user
@@ -552,6 +561,64 @@ def delta_update_status(bco, ico, delta):
     if delta.update_max_enrollment and (not max_enrollments_match(bco, ico)):
         delta_response["max_enrollment"] = {
             "was": bco.max_enrollment,
+            "change_to": ico.max_enrollment
+        }
+
+    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None):
+        delta_response["messages_exist"] = True
+
+    print(delta_response)
+
+    return delta_response
+
+def delta_create_status(ico, delta):
+    """
+    Uses a delta "create" type of object to generate a delta response for an iChair course offering.
+    No banner course offering object exists in this case, since this is something that we are requesting
+    that the registrar create.
+    """
+    # at this point it is assumed that the delta object is of the "request that the registrar create a course offering" variety
+
+    delta_response = {
+        "id": delta.id,
+        "requested_action": DeltaCourseOffering.actions_reverse_lookup(delta.requested_action),
+        # True if the user is requesting that the registrar create this property for a given course offering
+        "request_update_meeting_times": delta.update_meeting_times,
+        # True if the user is requesting that the registrar create this property for a given course offering
+        "request_update_instructors": delta.update_instructors,
+        # True if the user is requesting that the registrar create this property for a given course offering
+        "request_update_semester_fraction": delta.update_semester_fraction,
+        # True if the user is requesting that the registrar create this property for a given course offering
+        "request_update_max_enrollment": delta.update_max_enrollment,
+        "meeting_times": None,
+        "instructors": None,
+        "semester_fraction": None,
+        "max_enrollment": None,
+        "messages_exist": False
+    }
+
+    # we only check if there are meetings if the user has requested that a message be generated for this property
+    if delta.update_meeting_times:
+        delta_response["meeting_times"] = {
+            "was": [],
+            "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)
+        }
+
+    if delta.update_instructors:
+        delta_response["instructors"] = {
+            "was": [],
+            "change_to": construct_instructor_list(ico)
+        }
+
+    if delta.update_semester_fraction:
+        delta_response["semester_fraction"] = {
+            "was": None,
+            "change_to": ico.semester_fraction
+        }
+
+    if delta.update_max_enrollment:
+        delta_response["max_enrollment"] = {
+            "was": None,
             "change_to": ico.max_enrollment
         }
 
@@ -944,8 +1011,19 @@ def generate_update_delta(request):
                 "max_enrollments_match": max_enrollments_match(bco, ico),
                 "semester_fractions_match": semester_fractions_match(bco, ico)
             }
+        elif action == 'create':
+            # in this case we only have an ichair id....
+            ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+            delta_response = delta_create_status(ico, dco)
+            agreement_update = {
+                "instructors_match": False,
+                "meeting_times_match": False,
+                "max_enrollments_match": False,
+                "semester_fractions_match": False
+            }
 
-        # WORKING HERE: need to add some other functionality for the 'create' and 'delete' actions....
+
+        # WORKING HERE: need to add some other functionality for the delete' action....
 
     data = {
         'delta_generation_successful': delta_generation_successful,
