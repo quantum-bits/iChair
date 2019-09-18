@@ -254,20 +254,17 @@
                                             <td></td>
                                             <td>
                                                 <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
-                                                    <strong class="green--text">Update Existing Course Offering</strong><br>
+                                                    <strong class="green--text">Update Existing Course
+                                                        Offering</strong><br>
                                                     <span class="green--text">CRN: [[item.crn]] </span>
 
                                                 </span>
                                                 <span v-if="item.delta.requested_action == DELTA_ACTION_CREATE">
-                                                    <strong class="green--text">Create New Course Offering</strong>
                                                     <v-tooltip top>
-
                                                         <template v-slot:activator="{ on }">
-
-
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top" color="primary"
-                                                                    @click="deleteDelta(item)"
+                                                                <v-icon class="include-pointer icon-padding-top"
+                                                                    color="primary" @click="deleteDelta(item)"
                                                                     v-on="on">
                                                                     mdi-close-circle
                                                                 </v-icon>
@@ -275,6 +272,24 @@
                                                         </template>
                                                         <span>Undo</span>
                                                     </v-tooltip>
+                                                    <strong class="green--text">Create New Course Offering</strong>
+                                                </span>
+                                                <span v-if="item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer icon-padding-top"
+                                                                    color="primary" @click="deleteDelta(item)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                    <strong class="green--text">Delete Existing Course
+                                                        Offering</strong><br>
+                                                    <span class="green--text">CRN: [[item.crn]] </span>
                                                 </span>
 
                                             </td>
@@ -296,8 +311,7 @@
                                             </td>
                                             <td>
                                                 <div class="arrow-group">
-                                                    <div v-if="deactivateScheduleLeftArrow(item)"
-                                                        class="text-center">
+                                                    <div v-if="deactivateScheduleLeftArrow(item)" class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
                                                         </v-icon>
@@ -314,8 +328,7 @@
                                                         </template>
                                                         <span>Copy the registrar's version to iChair</span>
                                                     </v-tooltip>
-                                                    <div v-if="deactivateScheduleRightArrow(item)"
-                                                        class="text-center">
+                                                    <div v-if="deactivateScheduleRightArrow(item)" class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-right-bold-circle
                                                         </v-icon>
@@ -379,6 +392,10 @@
                                                         [[meetingTime]]
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td
+                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                <strong>Delete</strong>
                                             </td>
                                             <td v-else></td>
                                             <td class="text-center">
@@ -490,6 +507,10 @@
                                                     </div>
                                                 </div>
                                             </td>
+                                            <td
+                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                <strong>Delete</strong>
+                                            </td>
                                             <td v-else></td>
                                             <td class="text-center">
                                                 <v-icon class="green--text" v-if="item.instructorsMatch">
@@ -587,6 +608,10 @@
                                                         v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
                                                     [[item.delta.max_enrollment.change_to]]
                                                 </div>
+                                            </td>
+                                            <td
+                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                <strong>Delete</strong>
                                             </td>
                                             <td v-else></td>
                                             <td class="text-center">
@@ -732,6 +757,10 @@
                                                     </span>
                                                     </span>
                                                 </div>
+                                            </td>
+                                            <td
+                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                <strong>Delete</strong>
                                             </td>
                                             <td v-else></td>
                                             <td class="text-center">

@@ -414,6 +414,36 @@ def banner_comparison_data(request):
                             "semester_fraction": int(unlinked_ico.semester_fraction),
                             "max_enrollment": int(unlinked_ico.max_enrollment)})
 
+                    # now check to see if there is a delta object with requested_action being of the "delete" type
+                    delta_objects = DeltaCourseOffering.objects.filter(
+                        Q(crn=bco.crn) &
+                        Q(semester=semester) &
+                        Q(requested_action=delta_course_offering_actions["delete"]))
+
+                    delta_exists = False
+                    if len(delta_objects) > 0:
+                        delta_exists = True
+                        print('>>>>>>>>>>>>>>>>>>>>>>delete-type delta object(s) found for', bco)
+                        recent_delta_object = delta_objects[0]
+                        for delta_object in delta_objects:
+                            print(delta_object, delta_object.updated_at)
+                            if delta_object.updated_at > recent_delta_object.updated_at:
+                                recent_delta_object = delta_object
+                                print('found more recent!',
+                                        recent_delta_object.updated_at)
+
+                    if delta_exists:
+                        delta_response = delta_delete_status(recent_delta_object)
+                        
+                        # these will match after the course offering is deleted by the registrar
+                        course_offering_item["schedules_match"] = True
+                        course_offering_item["instructors_match"] = True
+                        course_offering_item["semester_fractions_match"] = True
+                        course_offering_item["enrollment_caps_match"] = True
+
+                        course_offering_item["all_OK"] = True
+                        course_offering_item["delta"] = delta_response
+
                 course_offering_data.append(course_offering_item)
 
             # and now we go through the remaining iChair course offerings (i.e., the ones that have not been linked to banner course offerings)
@@ -661,6 +691,34 @@ def delta_create_status(ico, delta):
 
     return delta_response
 
+def delta_delete_status(delta):
+    """
+    Uses a delta "delete" type of object to generate a delta response for a banner course offering.
+    No iChair course offering object exists in this case.  Also, we are actually generating a somewhat
+    generic response in a "delta response" format.  We don't both to fetch any banner course offering
+    data, since we don't really need it (all we need is the CRN, and we already have that).
+    """
+    # at this point it is assumed that the delta object is of the "request that the registrar delete a course offering" variety
+
+    delta_response = {
+        "id": delta.id,
+        "requested_action": DeltaCourseOffering.actions_reverse_lookup(delta.requested_action),
+        # Should be false, since the registrar is simply going to delete the course offering
+        "request_update_meeting_times": delta.update_meeting_times,
+        # Should be false, since the registrar is simply going to delete the course offering
+        "request_update_instructors": delta.update_instructors,
+        # Should be false, since the registrar is simply going to delete the course offering
+        "request_update_semester_fraction": delta.update_semester_fraction,
+        # Should be false, since the registrar is simply going to delete the course offering
+        "request_update_max_enrollment": delta.update_max_enrollment,
+        "meeting_times": None, # we could fetch them, but there's not really much point....
+        "instructors": None,
+        "semester_fraction": None,
+        "max_enrollment": None,
+        "messages_exist": True # the message is simply going to be "delete this course offering"
+    }
+
+    return delta_response
 
 def find_unlinked_ichair_course_offerings(bco, semester, subject):
     """Find the unlinked iChair course offerings that could correspond to a particular (unlinked) banner course offering."""
@@ -995,12 +1053,22 @@ def generate_update_delta(request):
 
     if delta_id is None:
         print('creating a new delta!')
-        try:
-            semester = Semester.objects.get(pk=semester_id)
-            ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-        except:
-            delta_generation_successful = False
-            print("Problem finding the semester or iChair course offering...!")
+        if action == 'delete':
+            # in this case, there is no iChair course offering, so we simply set ico to None (which is the appropriate value to send along when creating the object in the database)
+            ico = None
+            try:
+                semester = Semester.objects.get(pk=semester_id)
+            except:
+                delta_generation_successful = False
+                print("Problem finding the semester...!")
+        else:
+            # for the 'create' and 'update' cases there should be an iChair course offering, so fetch it
+            try:
+                semester = Semester.objects.get(pk=semester_id)
+                ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+            except:
+                delta_generation_successful = False
+                print("Problem finding the semester or iChair course offering...!")
 
         # delta course offering actions from the model itself:
         delta_course_offering_actions = DeltaCourseOffering.actions()
@@ -1090,6 +1158,16 @@ def generate_update_delta(request):
                 "meeting_times_match": False,
                 "max_enrollments_match": False,
                 "semester_fractions_match": False
+            }
+        elif action == 'delete':
+            # in this case we only have a banner id....
+            delta_response = delta_delete_status(dco)
+            # these quantities _will_ match after the course offering is deleted
+            agreement_update = {
+                "instructors_match": True,
+                "meeting_times_match": True,
+                "max_enrollments_match": True,
+                "semester_fractions_match": True
             }
 
         # WORKING HERE: need to add some other functionality for the delete' action....

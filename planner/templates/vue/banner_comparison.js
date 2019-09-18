@@ -311,6 +311,7 @@ var app = new Vue({
           // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
           incomingData.course_data.forEach(course => {
             let ichairChoices = [];
+            let showIChairRadioSelect = false;
 
             if (!course.has_ichair) {
               course.ichair_options.forEach(ichairOption => {
@@ -349,12 +350,23 @@ var app = new Vue({
               ichairChoices.push({
                 selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
                 text:
-                  "Create a new course offering to match the Registrar's version"
+                  "Create a new iChair course offering to match the Registrar's version"
               });
               ichairChoices.push({
                 selectionId: DELETE_BANNER_COURSE_OFFERING,
                 text: "Request that the Registrar delete this course offering"
               });
+
+              if (course.delta === null) {
+                showIChairRadioSelect = true;
+              } else if (
+                course.delta.requested_action === DELTA_ACTION_DELETE
+              ) {
+                showIChairRadioSelect = false;
+              } else {
+                showIChairRadioSelect = true;
+              }
+
             }
 
             let bannerChoices = [];
@@ -402,12 +414,13 @@ var app = new Vue({
 
               if (course.delta === null) {
                 showBannerRadioSelect = true;
-              } else if (course.delta.requested_action === DELTA_ACTION_CREATE) {
+              } else if (
+                course.delta.requested_action === DELTA_ACTION_CREATE
+              ) {
                 showBannerRadioSelect = false;
               } else {
                 showBannerRadioSelect = true;
               }
-
             }
 
             _this.courseOfferings.push({
@@ -430,7 +443,7 @@ var app = new Vue({
               bannerOptions: course.banner_options, //these are potential iChair matches, which might be there if hasIChair is false
               bannerChoices: bannerChoices, // used for radio select if the user going to choose from among iChair options
               bannerChoice: null, //used by a radio select to choose one of the ichairChoices
-              showCourseOfferingRadioSelect: !course.has_ichair,
+              showCourseOfferingRadioSelect: showIChairRadioSelect,
               showBannerCourseOfferingRadioSelect: showBannerRadioSelect,
               banner: course.banner,
               hasIChair: course.has_ichair,
@@ -453,7 +466,10 @@ var app = new Vue({
     },
     deactivateScheduleRightArrow(item) {
       if (item.delta !== null) {
-        if ((item.delta.requested_action === DELTA_ACTION_CREATE) && !item.delta.request_update_meeting_times) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_meeting_times
+        ) {
           return false;
         }
       }
@@ -464,7 +480,10 @@ var app = new Vue({
     },
     deactivateInstructorsRightArrow(item) {
       if (item.delta !== null) {
-        if ((item.delta.requested_action === DELTA_ACTION_CREATE) && !item.delta.request_update_instructors) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_instructors
+        ) {
           return false;
         }
       }
@@ -492,7 +511,23 @@ var app = new Vue({
         // WORKING HERE now need to create a new course offering
       } else if (item.ichairChoice === DELETE_BANNER_COURSE_OFFERING) {
         console.log("delete banner course offering!");
-        // WORKING HERE now need to create a delta delete object
+        // create a delta "delete" object
+
+        dataForPost = {
+          deltaMods: {
+            instructors: false,
+            meetingTimes: false,
+            enrollmentCap: false,
+            semesterFraction: false
+          }, // request all delta mods by default when issuing a "create" request to the registrar
+          deltaId: null, // shouldn't exist at this point, since we are creating a new delta object
+          action: DELTA_ACTION_DELETE,
+          crn: item.crn, // asking the registrar to delete this CRN
+          iChairCourseOfferingId: null, // don't have one; we're asking the registrar to delete a course offering b/c it doesn't correspond to one in iChair
+          bannerCourseOfferingId: item.banner.course_offering_id, // this is the banner course offering that we are requesting be deleted
+          semesterId: item.semesterId
+        };
+        item.showCourseOfferingRadioSelect = false;
       } else {
         console.log("add existing iChair course offering");
         // now need to pop this item out of the list of this.courseOfferings
@@ -520,6 +555,8 @@ var app = new Vue({
           item.banner.course_offering_id,
           item.ichair.course_offering_id
         );
+      }
+      if (item.ichairChoice !== CREATE_NEW_COURSE_OFFERING) {
         $.ajax({
           // initialize an AJAX request
           type: "POST",
@@ -647,7 +684,7 @@ var app = new Vue({
           action: DELTA_ACTION_CREATE,
           crn: null, // doesn't exist yet
           iChairCourseOfferingId: item.ichair.course_offering_id,
-          bannerCourseOfferingId: null,// don't have one, since we're requesting that the registrar create one
+          bannerCourseOfferingId: null, // don't have one, since we're requesting that the registrar create one
           semesterId: item.semesterId
         };
         item.showBannerCourseOfferingRadioSelect = false;
@@ -795,10 +832,14 @@ var app = new Vue({
       console.log(courseInfo);
     },
     deleteDelta(item) {
-      // delete the delta object associated with the item
+      // delete the delta object associated with the item;
+      // this is used to delete delta objects that are of the "create" and "delete" type;
+      // at this point we don't bother deleting delta objects of the "update" variety, since all of their
+      // properties can just be set to false, and then they basically don't do anything
+      let deltaAction = item.delta.requested_action; // need this later in order to know the appropriate way to refresh the page....
       let dataForPost = {
         deltaId: item.delta.id
-      }
+      };
       $.ajax({
         // initialize an AJAX request
         type: "POST",
@@ -821,8 +862,15 @@ var app = new Vue({
             item.instructorsMatch &&
             item.schedulesMatch &&
             item.semesterFractionsMatch;
-          item.bannerChoice = null;
-          item.showBannerCourseOfferingRadioSelect = true;
+          if (deltaAction === DELTA_ACTION_CREATE) {
+            // we deleted a request to create a new banner course offering, so now we need to show the list of banner choices again
+            item.bannerChoice = null;
+            item.showBannerCourseOfferingRadioSelect = true;
+          } else if (deltaAction === DELTA_ACTION_DELETE) {
+            // we deleted a request to delete the existing banner course offering, so now we need to show the list of iChair choices again
+            item.ichairChoice = null;
+            item.showCourseOfferingRadioSelect = true;
+          }
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
@@ -832,14 +880,6 @@ var app = new Vue({
           //  "Sorry, there appears to have been an error.";
         }
       });
-
-
-
-
-
-
-
-
     },
     deltaUpdate(item, updateType, updateSetOrUnset) {
       // pass along the item so that generateUpdateDelta() has access to the information about the course offering, etc.
@@ -893,7 +933,7 @@ var app = new Vue({
       // creating a new delta object of requested_action "create" type is handled in another method; likewise for the "delete" type
       //
       // thus, if a delta object does not already exist in the item, we will generate a new one, with requested_action being "update"
-      // 
+      //
       // the delta object has information about what type delta "requested_action" type it is, if the delta object exists....
       // options for the requested action are:
       //  - DELTA_ACTION_CREATE
@@ -901,7 +941,8 @@ var app = new Vue({
       //  - DELTA_ACTION_DELETE
 
       let dataForPost = {};
-      if (item.delta !== null) {// there is an existing delta object, so we are updating that object; it can be of requested_action type "create", "update" or "delete"
+      if (item.delta !== null) {
+        // there is an existing delta object, so we are updating that object; it can be of requested_action type "create", "update" or "delete"
         if (item.delta.requested_action === DELTA_ACTION_UPDATE) {
           dataForPost = {
             deltaMods: deltaMods,
@@ -911,7 +952,7 @@ var app = new Vue({
             iChairCourseOfferingId: item.ichair.course_offering_id,
             bannerCourseOfferingId: item.banner.course_offering_id,
             semesterId: item.semesterId
-          }
+          };
         } else if (item.delta.requested_action === DELTA_ACTION_CREATE) {
           dataForPost = {
             deltaMods: deltaMods,
@@ -921,11 +962,12 @@ var app = new Vue({
             iChairCourseOfferingId: item.ichair.course_offering_id,
             bannerCourseOfferingId: null, // no banner course offering exists, since we are requesting that the registrar create a new one
             semesterId: item.semesterId
-          }
+          };
         } else if (item.delta.requested_action === DELTA_ACTION_DELETE) {
-          console.log('deleting!');
+          console.log("deleting!");
         }
-      } else {// if there is no delta object, we are adding a new delta object, with requested_action (of the registrar) being "update"
+      } else {
+        // if there is no delta object, we are adding a new delta object, with requested_action (of the registrar) being "update"
         dataForPost = {
           deltaMods: deltaMods,
           deltaId: null,
@@ -934,7 +976,7 @@ var app = new Vue({
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
           semesterId: item.semesterId
-        }
+        };
       }
 
       $.ajax({
