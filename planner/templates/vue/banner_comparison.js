@@ -358,6 +358,7 @@ var app = new Vue({
             }
 
             let bannerChoices = [];
+            let showBannerRadioSelect = false;
             if (!course.has_banner) {
               course.banner_options.forEach(bannerOption => {
                 let creditText =
@@ -398,6 +399,15 @@ var app = new Vue({
                 text:
                   "Request that the registrar create a new course offering to match this iChair course offering"
               });
+
+              if (course.delta === null) {
+                showBannerRadioSelect = true;
+              } else if (course.delta.requested_action === DELTA_ACTION_CREATE) {
+                showBannerRadioSelect = false;
+              } else {
+                showBannerRadioSelect = true;
+              }
+
             }
 
             _this.courseOfferings.push({
@@ -421,7 +431,7 @@ var app = new Vue({
               bannerChoices: bannerChoices, // used for radio select if the user going to choose from among iChair options
               bannerChoice: null, //used by a radio select to choose one of the ichairChoices
               showCourseOfferingRadioSelect: !course.has_ichair,
-              showBannerCourseOfferingRadioSelect: !course.has_banner,
+              showBannerCourseOfferingRadioSelect: showBannerRadioSelect,
               banner: course.banner,
               hasIChair: course.has_ichair,
               hasBanner: course.has_banner,
@@ -441,6 +451,29 @@ var app = new Vue({
         }
       });
     },
+    deactivateScheduleRightArrow(item) {
+      if (item.delta !== null) {
+        if ((item.delta.requested_action === DELTA_ACTION_CREATE) && !item.delta.request_update_meeting_times) {
+          return false;
+        }
+      }
+      return item.schedulesMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateScheduleLeftArrow(item) {
+      return item.schedulesMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateInstructorsRightArrow(item) {
+      if (item.delta !== null) {
+        if ((item.delta.requested_action === DELTA_ACTION_CREATE) && !item.delta.request_update_instructors) {
+          return false;
+        }
+      }
+      return item.instructorsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateInstructorsLeftArrow(item) {
+      return item.instructorsMatch || !item.hasIChair || !item.hasBanner;
+    },
+
     showAll() {
       this.itemsPerPage = this.courseOfferings.length;
       this.page = 1;
@@ -617,6 +650,7 @@ var app = new Vue({
           bannerCourseOfferingId: null,// don't have one, since we're requesting that the registrar create one
           semesterId: item.semesterId
         };
+        item.showBannerCourseOfferingRadioSelect = false;
       } else {
         console.log("add existing Banner course offering");
         // now need to pop this item out of the list of this.courseOfferings
@@ -759,6 +793,53 @@ var app = new Vue({
     },
     addNewMeetingTimes(courseInfo) {
       console.log(courseInfo);
+    },
+    deleteDelta(item) {
+      // delete the delta object associated with the item
+      let dataForPost = {
+        deltaId: item.delta.id
+      }
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/delete-delta/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          item.delta = null;
+          item.enrollmentCapsMatch =
+            jsonResponse.agreement_update.max_enrollments_match;
+          item.instructorsMatch =
+            jsonResponse.agreement_update.instructors_match;
+          item.schedulesMatch =
+            jsonResponse.agreement_update.meeting_times_match;
+          item.semesterFractionsMatch =
+            jsonResponse.agreement_update.semester_fractions_match;
+          item.allOK =
+            item.enrollmentCapsMatch &&
+            item.instructorsMatch &&
+            item.schedulesMatch &&
+            item.semesterFractionsMatch;
+          item.bannerChoice = null;
+          item.showBannerCourseOfferingRadioSelect = true;
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          _this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
+
+
+
+
+
+
+
+
     },
     deltaUpdate(item, updateType, updateSetOrUnset) {
       // pass along the item so that generateUpdateDelta() has access to the information about the course offering, etc.
