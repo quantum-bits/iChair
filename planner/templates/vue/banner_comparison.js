@@ -1611,6 +1611,60 @@ var app = new Vue({
       }
       return timeSum;
     },
+    generatePDF() {
+      let deltas = [];
+      this.courseOfferings.forEach(item => {
+        if (item.delta !== null) {
+          if (item.delta.messages_exist) {
+            deltas.push({
+              term_code: item.term_code,
+              term_name: item.term,
+              banner: item.banner,
+              delta: item.course_title
+            })
+          }
+        }
+      });
+
+      dataForPost = {
+        department: 'Physics and Engineering',
+        academicYear: '2019-20',
+        deltas: deltas
+      }
+
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/generate-pdf/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          if (
+            !(
+              jsonResponse.updates_successful && jsonResponse.creates_successful
+            )
+          ) {
+            _this.showCreateUpdateErrorMessage();
+          } else {
+            _this.alignCourseOfferings();
+          }
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          _this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
+
+
+
+
+
+    },
+
     greet: function(name) {
       //console.log('Hello from ' + name + '!');
     },

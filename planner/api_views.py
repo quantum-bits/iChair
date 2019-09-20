@@ -790,7 +790,8 @@ def construct_instructor_detail_list(bco):
     """Constructs a list of instructors for a given banner course offering."""
     return [{
         "pidm": instr.instructor.pidm,
-        "is_primary": instr.is_primary} for instr in bco.offering_instructors.all()]
+        "is_primary": instr.is_primary,
+        "name": instr.instructor.first_name + ' ' + instr.instructor.last_name}  for instr in bco.offering_instructors.all()]
 
 
 def delta_update_status(bco, ico, delta):
@@ -936,6 +937,31 @@ def delta_delete_status(delta):
     }
 
     return delta_response
+
+
+@login_required
+@csrf_exempt
+def generate_pdf(request):
+
+    json_data = json.loads(request.body)
+    deltas = json_data['deltas']
+    department = json_data['department']
+    academic_year = json_data['academicYear']
+
+    """
+    deltas format:
+    term_code: item.term_code,
+    term_name: item.term,
+    banner: item.banner,
+    delta: item.course_title
+    """
+
+    data = {
+        'message': 'please check your downloads....'
+    }
+
+    return JsonResponse(data)
+
 
 
 def find_unlinked_ichair_course_offerings(bco, semester, subject):
