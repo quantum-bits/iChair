@@ -120,7 +120,7 @@
                     </td>
                     <td>[[item.semester]] </td>
                     <td>[[item.crn]] </td>
-                    <td class="text-xs-left">[[item.number]]</td>
+                    <td class="text-xs-left">[[item.course]]</td>
                     <td class="text-xs-left">[[item.name]] </td>
                     <td class="text-xs-left">[[item.creditHours]] </td>
                     <td class="text-xs-center">
@@ -199,6 +199,58 @@
                                 </v-dialog>
                             </div>
                         </template>
+
+                        <template>
+                            <div class="text-center">
+                                <v-dialog persistent v-model="newCourseOfferingDialog" width="800">
+                                    <v-card>
+                                        <v-card-title class="headline grey lighten-2" primary-title>
+                                            Create a New Course Offering
+                                        </v-card-title>
+                                        <v-card-text>
+                                            <v-container grid-list-md>
+                                                <v-layout wrap>
+                                                    <v-flex xs12>
+                                                        iChair has more than one possible match for the Registrar's
+                                                        course
+                                                        <strong>[[newCourseOfferingDialogCourseText]]</strong>.
+                                                        Please choose one of them or create a new one.
+                                                    </v-flex>
+                                                </v-layout>
+                                                <v-layout wrap>
+                                                    <v-flex xs10 offset-xs1>
+                                                        <v-radio-group v-model="courseChoice">
+                                                            <v-radio v-for="choiceItem in courseChoices"
+                                                                :key="choiceItem.selectionId" :label="choiceItem.text"
+                                                                :value="choiceItem.selectionId" color="success">
+                                                            </v-radio>
+                                                        </v-radio-group>
+                                                    </v-flex>
+                                                </v-layout>
+                                                <v-layout text-center>
+                                                    <v-flex xs12>
+                                                        <div class="red--text">
+                                                            [[newCourseOfferingDialogErrorMessage]]</div>
+                                                    </v-flex>
+                                                </v-layout>
+                                            </v-container>
+                                        </v-card-text>
+                                        <v-divider></v-divider>
+                                        <v-card-actions>
+                                            <v-spacer></v-spacer>
+                                            <v-btn color="primary" text @click="cancelCourseOfferingDialog()">
+                                                Cancel
+                                            </v-btn>
+                                            <v-btn color="primary" text @click="submitCourseChoice()">
+                                                Submit
+                                            </v-btn>
+                                        </v-card-actions>
+                                    </v-card>
+                                </v-dialog>
+                            </div>
+                        </template>
+
+
 
                         <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
 

@@ -77,6 +77,12 @@ var app = new Vue({
       ],
       courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
       courseOfferings: [],
+      newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
+      courseChoices: [], // used in the new course offering dialog when choosing which course to associate with a course offering that is about to be created
+      courseChoice: null, // the course chosen in the new course offering dialog
+      newCourseOfferingDialogItem: null, // the courseOfferings 'item' relevant for the new course offering dialog
+      newCourseOfferingDialogCourseText: "", // some text displayed in the new course offering dialog
+      newCourseOfferingDialogErrorMessage: "", // error message used in the new course offering dialog
       dialog: false, // true when the dialog is being displayed
       dialogTitle: "",
       editMeetings: [], // used to store the data in the class schedule form
@@ -151,7 +157,7 @@ var app = new Vue({
                   text:
                     item.subject +
                     " " +
-                    item.number +
+                    item.course +
                     ": " +
                     item.title +
                     " (" +
@@ -316,7 +322,7 @@ var app = new Vue({
             if (!course.has_ichair) {
               course.ichair_options.forEach(ichairOption => {
                 let creditText =
-                  ichairOption.credit_hours == 1
+                  ichairOption.credit_hours === 1
                     ? " credit hour"
                     : " credit hours";
                 let meetingTimes =
@@ -366,7 +372,6 @@ var app = new Vue({
               } else {
                 showIChairRadioSelect = true;
               }
-
             }
 
             let bannerChoices = [];
@@ -374,7 +379,7 @@ var app = new Vue({
             if (!course.has_banner) {
               course.banner_options.forEach(bannerOption => {
                 let creditText =
-                  bannerOption.credit_hours == 1
+                  bannerOption.credit_hours === 1
                     ? " credit hour"
                     : " credit hours";
                 let meetingTimes =
@@ -427,7 +432,7 @@ var app = new Vue({
               semester: course.semester,
               semesterId: course.semester_id,
               termCode: course.term_code,
-              number: course.course,
+              course: course.course,
               creditHours: course.credit_hours,
               name: course.course_title,
               crn: course.crn,
@@ -435,6 +440,7 @@ var app = new Vue({
               instructorsMatch: course.instructors_match,
               semesterFractionsMatch: course.semester_fractions_match,
               enrollmentCapsMatch: course.enrollment_caps_match,
+              ichairSubjectId: course.ichair_subject_id,
               delta: course.delta,
               ichair: course.ichair,
               ichairOptions: course.ichair_options, //these are potential iChair matches, which might be there if hasIChair is false
@@ -508,7 +514,7 @@ var app = new Vue({
       let dataForPost = {};
       if (item.ichairChoice === CREATE_NEW_COURSE_OFFERING) {
         console.log("create a new course offering!");
-        // WORKING HERE now need to create a new course offering
+        this.getCoursesForCourseOffering(item);
       } else if (item.ichairChoice === DELETE_BANNER_COURSE_OFFERING) {
         console.log("delete banner course offering!");
         // create a delta "delete" object
@@ -599,6 +605,298 @@ var app = new Vue({
         });
       }
     },
+
+    getCoursesForCourseOffering(item) {
+      // find the iChair courses that could correspond to a course offering that we wish to create;
+      // this is the first step in creating the new course offering
+      console.log(item);
+      var _this = this;
+      // find the possible course objects that could be a match
+      let courseProperties = {
+        number: item.banner.number,
+        ichairSubjectId: item.ichairSubjectId,
+        title: item.banner.course_title,
+        creditHours: item.creditHours,
+        semesterId: item.semesterId
+      };
+      $.ajax({
+        // first check to see which course objects are candidates for this course offering
+        type: "POST",
+        url: "/planner/ajax/get-courses/",
+        dataType: "json",
+        data: JSON.stringify(courseProperties),
+        success: function(jsonResponse) {
+          console.log("in success: ", courseProperties);
+          console.log("response: ", jsonResponse);
+          let courseList = jsonResponse.courses;
+          if (courseList.length === 0) {
+            // there are no matches for the course in the iChair database, so go ahead and create a new one
+            console.log(
+              "no match for this course; creating a new one before creating the course offering...."
+            );
+            _this.createNewCourse(item);
+          } else if (courseList.length === 1) {
+            let course = courseList[0];
+            if (
+              courseProperties.title === course.title ||
+              courseProperties.title === course.banner_title
+            ) {
+              // we have found the unique course in the iChair database that corresponds to this banner course offering;
+              // now create the course offering
+              _this.createNewCourseOffering(item, course.id);
+            }
+          } else {
+            // there are either zero or more than one options that exist in the iChair database for the course offering that
+            // we are attempting to create; give the user some options for how to proceed
+            courseList.forEach(courseOption => {
+              let creditText =
+                courseOption.credit_hours === 1
+                  ? " credit hour; "
+                  : " credit hours; ";
+              let numberOfferingsText =
+                courseOption.number_offerings_this_year === 1
+                  ? " offering in " + courseOption.year_name
+                  : " offerings in " + courseOption.year_name;
+              if (
+                courseProperties.title === courseOption.title ||
+                courseProperties.title === courseOption.banner_title
+              ) {
+                _this.courseChoice = courseOption.id; // this option seems like a match
+              }
+              _this.courseChoices.push({
+                selectionId: courseOption.id,
+                text:
+                  "Use:  " +
+                  courseOption.subject +
+                  " " +
+                  courseOption.number +
+                  " - " +
+                  courseOption.title +
+                  " (" +
+                  courseOption.credit_hours +
+                  creditText +
+                  courseOption.number_offerings_this_year +
+                  numberOfferingsText +
+                  ")"
+              });
+            });
+            _this.courseChoices.push({
+              selectionId: CREATE_NEW_COURSE, //assuming that course ids are always non-negative
+              text:
+                "Create a new iChair course to match the Registrar's version (you probably do not want to do this)"
+            });
+
+            console.log(_this.courseChoices);
+            let creditText =
+              item.creditHours === 1 ? " credit hour)" : " credit hours)";
+
+            _this.newCourseOfferingDialogCourseText =
+              item.banner.course +
+              " - " +
+              item.banner.course_title +
+              " (" +
+              item.creditHours +
+              creditText;
+            // https://scotch.io/bar-talk/copying-objects-in-javascript
+            // using this approach to make the copy so that we don't risk problems later when we set it back to null
+            _this.newCourseOfferingDialogItem = JSON.parse(JSON.stringify(item));
+            
+            
+            item;
+            _this.newCourseOfferingDialog = true;
+          }
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          _this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
+    },
+
+    submitCourseChoice() {
+      // stored the courseOfferings 'item' in this.newCourseOfferingDialogItem; 
+      // trick to copy the item....
+      let item = JSON.parse(JSON.stringify(this.newCourseOfferingDialogItem));
+      let choice = this.courseChoice;
+      if (choice === null) {
+        this.newCourseOfferingDialogErrorMessage = "Please select one of the options."
+      } else if (choice === CREATE_NEW_COURSE) {
+        console.log('creating a new course for this course offering....');
+        this.createNewCourse(item);
+      } else {
+        console.log('all appears to be good...creating the course offering!');
+        // createNewCourseOffering with this item, but first do some clean-up
+        this.cancelCourseOfferingDialog();
+        this.createNewCourseOffering(item, choice);
+      }
+    },
+
+    cancelCourseOfferingDialog() {
+      this.newCourseOfferingDialogErrorMessage = "";
+      this.courseChoice = null;
+      this.courseChoices = [];
+      this.newCourseOfferingDialog = false;
+      //reset the choice change that launched the dialog in the first place
+      this.courseOfferings.forEach(item => {
+        if (item.index === this.newCourseOfferingDialogItem.index) {
+          item.ichairChoice = null;
+        }
+      })
+      this.newCourseOfferingDialogItem = null; // we had made a copy of the item (using the JSON.parse() trick), so we're OK to set it to null
+      console.log('list of course offerings:', this.courseOfferings);
+    },
+
+    createNewCourse(item) {
+      // no course options were found for the course offering that we are attempting to create, so we first
+      // need to create the course, after which we will create the associated course offering
+      var _this = this;
+      let dataForPost = {
+        create: [],
+        update: []
+      };
+      dataForPost.create.push({
+        title: item.banner.course_title,
+        credit_hours: item.creditHours,
+        number: item.banner.number,
+        subject_id: item.ichairSubjectId
+      });
+
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/create-update-courses/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          if (
+            !(
+              jsonResponse.updates_successful && jsonResponse.creates_successful
+            )
+          ) {
+            console.log("there was an error in trying to create this course!");
+          } else {
+            if (jsonResponse.created_course_ids.length === 1) {
+              // we have successfully created the new course, so now proceed to associate the course offering with it....
+              _this.createNewCourseOffering(
+                item,
+                jsonResponse.created_course_ids[0]
+              );
+            } else {
+              console.log(
+                "there were more or fewer than one course created! course id(s): ",
+                jsonResponse.created_course_ids
+              );
+            }
+          }
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          _this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
+    },
+
+    createNewCourseOffering(item, courseId) {
+      // Create a new course offering in iChair, with properties specified by the Banner course offering.
+      // Note that the 'item' that is passed in may be the actual element of this.courseOfferings, or it may be a copy,
+      // depending on how we ended up in this method.
+      // Thus, when all is said and done, will need to go into this.courseOfferings and search for the item to make
+      // updates to it.
+      console.log("create course offering!");
+      console.log("item: ", item);
+      console.log("course id: ", courseId);
+
+      var _this = this;
+
+      // NEED TO REMEMBER to hide the radio select choices in the item when all is said and done(!)
+      //need to warn the user that loads have been set automatically
+      let dataForPost = {
+        courseId: courseId,
+        bannerCourseOfferingId: item.banner.course_offering_id,
+        semesterFraction: item.banner.semester_fraction,
+        maxEnrollment: item.banner.max_enrollment,
+        semesterId: item.semesterId,
+        crn: item.crn,
+        loadAvailable: item.creditHours, //need to warn the user that this has been set automatically
+        meetings: [],
+        instructorDetails: []
+      }
+      item.banner.meeting_times_detail.forEach(meetingTime => {
+        dataForPost.meetings.push({
+          beginAt: meetingTime.begin_at,
+          endAt: meetingTime.end_at,
+          day: meetingTime.day
+        })
+      });
+      item.banner.instructors_detail.forEach(instructorItem => {
+        dataForPost.instructorDetails.push({
+          pidm: instructorItem.pidm,
+          isPrimary: instructorItem.is_primary
+        });
+      });
+
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/create-course-offering/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          // now need to patch up the item in this.courseOfferings....
+          _this.courseOfferings.forEach(courseOfferingItem => {
+            if (item.index === courseOfferingItem.index) {
+              // found the one we're working on
+              courseOfferingItem.delta = jsonResponse.delta;
+              courseOfferingItem.ichair = jsonResponse.ichair_course_offering_data;
+              courseOfferingItem.enrollmentCapsMatch = jsonResponse.agreement_update.max_enrollments_match;
+              courseOfferingItem.instructorsMatch = jsonResponse.agreement_update.instructors_match;
+              courseOfferingItem.schedulesMatch = jsonResponse.agreement_update.meeting_times_match;
+              courseOfferingItem.semesterFractionsMatch = jsonResponse.agreement_update.semester_fractions_match;
+              courseOfferingItem.allOK =
+                courseOfferingItem.enrollmentCapsMatch &&
+                courseOfferingItem.instructorsMatch &&
+                courseOfferingItem.schedulesMatch &&
+                courseOfferingItem.semesterFractionsMatch;
+              courseOfferingItem.hasIChair = true;
+              courseOfferingItem.linked = true;
+              courseOfferingItem.showCourseOfferingRadioSelect = false;
+
+              if (jsonResponse.instructors_created_successfully === false) {
+                console.log("error copying instructors!");
+                courseOfferingItem.errorMessage =
+                  "There was an error trying to copy the instructor data from the registrar's database.  It may be that one or more of the instructors does not yet exist in the iChair database.  If this seems incorrect, please contact the iChair administrator.";
+              }
+              if (jsonResponse.load_manipulation_performed === true) {
+                console.log("loads were adjusted!");
+                courseOfferingItem.loadsAdjustedWarning =
+                  "One or more loads were adjusted automatically in the process of copying instructors from the registrar's database.  You may wish to check that this was done correctly.";
+              }
+              if (jsonResponse.classrooms_unassigned === true) {
+                console.log("schedules assigned without classrooms!");
+                courseOfferingItem.classroomsUnassignedWarning =
+                  "One or more meeting times were scheduled within iChair, but without rooms being assigned.  If you know the appropriate room(s), you may wish to correct this.";
+              }
+            }
+          });
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
+
+    },
+
     removeChoice(choice, courseOfferingId) {
       return choice.selectionId === courseOfferingId;
     },
@@ -705,7 +1003,7 @@ var app = new Vue({
           if (bannerOption.course_offering_id === item.bannerChoice) {
             item.banner = bannerOption; //this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
             item.crn = bannerOption.crn;
-            item.number = bannerOption.course;
+            item.course = bannerOption.course;
             item.name = bannerOption.course_title;
           }
         });
