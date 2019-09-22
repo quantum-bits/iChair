@@ -1169,9 +1169,19 @@ def require_page_break(y, layout, item):
     delta_y = 3*dy # magnitude of the vertical space required, in px; first increment is for the extra vertical space, title and term code ....
     if item["delta"]["requested_action"] == 'update':
         if item["delta"]["instructors"] is not None:
-            delta_y += dy*len(item["delta"]["instructors"]["was"]) - dy*len(item["delta"]["instructors"]["change_to"]) 
+            # https://www.programiz.com/python-programming/methods/built-in/min
+            delta_y += dy*max(len(item["delta"]["instructors"]["was"]), 1) + dy*max(len(item["delta"]["instructors"]["change_to"]), 1)
         if item["delta"]["meeting_times"] is not None:
-            delta_y += dy*len(item["delta"]["meeting_times"]["was"]) - dy*len(item["delta"]["meeting_times"]["change_to"]) 
+            delta_y += dy*max(len(item["delta"]["meeting_times"]["was"]), 1) + dy*max(len(item["delta"]["meeting_times"]["change_to"]), 1)
+        if item["delta"]["max_enrollment"] is not None:
+            delta_y += 2*dy 
+        if item["delta"]["semester_fraction"] is not None:
+            delta_y += 2*dy
+    if item["delta"]["requested_action"] == 'create':
+        if item["delta"]["instructors"] is not None:
+            delta_y += dy*max(len(item["delta"]["instructors"]["change_to"]), 1)
+        if item["delta"]["meeting_times"] is not None:
+            delta_y += dy*max(len(item["delta"]["meeting_times"]["change_to"]), 1)
         if item["delta"]["max_enrollment"] is not None:
             delta_y += 2*dy 
         if item["delta"]["semester_fraction"] is not None:
@@ -1179,7 +1189,7 @@ def require_page_break(y, layout, item):
     # nothing to do if 'delete', since the delta_y only corresponds to one line
 
     print("delta_y", item["crn"], "  ", delta_y)
-    return y - 2*delta_y < layout["bottom_margin"]
+    return y - delta_y < layout["bottom_margin"]
 
 def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_is_sem_fraction = False):
     print(item_dict)
