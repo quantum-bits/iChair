@@ -577,6 +577,15 @@ class CourseOffering(StampedModel):
         else:
             return '2nd Half'
 
+    @classmethod
+    def semester_fraction_long_name(cls, semester_fraction):
+        if (semester_fraction == cls.FULL_SEMESTER):
+            return 'Full Semester'
+        elif (semester_fraction == cls.FIRST_HALF_SEMESTER):
+            return '1st Half Semester'
+        else:
+            return '2nd Half Semester'
+
 
 class DeltaCourseOffering(StampedModel):
     """Proposed change to a banner version of a course offering.  Used for communication with the registrar."""

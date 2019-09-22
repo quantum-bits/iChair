@@ -157,7 +157,7 @@ var app = new Vue({
                   text:
                     item.subject +
                     " " +
-                    item.course +
+                    item.number +
                     ": " +
                     item.title +
                     " (" +
@@ -269,51 +269,6 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(incomingData) {
-          //   course.ichair_courses.forEach(item => {
-          //     if (item.number_offerings_this_year > max_num_offerings) {
-          //       max_num_offerings = item.number_offerings_this_year;
-          //       unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
-          //     }
-          //     if (item.credit_hours == 1) {
-          //       credit_text = " credit hour; ";
-          //     } else {
-          //       credit_text = " credit hours; ";
-          //     }
-          //     item.number_offerings_this_year == 1
-          //       ? (num_offerings = " offering ")
-          //       : (num_offerings = " offerings ");
-          //     choices.push({
-          //       bannerCourseId: course.banner_course.id,
-          //       selectionId: item.id, //assuming actual db ids will never be negative
-          //       text:
-          //         item.subject +
-          //         " " +
-          //         item.number +
-          //         ": " +
-          //         item.title +
-          //         " (" +
-          //         item.credit_hours +
-          //         credit_text +
-          //         item.number_offerings_this_year +
-          //         num_offerings +
-          //         "this year)"
-          //     });
-          //   });
-          //   choices.push({
-          //     bannerCourseId: course.banner_course.id,
-          //     selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
-          //     text:
-          //       "Create a new matching course (not recommended in this case)"
-          //   });
-          // }
-          // choices.push({
-          //   bannerCourseId: course.banner_course.id,
-          //   selectionId: DO_NOTHING, //assuming actual db ids will never be negative
-          //   text: "Do nothing for now...."
-          // });
-          // unmatchedCourse.choices = choices;
-          // _this.unmatchedCourses.push(unmatchedCourse);
-
           // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
           incomingData.course_data.forEach(course => {
             let ichairChoices = [];
@@ -629,24 +584,29 @@ var app = new Vue({
           console.log("in success: ", courseProperties);
           console.log("response: ", jsonResponse);
           let courseList = jsonResponse.courses;
-          if (courseList.length === 0) {
-            // there are no matches for the course in the iChair database, so go ahead and create a new one
-            console.log(
-              "no match for this course; creating a new one before creating the course offering...."
-            );
-            _this.createNewCourse(item);
-          } else if (courseList.length === 1) {
-            let course = courseList[0];
+          let uniqueChoiceExists = false;
+          let course = null;
+          if (courseList.length === 1) {
+            course = courseList[0];
             if (
               courseProperties.title === course.title ||
               courseProperties.title === course.banner_title
             ) {
               // we have found the unique course in the iChair database that corresponds to this banner course offering;
               // now create the course offering
-              _this.createNewCourseOffering(item, course.id);
+              uniqueChoiceExists = true;
             }
+          }
+          if (uniqueChoiceExists) {
+            _this.createNewCourseOffering(item, course.id);
+          } else if (courseList.length === 0) {
+            // there are no matches for the course in the iChair database, so go ahead and create a new one
+            console.log(
+              "no match for this course; creating a new one before creating the course offering...."
+            );
+            _this.createNewCourse(item);
           } else {
-            // there are either zero or more than one options that exist in the iChair database for the course offering that
+            // there are either zero or more than one option (or only one option, but it's not a perfect match....) that exist in the iChair database for the course offering that
             // we are attempting to create; give the user some options for how to proceed
             courseList.forEach(courseOption => {
               let creditText =
@@ -694,15 +654,12 @@ var app = new Vue({
               item.banner.course +
               " - " +
               item.banner.course_title +
-              " (" +
+              " (" + "CRN: " + item.crn + "; " +
               item.creditHours +
               creditText;
             // https://scotch.io/bar-talk/copying-objects-in-javascript
             // using this approach to make the copy so that we don't risk problems later when we set it back to null
             _this.newCourseOfferingDialogItem = JSON.parse(JSON.stringify(item));
-            
-            
-            item;
             _this.newCourseOfferingDialog = true;
           }
         },
@@ -1612,48 +1569,49 @@ var app = new Vue({
       return timeSum;
     },
     generatePDF() {
-      let deltas = [];
+      let courseData = [];
       this.courseOfferings.forEach(item => {
         if (item.delta !== null) {
           if (item.delta.messages_exist) {
-            deltas.push({
-              term_code: item.term_code,
-              term_name: item.term,
+            courseData.push({
+              term_code: item.termCode,
+              term_name: item.semester,
+              crn: item.crn,
               banner: item.banner,
-              delta: item.course_title
+              ichair: item.ichair,
+              delta: item.delta
             })
           }
         }
       });
 
       dataForPost = {
-        department: 'Physics and Engineering',
-        academicYear: '2019-20',
-        deltas: deltas
+        courseData: courseData
       }
+
+      console.log(dataForPost);
 
       $.ajax({
         // initialize an AJAX request
         type: "POST",
         url: "/planner/ajax/generate-pdf/",
-        dataType: "json",
+        dataType: "html",
         data: JSON.stringify(dataForPost),
-        success: function(jsonResponse) {
-          console.log("response: ", jsonResponse);
-          if (
-            !(
-              jsonResponse.updates_successful && jsonResponse.creates_successful
-            )
-          ) {
-            _this.showCreateUpdateErrorMessage();
-          } else {
-            _this.alignCourseOfferings();
-          }
+        success: function(response) {
+          console.log("response: ", response);
+          // https://stackoverflow.com/questions/51920230/open-pdf-in-new-window-with-ajax-call
+          // I'm not doing this right....
+          //var a = document.createElement('a');
+          // the response needs to be a unique url of some sort...(?)  
+          //a.href= "data:application/octet-stream;base64,"+response;
+          //a.target = '_blank';
+          //a.download = 'filename.pdf';
+          //a.click();
+        
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
           console.log(jqXHR);
-          _this.showCreateUpdateErrorMessage();
           //_this.meetingFormErrorMessage =
           //  "Sorry, there appears to have been an error.";
         }

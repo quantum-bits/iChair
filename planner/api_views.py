@@ -15,6 +15,18 @@ from django.shortcuts import render
 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+from django.http import HttpResponse
+from django.http import FileResponse
+
+from reportlab.pdfgen import canvas
+from PyPDF2 import PdfFileWriter, PdfFileReader
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+#from reportlab.platypus import PageBreak
+import datetime
+
 import json
 import re
 
@@ -943,10 +955,20 @@ def delta_delete_status(delta):
 @csrf_exempt
 def generate_pdf(request):
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    year = user_preferences.academic_year_to_view
+    department = user_preferences.department_to_view
+
+    year_text = '{0}-{1}'.format(year.begin_on.year, year.end_on.year)
+
     json_data = json.loads(request.body)
-    deltas = json_data['deltas']
-    department = json_data['department']
-    academic_year = json_data['academicYear']
+    course_data = json_data['courseData']
+
+    for cd in course_data:
+        print(cd)
+
+    
 
     """
     deltas format:
@@ -955,13 +977,278 @@ def generate_pdf(request):
     banner: item.banner,
     delta: item.course_title
     """
+    department_name = department.name
 
-    data = {
-        'message': 'please check your downloads....'
+    # https://www.programiz.com/python-programming/datetime/strftime
+    file_name_time_string = datetime.datetime.now().strftime("%m-%d-%Y_%H%M%S")
+    # https://stackoverflow.com/questions/1007481/how-do-i-replace-whitespaces-with-underscore-and-vice-versa
+    file_name = "ScheduleEdits_"+department_name.replace(" ", "_")+"_"+file_name_time_string+".pdf"
+
+    #pdf.write(open("ScheduleEdits_"+department_name.replace(" ", "_")+"_"+file_name_time_string+".pdf","wb")) 
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="searchable_file_name.pdf"'
+
+
+    pdf = PdfFileWriter()
+
+    # https://github.com/mstamy2/PyPDF2/blob/master/Sample_Code/basic_features.py
+    # Using ReportLab Canvas to insert image into PDF
+    buffer = BytesIO()
+    
+    #imgDoc = canvas.Canvas(imgTemp, pagesize=letter)
+    imgDoc = canvas.Canvas(buffer, pagesize=letter)
+    # 612 × 792, apparently...?
+    
+    # Draw image on Canvas and save PDF in buffer
+    pdfmetrics.registerFont(TTFont('VeraIt', 'VeraIt.ttf'))
+    
+    
+    pdfmetrics.registerFont(TTFont('Vera', 'Vera.ttf'))
+    pdfmetrics.registerFont(TTFont('VeraBd', 'VeraBd.ttf'))
+    pdfmetrics.registerFont(TTFont('VeraIt', 'VeraIt.ttf'))
+    #pdfmetrics.registerFont(TTFont('VeraBI', 'VeraBI.ttf'))
+    
+
+    left_margin = 72
+    top_margin = 72
+    bottom_margin = 72
+    top_page = 792 - top_margin
+    title_height = 700
+    horizontal_center_page = 612/2
+
+    tab = 44
+    number_width = 20
+    tab0 = left_margin + number_width
+    tab1 = left_margin + number_width + tab
+    tab2 = left_margin + number_width + 2*tab
+    tab3 = left_margin + number_width + 3.3*tab
+
+    dy = 14
+
+    layout = {
+        "left_margin": left_margin,
+        "top_margin": top_margin,
+        "bottom_margin": bottom_margin,
+        "top_page": top_page,
+        "title_height": title_height,
+        "horizontal_center_page": horizontal_center_page,
+        "tabs": {
+                "tab0": tab0,
+                "tab1": tab1,
+                "tab2": tab2,
+                "tab3": tab3
+            },
+        "dy": dy
     }
 
-    return JsonResponse(data)
+    
+    
+    imgDoc.setFont('Vera', 13)
+    imgDoc.drawString(layout["left_margin"], layout["title_height"], "Schedule Edits - "+department_name  + " (" + year_text+")")
+    imgDoc.setFont('Vera', 9)
+    
+    page_number = 0
+    y = layout["title_height"] - layout["dy"]
 
+    # https://stackoverflow.com/questions/3316882/how-do-i-get-a-string-format-of-the-current-date-time-in-python
+    time_string = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+    imgDoc.drawString(layout["left_margin"], y, "Time: " + time_string)
+
+    edit_number = 0
+    for item in course_data:
+        edit_number += 1
+        crn = item["crn"] # will be None for 'create' requests
+        term_code = item["term_code"]
+        if require_page_break(y, layout, item):
+            imgDoc.drawString(layout["horizontal_center_page"], layout["bottom_margin"]-2*layout["dy"], str(page_number+1))
+            imgDoc.showPage()
+            page_number += 1
+            y = layout["top_page"]
+
+        if item["delta"]["requested_action"] == 'update':
+            print('we have an update!')
+            print(' ')
+            print(item['delta'])
+            course = item["banner"]["course"]
+            course_title = item["banner"]["course_title"]
+            y -= 2*layout["dy"]
+            imgDoc.setFont('Vera', 9)
+            imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
+            imgDoc.setFont('VeraBd', 9)
+            imgDoc.drawString(layout["tabs"]["tab0"], y, "Update:")
+            imgDoc.setFont('Vera', 9)
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "CRN "+crn + " - "+course+",  "+course_title)
+            y -= layout["dy"]
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "Term: "+term_code)
+
+            if item["delta"]["instructors"] is not None:
+                y, imgDoc = render_updates(imgDoc, y, layout, "Instructor(s): ", item["delta"]["instructors"], data_in_list = True)
+            if item["delta"]["meeting_times"] is not None:
+                y, imgDoc = render_updates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
+            if item["delta"]["max_enrollment"] is not None:
+                y, imgDoc = render_updates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
+            if item["delta"]["semester_fraction"] is not None:
+                y, imgDoc = render_updates(imgDoc, y, layout, "Semester Fraction: ", item["delta"]["semester_fraction"], data_in_list = False, data_is_sem_fraction = True)
+        
+        if item["delta"]["requested_action"] == 'delete':
+            print('we have a delete!')
+            print(' ')
+            print(item['delta'])
+            course = item["banner"]["course"]
+            course_title = item["banner"]["course_title"]
+            y -= 2*layout["dy"]
+            imgDoc.setFont('Vera', 9)
+            imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
+            imgDoc.setFont('VeraBd', 9)
+            imgDoc.drawString(layout["tabs"]["tab0"], y, "Delete:")
+            imgDoc.setFont('Vera', 9)
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "CRN "+crn + " - "+course+",  "+course_title)
+            y -= layout["dy"]
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "Term: "+term_code)
+
+        if item["delta"]["requested_action"] == 'create':
+            print('we have a create')
+            print(' ')
+            print(item['delta'])
+            course = item["ichair"]["course"]
+            course_title = item["ichair"]["course_title"]
+            y -= 2*layout["dy"]
+            imgDoc.setFont('Vera', 9)
+            imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
+            imgDoc.setFont('VeraBd', 9)
+            imgDoc.drawString(layout["tabs"]["tab0"], y, "Create:")
+            imgDoc.setFont('Vera', 9)
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "New Section - "+course+",  "+course_title)
+            y -= layout["dy"]
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "Term: "+term_code)
+       
+            if item["delta"]["instructors"] is not None:
+                y, imgDoc = render_creates(imgDoc, y, layout, "Instructor(s): ", item["delta"]["instructors"], data_in_list = True)
+            if item["delta"]["meeting_times"] is not None:
+                y, imgDoc = render_creates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
+            if item["delta"]["max_enrollment"] is not None:
+                y, imgDoc = render_creates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
+            if item["delta"]["semester_fraction"] is not None:
+                y, imgDoc = render_creates(imgDoc, y, layout, "Semester Fraction: ", item["delta"]["semester_fraction"], data_in_list = False, data_is_sem_fraction = True)
+        
+    imgDoc.drawString(layout["horizontal_center_page"], layout["bottom_margin"]-2*layout["dy"], str(page_number+1))
+    imgDoc.showPage()
+
+    # imgDoc.drawString(197,780,"Sudoku Project")
+    # imgDoc.setFont('VeraIt', 8)
+    # imgDoc.drawString(430,20,"By PantelisPanka, nikfot, TolisChal")
+    # imgDoc.setFont('Vera', 8)
+    # imgDoc.drawString(550,780,str(1))
+
+    imgDoc.save()
+
+    for i in range(page_number+1):    
+        pdf.addPage(PdfFileReader(BytesIO(buffer.getvalue())).getPage(i))
+
+    pdf2 = buffer.getvalue()
+    buffer.close()
+    response.write(pdf2)
+    
+    # the following writes the pdf to the server's harddrive....
+    pdf.write(open("ScheduleEdits_"+department_name.replace(" ", "_")+"_"+file_name_time_string+".pdf","wb")) 
+
+    #buffer.seek(0)
+    # Use PyPDF to merge the image-PDF into the template
+
+    #for i in range(page_number+1):    
+    #    pdf.addPage(PdfFileReader(BytesIO(imgTemp.getvalue())).getPage(i))
+
+    return response
+
+
+def require_page_break(y, layout, item):
+
+    dy = layout["dy"]
+
+    delta_y = 3*dy # magnitude of the vertical space required, in px; first increment is for the extra vertical space, title and term code ....
+    if item["delta"]["requested_action"] == 'update':
+        if item["delta"]["instructors"] is not None:
+            delta_y += dy*len(item["delta"]["instructors"]["was"]) - dy*len(item["delta"]["instructors"]["change_to"]) 
+        if item["delta"]["meeting_times"] is not None:
+            delta_y += dy*len(item["delta"]["meeting_times"]["was"]) - dy*len(item["delta"]["meeting_times"]["change_to"]) 
+        if item["delta"]["max_enrollment"] is not None:
+            delta_y += 2*dy 
+        if item["delta"]["semester_fraction"] is not None:
+            delta_y += 2*dy
+    # nothing to do if 'delete', since the delta_y only corresponds to one line
+
+    print("delta_y", item["crn"], "  ", delta_y)
+    return y - 2*delta_y < layout["bottom_margin"]
+
+def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_is_sem_fraction = False):
+    print(item_dict)
+
+    # https://stackoverflow.com/questions/3593193/add-page-break-to-reportlab-canvas-object
+
+    dy = layout["dy"]
+    tabs = layout["tabs"]
+
+    y -= dy
+    imgDoc.drawString(tabs["tab1"], y, item_title)
+    y -= dy
+    if data_in_list:
+        imgDoc.drawString(tabs["tab2"], y, "Was:")
+        counter = 0
+        for former_item in item_dict["was"]:
+            if counter > 0:
+                y -= dy
+            imgDoc.drawString(tabs["tab3"], y, former_item)
+            counter+=1
+        y -= dy
+        imgDoc.drawString(tabs["tab2"], y, "Change to:")
+        counter = 0
+        for future_item in item_dict["change_to"]:
+            if counter > 0:
+                y -= dy
+            imgDoc.drawString(tabs["tab3"], y, future_item)
+            counter+=1
+    else:
+        if data_is_sem_fraction:
+            imgDoc.drawString(tabs["tab2"], y, "Was:")
+            imgDoc.drawString(tabs["tab3"], y, CourseOffering.semester_fraction_long_name(item_dict["was"]))
+            y -= dy
+            imgDoc.drawString(tabs["tab2"], y, "Change to:")
+            imgDoc.drawString(tabs["tab3"], y, CourseOffering.semester_fraction_long_name(item_dict["change_to"]))
+        else:
+            imgDoc.drawString(tabs["tab2"], y, "Was:")
+            imgDoc.drawString(tabs["tab3"], y, str(item_dict["was"]))
+            y -= dy
+            imgDoc.drawString(tabs["tab2"], y, "Change to:")
+            imgDoc.drawString(tabs["tab3"], y, str(item_dict["change_to"]))
+
+    return y, imgDoc
+
+def render_creates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_is_sem_fraction = False):
+    print(item_dict)
+
+    # https://stackoverflow.com/questions/3593193/add-page-break-to-reportlab-canvas-object
+
+    dy = layout["dy"]
+    tabs = layout["tabs"]
+
+    y -= dy
+    imgDoc.drawString(tabs["tab1"], y, item_title)
+    #y -= dy
+    if data_in_list:
+        counter = 0
+        for future_item in item_dict["change_to"]:
+            if counter > 0:
+                y -= dy
+            imgDoc.drawString(tabs["tab3"], y, future_item)
+            counter+=1
+    else:
+        if data_is_sem_fraction:
+            imgDoc.drawString(tabs["tab3"], y, CourseOffering.semester_fraction_long_name(item_dict["change_to"]))
+        else:
+            imgDoc.drawString(tabs["tab3"], y, str(item_dict["change_to"]))
+
+    return y, imgDoc
 
 
 def find_unlinked_ichair_course_offerings(bco, semester, subject):

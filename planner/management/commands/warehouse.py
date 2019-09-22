@@ -77,7 +77,7 @@ class Command(BaseCommand):
                 -- Meeting times
                 LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                 LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
-            WHERE ((term = '201990' OR term = '202010' OR term = '202020') AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '201990' OR term = '202010' OR term = '202020' OR term = '202050') AND (subject_code = 'MAT' OR subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
                 """).fetchall()
 
         course_instructors = cursor.execute("""
@@ -89,13 +89,13 @@ class Command(BaseCommand):
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
                 LEFT OUTER JOIN dw.fact_faculty_course ffc ON (ffc.scheduled_course_key = dcs.course_section_key)
                 LEFT OUTER JOIN dw.dim_faculty df ON (ffc.faculty_key = df.faculty_key)
-            WHERE ((term = '201990' OR term = '202010' OR term = '202020')  AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '201990' OR term = '202010' OR term = '202020' OR term = '202050') AND (subject_code = 'MAT' OR subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
                 """).fetchall()
 
         course_offerings = cursor.execute("""
             SELECT dcs.*
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
-            WHERE ((term = '201990' OR term = '202010' OR term = '202020')  AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '201990' OR term = '202010' OR term = '202020' OR term = '202050') AND (subject_code = 'MAT' OR subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
                 """).fetchall()
 
         # rows3 = cursor.execute("""
