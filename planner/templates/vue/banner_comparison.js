@@ -124,69 +124,78 @@ var app = new Vue({
            * course.choice = -2 ==> create new course
            * course.choice = iChair course id ==> add banner_title to iChair list of banner titles for this course
            */
-          incomingData.unmatched_courses.forEach(course => {
-            unmatchedCourse = course;
-            choices = [];
-            if (course.ichair_courses.length === 0) {
-              unmatchedCourse.choice = CREATE_NEW_COURSE; // default is to create a new course
-              choices.push({
-                bannerCourseId: course.banner_course.id,
-                selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
-                text:
-                  "Create a new matching course (recommended, since there is currently no matching course in iChair)"
-              });
-            } else {
-              max_num_offerings = 0;
-              unmatchedCourse.choice = DO_NOTHING; // default starts as "do nothing"
-              course.ichair_courses.forEach(item => {
-                if (item.number_offerings_this_year > max_num_offerings) {
-                  max_num_offerings = item.number_offerings_this_year;
-                  unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
-                }
-                if (item.credit_hours == 1) {
-                  credit_text = " credit hour; ";
-                } else {
-                  credit_text = " credit hours; ";
-                }
-                item.number_offerings_this_year == 1
-                  ? (num_offerings = " offering ")
-                  : (num_offerings = " offerings ");
+          if (incomingData.unmatched_courses.length === 0) {
+            // no courses to align, so skip the course alignment phase; move on to fetching course offerings
+            _this.alignCourseOfferings();
+          } else {
+            incomingData.unmatched_courses.forEach(course => {
+              unmatchedCourse = course;
+              choices = [];
+              if (course.ichair_courses.length === 0) {
+                unmatchedCourse.choice = CREATE_NEW_COURSE; // default is to create a new course
                 choices.push({
                   bannerCourseId: course.banner_course.id,
-                  selectionId: item.id, //assuming actual db ids will never be negative
+                  selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
                   text:
-                    item.subject +
-                    " " +
-                    item.number +
-                    ": " +
-                    item.title +
-                    " (" +
-                    item.credit_hours +
-                    credit_text +
-                    item.number_offerings_this_year +
-                    num_offerings +
-                    "this year)"
+                    "Create a new matching course (recommended, since there is currently no matching course in iChair)"
                 });
-              });
+              } else {
+                max_num_offerings = 0;
+                unmatchedCourse.choice = DO_NOTHING; // default starts as "do nothing"
+                course.ichair_courses.forEach(item => {
+                  if (item.number_offerings_this_year > max_num_offerings) {
+                    max_num_offerings = item.number_offerings_this_year;
+                    unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
+                  }
+                  if (item.credit_hours == 1) {
+                    credit_text = " credit hour; ";
+                  } else {
+                    credit_text = " credit hours; ";
+                  }
+                  item.number_offerings_this_year == 1
+                    ? (num_offerings = " offering ")
+                    : (num_offerings = " offerings ");
+                  choices.push({
+                    bannerCourseId: course.banner_course.id,
+                    selectionId: item.id, //assuming actual db ids will never be negative
+                    text:
+                      item.subject +
+                      " " +
+                      item.number +
+                      ": " +
+                      item.title +
+                      " (" +
+                      item.credit_hours +
+                      credit_text +
+                      item.number_offerings_this_year +
+                      num_offerings +
+                      "this year)"
+                  });
+                });
+                choices.push({
+                  bannerCourseId: course.banner_course.id,
+                  selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
+                  text:
+                    "Create a new matching course (not recommended in this case)"
+                });
+              }
               choices.push({
                 bannerCourseId: course.banner_course.id,
-                selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
-                text:
-                  "Create a new matching course (not recommended in this case)"
+                selectionId: DO_NOTHING, //assuming actual db ids will never be negative
+                text: "Do nothing for now...."
               });
-            }
-            choices.push({
-              bannerCourseId: course.banner_course.id,
-              selectionId: DO_NOTHING, //assuming actual db ids will never be negative
-              text: "Do nothing for now...."
+              unmatchedCourse.choices = choices;
+              _this.unmatchedCourses.push(unmatchedCourse);
             });
-            unmatchedCourse.choices = choices;
-            _this.unmatchedCourses.push(unmatchedCourse);
-          });
           //_this.unmatchedCourses = cAC;
-          console.log(_this.unmatchedCourses);
-          _this.courseAlignmentPhaseReady = true;
-          console.log(_this.courseAlignmentPhaseReady);
+
+          // WORKING HERE: if incomingData.unmatched_courses.length ===0, we should skip the course alignment phase
+          // QUESTION: why are we getting doubles of all of the course offerings; are we making two trips to the db?!?
+
+            console.log(_this.unmatchedCourses);
+            _this.courseAlignmentPhaseReady = true;
+            console.log(_this.courseAlignmentPhaseReady);
+          }
         }
       });
     },
@@ -217,33 +226,34 @@ var app = new Vue({
       if (dataForPost.create.length == 0 && dataForPost.update.length == 0) {
         //nothing to do; move on to the next step....
         this.alignCourseOfferings();
-      }
-      $.ajax({
-        // initialize an AJAX request
-        type: "POST",
-        url: "/planner/ajax/create-update-courses/",
-        dataType: "json",
-        data: JSON.stringify(dataForPost),
-        success: function(jsonResponse) {
-          console.log("response: ", jsonResponse);
-          if (
-            !(
-              jsonResponse.updates_successful && jsonResponse.creates_successful
-            )
-          ) {
+      } else {
+        $.ajax({
+          // initialize an AJAX request
+          type: "POST",
+          url: "/planner/ajax/create-update-courses/",
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(jsonResponse) {
+            console.log("response: ", jsonResponse);
+            if (
+              !(
+                jsonResponse.updates_successful && jsonResponse.creates_successful
+              )
+            ) {
+              _this.showCreateUpdateErrorMessage();
+            } else {
+              _this.alignCourseOfferings();
+            }
+          },
+          error: function(jqXHR, exception) {
+            // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+            console.log(jqXHR);
             _this.showCreateUpdateErrorMessage();
-          } else {
-            _this.alignCourseOfferings();
+            //_this.meetingFormErrorMessage =
+            //  "Sorry, there appears to have been an error.";
           }
-        },
-        error: function(jqXHR, exception) {
-          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
-          console.log(jqXHR);
-          _this.showCreateUpdateErrorMessage();
-          //_this.meetingFormErrorMessage =
-          //  "Sorry, there appears to have been an error.";
-        }
-      });
+        });
+      }
     },
     showCreateUpdateErrorMessage() {
       this.displayCreateUpdateErrorMessage = true;
@@ -1070,7 +1080,7 @@ var app = new Vue({
         courseOfferingId: courseInfo.ichair.course_offering_id,
         ichairObject: courseInfo.ichair
       };
-      this.dialogTitle = courseInfo.number + ": " + courseInfo.name;
+      this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
       let meetingDetails = courseInfo.ichair.meeting_times_detail;
       this.dialog = true;
       //trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
