@@ -297,7 +297,6 @@ class Room(StampedModel):
         return scheduled
 
 
-    
 class Subject(StampedModel):
     """Subject areas such as COS, PHY, SYS, etc. Note that subject and department are not the
     same thing. A department usually offers courses in multiple subjects.
@@ -313,6 +312,7 @@ class Subject(StampedModel):
 
     class Meta:
         ordering = ['abbrev']
+
 
 class CourseAttribute(StampedModel):
     """Course attribute such as SP or CC."""
@@ -430,7 +430,8 @@ class Course(StampedModel):
     credit_hours = models.PositiveIntegerField(default=3)
     # banner_title used to store a (possibly different) title for this same course, as it appears in Banner
     # when checking to see if two courses are the same, we check first against title, and then against banner_title (if necessary)
-    banner_title = models.CharField(max_length=80, blank=True, null=True)
+    # update: now BannerTitle is its own class, with a FK to Course; that way we can have multiple Banner Titles for each course
+    #banner_title = models.CharField(max_length=80, blank=True, null=True)
     prereqs = models.ManyToManyField('Requirement', blank=True, related_name='prereq_for')
     coreqs  = models.ManyToManyField('Requirement', blank=True, related_name='coreq_for')
 
@@ -449,8 +450,22 @@ class Course(StampedModel):
     def department(self):
         return self.subject.department
 
+    @property
+    def banner_title_list(self):
+        """Returns a list of banner titles (as strings) for this course."""
+        return [banner_title.title for banner_title in self.banner_titles.all()]
+
     class Meta:
         ordering = ['subject', 'number' , 'title']
+
+
+class BannerTitle(StampedModel):
+    """A banner version of the title for a course; there can be multiple banner titles for each course."""
+    course = models.ForeignKey(Course, related_name='banner_titles', on_delete=models.CASCADE)
+    title = models.CharField(max_length=80) # probably 30 characters is sufficient, given what shows up in the Data Warehouse data, but OK....
+
+    def __str__(self):
+        return self.title
 
 
 class Student(Person):

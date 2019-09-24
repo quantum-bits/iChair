@@ -73,7 +73,7 @@ def fetch_courses_to_be_aligned(request):
 
             for ichair_course in ichair_courses:
                 # found a match...
-                if (banner_course.title == ichair_course.title) or (banner_course.title == ichair_course.banner_title):
+                if (banner_course.title == ichair_course.title) or (banner_course.title in ichair_course.banner_title_list):
                     # uh-oh...we had already found a match -- this means we have more than one potential match, so we will list them all
                     if (exact_match == True) and (multiple_potential_matches == False):
                         exact_match = False
@@ -89,7 +89,7 @@ def fetch_courses_to_be_aligned(request):
                         "credit_hours": c.credit_hours,
                         "title": c.title,
                         "id": c.id,
-                        "banner_title": c.banner_title,
+                        "banner_titles": c.banner_title_list,
                         "number_offerings_this_year": c.number_offerings_this_year(academic_year)
                     } for c in ichair_courses]
                 unmatched_courses.append({
@@ -128,15 +128,26 @@ def create_update_courses(request):
     updates_successful = True
     print('updating....')
     for update_item in update_dict:
+        print(' ')
         print(update_item)
         # course = Course.objects.get(pk = update_item.ichair_course_id)
         try:
             course = Course.objects.get(pk=update_item["ichair_course_id"])
             print(course)
-            course.banner_title = update_item["banner_title"]
-            course.save()
+            # check to see if the banner title already exists; if not, add it as a new one
+            print('existing banner titles: ', course.banner_title_list)
+            if update_item["banner_title"] not in course.banner_title_list:
+                banner_title = BannerTitle.objects.create(
+                    course = course,
+                    title = update_item["banner_title"]
+                )
+                banner_title.save()
+            print('>>>>>> new banner title created!', banner_title)
+            #course.banner_title = update_item["banner_title"]
+            #course.save()
         except:
-            creates_successful = False
+            updates_successful = False
+        print('updates successful: ', updates_successful)
 
     print('creating...')
     created_course_ids = []
@@ -154,7 +165,7 @@ def create_update_courses(request):
             created_course_ids.append(course.id)
             print(course)
         except:
-            updates_successful = False
+            creates_successful = False
 
     data = {
         'updates_successful': updates_successful,
@@ -196,7 +207,7 @@ def get_courses(request):
             "subject": c.subject.abbrev,
             "number": c.number,
             "title": c.title,
-            "banner_title": c.banner_title,
+            "banner_titles": c.banner_title_list,
             "credit_hours": c.credit_hours,
             "id": c.id,
             "number_offerings_this_year": c.number_offerings_this_year(academic_year),
@@ -1315,8 +1326,15 @@ def find_ichair_course_offering(bco, semester, subject):
         Q(course__subject=subject) &
         Q(course__number__startswith=bco.course.number) &
         Q(course__credit_hours=bco.course.credit_hours) &
-        Q(crn__isnull=True) &
-        (Q(course__title=bco.course.title) | Q(course__banner_title=bco.course.title)))
+        Q(crn__isnull=True))
+    # https://stackoverflow.com/questions/15474933/list-comprehension-with-if-statement/15474969
+    print('      ')
+    print('len(candidate matches) = ', len(candidate_ichair_matches))
+    candidate_ichair_matches = [course_offering for course_offering in candidate_ichair_matches if course_offering.course.title == bco.course.title or (bco.course.title in course_offering.course.banner_title_list)]
+        # &
+        #(Q(course__title=bco.course.title) | Q(course__banner_title=bco.course.title)))
+    print('      ')
+    print('len(candidate matches) = ', len(candidate_ichair_matches))
 
     if len(candidate_ichair_matches) == 1:
         ichair_course_offering = candidate_ichair_matches[0]

@@ -94,6 +94,10 @@ class CourseAdmin(admin.ModelAdmin):
     search_fields = ('title', 'number',)
     filter_horizontal = ('schedule_semester','prereqs','coreqs',)
 
+class BannerTitleAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course',)
+    search_fields = ('title',)
+
 class RequirementBlockAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     filter_horizontal = ('courselist',)
@@ -112,7 +116,6 @@ class NoteAdmin(admin.ModelAdmin):
 
 class TransferCourseAdmin(admin.ModelAdmin):
     list_display = ('name','number','student','equivalentcourse',)
-
 
 class DegreeProgramAdmin(admin.ModelAdmin):
     search_fields = ('name','major__name',)
@@ -166,6 +169,7 @@ admin.site.register(Note, NoteAdmin)
 admin.site.register(Building, BuildingAdmin)
 admin.site.register(ClassMeeting, ClassMeetingAdmin)
 admin.site.register(Course, CourseAdmin)
+admin.site.register(BannerTitle, BannerTitleAdmin)
 admin.site.register(CourseAttribute)
 admin.site.register(CourseOffering, CourseOfferingAdmin)
 admin.site.register(DegreeProgram, DegreeProgramAdmin)

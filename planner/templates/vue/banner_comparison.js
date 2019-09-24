@@ -122,7 +122,7 @@ var app = new Vue({
           /**
            * course.choice = -1 ==> do nothing
            * course.choice = -2 ==> create new course
-           * course.choice = iChair course id ==> set banner_title in iChair course to banner title (in data warehouse database)
+           * course.choice = iChair course id ==> add banner_title to iChair list of banner titles for this course
            */
           incomingData.unmatched_courses.forEach(course => {
             unmatchedCourse = course;
@@ -589,8 +589,9 @@ var app = new Vue({
           if (courseList.length === 1) {
             course = courseList[0];
             if (
+              // https://www.w3schools.com/jsref/jsref_includes_array.asp
               courseProperties.title === course.title ||
-              courseProperties.title === course.banner_title
+              course.banner_titles.includes(courseProperties.title)
             ) {
               // we have found the unique course in the iChair database that corresponds to this banner course offering;
               // now create the course offering
@@ -618,8 +619,9 @@ var app = new Vue({
                   ? " offering in " + courseOption.year_name
                   : " offerings in " + courseOption.year_name;
               if (
+                // https://www.w3schools.com/jsref/jsref_includes_array.asp
                 courseProperties.title === courseOption.title ||
-                courseProperties.title === courseOption.banner_title
+                courseOption.banner_titles.includes(courseProperties.title)
               ) {
                 _this.courseChoice = courseOption.id; // this option seems like a match
               }
