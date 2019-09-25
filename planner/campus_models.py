@@ -231,10 +231,11 @@ class Semester(models.Model):
     banner_code = models.CharField(max_length=6, help_text="e.g., 201990", blank=True, null=True)
     
     class Meta:
-        ordering = ['year', 'name']
+        ordering = ['year', 'begin_on']
 
     def __str__(self):
         return '{0} {1}'.format(self.name, self.year)
+
 
 
 class Holiday(models.Model):
@@ -296,7 +297,6 @@ class Room(StampedModel):
         return scheduled
 
 
-    
 class Subject(StampedModel):
     """Subject areas such as COS, PHY, SYS, etc. Note that subject and department are not the
     same thing. A department usually offers courses in multiple subjects.
@@ -312,6 +312,7 @@ class Subject(StampedModel):
 
     class Meta:
         ordering = ['abbrev']
+
 
 class CourseAttribute(StampedModel):
     """Course attribute such as SP or CC."""
@@ -421,9 +422,16 @@ class Course(StampedModel):
     SCHEDULE_YEAR_CHOICES = (('E', 'Even'), ('O', 'Odd'), ('B', 'Both'))
 
     subject = models.ForeignKey(Subject, related_name='courses', on_delete=models.CASCADE)
+    # only the first x characters of the course 'number' are checked against Banner, where x is the number of characters for this field in Banner
+    # thus, PHY 311 in Banner will match PHY 311L here (which is good, since Banner uses the same number for both the lecture and the lab)
+    # because of this, some further checking needs to be done against the # of credit hours
     number = models.CharField(max_length=10)
     title = models.CharField(max_length=80)
     credit_hours = models.PositiveIntegerField(default=3)
+    # banner_title used to store a (possibly different) title for this same course, as it appears in Banner
+    # when checking to see if two courses are the same, we check first against title, and then against banner_title (if necessary)
+    # update: now BannerTitle is its own class, with a FK to Course; that way we can have multiple Banner Titles for each course
+    #banner_title = models.CharField(max_length=80, blank=True, null=True)
     prereqs = models.ManyToManyField('Requirement', blank=True, related_name='prereq_for')
     coreqs  = models.ManyToManyField('Requirement', blank=True, related_name='coreq_for')
 
@@ -435,12 +443,29 @@ class Course(StampedModel):
     def __str__(self):
         return "{0} {1} - {2}".format(self.subject, self.number, self.title)
 
+    def number_offerings_this_year(self, academic_year_object):
+        return len(self.offerings.filter(semester__year = academic_year_object))
+
     @property
     def department(self):
         return self.subject.department
 
+    @property
+    def banner_title_list(self):
+        """Returns a list of banner titles (as strings) for this course."""
+        return [banner_title.title for banner_title in self.banner_titles.all()]
+
     class Meta:
         ordering = ['subject', 'number' , 'title']
+
+
+class BannerTitle(StampedModel):
+    """A banner version of the title for a course; there can be multiple banner titles for each course."""
+    course = models.ForeignKey(Course, related_name='banner_titles', on_delete=models.CASCADE)
+    title = models.CharField(max_length=80) # probably 30 characters is sufficient, given what shows up in the Data Warehouse data, but OK....
+
+    def __str__(self):
+        return self.title
 
 
 class Student(Person):
@@ -567,6 +592,82 @@ class CourseOffering(StampedModel):
         else:
             return '2nd Half'
 
+    @classmethod
+    def semester_fraction_long_name(cls, semester_fraction):
+        if (semester_fraction == cls.FULL_SEMESTER):
+            return 'Full Semester'
+        elif (semester_fraction == cls.FIRST_HALF_SEMESTER):
+            return '1st Half Semester'
+        else:
+            return '2nd Half Semester'
+
+
+class DeltaCourseOffering(StampedModel):
+    """Proposed change to a banner version of a course offering.  Used for communication with the registrar."""
+
+    CREATE = 0
+    UPDATE = 1
+    DELETE = 2
+
+    ACTION_CHOICES = (
+        (CREATE, 'Create'),
+        (UPDATE, 'Update'),
+        (DELETE, 'Delete')
+    )
+
+    # CREATE: - only has a course_offering
+    # UPDATE: - has both a crn and a course_offering (need both for the diff)
+    # DELETE: - only has a crn
+    #
+    # could get messy in the UPDATE cases if the crn and course_offering fall out of sync with each other.  (We're aligning these dynamically, so it's conceivable.)
+    #   - before submitting to the registrar, need to check that the crn/course offering (as applicable) of the "delta" object agree with 
+    #     those that are currently in the two databases.  if not, trash the delta object.  in particular, for an UPDATE, check that the
+    #     course offering has the right crn and that the banner course offering has the right course_offering_id
+
+    crn = models.CharField(max_length=5, blank=True, null=True) # crn of the banner course offering, if it exists
+    semester = models.ForeignKey(Semester, related_name='delta_offerings', on_delete=models.CASCADE) # this allows us to get the term_code as well, for finding the banner course offering
+    course_offering = models.ForeignKey(CourseOffering, related_name='delta_offerings', blank=True, null=True, on_delete=models.CASCADE)
+
+    extra_comment = models.CharField(max_length=200, blank=True, null=True, help_text="(optional comment for the registrar)")
+
+    # the action requested of the registrar
+    requested_action = models.IntegerField(choices = ACTION_CHOICES, default = UPDATE)
+
+    # the following are used for UPDATEs and CREATEs, and specify which of the course offering fields should be aligned with the iChair versions
+    # (some may not need to be updated, others could be updated/created, but the user is not electing to do so at present)
+
+    update_meeting_times = models.BooleanField(default=False)
+    update_instructors = models.BooleanField(default=False)
+    update_semester_fraction = models.BooleanField(default=False)
+    update_max_enrollment = models.BooleanField(default=False)
+
+    def __str__(self):
+        if self.course_offering is not None:
+            return "{0} ({1})".format(self.course_offering, self.semester)
+        elif self.crn is not None:
+            return "{0} ({1})".format(self.crn, self.semester)
+        else:
+            return "{0} ({1})".format('Unknown course offering', self.semester)
+
+    @classmethod
+    def actions(cls):
+        return {
+            'create': cls.CREATE,
+            'update': cls.UPDATE,
+            'delete': cls.DELETE
+        }
+
+    @classmethod
+    def actions_reverse_lookup(cls, action_value):
+        if action_value == cls.CREATE:
+            return 'create'
+        elif action_value == cls.UPDATE:
+            return 'update'
+        elif action_value == cls.DELETE:
+            return 'delete'
+        else:
+            return None
+    
 
 class Grade(models.Model):
     letter_grade = models.CharField(max_length=5)
@@ -590,6 +691,10 @@ class OfferingInstructor(StampedModel):
     course_offering = models.ForeignKey(CourseOffering, related_name='offering_instructors', on_delete=models.CASCADE)
     instructor = models.ForeignKey(FacultyMember,related_name='offering_instructors', on_delete=models.CASCADE)
     load_credit = models.FloatField(validators = [MinValueValidator(0.0), MaxValueValidator(100.0)])
+    is_primary = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['instructor__last_name','instructor__first_name']
 
 
 class ClassMeeting(StampedModel):

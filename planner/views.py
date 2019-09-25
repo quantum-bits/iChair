@@ -14,12 +14,12 @@ from django.utils.functional import curry
 
 from .models import *
 from .forms import *
+from .helper_functions import *
 
 import json
 import csv
 from django.http import HttpResponse, HttpResponseRedirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+
 import xlwt
 from os.path import expanduser
 from datetime import date
@@ -1169,57 +1169,6 @@ def class_time_summary(scheduled_classes):
 #       ===> if this is done, need to edit the template a bit and also the "---" case, to make it
 #            a simple string instead of a list
     return class_times_list
-
-def class_time_and_room_summary(scheduled_classes):
-# Returns a class time summary list and an accompanying room list, such as ['MWF 9-9:50','T 10-10:50'] and ['NS 210', 'ESC 141']
-# scheduled_classes is assumed to be a list of ScheduledClass objects with at least one element
-
-    day_list = ['M','T','W','R','F']
-    time_dict = dict()
-    room_dict = dict()
-    day_dict = dict()
-    schedule_list = []
-    for sc in scheduled_classes:
-        time_string=start_end_time_string(sc.begin_at.hour, sc.begin_at.minute, sc.end_at.hour, sc.end_at.minute)
-        if sc.room != None:
-            room = sc.room.building.abbrev+' '+sc.room.number
-        else:
-            room = '---'
-        schedule_list.append([sc.day, time_string, room])
-        day_dict[time_string+room]=''
-        room_dict[time_string+room] = room
-        time_dict[time_string+room] = time_string
-
-    schedule_sorted = sorted(schedule_list, key=lambda row: (row[0], row[1]))
-
-    for item in schedule_sorted:
-        day_dict[item[1]+item[2]]=day_dict[item[1]+item[2]]+day_list[item[0]]
-
-    class_times_list = []
-    room_list = []
-    for key in list(day_dict.keys()):
-        class_times_list.append(day_dict[key]+' '+time_dict[key])
-        room_list.append(room_dict[key])
-
-    return class_times_list, room_list
-
-
-
-
-def start_end_time_string(start_hour,start_minute,end_hour,end_minute):
-# given starting and ending data, returns a string such as '9-9:50' or '9:15-10:30'
-
-    time = str(start_hour)
-    if 0<start_minute < 9:
-        time = time+':0'+str(start_minute)
-    elif start_minute>9:
-        time = time+':'+str(start_minute)
-    time = time+'-'+str(end_hour)
-    if 0<end_minute < 9:
-        time = time+':0'+str(end_minute)
-    elif end_minute > 9:
-        time = time+':'+str(end_minute)
-    return time
 
 
 @login_required
@@ -2602,6 +2551,39 @@ def add_faculty(request):
         context = {'form': form, 'title': 'Add New Faculty Member', 'department': department }
         return render(request, 'add_faculty_member.html', context)
 
+
+@login_required
+def select_course(request):
+    """
+    Allows the user to select a course, as the first step in creating a new course offering.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    # https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
+    if request.method == 'POST':
+        form = DynamicCourseSelectForm(department, request.POST)
+ 
+        if form.is_valid():
+            course = form.cleaned_data.get('course')
+            url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
+#            print url_string
+            return redirect(url_string)
+        else:
+            #form = DynamicCourseSelectForm(department)
+            context = {'form': form, 'has_errors': True}
+            return render(request, 'select_course.html', context)
+    else:
+        form = DynamicCourseSelectForm(department)
+        context = {'form': form, 'has_errors': False}
+        if "never_alerted_before" in request.session:
+            context['never_alerted_before'] = False
+        else:
+            context['never_alerted_before'] = True
+        return render(request, 'select_course.html', context)
+
+
 def add_course(request, daisy_chain):
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
@@ -3043,6 +3025,38 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
     else:
         context['base_html']='base.html'
         return render(request, 'registrar_schedule.html', context)
+
+@login_required
+def compare_with_banner(request):
+
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
+
+    department = user_preferences.department_to_view
+    year_to_view = user_preferences.academic_year_to_view.begin_on.year
+    academic_year_string = str(year_to_view)+'-'+str(year_to_view + 1)
+
+    data = {
+        'departmentId': department.id,
+        'yearId': user_preferences.academic_year_to_view.id
+    }
+
+    json_data = json.dumps(data)
+
+    context = {
+        'json_data': json_data,
+        'academic_year_string': academic_year_string, 
+        'can_edit': can_edit,
+        'year': user_preferences.academic_year_to_view,
+        'department': department
+        }
+
+    print(context)
+    return render(request, 'banner_comparison.html', context)
 
 @login_required
 def update_other_load(request, id):
@@ -4568,80 +4582,6 @@ def rectangle_coordinates_flexible_schedule(schedule, vertical_edges, text_list,
 
     return box_data, text_data
 
-@login_required
-def load_courses(request):
-    
-    subject_id = request.GET.get('subjectId')
-    courses = Course.objects.filter(subject__id = subject_id).order_by('number')
-    return render(request, 'course_dropdown_list_options.html', {'courses': courses})
-
-@login_required
-@csrf_exempt
-def update_view_list(request):
-    """Add a faculty member to the list of faculty to view; used for AJAX requests."""
-    user = request.user
-    user_preferences = user.user_preferences.all()[0]
-    faculty_id = request.POST.get('facultyId')
-    
-    try:
-        faculty = FacultyMember.objects.get(pk = faculty_id)
-    except FacultyMember.DoesNotExist:
-        data = {
-            'success': False,
-            'message': 'This faculty member could not be found; please try again later or contact the site administrator.'
-        }
-        return JsonResponse(data)
-    if faculty not in user_preferences.faculty_to_view.all():
-        user_preferences.faculty_to_view.add(faculty)
-        data = {
-            'success': True,
-            'message': 'Faculty member added!'
-        }
-        return JsonResponse(data)
-    else:
-        data = {
-            'success': False,
-            'message': 'It appears that '+faculty.first_name+' '+faculty.last_name+' is already in your list of faculty to view.'
-        }
-        return JsonResponse(data)
-
-    data = {
-            'success': False,
-            'message': 'Sorry, we were not able to process this request.'
-    }
-    return JsonResponse(data)
-
-
-@login_required
-def select_course(request):
-    """
-    Allows the user to select a course, as the first step in creating a new course offering.
-    """
-    user = request.user
-# assumes that users each have exactly ONE UserPreferences object
-    user_preferences = user.user_preferences.all()[0]
-    department = user_preferences.department_to_view
-    # https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
-    if request.method == 'POST':
-        form = DynamicCourseSelectForm(department, request.POST)
- 
-        if form.is_valid():
-            course = form.cleaned_data.get('course')
-            url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
-#            print url_string
-            return redirect(url_string)
-        else:
-            #form = DynamicCourseSelectForm(department)
-            context = {'form': form, 'has_errors': True}
-            return render(request, 'select_course.html', context)
-    else:
-        form = DynamicCourseSelectForm(department)
-        context = {'form': form, 'has_errors': False}
-        if "never_alerted_before" in request.session:
-            context['never_alerted_before'] = False
-        else:
-            context['never_alerted_before'] = True
-        return render(request, 'select_course.html', context)
 
 @login_required
 def add_course_confirmation(request, daisy_chaining):

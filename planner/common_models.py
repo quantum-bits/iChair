@@ -25,9 +25,9 @@ class SequencedModel(StampedModel):
 ################ People ################
 
 class Person(StampedModel):
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    nickname = models.CharField(max_length=50, blank=True)
+    first_name = models.CharField(max_length=60)
+    last_name = models.CharField(max_length=60)
+    nickname = models.CharField(max_length=60, blank=True)
 
     home_phone = models.CharField(max_length=20, blank=True)
     cell_phone = models.CharField(max_length=20, blank=True)
