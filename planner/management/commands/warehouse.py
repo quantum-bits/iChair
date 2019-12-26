@@ -22,6 +22,14 @@ class Command(BaseCommand):
             f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
         cursor = connection.cursor()
         rows = cursor.execute("select @@VERSION").fetchall()
+        comments = cursor.execute("""
+            SELECT ssrtext_crn as COMMENTCRN
+                , ssrtext_term_code as COMMENTTERM
+                , ssrtext_text as COMMENTTEXT
+            FROM dbo.ssrtext""").fetchone()
+        # NEXT: probably make course_comments its own thing, and do a left outer join of dbo.ssrtext on 
+        #       the term code and the crn with the course section term code and crn(?)
+
         #rows2 = cursor.execute("select campus as CMP, term, part_of_term from dw.dim_course_section dcs").fetchall()
         #faculty_rows = cursor.execute("""
         #    SELECT pidm AS PIDM, last_name, first_name 
@@ -77,7 +85,7 @@ class Command(BaseCommand):
                 -- Meeting times
                 LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                 LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
-            WHERE ((term = '201990' OR term = '202010' OR term = '202020' OR term = '202050') AND (subject_code = 'CHE' OR subject_code = 'BIO' OR subject_code = 'TSL' OR subject_code = 'MAT' OR subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '201990' OR term = '201910' OR term = '202020') AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
                 """).fetchall()
 
         course_instructors = cursor.execute("""
@@ -89,13 +97,13 @@ class Command(BaseCommand):
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
                 LEFT OUTER JOIN dw.fact_faculty_course ffc ON (ffc.scheduled_course_key = dcs.course_section_key)
                 LEFT OUTER JOIN dw.dim_faculty df ON (ffc.faculty_key = df.faculty_key)
-            WHERE ((term = '201990' OR term = '202010' OR term = '202020' OR term = '202050') AND (subject_code = 'CHE' OR subject_code = 'BIO' OR subject_code = 'TSL' OR subject_code = 'MAT' OR subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '201990' OR term = '201910' OR term = '202020') AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
                 """).fetchall()
 
         course_offerings = cursor.execute("""
             SELECT dcs.*
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
-            WHERE ((term = '201990' OR term = '202010' OR term = '202020' OR term = '202050') AND (subject_code = 'CHE' OR subject_code = 'BIO' OR subject_code = 'TSL' OR subject_code = 'MAT' OR subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '201990' OR term = '201910' OR term = '202020') AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
                 """).fetchall()
 
         # rows3 = cursor.execute("""
@@ -122,6 +130,9 @@ class Command(BaseCommand):
 
         number_errors = 0
         error_list = []
+
+        print('comment(s): ')
+        print(comments.COMMENTTERM, ' ', comments.COMMENTCRN, ' ', comments.COMMENTTEXT)
 
         # create course sections, along with instructors and meeting times....
 
