@@ -74,7 +74,7 @@ class CourseOffering(StampedModel):
                                         blank=True,
                                         related_name='course_offerings')
     max_enrollment = models.PositiveIntegerField(default=10)
-    banner_comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
+    #banner_comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.CharField(max_length=5)
     ichair_id = models.PositiveIntegerField(blank=True, null=True) # id of corresponding ichair course offering, if it exists
 
@@ -86,6 +86,22 @@ class CourseOffering(StampedModel):
         """True if there is a (unique) course offering in the iChair database that has been identified with the current (banner) course offering.""" 
         return self.ichair_id is not None
 
+
+class CourseOfferingComment(StampedModel):
+    """A comment that can be added to the course offering for display on TU's public website."""
+    course_offering = models.ForeignKey(CourseOffering, related_name='offering_comments', on_delete=models.CASCADE)
+    text = models.CharField(max_length=60)
+    # sequence number is stored as a decimal in Banner (why?!?), so I am following that here, although there
+    # could be problems with rounding, since SQLite does not actually have a real decimal type.
+    # To ensure that there are no problems, just use the sequence number to order the comments, and do the 
+    # same in the ichair database.  In this case, small rounding errors shouldn't be a problem.
+    sequence_number = models.DecimalField(max_digits=23, decimal_places=20)
+
+    def __str__(self):
+        return "{0} ({1}, {2}): {3} {4}".format(self.course_offering.course, self.course_offering.term_code, self.course_offering.crn, self.sequence_number, self.text)
+
+    class Meta:
+        ordering = ['sequence_number']
 
 class OfferingInstructor(StampedModel):
     """

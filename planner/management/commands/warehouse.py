@@ -8,6 +8,7 @@ from banner.models import CourseOffering as BannerCourseOffering
 from banner.models import ScheduledClass as BannerScheduledClass
 from banner.models import FacultyMember as BannerFacultyMember
 from banner.models import OfferingInstructor as BannerOfferingInstructor
+from banner.models import CourseOfferingComment as BannerCourseOfferingComment
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
@@ -22,11 +23,19 @@ class Command(BaseCommand):
             f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
         cursor = connection.cursor()
         rows = cursor.execute("select @@VERSION").fetchall()
-        comments = cursor.execute("""
+        course_offering_comments = cursor.execute("""
             SELECT ssrtext_crn as COMMENTCRN
                 , ssrtext_term_code as COMMENTTERM
                 , ssrtext_text as COMMENTTEXT
-            FROM dbo.ssrtext""").fetchone()
+                , course_reference_number AS CRN
+                , course AS TITLE
+                , term
+                , ssrtext_seqno AS SEQNO
+            FROM dw.dim_course_section dcs -- Use the course section dimension as base.
+                -- Comments
+                LEFT OUTER JOIN dbo.ssrtext ssr ON ((ssr.ssrtext_term_code = dcs.term) AND (ssr.ssrtext_crn = dcs.course_reference_number))
+            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
+                """).fetchall()
         # NEXT: probably make course_comments its own thing, and do a left outer join of dbo.ssrtext on 
         #       the term code and the crn with the course section term code and crn(?)
 
@@ -85,7 +94,7 @@ class Command(BaseCommand):
                 -- Meeting times
                 LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                 LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
-            WHERE ((term = '201990' OR term = '201910' OR term = '202020') AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
                 """).fetchall()
 
         course_instructors = cursor.execute("""
@@ -97,13 +106,13 @@ class Command(BaseCommand):
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
                 LEFT OUTER JOIN dw.fact_faculty_course ffc ON (ffc.scheduled_course_key = dcs.course_section_key)
                 LEFT OUTER JOIN dw.dim_faculty df ON (ffc.faculty_key = df.faculty_key)
-            WHERE ((term = '201990' OR term = '201910' OR term = '202020') AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
                 """).fetchall()
 
         course_offerings = cursor.execute("""
             SELECT dcs.*
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
-            WHERE ((term = '201990' OR term = '201910' OR term = '202020') AND (subject_code = 'PHY' OR subject_code = 'ENP') AND campus = 'U')
+            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
                 """).fetchall()
 
         # rows3 = cursor.execute("""
@@ -131,9 +140,9 @@ class Command(BaseCommand):
         number_errors = 0
         error_list = []
 
-        print('comment(s): ')
-        print(comments.COMMENTTERM, ' ', comments.COMMENTCRN, ' ', comments.COMMENTTEXT)
-
+        #print('comment(s): ')
+        #print(comments.COMMENTTERM, ' ', comments.COMMENTCRN, ' ', comments.COMMENTTEXT)
+        
         # create course sections, along with instructors and meeting times....
 
         # start by clearing the banner database!
@@ -223,8 +232,8 @@ class Command(BaseCommand):
                 # this exits the course_offerings loop....
                 number_errors = number_errors +1
                 error_string = 'Ambiguity: there are multiple versions of the course offering '+co.course_reference_number+' - '+co.term+'; exiting....'
-                error_list.append(error_list)
-                raise CommandError(error_list)
+                error_list.append(error_string)
+                raise CommandError(error_string)
 
 
         num_no_mtgs_sched = 0
@@ -243,12 +252,12 @@ class Command(BaseCommand):
                 except BannerCourseOffering.DoesNotExist:
                     number_errors = number_errors +1
                     error_string = 'CRN '+co_meeting.CRN+' for semester '+co_meeting.term+' does not exist.'
-                    error_list.append(error_list)
+                    error_list.append(error_string)
                     raise CommandError(error_string)
                 except BannerCourseOffering.MultipleObjectsReturned:
                     number_errors = number_errors +1
                     error_string = 'Ambiguity: there are multiple versions of CRN '+co_meeting.CRN+' for semester '+co_meeting.term+'; exiting....'
-                    error_list.append(error_list)
+                    error_list.append(error_string)
                     raise CommandError(error_string)
                 
                 if co_meeting.DAY == 'M':
@@ -275,7 +284,7 @@ class Command(BaseCommand):
                 else:
                     number_errors = number_errors +1
                     error_string = 'Start time is ill formed: '+co_meeting.STARTTIME
-                    error_list.append(error_list)
+                    error_list.append(error_string)
                     raise CommandError(error_string)
                 
                 if len(co_meeting.ENDTIME) == 4:
@@ -285,7 +294,7 @@ class Command(BaseCommand):
                 else:
                     number_errors = number_errors +1
                     error_string = 'End time is ill formed: '+co_meeting.ENDTIME
-                    error_list.append(error_list)
+                    error_list.append(error_string)
                     raise CommandError(error_string)
                 
                 print('start: '+start_time+'; end: '+end_time)
@@ -316,12 +325,12 @@ class Command(BaseCommand):
                 except BannerCourseOffering.DoesNotExist:
                     number_errors = number_errors +1
                     error_string = 'CRN '+co_instructor.course_reference_number+' for semester '+co_instructor.term+' does not exist.'
-                    error_list.append(error_list)
+                    error_list.append(error_string)
                     raise CommandError(error_string)
                 except BannerCourseOffering.MultipleObjectsReturned:
                     number_errors = number_errors +1
                     error_string = 'Ambiguity: there are multiple versions of CRN '+co_instructor.course_reference_number+' for semester '+co_instructor.term+'; exiting....'
-                    error_list.append(error_list)
+                    error_list.append(error_string)
                     raise CommandError(error_string)
                 
                 try:
@@ -351,6 +360,33 @@ class Command(BaseCommand):
                     is_primary = is_primary)
                 offering_instructor.save()
                 
+        print('Add comments to course offerings....')
+        for co_comment in course_offering_comments:
+            print(co_comment.COMMENTTERM, ' ', co_comment.term, ' ', co_comment.COMMENTCRN, ' ',co_comment.CRN, ' ',co_comment.SEQNO, ' ', co_comment.COMMENTTEXT)
+            if co_comment.COMMENTTERM is None:
+                # nothing more to do in this case; the course offering has no comments....
+                print('%s %s -- NO COMMENT!!!' %
+                      (co_comment.term, co_comment.CRN))
+            else:
+                try:
+                    course_offering = BannerCourseOffering.objects.get(Q(crn = co_comment.CRN)&Q(term_code = co_comment.term))
+                    print("Found: ", course_offering)
+                except BannerCourseOffering.DoesNotExist:
+                    number_errors = number_errors +1
+                    error_string = 'CRN '+co_comment.CRN+' for semester '+co_comment.term+' does not exist.'
+                    error_list.append(error_string)
+                    raise CommandError(error_string)
+                except BannerCourseOffering.MultipleObjectsReturned:
+                    number_errors = number_errors +1
+                    error_string = 'Ambiguity: there are multiple versions of CRN '+co_comment.CRN+' for semester '+co_comment.term+'; exiting....'
+                    error_list.append(error_string)
+                    raise CommandError(error_string)
+                
+                course_offering_comment = BannerCourseOfferingComment.objects.create(
+                    course_offering = course_offering,
+                    text = co_comment.COMMENTTEXT,
+                    sequence_number = co_comment.SEQNO)
+                course_offering_comment.save()
 
 
         print('total number of errors encountered: ', number_errors)

@@ -9,6 +9,7 @@ from banner.models import FacultyMember as BannerFacultyMember
 from banner.models import CourseOffering as BannerCourseOffering
 from banner.models import OfferingInstructor as BannerOfferingInstructor
 from banner.models import ScheduledClass as BannerScheduledClass
+from banner.models import CourseOfferingComment as BannerCourseOfferingComment
 
 class MultiDBModelAdmin(admin.ModelAdmin):
     # https://docs.djangoproject.com/en/2.2/topics/db/multi-db/
@@ -72,9 +73,13 @@ class BannerOfferingInstructorInline(MultiDBTabularInline):
     model = BannerOfferingInstructor
     extra = 1
 
+class BannerCourseOfferingCommentInline(MultiDBTabularInline):
+    model = BannerCourseOfferingComment
+    extra = 1
+
 class BannerCourseOfferingAdmin(MultiDBModelAdmin):
-    inlines = (BannerOfferingInstructorInline,)
-    list_display = ('course', 'crn', 'term_code', 'semester_fraction','max_enrollment', 'banner_comment',)
+    inlines = (BannerOfferingInstructorInline, BannerCourseOfferingCommentInline,)
+    list_display = ('course', 'crn', 'term_code', 'semester_fraction','max_enrollment', )
     search_fields = ('course__title','course__number','term_code',)
 
 class BannerScheduledClassAdmin(admin.ModelAdmin):
@@ -134,12 +139,16 @@ class FacultyMemberAdmin(admin.ModelAdmin):
     list_display = ('last_name', 'first_name', 'pidm', 'department', 'number_course_offerings', 'created_at',)
     search_fields = ('last_name','first_name', 'pidm',)
 
+class CourseOfferingPublicCommentInline(admin.TabularInline):
+    model = CourseOfferingPublicComment
+    extra = 1
+
 class CourseOfferingAdmin(admin.ModelAdmin):
-    inlines = (OfferingInstructorInline,)
+    inlines = (OfferingInstructorInline, CourseOfferingPublicCommentInline,)
     list_display = ('course','crn','semester',)
     # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
     search_fields = ('course__title','course__number','semester__name__name', 'semester__banner_code',)
-
+    
 class ClassMeetingAdmin(admin.ModelAdmin):
     list_display = ('course_offering','held_on','begin_at','end_at','room','instructor',)
 
@@ -171,6 +180,7 @@ admin.site.register(ClassMeeting, ClassMeetingAdmin)
 admin.site.register(Course, CourseAdmin)
 admin.site.register(BannerTitle, BannerTitleAdmin)
 admin.site.register(CourseAttribute)
+admin.site.register(CourseOfferingPublicComment)
 admin.site.register(CourseOffering, CourseOfferingAdmin)
 admin.site.register(DegreeProgram, DegreeProgramAdmin)
 admin.site.register(DegreeProgramCourse, DegreeProgramCourseAdmin)
