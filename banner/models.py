@@ -79,13 +79,35 @@ class CourseOffering(StampedModel):
     ichair_id = models.PositiveIntegerField(blank=True, null=True) # id of corresponding ichair course offering, if it exists
 
     def comment_list(self):
+        # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
         comment_list = []
-        for comment in self.offering_comments.all():
+        ii = 0
+        summary = '---'
+        summary_contains_all_text = True
+        comments = self.offering_comments.all()
+        for comment in comments:
             comment_list.append({
                 "id": comment.id, 
                 "text": comment.text,
                 "sequence_number": comment.sequence_number})
-        return comment_list
+            if ii == 0:
+                if len(comments) == 1:
+                    summary = (comment.text[:20] + '...') if len(comment.text) > 20 else comment.text
+                    if len(comment.text) > 20:
+                        summary_contains_all_text = False
+                else:
+                    summary = (comment.text[:20] + '...') if len(comment.text) > 20 else comment.text + '...'
+                    summary_contains_all_text = False
+            ii = ii + 1
+        
+        # summary_contains_all_text is true if the summary text contains all the detail of the comments 
+        # (i.e., there will be no need for a tooltip containing more detail)
+        return { 
+            "summary": summary,
+            "comment_list": comment_list,
+            "summary_contains_all_text": summary_contains_all_text
+        }
+        
 
     def __str__(self):
         return "{0} ({1})".format(self.course, self.term_code)

@@ -345,7 +345,8 @@ def create_course_offering(request):
         "instructors_match": instructors_match(bco, course_offering),
         "meeting_times_match": scheduled_classes_match(bco, course_offering),
         "max_enrollments_match": max_enrollments_match(bco, course_offering),
-        "semester_fractions_match": semester_fractions_match(bco, course_offering)
+        "semester_fractions_match": semester_fractions_match(bco, course_offering),
+        "public_comments_match": public_comments_match(bco, course_offering)
     }
 
     data = {
@@ -476,6 +477,7 @@ def banner_comparison_data(request):
                     "instructors_match": False,
                     "semester_fractions_match": False,
                     "enrollment_caps_match": False,
+                    "public_comments_match": False,
                     "ichair_subject_id": subject.id,
                     "banner": {
                         "course_offering_id": bco.id,
@@ -566,12 +568,16 @@ def banner_comparison_data(request):
                                 bco, ico) or delta_response["request_update_semester_fraction"]
                             enrollment_caps_match = max_enrollments_match(
                                 bco, ico) or delta_response["request_update_max_enrollment"]
+                            comments_match = public_comments_match(
+                                bco, ico) or delta_response["request_update_public_comments"]
                         else:
                             schedules_match = scheduled_classes_match(bco, ico)
                             inst_match = instructors_match(bco, ico)
                             sem_fractions_match = semester_fractions_match(
                                 bco, ico)
                             enrollment_caps_match = max_enrollments_match(
+                                bco, ico)
+                            comments_match = public_comments_match(
                                 bco, ico)
 
                         course_offering_item["ichair"] = {
@@ -594,6 +600,7 @@ def banner_comparison_data(request):
                         course_offering_item["instructors_match"] = inst_match
                         course_offering_item["semester_fractions_match"] = sem_fractions_match
                         course_offering_item["enrollment_caps_match"] = enrollment_caps_match
+                        course_offering_item["public_comments_match"] = comments_match
 
                         course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match and enrollment_caps_match
 
@@ -664,6 +671,7 @@ def banner_comparison_data(request):
                         course_offering_item["instructors_match"] = True
                         course_offering_item["semester_fractions_match"] = True
                         course_offering_item["enrollment_caps_match"] = True
+                        course_offering_item["public_comments_match"] = True
 
                         course_offering_item["all_OK"] = True
                         course_offering_item["delta"] = delta_response
@@ -748,12 +756,14 @@ def banner_comparison_data(request):
                     inst_match = delta_response["request_update_instructors"]
                     sem_fractions_match = delta_response["request_update_semester_fraction"]
                     enrollment_caps_match = delta_response["request_update_max_enrollment"]
+                    comments_match = delta_response["request_update_public_comments"]
                 else:
                     delta_response = None
                     schedules_match = False
                     inst_match = False
                     sem_fractions_match = False
                     enrollment_caps_match = False
+                    comments_match = False
 
                 course_offering_item = {
                     "index": index,
@@ -767,6 +777,7 @@ def banner_comparison_data(request):
                     "instructors_match": inst_match,
                     "semester_fractions_match": sem_fractions_match,
                     "enrollment_caps_match": enrollment_caps_match,
+                    "public_comments_match": comments_match,
                     "ichair_subject_id": subject.id,
                     "banner": {},
                     "ichair": {
@@ -781,7 +792,7 @@ def banner_comparison_data(request):
                         "course": ico.course.subject.abbrev+' '+ico.course.number,
                         "number": ico.course.number,
                         "course_title": ico.course.title,
-                        
+                        "comments": ico.comment_list()
                     },
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
                     "ichair_options": [],
@@ -790,7 +801,7 @@ def banner_comparison_data(request):
                     "has_ichair": True,
                     "linked": False,
                     "delta": delta_response,
-                    "all_OK": schedules_match and inst_match and sem_fractions_match and enrollment_caps_match,
+                    "all_OK": schedules_match and inst_match and sem_fractions_match and enrollment_caps_match and comments_match,
                     "crn": None
                 }
                 index = index + 1
@@ -837,10 +848,13 @@ def delta_update_status(bco, ico, delta):
         "request_update_semester_fraction": delta.update_semester_fraction,
         # True if this update is being requested by the user
         "request_update_max_enrollment": delta.update_max_enrollment,
+        # True if this update is being requested by the user
+        "request_update_public_comments": delta.update_public_comments,
         "meeting_times": None,
         "instructors": None,
         "semester_fraction": None,
         "max_enrollment": None,
+        "public_comments": None,
         "messages_exist": False
     }
 
@@ -869,7 +883,13 @@ def delta_update_status(bco, ico, delta):
             "change_to": ico.max_enrollment
         }
 
-    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None):
+    if delta.update_public_comments and (not public_comments_match(bco, ico)):
+        delta_response["public_comments"] = {
+            "was": bco.comment_list(),
+            "change_to": ico.comment_list()
+        }
+
+    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
         delta_response["messages_exist"] = True
 
     # print(delta_response)
@@ -896,10 +916,13 @@ def delta_create_status(ico, delta):
         "request_update_semester_fraction": delta.update_semester_fraction,
         # True if the user is requesting that the registrar create this property for a given course offering
         "request_update_max_enrollment": delta.update_max_enrollment,
+        # True if the user is requesting that the registrar create this property for a given course offering
+        "request_update_public_comments": delta.update_public_comments,
         "meeting_times": None,
         "instructors": None,
         "semester_fraction": None,
         "max_enrollment": None,
+        "public_comments": None,
         "messages_exist": False
     }
 
@@ -927,8 +950,14 @@ def delta_create_status(ico, delta):
             "was": None,
             "change_to": ico.max_enrollment
         }
+    
+    if delta.update_public_comments:
+        delta_response["public_comments"] = {
+            "was": [],
+            "change_to": ico.comment_list()
+        }
 
-    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None):
+    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
         delta_response["messages_exist"] = True
 
     # print(delta_response)
@@ -956,11 +985,14 @@ def delta_delete_status(delta):
         "request_update_semester_fraction": delta.update_semester_fraction,
         # Should be false, since the registrar is simply going to delete the course offering
         "request_update_max_enrollment": delta.update_max_enrollment,
+        # Should be false, since the registrar is simply going to delete the course offering
+        "request_update_public_comments": delta.update_public_comments,
         # we could fetch them, but there's not really much point....
         "meeting_times": None,
         "instructors": None,
         "semester_fraction": None,
         "max_enrollment": None,
+        "public_comments": None,
         "messages_exist": True  # the message is simply going to be "delete this course offering"
     }
 
@@ -1551,6 +1583,21 @@ def semester_fractions_match(banner_course_offering, ichair_course_offering):
 def max_enrollments_match(banner_course_offering, ichair_course_offering):
     return banner_course_offering.max_enrollment == ichair_course_offering.max_enrollment
 
+def public_comments_match(banner_course_offering, ichair_course_offering):
+    bco_comments = banner_course_offering.comment_list()
+    ico_comments = ichair_course_offering.comment_list()
+
+    print(bco_comments)
+    print(ico_comments)
+
+    if len(bco_comments["comment_list"]) != len(ico_comments["comment_list"]):
+        return False
+    else:
+        comments_agree = True
+        for ii in range(len(bco_comments["comment_list"])):
+            if bco_comments["comment_list"][ii] != ico_comments["comment_list"][ii]:
+                comments_agree = False
+        return comments_agree
 
 @login_required
 @csrf_exempt
@@ -1578,6 +1625,7 @@ def delete_delta(request):
         "meeting_times_match": False,
         "max_enrollments_match": False,
         "semester_fractions_match": False,
+        "public_comments_match": False
     }
 
     data = {
@@ -1671,6 +1719,11 @@ def generate_update_delta(request):
             else:
                 update_max_enrollment = False
 
+            if 'publicComments' in delta_mods.keys():
+                update_public_comments = delta_mods['publicComments']
+            else:
+                update_public_comments = False
+
             dco = DeltaCourseOffering.objects.create(
                 course_offering=ico,
                 semester=semester,
@@ -1679,7 +1732,8 @@ def generate_update_delta(request):
                 update_meeting_times=update_meeting_times,
                 update_instructors=update_instructors,
                 update_semester_fraction=update_semester_fraction,
-                update_max_enrollment=update_max_enrollment)
+                update_max_enrollment=update_max_enrollment,
+                update_public_comments=update_public_comments)
             dco.save()
 
     else:
@@ -1698,6 +1752,9 @@ def generate_update_delta(request):
         if 'enrollmentCap' in delta_mods.keys():
             dco.update_max_enrollment = delta_mods['enrollmentCap']
 
+        if 'publicComments' in delta_mods.keys():
+            dco.update_public_comments = delta_mods['publicComments']
+
         dco.save()
 
     delta_response = {}
@@ -1712,7 +1769,8 @@ def generate_update_delta(request):
                 "instructors_match": instructors_match(bco, ico),
                 "meeting_times_match": scheduled_classes_match(bco, ico),
                 "max_enrollments_match": max_enrollments_match(bco, ico),
-                "semester_fractions_match": semester_fractions_match(bco, ico)
+                "semester_fractions_match": semester_fractions_match(bco, ico),
+                "public_comments_match": public_comments_match(bco, ico)
             }
         elif action == 'create':
             # in this case we only have an ichair id....
@@ -1722,7 +1780,8 @@ def generate_update_delta(request):
                 "instructors_match": False,
                 "meeting_times_match": False,
                 "max_enrollments_match": False,
-                "semester_fractions_match": False
+                "semester_fractions_match": False,
+                "public_comments_match": False
             }
         elif action == 'delete':
             # in this case we only have a banner id....
@@ -1732,7 +1791,8 @@ def generate_update_delta(request):
                 "instructors_match": True,
                 "meeting_times_match": True,
                 "max_enrollments_match": True,
-                "semester_fractions_match": True
+                "semester_fractions_match": True,
+                "public_comments_match": True
             }
 
         # WORKING HERE: need to add some other functionality for the delete' action....
@@ -2047,18 +2107,22 @@ def copy_registrar_course_offering_data_to_ichair(request):
                 bco, ico) or delta_response["request_update_semester_fraction"]
             enrollment_caps_match = max_enrollments_match(
                 bco, ico) or delta_response["request_update_max_enrollment"]
+            comments_match = public_comments_match(
+                bco, ico) or delta_response["request_update_public_comments"]
         else:
             schedules_match = scheduled_classes_match(bco, ico)
             inst_match = instructors_match(bco, ico)
             sem_fractions_match = semester_fractions_match(
                 bco, ico)
             enrollment_caps_match = max_enrollments_match(bco, ico)
+            comments_match = public_comments_match(bco, ico)
 
         agreement_update = {
             "instructors_match": inst_match,
             "meeting_times_match": schedules_match,
             "max_enrollments_match": enrollment_caps_match,
-            "semester_fractions_match": sem_fractions_match
+            "semester_fractions_match": sem_fractions_match,
+            "public_comments_match": comments_match
         }
 
         course_offering_update = {
