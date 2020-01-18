@@ -490,6 +490,7 @@ def banner_comparison_data(request):
                         "course": bco.course.subject.abbrev+' '+bco.course.number,
                         "number": bco.course.number,
                         "course_title": bco.course.title,
+                        "comments": bco.comment_list()
                     },
                     "ichair": {},
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
@@ -585,6 +586,7 @@ def banner_comparison_data(request):
                             "course": ico.course.subject.abbrev+' '+ico.course.number,
                             "number": ico.course.number,
                             "course_title": ico.course.title,
+                            "comments": ico.comment_list()
                         }
                         course_offering_item["has_ichair"] = True
                         course_offering_item["linked"] = True
@@ -621,6 +623,7 @@ def banner_comparison_data(request):
                             unlinked_ico)
                         course_offering_item["ichair_options"].append({
                             "course_title": unlinked_ico.course.title,
+                            "comments": unlinked_ico.comment_list(),
                             "course": unlinked_ico.course.subject.abbrev+' '+unlinked_ico.course.number,
                             "number": unlinked_ico.course.number,
                             "credit_hours": unlinked_ico.course.credit_hours,
@@ -707,6 +710,7 @@ def banner_comparison_data(request):
                     banner_options.append({
                         "crn": unlinked_bco.crn,
                         "course_title": unlinked_bco.course.title,
+                        "comments": unlinked_bco.comment_list(),
                         "course": unlinked_bco.course.subject.abbrev+' '+unlinked_bco.course.number,
                         "number": unlinked_bco.course.number,
                         "credit_hours": unlinked_bco.course.credit_hours,
@@ -777,6 +781,7 @@ def banner_comparison_data(request):
                         "course": ico.course.subject.abbrev+' '+ico.course.number,
                         "number": ico.course.number,
                         "course_title": ico.course.title,
+                        
                     },
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
                     "ichair_options": [],

@@ -78,6 +78,15 @@ class CourseOffering(StampedModel):
     crn = models.CharField(max_length=5)
     ichair_id = models.PositiveIntegerField(blank=True, null=True) # id of corresponding ichair course offering, if it exists
 
+    def comment_list(self):
+        comment_list = []
+        for comment in self.offering_comments.all():
+            comment_list.append({
+                "id": comment.id, 
+                "text": comment.text,
+                "sequence_number": comment.sequence_number})
+        return comment_list
+
     def __str__(self):
         return "{0} ({1})".format(self.course, self.term_code)
 

@@ -570,6 +570,15 @@ class CourseOffering(StampedModel):
     def is_in_semester_fraction(self, semester_fraction):
         return (self.semester_fraction == self.FULL_SEMESTER) or (self.semester_fraction == semester_fraction) or (semester_fraction == self.FULL_SEMESTER)
 
+    def comment_list(self):
+        comment_list = []
+        for comment in self.offering_comments.all():
+            comment_list.append({
+                "id": comment.id, 
+                "text": comment.text,
+                "sequence_number": comment.sequence_number})
+        return comment_list
+
     @classmethod
     def partial_semesters(cls):
         return [
