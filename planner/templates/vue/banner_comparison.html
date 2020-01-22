@@ -843,7 +843,7 @@
                                             </td>
                                             <td>
                                                 <div class="arrow-group">
-                                                    <div v-if="item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="item.publicCommentsMatch || !item.hasIChair || !item.hasBanner"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
@@ -853,7 +853,7 @@
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
                                                                 <v-icon class="include-pointer" color="primary"
-                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT)"
+                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS)"
                                                                     v-on="on">
                                                                     mdi-arrow-left-bold-circle
                                                                 </v-icon>
@@ -862,7 +862,7 @@
                                                         </template>
                                                         <span>Copy the registrar's version to iChair</span>
                                                     </v-tooltip>
-                                                    <div v-if="item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="item.publicCommentsMatch || !item.hasIChair || !item.hasBanner"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-right-bold-circle
@@ -872,7 +872,7 @@
                                                         <template v-slot:activator="{ on }">
                                                             <div class="text-center">
                                                                 <v-icon class="include-pointer" color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_SET)"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_SET)"
                                                                     v-on="on">
                                                                     mdi-arrow-right-bold-circle
                                                                 </v-icon>
@@ -905,10 +905,10 @@
                                                 ---
                                             </td>
                                             <td
-                                                v-if="item.delta && item.delta.request_update_max_enrollment && item.delta.max_enrollment">
+                                                v-if="item.delta && item.delta.request_update_public_comments && item.delta.public_comments">
                                                 <div>
                                                     <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
-                                                        <strong>Was:</strong> [[item.delta.max_enrollment.was]]
+                                                        <strong>Was:</strong> [[item.delta.public_comments.was.summary]]
                                                     </span>
                                                     <v-tooltip v-if="item.delta.requested_action == DELTA_ACTION_UPDATE"
                                                         top>
@@ -916,7 +916,7 @@
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer icon-padding-top"
                                                                     color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_UNSET)"
                                                                     v-on="on">
                                                                     mdi-close-circle
                                                                 </v-icon>
@@ -931,7 +931,7 @@
                                                         to:</strong>
                                                     <strong
                                                         v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
-                                                    [[item.delta.max_enrollment.change_to]]
+                                                    [[item.delta.public_comments.change_to.summary]]
                                                 </div>
                                             </td>
                                             <td
@@ -940,7 +940,7 @@
                                             </td>
                                             <td v-else></td>
                                             <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.enrollmentCapsMatch">
+                                                <v-icon class="green--text" v-if="item.publicCommentsMatch">
                                                     mdi-check-circle</v-icon>
                                                 <v-icon class="orange--text" v-else>mdi-alert</v-icon>
                                             </td>

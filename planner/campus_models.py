@@ -642,7 +642,7 @@ class CourseOfferingPublicComment(StampedModel):
     sequence_number = models.DecimalField(max_digits=23, decimal_places=20)
 
     def __str__(self):
-        return "{0} ({1}, {2}): {3} {4}".format(self.course_offering.course, self.course_offering.term_code, self.course_offering.crn, self.sequence_number, self.text)
+        return "{0} ({1}, {2}): {3} {4}".format(self.course_offering.course, self.course_offering.semester, self.course_offering.crn, self.sequence_number, self.text)
 
     class Meta:
         ordering = ['sequence_number']

@@ -602,7 +602,7 @@ def banner_comparison_data(request):
                         course_offering_item["enrollment_caps_match"] = enrollment_caps_match
                         course_offering_item["public_comments_match"] = comments_match
 
-                        course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match and enrollment_caps_match
+                        course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match and enrollment_caps_match and comments_match
 
                     except CourseOffering.DoesNotExist:
                         print(
@@ -1587,15 +1587,21 @@ def public_comments_match(banner_course_offering, ichair_course_offering):
     bco_comments = banner_course_offering.comment_list()
     ico_comments = ichair_course_offering.comment_list()
 
-    print(bco_comments)
-    print(ico_comments)
+    if len(ico_comments["comment_list"])>0:
+        print('bco comments:', bco_comments)
+        print('ico comments:', ico_comments)
 
     if len(bco_comments["comment_list"]) != len(ico_comments["comment_list"]):
         return False
     else:
         comments_agree = True
         for ii in range(len(bco_comments["comment_list"])):
-            if bco_comments["comment_list"][ii] != ico_comments["comment_list"][ii]:
+            print(ii)
+            print(bco_comments["comment_list"][ii]["text"])
+            print(ico_comments["comment_list"][ii]["text"])
+            print('agree: ', bco_comments["comment_list"][ii]["text"] != ico_comments["comment_list"][ii]["text"])
+
+            if bco_comments["comment_list"][ii]["text"] != ico_comments["comment_list"][ii]["text"]:
                 comments_agree = False
         return comments_agree
 
@@ -1961,6 +1967,21 @@ def copy_registrar_course_offering_data_to_ichair(request):
         if 'max_enrollment' in properties_to_update:
             ico.max_enrollment = bco.max_enrollment
             ico.save()
+        if 'comments' in properties_to_update:
+            # first delete any existing iChair comments
+            existing_iChair_comments = ico.comment_list()
+            for ico_comment_data in existing_iChair_comments["comment_list"]:
+                ico_comment = CourseOfferingPublicComment.objects.get(pk=ico_comment_data["id"])
+                deleted_comment = ico_comment.delete()
+                print('iChair comment was deleted: ', deleted_comment)
+            # now copy over the banner comments
+            banner_comments = bco.comment_list()
+            for comment in banner_comments["comment_list"]:
+                new_comment = CourseOfferingPublicComment.objects.create(
+                    course_offering = ico,
+                    text = comment["text"],
+                    sequence_number = comment["sequence_number"])
+                new_comment.save()
         if 'semester_fraction' in properties_to_update:
             ico.semester_fraction = bco.semester_fraction
             ico.save()
@@ -2133,7 +2154,8 @@ def copy_registrar_course_offering_data_to_ichair(request):
             "instructors": ico_instructors,
             "semester": ico.semester.name.name,
             "semester_fraction": int(ico.semester_fraction),
-            "max_enrollment": int(ico.max_enrollment)}
+            "max_enrollment": int(ico.max_enrollment),
+            "comments": ico.comment_list()}
 
         # except:
         #    ico = None
