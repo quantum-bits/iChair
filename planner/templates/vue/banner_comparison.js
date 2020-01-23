@@ -82,6 +82,7 @@ var app = new Vue({
       courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
       courseOfferings: [],
       newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
+      publicCommentsDialog: false, // true when the public comments dialog is being displayed
       courseChoices: [], // used in the new course offering dialog when choosing which course to associate with a course offering that is about to be created
       courseChoice: null, // the course chosen in the new course offering dialog
       newCourseOfferingDialogItem: null, // the courseOfferings 'item' relevant for the new course offering dialog
@@ -90,6 +91,7 @@ var app = new Vue({
       dialog: false, // true when the dialog is being displayed
       dialogTitle: "",
       editMeetings: [], // used to store the data in the class schedule form
+      editComments: [], // used to store the data in the public comments form
       editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule form
       initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
@@ -1115,6 +1117,54 @@ var app = new Vue({
     addNewMeetingTimes(courseInfo) {
       console.log(courseInfo);
     },
+
+    editPublicComments(courseInfo) {
+      this.dialogTitle = "Public Comments for " + courseInfo.course + ": " + courseInfo.name;
+      this.editCourseOfferingData = {
+        courseOfferingId: courseInfo.ichair.course_offering_id,
+        ichairObject: courseInfo.ichair
+      };
+      let commentDetails = courseInfo.ichair.comments.comment_list;
+      this.publicCommentsDialog = true;
+      //trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
+      this.editComments = JSON.parse(JSON.stringify(commentDetails));
+      this.editComments.forEach(comment => {
+        comment.delete = false;
+      });
+      this.initialCommentData = commentDetails;
+      this.addComment();
+      this.addComment();
+    },
+
+    addComment() {
+      let maxSequenceNumber = -Infinity;
+      this.editComments.forEach(comment => {
+        if (comment.sequence_number > maxSequenceNumber) {
+          maxSequenceNumber = comment.sequence_number;
+        }
+      });
+      if (maxSequenceNumber === -Infinity) {
+        maxSequenceNumber = 1;
+      }
+      this.editComments.push({
+        delete: false,
+        text: "",
+        sequence_number: maxSequenceNumber + 1,
+        id: null
+      });
+      console.log('comment data: ', this.editComments);
+    },
+
+    cancelCommentsForm() {
+      this.publicCommentsDialog = false;
+      this.dialogTitle = "";
+    },
+
+    submitComments() {
+      console.log("submit comments!")
+      this.cancelCommentsForm();
+    },
+
     deleteDelta(item) {
       // delete the delta object associated with the item;
       // this is used to delete delta objects that are of the "create" and "delete" type;
@@ -1723,3 +1773,4 @@ var app = new Vue({
     });
   }
 });
+

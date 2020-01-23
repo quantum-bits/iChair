@@ -250,6 +250,68 @@
                             </div>
                         </template>
 
+                        <template>
+                            <div class="text-center">
+                                <v-dialog persistent v-model="publicCommentsDialog" width="800">
+                                    <v-card>
+                                        <v-card-title class="headline grey lighten-2" primary-title>
+                                            [[dialogTitle]]
+                                        </v-card-title>
+                                        <v-card-text>
+                                            <v-container grid-list-md>
+                                                <v-layout wrap>
+                                                    <v-flex xs12>
+                                                        These are comments that will be publicly available to students on Taylor's website.
+                                                    </v-flex>
+                                                </v-layout>
+                                                <v-layout wrap>
+                                                    <v-flex xs10>Comment</v-flex>
+                                                    <v-flex xs2>Delete</v-flex>
+                                                </v-layout>
+                                                <div v-for="comment in editComments">
+                                                    <v-layout wrap>
+                                                        <v-flex xs10 class="text-right">
+                                                            
+                                                            <div>
+                                                                <input class="mt-2" style="height: 32px; width: 100%" type="text" v-model="comment.text">
+                                                            </div>
+                                                            <div class="text-right">
+                                                                [[comment.text.length]]/60
+                                                            </div>
+                                                            
+                                                            <!--<input class="mt-2" style="height: 32px; width: 90%" type="text" v-model="comment.text">-->
+                                                        </v-flex>
+                                                        <v-flex xs2>
+                                                            <v-checkbox class="mt-2"
+                                                                v-model="comment.delete"
+                                                            ></v-checkbox>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </div>
+
+                                                
+                                                <v-layout text-center>
+                                                    <v-flex xs12>
+                                                        <div class="red--text">
+                                                            [[newCourseOfferingDialogErrorMessage]]</div>
+                                                    </v-flex>
+                                                </v-layout>
+                                            </v-container>
+                                        </v-card-text>
+                                        <v-divider></v-divider>
+                                        <v-card-actions>
+                                            <v-spacer></v-spacer>
+                                            <v-btn color="primary" text @click="cancelCommentsForm()">
+                                                Cancel
+                                            </v-btn>
+                                            <v-btn color="primary" text @click="submitComments()">
+                                                Submit
+                                            </v-btn>
+                                        </v-card-actions>
+                                    </v-card>
+                                </v-dialog>
+                            </div>
+                        </template>
 
 
                         <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
@@ -823,13 +885,18 @@
                                             <td>Public Comments</td>
                                             <td v-if="item.hasIChair" class="text-center">
                                                 <div v-if="item.ichair.comments.summary_contains_all_text">
-                                                    [[item.ichair.comments.summary]]
+                                                    <a @click="editPublicComments(item)">
+                                                        [[item.ichair.comments.summary]]
+                                                    </a>
+                                                    
                                                 </div>
                                                 <div v-else>
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <div class="float-left include-pointer" v-on="on">
-                                                                [[item.ichair.comments.summary]]
+                                                                <a @click="editPublicComments(item)">
+                                                                    [[item.ichair.comments.summary]]
+                                                                </a>
                                                             </div>
                                                         </template>
                                                         <div v-for="comment in item.ichair.comments.comment_list">
