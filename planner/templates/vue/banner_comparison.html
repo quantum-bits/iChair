@@ -265,35 +265,40 @@
                                                     </v-flex>
                                                 </v-layout>
                                                 <v-layout wrap>
-                                                    <v-flex xs10>Comment</v-flex>
-                                                    <v-flex xs2>Delete</v-flex>
+                                                    <v-flex xs2 offset-xs10>Delete</v-flex>
                                                 </v-layout>
                                                 <div v-for="comment in editComments">
                                                     <v-layout wrap>
-                                                        <v-flex xs10 class="text-right">
+                                                        <v-flex xs9 class="text-right">
                                                             
                                                             <div>
                                                                 <input class="mt-2" style="height: 32px; width: 100%" type="text" v-model="comment.text">
                                                             </div>
-                                                            <div class="text-right">
+                                                            <div class="text-right" :class="{'red--text': comment.text.length > 60}">
                                                                 [[comment.text.length]]/60
                                                             </div>
                                                             
                                                             <!--<input class="mt-2" style="height: 32px; width: 90%" type="text" v-model="comment.text">-->
                                                         </v-flex>
-                                                        <v-flex xs2>
+                                                        <v-flex xs2 offset-xs1>
                                                             <v-checkbox class="mt-2"
                                                                 v-model="comment.delete"
                                                             ></v-checkbox>
                                                         </v-flex>
                                                     </v-layout>
                                                 </div>
+                                                <v-layout>
+                                                    <v-flex xs12 >
+                                                        <v-btn color="primary"@click="addComment()">Add Another</v-btn>
+                                                    </v-flex>
+                                                </v-layout>
+                                                
 
                                                 
-                                                <v-layout text-center>
+                                                <v-layout v-if="commentsTooLong()" text-center>
                                                     <v-flex xs12>
                                                         <div class="red--text">
-                                                            [[newCourseOfferingDialogErrorMessage]]</div>
+                                                            Comments are limited to 60 characters each.</div>
                                                     </v-flex>
                                                 </v-layout>
                                             </v-container>
@@ -304,7 +309,12 @@
                                             <v-btn color="primary" text @click="cancelCommentsForm()">
                                                 Cancel
                                             </v-btn>
-                                            <v-btn color="primary" text @click="submitComments()">
+                                            <v-btn 
+                                                color="primary" 
+                                                text 
+                                                @click="submitComments()"
+                                                :disabled="commentsTooLong()"
+                                                >
                                                 Submit
                                             </v-btn>
                                         </v-card-actions>
@@ -890,19 +900,35 @@
                                                     </a>
                                                     
                                                 </div>
-                                                <div v-else>
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="float-left include-pointer" v-on="on">
-                                                                <a @click="editPublicComments(item)">
-                                                                    [[item.ichair.comments.summary]]
-                                                                </a>
-                                                            </div>
-                                                        </template>
-                                                        <div v-for="comment in item.ichair.comments.comment_list">
+                                                <div v-else-if="item.showAllIChairComments">
+                                                    <a @click="editPublicComments(item)">
+                                                        <div v-for="comment in item.ichair.comments.comment_list" class="caption text-left">
                                                             [[comment.text]]              
                                                         </div>
-                                                    </v-tooltip>
+                                                    </a>
+                                                    <div>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showLessOfIChairComments(item)">Show Less</v-btn>
+                                                    </div>
+                                                </div>
+                                                <div v-else>
+                                                    <div>
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="float-left include-pointer" v-on="on">
+                                                                    <a @click="editPublicComments(item)">
+                                                                        [[item.ichair.comments.summary]]
+                                                                    </a>
+                                                                </div>
+                                                            </template>
+                                                            <div v-for="comment in item.ichair.comments.comment_list">
+                                                                [[comment.text]]              
+                                                            </div>
+                                                        </v-tooltip>
+                                                    </div>
+                                                    <br>
+                                                    <div>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showMoreOfIChairComments(item)">Show More</v-btn>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td v-else class="text-center">
@@ -955,17 +981,31 @@
                                                 <div v-if="item.banner.comments.summary_contains_all_text">
                                                     [[item.banner.comments.summary]]
                                                 </div>
+                                                <div v-else-if="item.showAllBannerComments">
+                                                    <div v-for="comment in item.banner.comments.comment_list" class="caption text-left">
+                                                        [[comment.text]]              
+                                                    </div>
+                                                    <div>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showLessOfBannerComments(item)">Show Less</v-btn>
+                                                    </div>
+                                                </div>
                                                 <div v-else>
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="float-left include-pointer" v-on="on">
-                                                                [[item.banner.comments.summary]]
+                                                    <div>
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="float-left include-pointer" v-on="on">
+                                                                    [[item.banner.comments.summary]]
+                                                                </div>
+                                                            </template>
+                                                            <div v-for="comment in item.banner.comments.comment_list">
+                                                                [[comment.text]]              
                                                             </div>
-                                                        </template>
-                                                        <div v-for="comment in item.banner.comments.comment_list">
-                                                            [[comment.text]]              
-                                                        </div>
-                                                    </v-tooltip>
+                                                        </v-tooltip>
+                                                    </div>
+                                                    <br>
+                                                    <div>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showMoreOfBannerComments(item)">Show More</v-btn>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td v-else class="text-center">

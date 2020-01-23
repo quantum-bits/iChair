@@ -423,6 +423,8 @@ var app = new Vue({
               bannerChoice: null, //used by a radio select to choose one of the ichairChoices
               showCourseOfferingRadioSelect: showIChairRadioSelect,
               showBannerCourseOfferingRadioSelect: showBannerRadioSelect,
+              showAllIChairComments: false, //used to toggle between showing all comments and showing an abbreviation
+              showAllBannerComments: false, //used to toggle between showing all comments and showing an abbreviation
               banner: course.banner,
               hasIChair: course.has_ichair,
               hasBanner: course.has_banner,
@@ -1132,10 +1134,19 @@ var app = new Vue({
         comment.delete = false;
       });
       this.initialCommentData = commentDetails;
-      this.addComment();
-      this.addComment();
+      if (this.editComments.length === 0) {
+        this.addComment();
+      }
     },
-
+    commentsTooLong() {
+      let commentsAreLong = false;
+      this.editComments.forEach(comment => {
+        if ( comment.text.length>60 ) {
+          commentsAreLong = true;
+        }
+      });
+      return commentsAreLong;
+    },
     addComment() {
       let maxSequenceNumber = -Infinity;
       this.editComments.forEach(comment => {
@@ -1158,6 +1169,23 @@ var app = new Vue({
     cancelCommentsForm() {
       this.publicCommentsDialog = false;
       this.dialogTitle = "";
+      this.editComments = [];
+    },
+    showLessOfIChairComments(courseInfo) {
+      console.log('showing less!');
+      courseInfo.showAllIChairComments = false;
+    },
+    showMoreOfIChairComments(courseInfo) {
+      console.log('showing more!');
+      courseInfo.showAllIChairComments = true;
+    },
+    showLessOfBannerComments(courseInfo) {
+      console.log('showing less!');
+      courseInfo.showAllBannerComments = false;
+    },
+    showMoreOfBannerComments(courseInfo) {
+      console.log('showing more!');
+      courseInfo.showAllBannerComments = true;
     },
 
     submitComments() {
