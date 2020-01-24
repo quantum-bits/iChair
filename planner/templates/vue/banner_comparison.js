@@ -95,6 +95,7 @@ var app = new Vue({
       editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule form
       initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
+      commentFormErrorMessage: "", // used to display errors in the public comments form
       pagination: {
         rowsPerPage: 20
       }
@@ -1132,6 +1133,11 @@ var app = new Vue({
       this.editComments = JSON.parse(JSON.stringify(commentDetails));
       this.editComments.forEach(comment => {
         comment.delete = false;
+        if ((typeof comment.sequence_number) === 'string') {
+          console.log('comment is a string!  fixing....');
+          // https://gomakethings.com/converting-strings-to-numbers-with-vanilla-javascript/
+          comment.sequence_number = Number(comment.sequence_number);
+        }
       });
       this.initialCommentData = commentDetails;
       if (this.editComments.length === 0) {
@@ -1165,31 +1171,115 @@ var app = new Vue({
       });
       console.log('comment data: ', this.editComments);
     },
-
     cancelCommentsForm() {
       this.publicCommentsDialog = false;
       this.dialogTitle = "";
       this.editComments = [];
     },
     showLessOfIChairComments(courseInfo) {
-      console.log('showing less!');
       courseInfo.showAllIChairComments = false;
     },
     showMoreOfIChairComments(courseInfo) {
-      console.log('showing more!');
       courseInfo.showAllIChairComments = true;
     },
     showLessOfBannerComments(courseInfo) {
-      console.log('showing less!');
       courseInfo.showAllBannerComments = false;
     },
     showMoreOfBannerComments(courseInfo) {
-      console.log('showing more!');
       courseInfo.showAllBannerComments = true;
     },
-
     submitComments() {
-      console.log("submit comments!")
+      console.log("submit comments!");
+      let commentsToDelete = []; //list of ids
+      let commentsToUpdate = []; //list of objects
+      let commentsToCreate = []; //list of objects
+      let commentsToLeave = []; //list of objects
+      this.commentFormErrorMessage = "";
+      //let formOK = true;
+      // {'id': 20, 'text': 'Coreq MAT 151: designed to help', 'sequence_number': 1, 'delete': False}
+      this.editComments.forEach(comment => {
+        if (comment.id !== null && comment.delete === true) {
+          commentsToDelete.push(comment.id);
+        } else if (comment.delete === false) {
+          // check if need to make updates....
+          // if the id is null, check if there is any text; if so, create a new comment
+          // if the id is not null, check if there has been a change; if so, do an update (but only if there is some text -- otherwise do a delete)
+          if (comment.id === null) {
+            if (comment.text !== '') {
+              commentsToCreate.push({
+                sequence_number: comment.sequence_number,
+                text: comment.text
+              });
+            }
+          } else { //comment.id is not null, so check if should do an update, or possibly a delete
+            let foundComment = false;
+            let matchingComment = null;
+            let commentsIdentical = true;
+            this.initialCommentData.forEach(initialData => {
+              if (initialData.id === comment.id) {
+                foundComment = true;
+                matchingComment = initialData;
+              }
+            });
+            if (foundComment) {
+              commentsIdentical = matchingComment.text === comment.text;
+            } else {
+              console.log(
+                "something is wrong! cannot find the id for the update...."
+              );
+            }
+            if (commentsIdentical) {
+              commentsToLeave.push({
+                sequence_number: comment.sequence_number,
+                text: comment.text
+              });
+            } else if (comment.text === '') {// user erased the comment, presumably meaning to delete it
+              commentsToDelete.push(comment.id);
+            } else {
+              commentsToUpdate.push({
+                id: comment.id,
+                sequence_number: comment.sequence_number,
+                text: comment.text
+              });
+            }
+          }
+        }
+      });
+      let numChanges =
+        commentsToCreate.length +
+        commentsToUpdate.length +
+        commentsToDelete.length;
+      if (numChanges > 0) {
+        // now post the data...
+        var _this = this;
+        let dataForPost = {
+          courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          delete: commentsToDelete,
+          update: commentsToUpdate,
+          create: commentsToCreate
+        };
+        console.log('data for post: ', dataForPost);
+      
+        $.ajax({
+          // initialize an AJAX request
+          type: "POST",
+          url: "/planner/ajax/update-public-comments/",
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(jsonResponse) {
+            console.log("response: ", jsonResponse);
+            _this.editCourseOfferingData.ichairObject.comments =
+              jsonResponse.comments;
+            _this.cancelCommentsForm();
+          },
+          error: function(jqXHR, exception) {
+            // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+            console.log(jqXHR);
+            //_this.showCreateUpdateErrorMessage();
+            _this.commentFormErrorMessage = "Sorry, there appears to have been an error.";
+          }
+        });
+      }
       this.cancelCommentsForm();
     },
 

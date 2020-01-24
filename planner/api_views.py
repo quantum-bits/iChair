@@ -1811,6 +1811,79 @@ def generate_update_delta(request):
 
     return JsonResponse(data)
 
+@login_required
+@csrf_exempt
+def update_public_comments_api(request):
+    """Update the public comments for a course offering.  Can do any combination of delete, create and update."""
+
+    json_data = json.loads(request.body)
+    print('data: ', json_data)
+
+    course_offering_id = json_data['courseOfferingId']
+    delete_ids = json_data['delete']
+    update_dict = json_data['update']
+    create_dict = json_data['create']
+
+    try:
+        course_offering = CourseOffering.objects.get(pk=course_offering_id)
+    except:
+        course_offering = None
+        print('could not find the course offering....')
+
+    # delete comments
+    deletes_successful = True
+    for delete_id in delete_ids:
+        try:
+            pc = CourseOfferingPublicComment.objects.get(pk=delete_id)
+            pc.delete()
+        except CourseOfferingPublicComment.DoesNotExist:
+            print('unable to delete comment id = ', delete_id,
+                  '; it may be that the object no longer exists.')
+            deletes_successful = False
+
+    # updates first....
+    updates_successful = True
+    for comment in update_dict:
+        try:
+            pc = CourseOfferingPublicComment.objects.get(pk=comment["id"])
+            pc.text = comment["text"][:60] #shouldn't be longer than 60 characters, but truncate it just in case....
+            pc.save()
+        except:
+            updates_successful = False
+            print('not able to complete comment updates')
+
+    # now create new comments
+    creates_successful = True
+    if course_offering:
+        creates_successful = True
+        for comment in create_dict:
+            pc = CourseOfferingPublicComment.objects.create(
+                course_offering=course_offering,
+                text=comment["text"][:60],
+                sequence_number=comment["sequence_number"])
+            pc.save()
+    else:
+        creates_successful = False
+
+    # now retrieve the comments from the db again
+    if course_offering:
+        comments = course_offering.comment_list()
+    else:
+        comments = {
+            "summary": "",
+            "comment_list": [],
+            "summary_contains_all_text": True
+        }
+
+    data = {
+        'updates_successful': updates_successful,
+        'creates_successful': creates_successful,
+        'deletes_successful': deletes_successful,
+        'comments': comments
+    }
+
+    return JsonResponse(data)
+
 
 @login_required
 @csrf_exempt
