@@ -1828,6 +1828,9 @@ def update_public_comments_api(request):
     has_delta = json_data['hasDelta']
     delta = json_data['delta']
 
+    # delta course offering actions from the model itself:
+    delta_course_offering_actions = DeltaCourseOffering.actions()
+
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
     except:
@@ -1887,15 +1890,25 @@ def update_public_comments_api(request):
         pc_match = public_comments_match(bco, course_offering)
         print('public comments match? ', pc_match)
         if has_delta:
+            # if has_banner and has_delta, then we are talking about a delta requested action of "update"
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
             delta_response = delta_update_status(bco, course_offering, dco)
+    elif (not(has_banner)) and course_offering:
+        if has_delta:
+            # in this case we are talking about a delta requested action of "create"
+            dco = DeltaCourseOffering.objects.get(pk=delta["id"])
+            if dco.requested_action != delta_course_offering_actions["create"]:
+                print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
+            else:
+                delta_response = delta_create_status(course_offering, dco)
+                pc_match = delta_response["request_update_public_comments"]
 
     data = {
         'updates_successful': updates_successful,
         'creates_successful': creates_successful,
         'deletes_successful': deletes_successful,
         'comments': comments,
-        'public_comments_match': pc_match, # will be False if there is no banner object
+        'public_comments_match': pc_match,
         'has_delta': has_delta,
         'delta': delta_response # will be None if there is no delta object
     }
@@ -1924,6 +1937,9 @@ def update_class_schedule_api(request):
     update_enrollment_cap = json_data["updateEnrollmentCap"]
     semester_fraction = json_data["semesterFraction"]
     enrollment_cap = json_data["enrollmentCap"]
+
+    # delta course offering actions from the model itself:
+    delta_course_offering_actions = DeltaCourseOffering.actions()
 
     print('sem fraction update? ', update_semester_fraction)
     print('enrollment cap update? ', update_enrollment_cap)
@@ -2028,14 +2044,25 @@ def update_class_schedule_api(request):
         if has_delta:
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
             delta_response = delta_update_status(bco, course_offering, dco)
-    
+    elif (not(has_banner)) and course_offering:
+        if has_delta:
+            # in this case we are talking about a delta requested action of "create"
+            dco = DeltaCourseOffering.objects.get(pk=delta["id"])
+            if dco.requested_action != delta_course_offering_actions["create"]:
+                print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
+            else:
+                delta_response = delta_create_status(course_offering, dco)
+                schedules_match = delta_response["request_update_meeting_times"]
+                sem_fractions_match = delta_response["request_update_semester_fraction"]
+                enrollment_caps_match = delta_response["request_update_max_enrollment"]
+                
     data = {
         'updates_successful': updates_successful,
         'creates_successful': creates_successful,
         'deletes_successful': deletes_successful,
         'meeting_times': meeting_times_list,
         'meeting_times_detail': meeting_times_detail,
-        'schedules_match': schedules_match, # will be False if there is no banner object
+        'schedules_match': schedules_match,
         'max_enrollments_match': enrollment_caps_match,
         'semester_fractions_match': sem_fractions_match,
         'max_enrollment': max_enrollment,
