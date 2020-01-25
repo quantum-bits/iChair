@@ -155,7 +155,7 @@
                                                     <v-layout wrap>
                                                         <v-flex xs4>
 
-                                                            <select style="border-style: solid; height: 32px;"
+                                                            <select class="mt-2" style="border-style: solid; height: 32px;"
                                                                 id="day_select" v-model="meetingTimeDetail.day">
                                                                 <option value="0">Monday</option>
                                                                 <option value="1">Tuesday</option>
@@ -165,18 +165,25 @@
                                                             </select>
                                                         </v-flex>
                                                         <v-flex xs3>
-                                                            <input style="height: 32px; width: 140px;" type="text"
+                                                            <input class="mt-2" style="height: 32px; width: 140px;" type="text"
                                                                 v-model="meetingTimeDetail.begin_at">
                                                         </v-flex>
                                                         <v-flex xs3>
-                                                            <input style="height: 32px; width: 140px;" type="text"
+                                                            <input class="mt-2" style="height: 32px; width: 140px;" type="text"
                                                                 v-model="meetingTimeDetail.end_at">
                                                         </v-flex>
                                                         <v-flex xs2>
-                                                            <input type="checkbox" v-model="meetingTimeDetail.delete">
+                                                            <v-checkbox class="mt-2"
+                                                                v-model="meetingTimeDetail.delete">
+                                                            </v-checkbox>
                                                         </v-flex>
                                                     </v-layout>
                                                 </div>
+                                                <v-layout>
+                                                    <v-flex xs12 >
+                                                        <v-btn color="primary"@click="addMeetingTime()">Add Another</v-btn>
+                                                    </v-flex>
+                                                </v-layout>
                                                 <v-layout text-center>
                                                     <v-flex xs12>
                                                         <div class="red--text">
@@ -270,15 +277,12 @@
                                                 <div v-for="comment in editComments">
                                                     <v-layout wrap>
                                                         <v-flex xs9 class="text-right">
-                                                            
                                                             <div>
                                                                 <input class="mt-2" style="height: 32px; width: 100%" type="text" v-model="comment.text">
                                                             </div>
                                                             <div class="text-right" :class="{'red--text': comment.text.length > 60}">
                                                                 [[comment.text.length]]/60
                                                             </div>
-                                                            
-                                                            <!--<input class="mt-2" style="height: 32px; width: 90%" type="text" v-model="comment.text">-->
                                                         </v-flex>
                                                         <v-flex xs2 offset-xs1>
                                                             <v-checkbox class="mt-2"
@@ -292,16 +296,12 @@
                                                         <v-btn color="primary"@click="addComment()">Add Another</v-btn>
                                                     </v-flex>
                                                 </v-layout>
-                                                
-
-                                                
                                                 <v-layout v-if="commentsTooLong()" text-center>
                                                     <v-flex xs12>
                                                         <div class="red--text">
                                                             Comments are limited to 60 characters each.</div>
                                                     </v-flex>
                                                 </v-layout>
-
                                                 <v-layout text-center>
                                                     <v-flex xs12>
                                                         <div class="red--text">

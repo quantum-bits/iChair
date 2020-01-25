@@ -1916,6 +1916,10 @@ def update_class_schedule_api(request):
     delete_ids = json_data['delete']
     update_dict = json_data['update']
     create_dict = json_data['create']
+    has_banner = json_data['hasBanner']
+    banner_id = json_data['bannerId']
+    has_delta = json_data['hasDelta']
+    delta = json_data['delta']
 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
@@ -1988,12 +1992,25 @@ def update_class_schedule_api(request):
         meeting_times_list = []
         meeting_times_detail = []
 
+    schedules_match = False
+    delta_response = None
+    if has_banner and course_offering:
+        bco = BannerCourseOffering.objects.get(pk=banner_id)
+        schedules_match = scheduled_classes_match(bco, course_offering)
+        print('schedules match? ', schedules_match)
+        if has_delta:
+            dco = DeltaCourseOffering.objects.get(pk=delta["id"])
+            delta_response = delta_update_status(bco, course_offering, dco)
+    
     data = {
         'updates_successful': updates_successful,
         'creates_successful': creates_successful,
         'deletes_successful': deletes_successful,
         "meeting_times": meeting_times_list,
-        "meeting_times_detail": meeting_times_detail
+        "meeting_times_detail": meeting_times_detail,
+        'schedules_match': schedules_match, # will be False if there is no banner object
+        'has_delta': has_delta,
+        'delta': delta_response # will be None if there is no delta object
     }
 
     return JsonResponse(data)

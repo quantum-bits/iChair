@@ -1118,8 +1118,6 @@ var app = new Vue({
         meeting.delete = false;
       });
       this.initialMeetingData = meetingDetails;
-      this.addMeetingTime();
-      this.addMeetingTime();
     },
     editSemesterFraction(courseInfo) {
       console.log("edit semester fraction!");
@@ -1276,8 +1274,6 @@ var app = new Vue({
           update: commentsToUpdate,
           create: commentsToCreate
         };
-        console.log('data for post: ', dataForPost);
-      
         $.ajax({
           // initialize an AJAX request
           type: "POST",
@@ -1286,17 +1282,8 @@ var app = new Vue({
           data: JSON.stringify(dataForPost),
           success: function(jsonResponse) {
             console.log("response: ", jsonResponse);
-
-            console.log('course offering index: ', _this.editCourseOfferingData.courseOfferingIndex);
-
             _this.courseOfferings.forEach(courseOfferingItem => {
-              console.log('index: ', courseOfferingItem.index);
               if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
-
-                console.log('got here!');
-
-
-
                 if (jsonResponse.has_delta) {
                   courseOfferingItem.delta = jsonResponse.delta;
                 } else {
@@ -1721,11 +1708,17 @@ var app = new Vue({
         meetingsToCreate.length +
         meetingsToUpdate.length +
         meetingsToDelete.length;
+      console.log('number of changes: ', numChanges);
+      console.log('form OK: ', formOK);
       if (formOK && numChanges > 0) {
         // now post the data...
         var _this = this;
         let data_for_post = {
           courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
+          bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
+          hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
+          delta: this.editCourseOfferingData.delta,
           delete: meetingsToDelete,
           update: meetingsToUpdate,
           create: meetingsToCreate
@@ -1739,10 +1732,24 @@ var app = new Vue({
           dataType: "json",
           data: JSON.stringify(data_for_post),
           success: function(jsonResponse) {
-            _this.editCourseOfferingData.ichairObject.meeting_times_detail =
-              jsonResponse.meeting_times_detail;
-            _this.editCourseOfferingData.ichairObject.meeting_times =
-              jsonResponse.meeting_times;
+            _this.courseOfferings.forEach(courseOfferingItem => {
+              if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.delta = jsonResponse.delta;
+                } else {
+                  courseOfferingItem.delta = null;
+                }
+                courseOfferingItem.ichair.meeting_times_detail = jsonResponse.meeting_times_detail;
+                courseOfferingItem.ichair.meeting_times = jsonResponse.meeting_times;
+                courseOfferingItem.schedulesMatch = jsonResponse.schedules_match;
+                courseOfferingItem.allOK =
+                  courseOfferingItem.enrollmentCapsMatch &&
+                  courseOfferingItem.instructorsMatch &&
+                  courseOfferingItem.schedulesMatch &&
+                  courseOfferingItem.semesterFractionsMatch &&
+                  courseOfferingItem.publicCommentsMatch;
+              }
+            });
             _this.cancelMeetingsForm();
           },
           error: function(jqXHR, exception) {
@@ -1752,6 +1759,8 @@ var app = new Vue({
               "Sorry, there appears to have been an error.";
           }
         });
+      } else if (formOK && numChanges === 0) {
+        this.cancelMeetingsForm();
       }
     },
     checkTimes(beginTime, endTime) {
