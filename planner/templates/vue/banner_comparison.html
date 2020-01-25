@@ -145,6 +145,37 @@
                                         </v-card-title>
                                         <v-card-text>
                                             <v-container grid-list-md>
+                                                <v-layout class="mt-2" wrap>
+                                                    <v-flex xs3>
+                                                        <div class="mt-3">
+                                                            Enrollment Cap:
+                                                        </div>
+                                                    </v-flex>
+                                                    <v-flex xs1>
+                                                        <input class="mt-2" style="height: 32px; width: 100%" type="text"
+                                                                v-model="editEnrollmentCap">
+                                                    </v-flex>
+                                                    <v-flex xs3 offset-xs1>
+                                                        <div class="mt-2">
+                                                            Semester Fraction:
+                                                        </div>
+                                                    </v-flex>
+                                                    <v-flex xs3>
+                                                        <select class="mt-2" style="border-style: solid; height: 32px;"
+                                                                id="semester_fraction_select" v-model="editSemesterFraction">
+                                                            <option value="0">Full Semester</option>
+                                                            <option value="1">First Half Semester</option>
+                                                            <option value="2">Second Half Semester</option>
+                                                        </select>
+                                                    </v-flex>
+                                                </v-layout>
+                                                <v-layout text-center>
+                                                    <v-flex xs12>
+                                                        <div class="red--text">
+                                                            [[enrollmentErrorMessage]]</div>
+                                                    </v-flex>
+                                                </v-layout>
+                                                <v-divider></v-divider>
                                                 <v-layout wrap>
                                                     <v-flex xs4>Day</v-flex>
                                                     <v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
@@ -652,7 +683,7 @@
                                         <tr>
                                             <td>Enrollment Cap</td>
                                             <td v-if="item.hasIChair" class="text-center">
-                                                <a @click="editSemesterFraction(item)">
+                                                <a @click="editMeetingTimes(item)">
                                                     [[item.ichair.max_enrollment]]
                                                 </a>
                                             </td>
@@ -754,7 +785,7 @@
                                         <tr>
                                             <td>Semester Fraction</td>
                                             <td v-if="item.hasIChair" class="text-center">
-                                                <a @click="editSemesterFraction(item)">
+                                                <a @click="editMeetingTimes(item)">
                                                     <div v-if="item.ichair.semester_fraction == semesterFractions.full">
                                                         Full Semester
                                                     </div>

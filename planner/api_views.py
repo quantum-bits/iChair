@@ -1920,12 +1920,31 @@ def update_class_schedule_api(request):
     banner_id = json_data['bannerId']
     has_delta = json_data['hasDelta']
     delta = json_data['delta']
+    update_semester_fraction = json_data["updateSemesterFraction"]
+    update_enrollment_cap = json_data["updateEnrollmentCap"]
+    semester_fraction = json_data["semesterFraction"]
+    enrollment_cap = json_data["enrollmentCap"]
+
+    print('sem fraction update? ', update_semester_fraction)
+    print('enrollment cap update? ', update_enrollment_cap)
+    print('semester fraction ', semester_fraction)
+    print('enrollment_cap ', enrollment_cap)
+    print('has banner?', has_banner)
 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
     except:
         course_offering = None
         print('could not find the course offering....')
+
+    if course_offering:
+        print('found the course offering')
+        if update_semester_fraction:
+            course_offering.semester_fraction = semester_fraction
+            course_offering.save()
+        if update_enrollment_cap:
+            course_offering.max_enrollment = enrollment_cap
+            course_offering.save()
 
     # delete scheduled classes
     deletes_successful = True
@@ -1983,21 +2002,29 @@ def update_class_schedule_api(request):
     else:
         creates_successful = False
 
-    # now retrieve the scheduled classes from the db again
+    # now retrieve the scheduled classes, etc., from the db again
     if course_offering:
         meeting_times_list, room_list = class_time_and_room_summary(
             course_offering.scheduled_classes.all())
         meeting_times_detail = construct_meeting_times_detail(course_offering)
+        max_enrollment = course_offering.max_enrollment
+        semester_fraction = course_offering.semester_fraction
     else:
         meeting_times_list = []
         meeting_times_detail = []
+        max_enrollment = None
+        semester_fraction = None
 
     schedules_match = False
+    enrollment_caps_match = False
+    sem_fractions_match = False
     delta_response = None
     if has_banner and course_offering:
         bco = BannerCourseOffering.objects.get(pk=banner_id)
         schedules_match = scheduled_classes_match(bco, course_offering)
         print('schedules match? ', schedules_match)
+        enrollment_caps_match = max_enrollments_match(bco, course_offering)
+        sem_fractions_match = semester_fractions_match(bco, course_offering)
         if has_delta:
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
             delta_response = delta_update_status(bco, course_offering, dco)
@@ -2006,9 +2033,13 @@ def update_class_schedule_api(request):
         'updates_successful': updates_successful,
         'creates_successful': creates_successful,
         'deletes_successful': deletes_successful,
-        "meeting_times": meeting_times_list,
-        "meeting_times_detail": meeting_times_detail,
+        'meeting_times': meeting_times_list,
+        'meeting_times_detail': meeting_times_detail,
         'schedules_match': schedules_match, # will be False if there is no banner object
+        'max_enrollments_match': enrollment_caps_match,
+        'semester_fractions_match': sem_fractions_match,
+        'max_enrollment': max_enrollment,
+        'semester_fraction': semester_fraction,
         'has_delta': has_delta,
         'delta': delta_response # will be None if there is no delta object
     }

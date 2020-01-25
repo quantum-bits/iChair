@@ -48,6 +48,7 @@ var app = new Vue({
       COPY_REGISTRAR_TO_ICHAIR_ALL: COPY_REGISTRAR_TO_ICHAIR_ALL,
       semesterFractionsReverse: {}, // used to convert
       semesterFractions: {},
+      semesterFractionsDropdown: [], // used for a drop-down menu
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
       chosenSemesters: [], // ids of semesters chosen to work on
@@ -91,10 +92,16 @@ var app = new Vue({
       dialog: false, // true when the dialog is being displayed
       dialogTitle: "",
       editMeetings: [], // used to store the data in the class schedule form
+      editEnrollmentCap: null, // used to store enrollment data in the class schedule form
+      editSemesterFraction: null, // used to store semester fraction data in the class schedule form
       editComments: [], // used to store the data in the public comments form
       editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule and public comments forms
       initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
+      initialEnrollmentData: null, // used to hold on to the initial enrollment data (before editing)
+      initialSemesterFractionData: null, // used to hold on to the initial semester fraction data (before editing)
+      initialCommentData: [], // used to hold on to the initial comments (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
+      enrollmentErrorMessage: "", // used to display an enrollment error in the class scheduling form
       commentFormErrorMessage: "", // used to display errors in the public comments form
       pagination: {
         rowsPerPage: 20
@@ -1099,7 +1106,7 @@ var app = new Vue({
     //courseOfferings
     editMeetingTimes(courseInfo) {
       let bannerId = null;
-      if (courseInfo.has_banner) {
+      if (courseInfo.hasBanner) {
         bannerId = courseInfo.banner.course_offering_id;
       }
       this.editCourseOfferingData = {
@@ -1117,10 +1124,11 @@ var app = new Vue({
       this.editMeetings.forEach(meeting => {
         meeting.delete = false;
       });
+      this.editEnrollmentCap = courseInfo.ichair.max_enrollment;
+      this.editSemesterFraction = courseInfo.ichair.semester_fraction;
       this.initialMeetingData = meetingDetails;
-    },
-    editSemesterFraction(courseInfo) {
-      console.log("edit semester fraction!");
+      this.initialEnrollmentData = this.editEnrollmentCap;
+      this.initialSemesterFractionData = this.editSemesterFraction;
     },
     addNewMeetingTimes(courseInfo) {
       console.log(courseInfo);
@@ -1616,7 +1624,10 @@ var app = new Vue({
       this.dialog = false;
       this.editMeetings = [];
       this.meetingFormErrorMessage = "";
+      this.enrollmentErrorMessage = "";
       this.editCourseOfferingData = {};
+      this.editEnrollmentCap = null;
+      this.editSemesterFraction = null;
     },
     submitMeetingsForm() {
       let meetingsToDelete = []; //list of ids
@@ -1625,6 +1636,34 @@ var app = new Vue({
       let meetingsToLeave = []; //list of objects
       this.meetingFormErrorMessage = "";
       let formOK = true;
+      updateEnrollmentCap = false;
+      updateSemesterFraction = false;
+      let numChanges = 0;
+      console.log('enrollment cap: ', this.editEnrollmentCap, ' ', typeof this.editEnrollmentCap);
+      console.log('sem fraction: ', this.editSemesterFraction, ' ', typeof this.editSemesterFraction);
+      
+      // this.editEnrollmentCap could be either an int (the original data) or a string (if it's been edited, I think);
+      // the following checks that, no matter if it is a string or an int, it has the form of an int;
+      // using this because parseInt() is pretty forgiving.  If the user types in '8a', we probably don't want to accept that!
+      if (((parseInt(this.editEnrollmentCap).toString().trim()) === this.editEnrollmentCap.toString().trim()) && (parseInt(this.editEnrollmentCap)>0)) {
+        // at this point it looks like an int....
+        if (parseInt(this.editEnrollmentCap) !== this.initialEnrollmentData) {
+          console.log('need to update enrollment!');
+          updateEnrollmentCap = true;
+          numChanges = numChanges + 1;
+        }
+      } else {
+        console.log('enrollment error: ', this.editEnrollmentCap, ' ', typeof this.editEnrollmentCap);
+        this.enrollmentErrorMessage = "Please make sure that the enrollment cap is an integer greater than zero."
+        formOK = false;
+      }
+      // this.editSemesterFraction could be an int or a string, but in either case, parseInt should return the appropriate string
+      if (parseInt(this.editSemesterFraction)!==parseInt(this.initialSemesterFractionData)) {
+        console.log('need to update semester fraction!');
+        updateSemesterFraction = true;
+        numChanges = numChanges + 1;
+      }
+
       this.editMeetings.forEach(meeting => {
         if (meeting.id !== null && meeting.delete === true) {
           meetingsToDelete.push(meeting.id);
@@ -1704,7 +1743,7 @@ var app = new Vue({
           formOK = false;
         }
       }
-      let numChanges =
+      numChanges = numChanges +
         meetingsToCreate.length +
         meetingsToUpdate.length +
         meetingsToDelete.length;
@@ -1721,7 +1760,11 @@ var app = new Vue({
           delta: this.editCourseOfferingData.delta,
           delete: meetingsToDelete,
           update: meetingsToUpdate,
-          create: meetingsToCreate
+          create: meetingsToCreate,
+          updateSemesterFraction: updateSemesterFraction,
+          updateEnrollmentCap: updateEnrollmentCap,
+          semesterFraction: parseInt(this.editSemesterFraction),
+          enrollmentCap: parseInt(this.editEnrollmentCap)
         };
         // https://stackoverflow.com/questions/53714037/decoding-django-post-request-body
         // https://stackoverflow.com/questions/1208067/wheres-my-json-data-in-my-incoming-django-request
@@ -1741,7 +1784,11 @@ var app = new Vue({
                 }
                 courseOfferingItem.ichair.meeting_times_detail = jsonResponse.meeting_times_detail;
                 courseOfferingItem.ichair.meeting_times = jsonResponse.meeting_times;
+                courseOfferingItem.ichair.max_enrollment = jsonResponse.max_enrollment;
+                courseOfferingItem.ichair.semester_fraction = jsonResponse.semester_fraction;
                 courseOfferingItem.schedulesMatch = jsonResponse.schedules_match;
+                courseOfferingItem.enrollmentCapsMatch = jsonResponse.max_enrollments_match;
+                courseOfferingItem.semesterFractionsMatch = jsonResponse.semester_fractions_match;
                 courseOfferingItem.allOK =
                   courseOfferingItem.enrollmentCapsMatch &&
                   courseOfferingItem.instructorsMatch &&
