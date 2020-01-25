@@ -1823,6 +1823,10 @@ def update_public_comments_api(request):
     delete_ids = json_data['delete']
     update_dict = json_data['update']
     create_dict = json_data['create']
+    has_banner = json_data['hasBanner']
+    banner_id = json_data['bannerId']
+    has_delta = json_data['hasDelta']
+    delta = json_data['delta']
 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
@@ -1842,6 +1846,7 @@ def update_public_comments_api(request):
             deletes_successful = False
 
     # updates first....
+    # https://stackoverflow.com/questions/7108080/python-get-the-first-character-of-the-first-string-in-a-list
     updates_successful = True
     for comment in update_dict:
         try:
@@ -1875,11 +1880,24 @@ def update_public_comments_api(request):
             "summary_contains_all_text": True
         }
 
+    pc_match = False
+    delta_response = None
+    if has_banner and course_offering:
+        bco = BannerCourseOffering.objects.get(pk=banner_id)
+        pc_match = public_comments_match(bco, course_offering)
+        print('public comments match? ', pc_match)
+        if has_delta:
+            dco = DeltaCourseOffering.objects.get(pk=delta["id"])
+            delta_response = delta_update_status(bco, course_offering, dco)
+
     data = {
         'updates_successful': updates_successful,
         'creates_successful': creates_successful,
         'deletes_successful': deletes_successful,
-        'comments': comments
+        'comments': comments,
+        'public_comments_match': pc_match, # will be False if there is no banner object
+        'has_delta': has_delta,
+        'delta': delta_response # will be None if there is no delta object
     }
 
     return JsonResponse(data)

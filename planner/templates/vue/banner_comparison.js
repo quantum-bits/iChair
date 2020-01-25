@@ -92,7 +92,7 @@ var app = new Vue({
       dialogTitle: "",
       editMeetings: [], // used to store the data in the class schedule form
       editComments: [], // used to store the data in the public comments form
-      editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule form
+      editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule and public comments forms
       initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
       commentFormErrorMessage: "", // used to display errors in the public comments form
@@ -1098,9 +1098,16 @@ var app = new Vue({
 
     //courseOfferings
     editMeetingTimes(courseInfo) {
+      let bannerId = null;
+      if (courseInfo.has_banner) {
+        bannerId = courseInfo.banner.course_offering_id;
+      }
       this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
         courseOfferingId: courseInfo.ichair.course_offering_id,
-        ichairObject: courseInfo.ichair
+        ichairObject: courseInfo.ichair,
+        bannerId: bannerId,
+        delta: courseInfo.delta
       };
       this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
       let meetingDetails = courseInfo.ichair.meeting_times_detail;
@@ -1123,9 +1130,16 @@ var app = new Vue({
 
     editPublicComments(courseInfo) {
       this.dialogTitle = "Public Comments for " + courseInfo.course + ": " + courseInfo.name;
+      let bannerId = null;
+      if (courseInfo.hasBanner) {
+        bannerId = courseInfo.banner.course_offering_id;
+      }
       this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
         courseOfferingId: courseInfo.ichair.course_offering_id,
-        ichairObject: courseInfo.ichair
+        ichairObject: courseInfo.ichair,
+        bannerId: bannerId,
+        delta: courseInfo.delta
       };
       let commentDetails = courseInfo.ichair.comments.comment_list;
       this.publicCommentsDialog = true;
@@ -1254,6 +1268,10 @@ var app = new Vue({
         var _this = this;
         let dataForPost = {
           courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
+          bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
+          hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
+          delta: this.editCourseOfferingData.delta,
           delete: commentsToDelete,
           update: commentsToUpdate,
           create: commentsToCreate
@@ -1268,9 +1286,34 @@ var app = new Vue({
           data: JSON.stringify(dataForPost),
           success: function(jsonResponse) {
             console.log("response: ", jsonResponse);
-            _this.editCourseOfferingData.ichairObject.comments =
-              jsonResponse.comments;
+
+            console.log('course offering index: ', _this.editCourseOfferingData.courseOfferingIndex);
+
+            _this.courseOfferings.forEach(courseOfferingItem => {
+              console.log('index: ', courseOfferingItem.index);
+              if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+
+                console.log('got here!');
+
+
+
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.delta = jsonResponse.delta;
+                } else {
+                  courseOfferingItem.delta = null;
+                }
+                courseOfferingItem.ichair.comments = jsonResponse.comments;
+                courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
+                courseOfferingItem.allOK =
+                  courseOfferingItem.enrollmentCapsMatch &&
+                  courseOfferingItem.instructorsMatch &&
+                  courseOfferingItem.schedulesMatch &&
+                  courseOfferingItem.semesterFractionsMatch &&
+                  courseOfferingItem.publicCommentsMatch;
+              }
+            });
             _this.cancelCommentsForm();
+            console.log('course offerings: ', _this.courseOfferings);
           },
           error: function(jqXHR, exception) {
             // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
