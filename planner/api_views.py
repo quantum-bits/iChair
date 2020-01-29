@@ -235,6 +235,10 @@ def create_course_offering(request):
     meetings = json_data['meetings']
     instructor_details = json_data['instructorDetails']
     banner_course_offering_id = json_data['bannerCourseOfferingId']
+    comments = json_data['comments']
+
+    print('comments: ', comments)
+
 
     day_sorter_dict = {
         'M': 0,
@@ -301,6 +305,16 @@ def create_course_offering(request):
         else:
             instructors_created_successfully = False
 
+    # now add any comments
+    for comment in comments["comment_list"]:
+        public_comment = CourseOfferingPublicComment.objects.create(
+            course_offering = course_offering,
+            text = comment["text"][:60],
+            sequence_number = float(comment["sequence_number"])
+        )
+        public_comment.save()
+
+
     # now should do the delta stuff and return that, too
     # >>> Note: if the room list is ever included (as above), will need to be more careful about the sorting
     # >>> that is done below, since the room list order and the meeting times order are correlated!
@@ -340,6 +354,7 @@ def create_course_offering(request):
         "course": course_offering.course.subject.abbrev+' '+course_offering.course.number,
         "number": course_offering.course.number,
         "course_title": course_offering.course.title,
+        "comments": course_offering.comment_list()
     }
     agreement_update = {
         "instructors_match": instructors_match(bco, course_offering),
@@ -855,7 +870,9 @@ def delta_update_status(bco, ico, delta):
         "semester_fraction": None,
         "max_enrollment": None,
         "public_comments": None,
-        "messages_exist": False
+        "registrar_comment": delta.extra_comment,
+        "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
+        "messages_exist": False,
     }
 
     # we only check if the meetings agree if the user has requested that a message be generated for this property
@@ -889,7 +906,7 @@ def delta_update_status(bco, ico, delta):
             "change_to": ico.comment_list()
         }
 
-    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
+    if (delta_response["registrar_comment"] is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
         delta_response["messages_exist"] = True
 
     # print(delta_response)
@@ -923,6 +940,8 @@ def delta_create_status(ico, delta):
         "semester_fraction": None,
         "max_enrollment": None,
         "public_comments": None,
+        "registrar_comment": delta.extra_comment,
+        "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
         "messages_exist": False
     }
 
@@ -957,7 +976,7 @@ def delta_create_status(ico, delta):
             "change_to": ico.comment_list()
         }
 
-    if (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
+    if (delta_response["registrar_comment"]  is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
         delta_response["messages_exist"] = True
 
     # print(delta_response)
@@ -993,6 +1012,8 @@ def delta_delete_status(delta):
         "semester_fraction": None,
         "max_enrollment": None,
         "public_comments": None,
+        "registrar_comment": delta.extra_comment,
+        "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
         "messages_exist": True  # the message is simply going to be "delete this course offering"
     }
 

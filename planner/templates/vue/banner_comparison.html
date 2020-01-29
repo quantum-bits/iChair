@@ -467,7 +467,7 @@
                                                 </a>
                                             </td>
                                             <td v-else class="text-center">
-                                                <a @click="addNewMeetingTimes(item)">
+                                                <a @click="editMeetingTimes(item)">
                                                     ---
                                                 </a>
                                             </td>
@@ -577,7 +577,7 @@
                                                 </a>
                                             </td>
                                             <td v-else class="text-center">
-                                                <a @click="addNewMeetingTimes(item)">
+                                                <a @click="editMeetingTimes(item)">
                                                     ---
                                                 </a>
                                             </td>
@@ -688,7 +688,7 @@
                                                 </a>
                                             </td>
                                             <td v-else class="text-center">
-                                                <a @click="addNewMeetingTimes(item)">
+                                                <a @click="editMeetingTimes(item)">
                                                     ---
                                                 </a>
                                             </td>
@@ -800,7 +800,7 @@
                                                 </a>
                                             </td>
                                             <td v-else class="text-center">
-                                                <a @click="addNewMeetingTimes(item)">
+                                                <a @click="editMeetingTimes(item)">
                                                     ---
                                                 </a>
                                             </td>
@@ -1098,6 +1098,11 @@
 
                                     </tbody>
                                 </table>
+                            </v-flex>
+                            <v-flex v-if="displayAddNoteButton(item)">
+                                <v-btn small class="ml-4" color="primary"@click="addNoteForRegistrar(item)">Add Note for Registrar</v-btn>
+                            </v-flex>
+                            <v-flex>
                                 <div v-if="item.classroomsUnassignedWarning">
                                     <strong class="green--text">[[item.classroomsUnassignedWarning]]</strong>
                                 </div>

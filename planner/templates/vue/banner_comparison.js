@@ -817,7 +817,8 @@ var app = new Vue({
         crn: item.crn,
         loadAvailable: item.creditHours, //need to warn the user that this has been set automatically
         meetings: [],
-        instructorDetails: []
+        instructorDetails: [],
+        comments: item.banner.comments
       }
       item.banner.meeting_times_detail.forEach(meetingTime => {
         dataForPost.meetings.push({
@@ -1130,8 +1131,24 @@ var app = new Vue({
       this.initialEnrollmentData = this.editEnrollmentCap;
       this.initialSemesterFractionData = this.editSemesterFraction;
     },
-    addNewMeetingTimes(courseInfo) {
-      console.log(courseInfo);
+    displayAddNoteButton(courseInfo) {
+      // returns true or false, depending on whether one can add a note for the registrar for this course offering
+      // conditions:
+      //  - if a delta object already exists, but there is not yet a comment, then true
+      //  - if no delta object exists yet:
+      //    - if only have a course offering in iChair, then false (user needs to request that the Banner create a course offering first)
+      //    - if only have a course offering in Banner, then false (user should request a "delete" or should copy the course offering over to iChair first)
+      //    - if the course offering exists in iChair and in Banner, then true (and if the button is clicked, create a delta of "update" type)
+      if (courseInfo.delta !== null) {
+        // a delta object exists
+        return !courseInfo.delta.registrar_comment_exists;
+      } else {
+        return courseInfo.hasIChair && courseInfo.hasBanner;
+      }
+    },
+
+    addNoteForRegistrar(courseInfo) {
+      
     },
 
     editPublicComments(courseInfo) {
