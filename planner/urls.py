@@ -50,6 +50,7 @@ urlpatterns = [
     url(r'^ajax/fetch-banner-comparison-data/$', api_views.banner_comparison_data, name='banner_comparison_data'),
     url(r'^ajax/update-class-schedule/$', api_views.update_class_schedule_api, name='update_class_schedule_api'),
     url(r'^ajax/update-public-comments/$', api_views.update_public_comments_api, name='update_public_comments_api'),
+    url(r'^ajax/create-update-delete-note-for-registrar/$', api_views.create_update_delete_note_for_registrar_api, name='create_update_delete_note_for_registrar_api'),
     url(r'^ajax/create-update-courses/$', api_views.create_update_courses, name='create_update_courses'),
     url(r'^ajax/create-course-offering/$', api_views.create_course_offering, name='create_course_offering'),
     url(r'^ajax/generate-update-delta/$', api_views.generate_update_delta, name='generate_update_delta'),

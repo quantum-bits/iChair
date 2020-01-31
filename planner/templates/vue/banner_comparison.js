@@ -84,6 +84,8 @@ var app = new Vue({
       courseOfferings: [],
       newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
       publicCommentsDialog: false, // true when the public comments dialog is being displayed
+      commentForRegistrarDialog: false, // true when the comment for registrar dialog is being displayed
+      commentForRegistrar: "", // used to stored a comment for the registrar
       courseChoices: [], // used in the new course offering dialog when choosing which course to associate with a course offering that is about to be created
       courseChoice: null, // the course chosen in the new course offering dialog
       newCourseOfferingDialogItem: null, // the courseOfferings 'item' relevant for the new course offering dialog
@@ -1147,8 +1149,178 @@ var app = new Vue({
       }
     },
 
-    addNoteForRegistrar(courseInfo) {
+    displayNote(courseInfo) {
+      // whether or not to display a note for the registrar for this course offering
+      if (courseInfo.delta !== null) {
+        // a delta object exists
+        return courseInfo.delta.registrar_comment_exists;
+      } else {
+        return false;
+      }
+    },
+
+    displayNoteForRegistrarDialog(courseInfo) {
+      console.log('display note!');
+      let bannerId = null;
+      let iChairId = null;
+      if (courseInfo.hasBanner) {
+        bannerId = courseInfo.banner.course_offering_id;
+      }
+      if (courseInfo.hasIChair) {
+        iChairId = courseInfo.ichair.course_offering_id;
+      }
+      if (courseInfo.delta !== null) {
+        if (courseInfo.delta.registrar_comment_exists) {
+          this.commentForRegistrar = courseInfo.delta.registrar_comment;
+        } else {
+          this.commentForRegistrar = "";
+        }
+      } else {
+        this.commentForRegistrar = "";
+      }
+      this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
+        courseOfferingId: iChairId,
+        ichairObject: courseInfo.ichair,
+        bannerId: bannerId,
+        iChairId: iChairId,
+        delta: courseInfo.delta,
+        hasIChair: courseInfo.hasIChair,
+        hasBanner: courseInfo.hasBanner
+      };
+      this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
+      this.commentForRegistrarDialog = true;
+    },
+
+    deleteNoteForRegistrar(courseInfo) {
+      // used for deleting a note for the registrar on an existing delta object
+      console.log('delete the note!');
+      this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
+      };
+      let noteInfo = {
+        deltaId: courseInfo.delta.id,
+        hasDelta: true,
+        action: 'delete',
+        text: null, // unimportant, since the note is going to be deleted anyways
+        iChairId: courseInfo.hasIChair ? courseInfo.ichair.course_offering_id : null,
+        bannerId: courseInfo.hasBanner ? courseInfo.banner.course_offering_id : null,
+        hasIChair: courseInfo.hasIChair, // but doesn't matter
+        hasBanner: courseInfo.hasBanner, // but doesn't matter
+      }
+      this.createUpdateDeleteNoteForRegistrar(noteInfo);
+    },
+
+    noteForRegistrarTooLong() {
+      return this.commentForRegistrar.length > 500;
+    },
+
+    cancelNoteForRegistrarForm() {
+      console.log('cancel note for registrar dialog');
+      this.editCourseOfferingData = {};
+      this.dialogTitle = "";
+      this.commentForRegistrarDialog = false;
+      this.commentForRegistrar = "";
+    },
+    submitNoteForRegistrar() {
+      // either submitting a new note or updating an existing one; if the user cleared a note by backspacing, may need to delete a note....
+      console.log('submit note for registrar');
+      let OKToSubmit = true;
+      let hasDelta = !(this.editCourseOfferingData.delta === null);
+      let deltaId = null;
+      if (hasDelta) {
+        deltaId = this.editCourseOfferingData.delta.id;
+      }
+      let text = this.commentForRegistrar;
+      if (text === "") {// user wants to delete the note....
+        if (hasDelta) {
+          action = 'delete'; // delete the note, not the delta object itself....
+        } else {
+          OKToSubmit = false;
+          this.cancelNoteForRegistrarForm();
+        }
+      } else { // text is not a blank string
+        if (hasDelta) {
+          action = 'update'; // a delta object already exists, so we're doing an update to the delta object
+        } else {
+          action = 'create'; // no delta object, so need to create one (which will, confusingly, be of the "update" type....)
+        }
+      }
+      let noteInfo = {
+        deltaId: deltaId,
+        hasDelta: hasDelta,
+        action: action,
+        text: text,
+        iChairId: this.editCourseOfferingData.iChairId,
+        bannerId: this.editCourseOfferingData.bannerId,
+        hasIChair: this.editCourseOfferingData.hasIChair,
+        hasBanner: this.editCourseOfferingData.hasBanner
+      }
+      if (OKToSubmit) {
+        this.createUpdateDeleteNoteForRegistrar(noteInfo);
+      }
+    },
+
+    createUpdateDeleteNoteForRegistrar(noteInfo) {
+      console.log('note info: ', noteInfo);
+      var _this = this;
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/create-update-delete-note-for-registrar/",
+        dataType: "json",
+        data: JSON.stringify(noteInfo),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          _this.courseOfferings.forEach(courseOfferingItem => {
+            if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+              courseOfferingItem.delta = jsonResponse.delta_response;
+            }
+          });
+          _this.cancelNoteForRegistrarForm();
+          console.log('course offerings: ', _this.courseOfferings);
+          /*
+
+          WORKING HERE......
+
+          next...do an update to the course offering, based on the json response....!
+          ...and then test things a bit
+
+          to update from delta response: 
+          registrar_comment_exists: true
+          messages_exist: true
+
+          _this.courseOfferings.forEach(courseOfferingItem => {
+            if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+              if (jsonResponse.has_delta) {
+                courseOfferingItem.delta = jsonResponse.delta;
+              } else {
+                courseOfferingItem.delta = null;
+              }
+              courseOfferingItem.ichair.comments = jsonResponse.comments;
+              courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
+              courseOfferingItem.allOK =
+                courseOfferingItem.enrollmentCapsMatch &&
+                courseOfferingItem.instructorsMatch &&
+                courseOfferingItem.schedulesMatch &&
+                courseOfferingItem.semesterFractionsMatch &&
+                courseOfferingItem.publicCommentsMatch;
+            }
+          });
+          _this.cancelCommentsForm();
+          console.log('course offerings: ', _this.courseOfferings);
+          */
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          //_this.showCreateUpdateErrorMessage();
+          _this.commentFormErrorMessage = "Sorry, there appears to have been an error.";
+        }
+      });
       
+
+
     },
 
     editPublicComments(courseInfo) {

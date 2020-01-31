@@ -307,6 +307,7 @@ def create_course_offering(request):
 
     # now add any comments
     for comment in comments["comment_list"]:
+        # https://www.digitalocean.com/community/tutorials/how-to-convert-data-types-in-python-3
         public_comment = CourseOfferingPublicComment.objects.create(
             course_offering = course_offering,
             text = comment["text"][:60],
@@ -1828,6 +1829,87 @@ def generate_update_delta(request):
         'delta_generation_successful': delta_generation_successful,
         'delta': delta_response,
         'agreement_update': agreement_update
+    }
+
+    return JsonResponse(data)
+
+@login_required
+@csrf_exempt
+def create_update_delete_note_for_registrar_api(request):
+    """
+    Update a note for the registrar for a course offering.  Can do any combination of delete, create and update.
+    Note:
+        - 'update' means update a note on an existing delta object
+        - 'create' means that no delta object exists, so a new one must be created (of 'update' type, with update_meeting_times, etc., set to false)
+        - 'delete' means delete a note on an existing delta object (but leave the rest of the delta object as is)
+    """
+    json_data = json.loads(request.body)
+    print('data: ', json_data)
+    ichair_id = json_data["iChairId"]
+    banner_id = json_data["bannerId"]
+    text = json_data["text"]
+    action = json_data["action"]
+    has_delta = json_data["hasDelta"]
+    delta_id = json_data["deltaId"]
+    has_ichair = json_data["hasIChair"]
+    has_banner = json_data["hasBanner"]
+    
+    updates_successful = True
+
+    if has_ichair:
+        ico = CourseOffering.objects.get(pk=ichair_id)
+    if has_banner:
+            bco = BannerCourseOffering.objects.get(pk=banner_id)
+    
+    delta_course_offering_actions = DeltaCourseOffering.actions()
+    delta_response = None
+
+    if action == 'delete':
+        # delta exists, need to delete the comment
+        if has_delta:
+            dco = DeltaCourseOffering.objects.get(pk=delta_id)
+            dco.extra_comment = None
+            dco.save()
+        else:
+            updates_successful = False
+            print('trying to delete a delta extra_comment, but there is no delta object...!')
+    elif action == 'update':
+        # delta exists, need to update the comment
+        if has_delta:
+            dco = DeltaCourseOffering.objects.get(pk=delta_id)
+            dco.extra_comment = text[:500]
+            dco.save()
+        else:
+            updates_successful = False
+            print('trying to delete a delta extra_comment, but there is no delta object...!')
+    else:
+        # no delta, so need to create one; there _should_ be a banner object, but not not necessarily an iChair one
+        
+        if has_ichair and has_banner:
+            dco = DeltaCourseOffering.objects.create(
+                course_offering=ico,
+                semester=ico.semester,
+                crn=bco.crn,
+                requested_action=delta_course_offering_actions["update"],
+                extra_comment=text[:500])
+            dco.save()
+        else:
+            print('there should be both an iChair course offering and a banner course offering in this case...!')
+            updates_successful = False
+
+    if dco:
+        if dco.requested_action == delta_course_offering_actions["update"]:
+            if has_ichair and has_banner:
+                delta_response = delta_update_status(bco, ico, dco)
+        elif dco.requested_action == delta_course_offering_actions["create"]:
+            if has_ichair:
+                delta_response = delta_create_status(ico, dco)
+        elif dco.requested_action == delta_course_offering_actions["delete"]:
+            delta_response = delta_delete_status(dco)
+
+    data = {
+        'updates_successful': updates_successful,
+        'delta_response': delta_response
     }
 
     return JsonResponse(data)

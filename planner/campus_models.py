@@ -673,7 +673,7 @@ class DeltaCourseOffering(StampedModel):
     semester = models.ForeignKey(Semester, related_name='delta_offerings', on_delete=models.CASCADE) # this allows us to get the term_code as well, for finding the banner course offering
     course_offering = models.ForeignKey(CourseOffering, related_name='delta_offerings', blank=True, null=True, on_delete=models.CASCADE)
 
-    extra_comment = models.CharField(max_length=200, blank=True, null=True, help_text="(optional comment for the registrar)")
+    extra_comment = models.CharField(max_length=500, blank=True, null=True, help_text="(optional comment for the registrar)")
 
     # the action requested of the registrar
     requested_action = models.IntegerField(choices = ACTION_CHOICES, default = UPDATE)

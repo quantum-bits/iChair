@@ -361,6 +361,54 @@
                             </div>
                         </template>
 
+                        <template>
+                            <div class="text-center">
+                                <v-dialog persistent v-model="commentForRegistrarDialog" width="800">
+                                    <v-card>
+                                        <v-card-title class="headline grey lighten-2" primary-title>
+                                            [[dialogTitle]]
+                                        </v-card-title>
+                                        <v-card-text>
+                                            <v-container grid-list-md>
+                                                <v-layout wrap>
+                                                    <v-flex xs12>
+                                                        Comments for the registrar about this course offering.
+                                                    </v-flex>
+                                                </v-layout>
+                                                
+                                                <v-layout>
+                                                    <v-flex xs12>
+                                                        <v-textarea 
+                                                            v-model="commentForRegistrar"
+                                                        ></v-textarea>
+                                                        <div class="text-right" :class="{'red--text': commentForRegistrar.length > 500}">
+                                                            [[commentForRegistrar.length]]/500
+                                                        </div>
+                                                    </v-flex>
+                                                
+                                                </v-layout>
+                                            </v-container>
+                                        </v-card-text>
+                                        <v-divider></v-divider>
+                                        <v-card-actions>
+                                            <v-spacer></v-spacer>
+                                            <v-btn color="primary" text @click="cancelNoteForRegistrarForm()">
+                                                Cancel
+                                            </v-btn>
+                                            <v-btn 
+                                                color="primary" 
+                                                text 
+                                                @click="submitNoteForRegistrar()"
+                                                :disabled="noteForRegistrarTooLong()"
+                                                >
+                                                Submit
+                                            </v-btn>
+            
+                                        </v-card-actions>
+                                    </v-card>
+                                </v-dialog>
+                            </div>
+                        </template>
 
                         <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
 
@@ -1099,9 +1147,63 @@
                                     </tbody>
                                 </table>
                             </v-flex>
-                            <v-flex v-if="displayAddNoteButton(item)">
-                                <v-btn small class="ml-4" color="primary"@click="addNoteForRegistrar(item)">Add Note for Registrar</v-btn>
+                        </v-layout>
+                        <v-layout>
+                            <v-flex v-if="displayAddNoteButton(item)" xs12>
+                                <v-btn small class="ml-4" color="primary"@click="displayNoteForRegistrarDialog(item)">Add Note for Registrar</v-btn>
                             </v-flex>
+                        </v-layout>
+                        <v-layout v-if="displayNote(item)">
+                            <!--<v-flex xs8 offset-xs1>
+                                <strong>Note for Registrar:</strong> [[item.delta.registrar_comment]]
+                            <v-flex>
+                            <v-flex xs3>
+                                some controls
+                            </v-flex>-->
+                            <v-flex xs8 offset-xs1>
+                                <v-alert
+                                    border="left"
+                                    colored-border
+                                    color="primary"
+                                    elevation="1"
+                                    class="body-2"
+                                    >
+                                    <strong>Note for Registrar:</strong> [[item.delta.registrar_comment]]
+                                    
+                                </v-alert>
+                                
+                            </v-flex>
+                            <v-flex xs3 class="pl-3">
+                                <v-tooltip top>
+                                    <template v-slot:activator="{ on }">
+                                        <span class="float-left">
+                                            <v-icon class="include-pointer icon-padding-top"
+                                                color="primary" @click="deleteNoteForRegistrar(item)"
+                                                v-on="on">
+                                                mdi-close-circle
+                                            </v-icon>
+                                        </span>
+                                    </template>
+                                    <span>Delete this note for the registrar.</span>
+                                </v-tooltip>
+                                <v-tooltip top>
+                                    <template v-slot:activator="{ on }">
+                                        <span class="float-left pl-3">
+                                            <v-icon class="include-pointer icon-padding-top"
+                                                color="primary" @click="displayNoteForRegistrarDialog(item)"
+                                                v-on="on">
+                                                mdi-pencil
+                                            </v-icon>
+                                        </span>
+                                    </template>
+                                    <span>Edit this note for the registrar.</span>
+                                </v-tooltip>
+                            </v-flex>
+
+
+                            
+                        </v-layout>
+                        <v-layout>
                             <v-flex>
                                 <div v-if="item.classroomsUnassignedWarning">
                                     <strong class="green--text">[[item.classroomsUnassignedWarning]]</strong>
