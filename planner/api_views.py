@@ -1104,6 +1104,7 @@ def generate_pdf(request):
     tab3 = left_margin + number_width + 3.3*tab
 
     dy = 14
+    registrar_comments_num_chars = 85
 
     layout = {
         "left_margin": left_margin,
@@ -1118,7 +1119,8 @@ def generate_pdf(request):
                 "tab2": tab2,
                 "tab3": tab3
             },
-        "dy": dy
+        "dy": dy,
+        "registrar_comments_num_chars": registrar_comments_num_chars
     }
 
     
@@ -1145,10 +1147,15 @@ def generate_pdf(request):
             page_number += 1
             y = layout["top_page"]
 
+        if item["delta"]["registrar_comment_exists"]:
+            registrar_comment_string_array = split_long_string(item["delta"]["registrar_comment"], layout["registrar_comments_num_chars"])
+            print('registrar comments:')
+            print(registrar_comment_string_array)
+
         if item["delta"]["requested_action"] == 'update':
-            print('we have an update!')
-            print(' ')
-            print(item['delta'])
+            #print('we have an update!')
+            #print(' ')
+            #print(item['delta'])
             course = item["banner"]["course"]
             course_title = item["banner"]["course_title"]
             y -= 2*layout["dy"]
@@ -1172,12 +1179,12 @@ def generate_pdf(request):
             if item["delta"]["public_comments"] is not None:
                 y, imgDoc = render_updates(imgDoc, y, layout, "Website Comments: ", item["delta"]["public_comments"], data_in_list = True)
             if item["delta"]["registrar_comment_exists"]:
-                print('registrar comment!')
+                y, imgDoc = render_registrar_comment(imgDoc, y, layout, registrar_comment_string_array)
 
         if item["delta"]["requested_action"] == 'delete':
-            print('we have a delete!')
-            print(' ')
-            print(item['delta'])
+            #print('we have a delete!')
+            #print(' ')
+            #print(item['delta'])
             course = item["banner"]["course"]
             course_title = item["banner"]["course_title"]
             y -= 2*layout["dy"]
@@ -1189,11 +1196,13 @@ def generate_pdf(request):
             imgDoc.drawString(layout["tabs"]["tab1"], y, "CRN "+crn + " - "+course+",  "+course_title)
             y -= layout["dy"]
             imgDoc.drawString(layout["tabs"]["tab1"], y, "Term: "+term_code)
+            if item["delta"]["registrar_comment_exists"]:
+                y, imgDoc = render_registrar_comment(imgDoc, y, layout, registrar_comment_string_array)
 
         if item["delta"]["requested_action"] == 'create':
-            print('we have a create')
-            print(' ')
-            print(item['delta'])
+            #print('we have a create')
+            #print(' ')
+            #print(item['delta'])
             course = item["ichair"]["course"]
             course_title = item["ichair"]["course_title"]
             y -= 2*layout["dy"]
@@ -1215,8 +1224,10 @@ def generate_pdf(request):
             if item["delta"]["semester_fraction"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Semester Fraction: ", item["delta"]["semester_fraction"], data_in_list = False, data_is_sem_fraction = True)
             if item["delta"]["public_comments"] is not None:
-                y, imgDoc = render_updates(imgDoc, y, layout, "Website Comments: ", item["delta"]["public_comments"], data_in_list = True)
-        
+                y, imgDoc = render_creates(imgDoc, y, layout, "Website Comments: ", item["delta"]["public_comments"], data_in_list = True)
+            if item["delta"]["registrar_comment_exists"]:
+                y, imgDoc = render_registrar_comment(imgDoc, y, layout, registrar_comment_string_array)
+
     imgDoc.drawString(layout["horizontal_center_page"], layout["bottom_margin"]-2*layout["dy"], str(page_number+1))
     imgDoc.showPage()
 
@@ -1250,20 +1261,21 @@ def generate_pdf(request):
 def require_page_break(y, layout, item):
 
     dy = layout["dy"]
+    num_chars = layout["registrar_comments_num_chars"]
 
     delta_y = 3*dy # magnitude of the vertical space required, in px; first increment is for the extra vertical space, title and term code ....
     if item["delta"]["requested_action"] == 'update':
         if item["delta"]["instructors"] is not None:
             # https://www.programiz.com/python-programming/methods/built-in/min
-            delta_y += dy*max(len(item["delta"]["instructors"]["was"]), 1) + dy*max(len(item["delta"]["instructors"]["change_to"]), 1)
+            delta_y += dy + dy*max(len(item["delta"]["instructors"]["was"]), 1) + dy*max(len(item["delta"]["instructors"]["change_to"]), 1)
         if item["delta"]["meeting_times"] is not None:
-            delta_y += dy*max(len(item["delta"]["meeting_times"]["was"]), 1) + dy*max(len(item["delta"]["meeting_times"]["change_to"]), 1)
+            delta_y += dy + dy*max(len(item["delta"]["meeting_times"]["was"]), 1) + dy*max(len(item["delta"]["meeting_times"]["change_to"]), 1)
         if item["delta"]["public_comments"] is not None:
-            delta_y += dy*max(len(item["delta"]["public_comments"]["was"]), 1) + dy*max(len(item["delta"]["public_comments"]["change_to"]), 1)
+            delta_y += dy + dy*max(len(item["delta"]["public_comments"]["was"]), 1) + dy*max(len(item["delta"]["public_comments"]["change_to"]), 1)
         if item["delta"]["max_enrollment"] is not None:
-            delta_y += 2*dy 
+            delta_y += 3*dy 
         if item["delta"]["semester_fraction"] is not None:
-            delta_y += 2*dy
+            delta_y += 3*dy
     if item["delta"]["requested_action"] == 'create':
         if item["delta"]["instructors"] is not None:
             delta_y += dy*max(len(item["delta"]["instructors"]["change_to"]), 1)
@@ -1272,15 +1284,33 @@ def require_page_break(y, layout, item):
         if item["delta"]["public_comments"] is not None:
             delta_y += dy*max(len(item["delta"]["public_comments"]["change_to"]), 1)
         if item["delta"]["max_enrollment"] is not None:
-            delta_y += 2*dy 
+            delta_y += dy 
         if item["delta"]["semester_fraction"] is not None:
-            delta_y += 2*dy
-    # nothing to do if 'delete', since the delta_y only corresponds to one line
+            delta_y += dy
+    # nothing to do if 'delete', since the delta_y only corresponds to one line (except if there are registrar comments....)
+    if item["delta"]["registrar_comment_exists"]:
+        registrar_comment_string_array = split_long_string(item["delta"]["registrar_comment"], num_chars)
+        delta_y += dy + dy*len(registrar_comment_string_array)
 
-    print("delta_y", item["crn"], "  ", delta_y)
+    print("delta_y", item["crn"], "  ", delta_y/dy)
     return y - delta_y < layout["bottom_margin"]
 
-def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_is_sem_fraction = False):
+def render_registrar_comment(imgDoc, y, layout, registrar_comment_string_array):
+    print(registrar_comment_string_array)
+    
+    dy = layout["dy"]
+    tabs = layout["tabs"]
+    y -= dy
+    imgDoc.setFont('VeraBd', 9)
+    imgDoc.drawString(tabs["tab1"], y, 'Note for Registrar:')
+    imgDoc.setFont('Vera', 9)
+    for comment_line in registrar_comment_string_array:
+        y -= dy
+        imgDoc.drawString(tabs["tab1"], y, comment_line)
+
+    return y, imgDoc
+
+def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_is_sem_fraction = False, data_is_registrar_comments = False):
     print(item_dict)
 
     # https://stackoverflow.com/questions/3593193/add-page-break-to-reportlab-canvas-object
@@ -1350,6 +1380,26 @@ def render_creates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_
 
     return y, imgDoc
 
+def split_long_string(original_string, num_chars):
+    """Split a long string into a list of substrings, with each substring having a length of at most num_chars."""
+    # https://stackoverflow.com/questions/743806/how-to-split-a-string-into-a-list
+    words = original_string.split()
+    string_list = []
+    line_len = 0
+    current_string = ''
+    for word in words:
+        line_len = len(current_string)
+        if line_len + 1 + len(word) <= num_chars:
+            if current_string == '':
+                current_string = word
+            else:
+                current_string += ' '+word
+        else:
+            string_list.append(current_string)
+            current_string = ''
+    if current_string != '':
+        string_list.append(current_string)
+    return string_list
 
 def find_unlinked_ichair_course_offerings(bco, semester, subject):
     """Find the unlinked iChair course offerings that could correspond to a particular (unlinked) banner course offering."""
