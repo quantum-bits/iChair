@@ -10,6 +10,8 @@ from banner.models import CourseOffering as BannerCourseOffering
 from banner.models import OfferingInstructor as BannerOfferingInstructor
 from banner.models import ScheduledClass as BannerScheduledClass
 from banner.models import CourseOfferingComment as BannerCourseOfferingComment
+from banner.models import SemesterCodeToImport as BannerSemesterCodeToImport
+from banner.models import SubjectToImport as BannerSubjectToImport
 
 class MultiDBModelAdmin(admin.ModelAdmin):
     # https://docs.djangoproject.com/en/2.2/topics/db/multi-db/
@@ -209,5 +211,7 @@ admin.site.register(BannerCourse, BannerCourseAdmin)
 admin.site.register(BannerFacultyMember, BannerFacultyMemberAdmin)
 admin.site.register(BannerCourseOffering, BannerCourseOfferingAdmin)
 admin.site.register(BannerScheduledClass, BannerScheduledClassAdmin)
+admin.site.register(BannerSemesterCodeToImport)
+admin.site.register(BannerSubjectToImport)
 
 

@@ -181,3 +181,31 @@ class ScheduledClass(StampedModel):
 
     def __str__(self):
         return '{0} ({1} {2})'.format(self.course_offering, self.day, self.begin_at)
+
+class SubjectToImport(StampedModel):
+    """
+    Abbreviations of Subjects that should be imported from the Data Warehouse (e.g., 'MAT', 'PHY',....)
+    We might not want to import _all_ subjects, so this lets us restrict the scope to the ones that we want.
+    There is not a direct link from these SubjectToImport objects and the Subject objects; the Subject objects get wiped out
+    every time there is an import, but the SubjectToImport objects persist in the database.
+    """
+    abbrev = models.CharField(max_length=10) # EG: COS, SYS
+    
+    def __str__(self):
+        return self.abbrev
+
+    class Meta:
+        ordering = ['abbrev']
+
+class SemesterCodeToImport(StampedModel):
+    """
+    Semester codes (e.g., '202010', '202190') in Banner format for which we should import data.  These will need to be adjusted
+    from time to time, but this allows us the ability to import old data (when setting up a new department, for example).
+    """
+    term_code = models.CharField(max_length=6)
+
+    def __str__(self):
+        return self.term_code
+
+    class Meta:
+        ordering = ['term_code']

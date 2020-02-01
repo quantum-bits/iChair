@@ -9,6 +9,8 @@ from banner.models import ScheduledClass as BannerScheduledClass
 from banner.models import FacultyMember as BannerFacultyMember
 from banner.models import OfferingInstructor as BannerOfferingInstructor
 from banner.models import CourseOfferingComment as BannerCourseOfferingComment
+from banner.models import SemesterCodeToImport as BannerSemesterCodeToImport
+from banner.models import SubjectToImport as BannerSubjectToImport
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
@@ -23,6 +25,19 @@ class Command(BaseCommand):
             f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
         cursor = connection.cursor()
         rows = cursor.execute("select @@VERSION").fetchall()
+
+        term_group = ""
+        for semester in BannerSemesterCodeToImport.objects.all():
+            if len(term_group) > 0:
+                term_group += " OR "
+            term_group += "term = '"+semester.term_code+"'"
+
+        subject_group = ""
+        for banner_subject in BannerSubjectToImport.objects.all():
+            if len(subject_group) > 0:
+                subject_group += " OR "
+            subject_group += "subject_code = '"+banner_subject.abbrev+"'"
+        
         course_offering_comments = cursor.execute("""
             SELECT ssrtext_crn as COMMENTCRN
                 , ssrtext_term_code as COMMENTTERM
@@ -34,48 +49,9 @@ class Command(BaseCommand):
             FROM dw.dim_course_section dcs -- Use the course section dimension as base.
                 -- Comments
                 LEFT OUTER JOIN dbo.ssrtext ssr ON ((ssr.ssrtext_term_code = dcs.term) AND (ssr.ssrtext_crn = dcs.course_reference_number))
-            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
-                """).fetchall()
-        # NEXT: probably make course_comments its own thing, and do a left outer join of dbo.ssrtext on 
-        #       the term code and the crn with the course section term code and crn(?)
-
-        #rows2 = cursor.execute("select campus as CMP, term, part_of_term from dw.dim_course_section dcs").fetchall()
-        #faculty_rows = cursor.execute("""
-        #    SELECT pidm AS PIDM, last_name, first_name 
-        #    FROM dw.dim_faculty""").fetchall()
-        # rows2 = cursor.execute("""
-        #     SELECT campus AS CMP
-        #         , subject_course AS COURSE
-        #         , last_name
-        #         , first_name
-        #         , course_reference_number AS CRN
-        #         , course AS TITLE
-        #         , section_credit_hours AS CREDHRS
-        #         , section_capacity AS ENRLCAP
-        #         , section AS [SESSION]
-        #         , dmt.start_time AS STARTTIME
-        #         , dmt.end_time AS ENDTIME
-        #         , dmt.day_of_week AS DAY
-        #         , term
-        #         , replace(days_of_week, '-', '') AS [DAYS], --'TR' as [DAYS]
-        #     left(dmt.start_time, 2) + ':' + right(dmt.start_time, 2) + '-' + left(dmt.end_time, 2) + ':' +
-        #     right(dmt.end_time, 2) AS [TIME], --'14:00-15:20' as [TIME]
-        #         primary_df.last_name AS primary_instructor
-        #         , --,secondary_df.last_name as secondary_instructor
-        #     part_of_term
-        #     --		,dcs.*
-        #     FROM dw.dim_course_section dcs -- Use the course section dimension as base.
-        #         -- Meeting times
-        #         INNER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
-        #         LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
-        #         -- Primary and Secondary Instructors
-        #     INNER JOIN dw.fact_faculty_course primary_ffc ON (dcs.course_section_key = primary_ffc.scheduled_course_key AND
-        #         primary_ffc.primary_instructor = 1) -- Check fact table for primary instructors
-        #         --left outer join dw.fact_faculty_course secondary_ffc on (dcs.course_section_key=secondary_ffc.scheduled_course_key and secondary_ffc.secondary_instructor=1) -- Check fact table for secondary instructors
-        #         LEFT OUTER JOIN dw.dim_faculty primary_df ON (primary_ffc.faculty_key = primary_df.faculty_key)
-        #     WHERE (term = '202020' AND (subject_code = 'PHY' OR subject_code = 'ENP'))
-        #         """).fetchall()
-
+            WHERE (({0}) AND ({1}) AND campus = 'U')
+                """.format(term_group, subject_group)).fetchall()
+    
         course_offering_meetings = cursor.execute("""
             SELECT campus AS CMP
                 , subject_course AS COURSE
@@ -94,8 +70,8 @@ class Command(BaseCommand):
                 -- Meeting times
                 LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                 LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
-            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
-                """).fetchall()
+            WHERE (({0}) AND ({1}) AND campus = 'U')
+                """.format(term_group, subject_group)).fetchall()
 
         course_instructors = cursor.execute("""
             SELECT dcs.*
@@ -106,31 +82,14 @@ class Command(BaseCommand):
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
                 LEFT OUTER JOIN dw.fact_faculty_course ffc ON (ffc.scheduled_course_key = dcs.course_section_key)
                 LEFT OUTER JOIN dw.dim_faculty df ON (ffc.faculty_key = df.faculty_key)
-            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
-                """).fetchall()
+            WHERE (({0}) AND ({1}) AND campus = 'U')
+                """.format(term_group, subject_group)).fetchall()
 
         course_offerings = cursor.execute("""
             SELECT dcs.*
             FROM dw.dim_course_section dcs -- use the course section dimension as base.
-            WHERE ((term = '202020') AND (subject_code = 'MAT') AND campus = 'U')
-                """).fetchall()
-
-        # rows3 = cursor.execute("""
-        #     SELECT dcs.term_code as TERMCODE,
-        #         dcs.course_reference_number as CRN,
-        #         pidm AS instructor_pidm,
-        #         last_name,
-        #         first_name,
-        #         CASE WHEN primary_instructor = 1
-        #             THEN 'Primary'
-        #         ELSE 'Secondary' END AS instructor_type
-        #             --*
-        #     FROM dw.fact_faculty_course ff
-        #         -- Same joins as ichair 1, just reduced to hide other fields and make it appear as an associative table.
-        #         INNER JOIN dw.dim_faculty df ON ff.faculty_key = df.faculty_key
-        #         INNER JOIN dw.dim_course_section dcs ON (dcs.course_section_key = ff.scheduled_course_key)
-        #     WHERE (term = '202020' AND (subject_code = 'PHY' OR subject_code = 'ENP'))
-        #         """).fetchall()
+            WHERE (({0}) AND ({1}) AND campus = 'U')
+                """.format(term_group, subject_group)).fetchall()
 
         cursor.close()
         connection.close()
@@ -139,11 +98,6 @@ class Command(BaseCommand):
 
         number_errors = 0
         error_list = []
-
-        #print('comment(s): ')
-        #print(comments.COMMENTTERM, ' ', comments.COMMENTCRN, ' ', comments.COMMENTTEXT)
-        
-        # create course sections, along with instructors and meeting times....
 
         # start by clearing the banner database!
         # https://stackoverflow.com/questions/3805958/how-to-delete-a-record-in-django-models
@@ -387,7 +341,6 @@ class Command(BaseCommand):
                     text = co_comment.COMMENTTEXT,
                     sequence_number = co_comment.SEQNO)
                 course_offering_comment.save()
-
 
         print('total number of errors encountered: ', number_errors)
         if len(error_list) > 0:
