@@ -871,6 +871,7 @@ def delta_update_status(bco, ico, delta):
         "semester_fraction": None,
         "max_enrollment": None,
         "public_comments": None,
+        "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
         "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
         "messages_exist": False,
@@ -903,8 +904,12 @@ def delta_update_status(bco, ico, delta):
 
     if delta.update_public_comments and (not public_comments_match(bco, ico)):
         delta_response["public_comments"] = {
-            "was": bco.comment_list(),
-            "change_to": ico.comment_list()
+            "was": [comment["text"] for comment in bco.comment_list()["comment_list"]],
+            "change_to": [comment["text"] for comment in ico.comment_list()["comment_list"]]
+        }
+        delta_response["public_comments_summary"] = {
+            "was": bco.comment_list()["summary"],
+            "change_to": ico.comment_list()["summary"]
         }
 
     if (delta_response["registrar_comment"] is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
@@ -941,6 +946,7 @@ def delta_create_status(ico, delta):
         "semester_fraction": None,
         "max_enrollment": None,
         "public_comments": None,
+        "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
         "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
         "messages_exist": False
@@ -974,7 +980,11 @@ def delta_create_status(ico, delta):
     if delta.update_public_comments:
         delta_response["public_comments"] = {
             "was": [],
-            "change_to": ico.comment_list()
+            "change_to": [comment["text"] for comment in ico.comment_list()["comment_list"]]
+        }
+        delta_response["public_comments_summary"] = {
+            "was": [],
+            "change_to": ico.comment_list()["summary"]
         }
 
     if (delta_response["registrar_comment"]  is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
@@ -1013,6 +1023,7 @@ def delta_delete_status(delta):
         "semester_fraction": None,
         "max_enrollment": None,
         "public_comments": None,
+        "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
         "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
         "messages_exist": True  # the message is simply going to be "delete this course offering"
@@ -1037,8 +1048,6 @@ def generate_pdf(request):
 
     for cd in course_data:
         print(cd)
-
-    
 
     """
     deltas format:
@@ -1160,7 +1169,11 @@ def generate_pdf(request):
                 y, imgDoc = render_updates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
             if item["delta"]["semester_fraction"] is not None:
                 y, imgDoc = render_updates(imgDoc, y, layout, "Semester Fraction: ", item["delta"]["semester_fraction"], data_in_list = False, data_is_sem_fraction = True)
-        
+            if item["delta"]["public_comments"] is not None:
+                y, imgDoc = render_updates(imgDoc, y, layout, "Website Comments: ", item["delta"]["public_comments"], data_in_list = True)
+            if item["delta"]["registrar_comment_exists"]:
+                print('registrar comment!')
+
         if item["delta"]["requested_action"] == 'delete':
             print('we have a delete!')
             print(' ')
@@ -1284,6 +1297,7 @@ def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_
         imgDoc.drawString(tabs["tab2"], y, "Change to:")
         counter = 0
         for future_item in item_dict["change_to"]:
+            print('change to: ', future_item)
             if counter > 0:
                 y -= dy
             imgDoc.drawString(tabs["tab3"], y, future_item)

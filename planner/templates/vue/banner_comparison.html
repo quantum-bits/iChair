@@ -1101,7 +1101,7 @@
                                                 v-if="item.delta && item.delta.request_update_public_comments && item.delta.public_comments">
                                                 <div>
                                                     <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
-                                                        <strong>Was:</strong> [[item.delta.public_comments.was.summary]]
+                                                        <strong>Was:</strong> [[item.delta.public_comments_summary.was]]
                                                     </span>
                                                     <v-tooltip v-if="item.delta.requested_action == DELTA_ACTION_UPDATE"
                                                         top>
@@ -1124,7 +1124,7 @@
                                                         to:</strong>
                                                     <strong
                                                         v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
-                                                    [[item.delta.public_comments.change_to.summary]]
+                                                    [[item.delta.public_comments_summary.change_to]]
                                                 </div>
                                             </td>
                                             <td

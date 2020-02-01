@@ -1278,38 +1278,7 @@ var app = new Vue({
             }
           });
           _this.cancelNoteForRegistrarForm();
-          console.log('course offerings: ', _this.courseOfferings);
-          /*
-
-          WORKING HERE......
-
-          next...do an update to the course offering, based on the json response....!
-          ...and then test things a bit
-
-          to update from delta response: 
-          registrar_comment_exists: true
-          messages_exist: true
-
-          _this.courseOfferings.forEach(courseOfferingItem => {
-            if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
-              if (jsonResponse.has_delta) {
-                courseOfferingItem.delta = jsonResponse.delta;
-              } else {
-                courseOfferingItem.delta = null;
-              }
-              courseOfferingItem.ichair.comments = jsonResponse.comments;
-              courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
-              courseOfferingItem.allOK =
-                courseOfferingItem.enrollmentCapsMatch &&
-                courseOfferingItem.instructorsMatch &&
-                courseOfferingItem.schedulesMatch &&
-                courseOfferingItem.semesterFractionsMatch &&
-                courseOfferingItem.publicCommentsMatch;
-            }
-          });
-          _this.cancelCommentsForm();
-          console.log('course offerings: ', _this.courseOfferings);
-          */
+          //console.log('course offerings: ', _this.courseOfferings);
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
