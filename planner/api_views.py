@@ -1214,6 +1214,8 @@ def generate_pdf(request):
                 y, imgDoc = render_creates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
             if item["delta"]["semester_fraction"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Semester Fraction: ", item["delta"]["semester_fraction"], data_in_list = False, data_is_sem_fraction = True)
+            if item["delta"]["public_comments"] is not None:
+                y, imgDoc = render_updates(imgDoc, y, layout, "Website Comments: ", item["delta"]["public_comments"], data_in_list = True)
         
     imgDoc.drawString(layout["horizontal_center_page"], layout["bottom_margin"]-2*layout["dy"], str(page_number+1))
     imgDoc.showPage()
@@ -1256,6 +1258,8 @@ def require_page_break(y, layout, item):
             delta_y += dy*max(len(item["delta"]["instructors"]["was"]), 1) + dy*max(len(item["delta"]["instructors"]["change_to"]), 1)
         if item["delta"]["meeting_times"] is not None:
             delta_y += dy*max(len(item["delta"]["meeting_times"]["was"]), 1) + dy*max(len(item["delta"]["meeting_times"]["change_to"]), 1)
+        if item["delta"]["public_comments"] is not None:
+            delta_y += dy*max(len(item["delta"]["public_comments"]["was"]), 1) + dy*max(len(item["delta"]["public_comments"]["change_to"]), 1)
         if item["delta"]["max_enrollment"] is not None:
             delta_y += 2*dy 
         if item["delta"]["semester_fraction"] is not None:
@@ -1265,6 +1269,8 @@ def require_page_break(y, layout, item):
             delta_y += dy*max(len(item["delta"]["instructors"]["change_to"]), 1)
         if item["delta"]["meeting_times"] is not None:
             delta_y += dy*max(len(item["delta"]["meeting_times"]["change_to"]), 1)
+        if item["delta"]["public_comments"] is not None:
+            delta_y += dy*max(len(item["delta"]["public_comments"]["change_to"]), 1)
         if item["delta"]["max_enrollment"] is not None:
             delta_y += 2*dy 
         if item["delta"]["semester_fraction"] is not None:
