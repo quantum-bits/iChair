@@ -482,6 +482,48 @@ var app = new Vue({
     deactivateInstructorsLeftArrow(item) {
       return item.instructorsMatch || !item.hasIChair || !item.hasBanner;
     },
+    deactivateMaxEnrollmentRightArrow(item) {
+      if (item.delta !== null) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_max_enrollment
+        ) {
+          return false;
+        }
+      }
+      return item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateMaxEnrollmentLeftArrow(item) {
+      return item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateSemesterFractionRightArrow(item) {
+      if (item.delta !== null) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_semester_fraction
+        ) {
+          return false;
+        }
+      }
+      return item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateSemesterFractionLeftArrow(item) {
+      return item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivatePublicCommentsRightArrow(item) {
+      if (item.delta !== null) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_public_comments
+        ) {
+          return false;
+        }
+      }
+      return item.publicCommentsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivatePublicCommentsLeftArrow(item) {
+      return item.publicCommentsMatch || !item.hasIChair || !item.hasBanner;
+    },
 
     showAll() {
       this.itemsPerPage = this.courseOfferings.length;

@@ -742,7 +742,7 @@
                                             </td>
                                             <td>
                                                 <div class="arrow-group">
-                                                    <div v-if="item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="deactivateMaxEnrollmentLeftArrow(item)"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
@@ -761,7 +761,7 @@
                                                         </template>
                                                         <span>Copy the registrar's version to iChair</span>
                                                     </v-tooltip>
-                                                    <div v-if="item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="deactivateMaxEnrollmentRightArrow(item)"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-right-bold-circle
@@ -795,8 +795,7 @@
                                                     <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
                                                         <strong>Was:</strong> [[item.delta.max_enrollment.was]]
                                                     </span>
-                                                    <v-tooltip v-if="item.delta.requested_action == DELTA_ACTION_UPDATE"
-                                                        top>
+                                                    <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer icon-padding-top"
@@ -810,6 +809,7 @@
                                                         <span>Undo</span>
                                                     </v-tooltip>
                                                 </div>
+
                                                 <div>
                                                     <strong
                                                         v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
@@ -854,7 +854,7 @@
                                             </td>
                                             <td>
                                                 <div class="arrow-group">
-                                                    <div v-if="item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="deactivateSemesterFractionLeftArrow(item)"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
@@ -872,7 +872,7 @@
                                                         </template>
                                                         <span>Copy the registrar's version to iChair</span>
                                                     </v-tooltip>
-                                                    <div v-if="item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="deactivateSemesterFractionRightArrow(item)"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-right-bold-circle
@@ -928,8 +928,7 @@
                                                         </span>
                                                     </span>
 
-                                                    <v-tooltip v-if="item.delta.requested_action == DELTA_ACTION_UPDATE"
-                                                        top>
+                                                    <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer icon-padding-top"
@@ -1022,7 +1021,7 @@
                                             </td>
                                             <td>
                                                 <div class="arrow-group">
-                                                    <div v-if="item.publicCommentsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="deactivatePublicCommentsLeftArrow(item)"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-left-bold-circle
@@ -1041,7 +1040,7 @@
                                                         </template>
                                                         <span>Copy the registrar's version to iChair</span>
                                                     </v-tooltip>
-                                                    <div v-if="item.publicCommentsMatch || !item.hasIChair || !item.hasBanner"
+                                                    <div v-if="deactivatePublicCommentsRightArrow(item)"
                                                         class="text-center">
                                                         <v-icon class="grey--text text--lighten-1">
                                                             mdi-arrow-right-bold-circle
@@ -1103,8 +1102,7 @@
                                                     <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
                                                         <strong>Was:</strong> [[item.delta.public_comments_summary.was]]
                                                     </span>
-                                                    <v-tooltip v-if="item.delta.requested_action == DELTA_ACTION_UPDATE"
-                                                        top>
+                                                    <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer icon-padding-top"

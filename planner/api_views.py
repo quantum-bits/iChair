@@ -354,6 +354,7 @@ def create_course_offering(request):
         "max_enrollment": int(course_offering.max_enrollment),
         "course": course_offering.course.subject.abbrev+' '+course_offering.course.number,
         "number": course_offering.course.number,
+        "credit_hours": course_offering.course.credit_hours,
         "course_title": course_offering.course.title,
         "comments": course_offering.comment_list()
     }
@@ -507,6 +508,7 @@ def banner_comparison_data(request):
                         "max_enrollment": int(bco.max_enrollment),
                         "course": bco.course.subject.abbrev+' '+bco.course.number,
                         "number": bco.course.number,
+                        "credit_hours": bco.course.credit_hours,
                         "course_title": bco.course.title,
                         "comments": bco.comment_list()
                     },
@@ -607,6 +609,7 @@ def banner_comparison_data(request):
                             "max_enrollment": int(ico.max_enrollment),
                             "course": ico.course.subject.abbrev+' '+ico.course.number,
                             "number": ico.course.number,
+                            "credit_hours": ico.course.credit_hours,
                             "course_title": ico.course.title,
                             "comments": ico.comment_list()
                         }
@@ -807,6 +810,7 @@ def banner_comparison_data(request):
                         "max_enrollment": int(ico.max_enrollment),
                         "course": ico.course.subject.abbrev+' '+ico.course.number,
                         "number": ico.course.number,
+                        "credit_hours": ico.course.credit_hours,
                         "course_title": ico.course.title,
                         "comments": ico.comment_list()
                     },
@@ -837,9 +841,10 @@ def banner_comparison_data(request):
 
 def construct_instructor_list(course_offering):
     """Constructs a list of instructors for a given (banner or iChair) course offering."""
+    
     return [instr.instructor.first_name+' ' +
+            instr.instructor.last_name + ' (primary)' if (instr.is_primary and len(course_offering.offering_instructors.all())>1) else instr.instructor.first_name+' ' +
             instr.instructor.last_name for instr in course_offering.offering_instructors.all()]
-
 
 def construct_instructor_detail_list(bco):
     """Constructs a list of instructors for a given banner course offering."""
@@ -1158,13 +1163,19 @@ def generate_pdf(request):
             #print(item['delta'])
             course = item["banner"]["course"]
             course_title = item["banner"]["course_title"]
+            credit_hours = item["banner"]["credit_hours"]
+            if credit_hours == 1:
+                hr_versus_hrs = 'hour'
+            else:
+                hr_versus_hrs = 'hours'
             y -= 2*layout["dy"]
             imgDoc.setFont('Vera', 9)
             imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
             imgDoc.setFont('VeraBd', 9)
             imgDoc.drawString(layout["tabs"]["tab0"], y, "Update:")
             imgDoc.setFont('Vera', 9)
-            imgDoc.drawString(layout["tabs"]["tab1"], y, "CRN "+crn + " - "+course+",  "+course_title)
+            # https://pythonprinciples.com/blog/converting-integer-to-string-in-python/
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "CRN "+crn + " - "+course+",  "+course_title + " ("+str(credit_hours)+" credit "+hr_versus_hrs+")")
             y -= layout["dy"]
             imgDoc.drawString(layout["tabs"]["tab1"], y, "Term: "+term_code)
 
@@ -1187,13 +1198,18 @@ def generate_pdf(request):
             #print(item['delta'])
             course = item["banner"]["course"]
             course_title = item["banner"]["course_title"]
+            credit_hours = item["banner"]["credit_hours"]
+            if credit_hours == 1:
+                hr_versus_hrs = 'hour'
+            else:
+                hr_versus_hrs = 'hours'
             y -= 2*layout["dy"]
             imgDoc.setFont('Vera', 9)
             imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
             imgDoc.setFont('VeraBd', 9)
             imgDoc.drawString(layout["tabs"]["tab0"], y, "Delete:")
             imgDoc.setFont('Vera', 9)
-            imgDoc.drawString(layout["tabs"]["tab1"], y, "CRN "+crn + " - "+course+",  "+course_title)
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "CRN "+crn + " - "+course+",  "+course_title + " ("+str(credit_hours)+" credit "+hr_versus_hrs+")")
             y -= layout["dy"]
             imgDoc.drawString(layout["tabs"]["tab1"], y, "Term: "+term_code)
             if item["delta"]["registrar_comment_exists"]:
@@ -1205,13 +1221,18 @@ def generate_pdf(request):
             #print(item['delta'])
             course = item["ichair"]["course"]
             course_title = item["ichair"]["course_title"]
+            credit_hours = item["ichair"]["credit_hours"]
+            if credit_hours == 1:
+                hr_versus_hrs = 'hour'
+            else:
+                hr_versus_hrs = 'hours'
             y -= 2*layout["dy"]
             imgDoc.setFont('Vera', 9)
             imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
             imgDoc.setFont('VeraBd', 9)
             imgDoc.drawString(layout["tabs"]["tab0"], y, "Create:")
             imgDoc.setFont('Vera', 9)
-            imgDoc.drawString(layout["tabs"]["tab1"], y, "New Section - "+course+",  "+course_title)
+            imgDoc.drawString(layout["tabs"]["tab1"], y, "New Section - "+course+",  "+course_title + " ("+str(credit_hours)+" credit "+hr_versus_hrs+")")
             y -= layout["dy"]
             imgDoc.drawString(layout["tabs"]["tab1"], y, "Term: "+term_code)
        
