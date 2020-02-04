@@ -29,6 +29,7 @@ import datetime
 
 import json
 import re
+import uuid
 
 
 @login_required
@@ -1064,14 +1065,16 @@ def generate_pdf(request):
     department_name = department.name
 
     # https://www.programiz.com/python-programming/datetime/strftime
-    file_name_time_string = datetime.datetime.now().strftime("%m-%d-%Y_%H%M%S")
+    # file_name_time_string = datetime.datetime.now().strftime("%m-%d-%Y-%H%M%S")
     # https://stackoverflow.com/questions/1007481/how-do-i-replace-whitespaces-with-underscore-and-vice-versa
-    file_name = "ScheduleEdits_"+department_name.replace(" ", "_")+"_"+file_name_time_string+".pdf"
+    # file_name = "ScheduleEdits-"+department_name.replace(" ", "-")+"-"+file_name_time_string+".pdf"
 
+    # https://www.geeksforgeeks.org/generating-random-ids-using-uuid-python/
+    uuid_int = uuid.uuid1().int
     #pdf.write(open("ScheduleEdits_"+department_name.replace(" ", "_")+"_"+file_name_time_string+".pdf","wb")) 
 
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="searchable_file_name.pdf"'
+    #response = HttpResponse(content_type='application/pdf')
+    #response['Content-Disposition'] = 'attachment; filename="searchable_file_name.pdf"'
 
 
     pdf = PdfFileWriter()
@@ -1263,20 +1266,22 @@ def generate_pdf(request):
     for i in range(page_number+1):    
         pdf.addPage(PdfFileReader(BytesIO(buffer.getvalue())).getPage(i))
 
-    pdf2 = buffer.getvalue()
+    #pdf2 = buffer.getvalue()
     buffer.close()
-    response.write(pdf2)
+    #response.write(pdf2)
     
     # the following writes the pdf to the server's harddrive....
-    pdf.write(open("ScheduleEdits_"+department_name.replace(" ", "_")+"_"+file_name_time_string+".pdf","wb")) 
+    #pdf.write(open("ScheduleEdits-"+department_name.replace(" ", "-")+"-"+file_name_time_string+".pdf","wb")) 
 
-    #buffer.seek(0)
-    # Use PyPDF to merge the image-PDF into the template
+    #https://stackoverflow.com/questions/961632/converting-integer-to-string
+    uuid_string = '{}'.format(uuid_int) # str(...) seems to turn the long string into a string of a real....
+    print('uuid string: ', uuid_string)
+    pdf.write(open("pdf/"+uuid_string+".pdf","wb"))
 
-    #for i in range(page_number+1):    
-    #    pdf.addPage(PdfFileReader(BytesIO(imgTemp.getvalue())).getPage(i))
-
-    return response
+    data = {
+        'UUID': uuid_string
+    }
+    return JsonResponse(data)
 
 
 def require_page_break(y, layout, item):

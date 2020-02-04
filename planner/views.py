@@ -18,7 +18,7 @@ from .helper_functions import *
 
 import json
 import csv
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, FileResponse, Http404
 
 import xlwt
 from os.path import expanduser
@@ -167,7 +167,20 @@ def profile(request):
                 }
     return render(request, 'profile.html', context)
 
+@login_required
+def view_pdf(request, uuid_string):
+    print('value: ', uuid_string)
+    print('type: ', type(uuid_string))
 
+    # https://stackoverflow.com/questions/11779246/how-to-show-a-pdf-file-in-a-django-view
+    try:
+        # can put it in the user's downloads as follows; could also make a name that has a time stamp or something....(look in api_views.py for a way to do that)
+        return FileResponse(open('pdf/'+uuid_string+'.pdf', 'rb'), as_attachment=True, content_type='application/pdf', filename='ScheduleEdits.pdf')
+        #return FileResponse(open('pdf/'+uuid_string+'.pdf', 'rb'), content_type='application/pdf')
+    except FileNotFoundError:
+        raise Http404()
+
+    #return render(request, 'base_pdf.html')
 
 
 

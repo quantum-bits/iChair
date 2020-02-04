@@ -2111,19 +2111,25 @@ var app = new Vue({
         // initialize an AJAX request
         type: "POST",
         url: "/planner/ajax/generate-pdf/",
-        dataType: "html",
+        dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(response) {
           console.log("response: ", response);
+          console.log("response url", response.UUID);
+          //let fname="ScheduleEdits_Biology_02-01-2020_205536.pdf";
           // https://stackoverflow.com/questions/51920230/open-pdf-in-new-window-with-ajax-call
           // I'm not doing this right....
           //var a = document.createElement('a');
           // the response needs to be a unique url of some sort...(?)  
           //a.href= "data:application/octet-stream;base64,"+response;
+          //a.href = 'ScheduleEdits_Biology_02-01-2020_205536.pdf';
           //a.target = '_blank';
-          //a.download = 'filename.pdf';
+          //a.download = 'ScheduleEdits_Biology_02-01-2020_205536.pdf';
           //a.click();
-        
+          //console.log('response.url: ', JSON.parse(response.file_name));
+          var url = '/planner/scheduleeditspdf/'+response.UUID+'/';
+          window.open(url, "_blank");
+          //window.location = url;
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function

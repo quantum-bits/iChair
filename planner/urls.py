@@ -57,6 +57,7 @@ urlpatterns = [
     url(r'^ajax/delete-delta/$', api_views.delete_delta, name='delete_delta'),
     url(r'^ajax/copy-registrar-course-offering-data-to-ichair/$', api_views.copy_registrar_course_offering_data_to_ichair, name='copy_registrar_course_offering_data_to_ichair'),
     url(r'^ajax/generate-pdf/$', api_views.generate_pdf, name='generate_pdf'),
+    url(r'^scheduleeditspdf/(\d+)/$', myapp_views.view_pdf, name='view_pdf'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
     url(r'^chooseyearforcoursecopy/$', myapp_views.choose_year_course_copy, name='choose_year_course_copy'),
