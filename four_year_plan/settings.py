@@ -3,6 +3,8 @@
 from .run_mode import RunMode
 from .secret import SECRET_KEY
 from django.conf import global_settings
+import os.path
+
 run_mode = RunMode('dev', debug_toolbar=False)
 
 DEBUG = run_mode.dev
@@ -13,6 +15,7 @@ ADMINS = (
 )
 
 MANAGERS = ADMINS
+#https://stackoverflow.com/questions/4919600/django-project-root-self-discovery
 
 if run_mode.dev:
     DATABASES = {
@@ -176,8 +179,13 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.admindocs',
     'planner',
-    'banner'
+    'banner',
+    'django_crontab',
 )
+
+CRONJOBS = [
+    ('* * * * *', 'django.core.management.call_command', ['warehouse'], {}, '>> warehouse.log')
+]
 
 if run_mode.debug_toolbar:
     INSTALLED_APPS += ('debug_toolbar',)

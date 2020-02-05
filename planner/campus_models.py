@@ -570,6 +570,36 @@ class CourseOffering(StampedModel):
     def is_in_semester_fraction(self, semester_fraction):
         return (self.semester_fraction == self.FULL_SEMESTER) or (self.semester_fraction == semester_fraction) or (semester_fraction == self.FULL_SEMESTER)
 
+    def comment_list(self):
+        # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
+        comment_list = []
+        ii = 0
+        summary = '---'
+        summary_contains_all_text = True
+        comments = self.offering_comments.all()
+        for comment in comments:
+            comment_list.append({
+                "id": comment.id, 
+                "text": comment.text,
+                "sequence_number": comment.sequence_number})
+            if ii == 0:
+                if len(comments) == 1:
+                    summary = (comment.text[:20] + '...') if len(comment.text) > 20 else comment.text
+                    if len(comment.text) > 20:
+                        summary_contains_all_text = False
+                else:
+                    summary = (comment.text[:20] + '...') if len(comment.text) > 20 else comment.text + '...'
+                    summary_contains_all_text = False
+            ii = ii + 1
+        
+        # summary_contains_all_text is true if the summary text contains all the detail of the comments 
+        # (i.e., there will be no need for a tooltip containing more detail)
+        return { 
+            "summary": summary,
+            "comment_list": comment_list,
+            "summary_contains_all_text": summary_contains_all_text
+        }
+
     @classmethod
     def partial_semesters(cls):
         return [
@@ -601,6 +631,21 @@ class CourseOffering(StampedModel):
         else:
             return '2nd Half Semester'
 
+class CourseOfferingPublicComment(StampedModel):
+    """A comment that can be added to the course offering for display on TU's public website."""
+    course_offering = models.ForeignKey(CourseOffering, related_name='offering_comments', on_delete=models.CASCADE)
+    text = models.CharField(max_length=60)
+    # sequence number is stored as a decimal in Banner (why?!?), so I am following that here, although there
+    # could be problems with rounding, since SQLite does not actually have a real decimal type.
+    # To ensure that there are no problems, just use the sequence number to order the comments, and do the 
+    # same in the ichair database.  In this case, small rounding errors shouldn't be a problem.
+    sequence_number = models.DecimalField(max_digits=23, decimal_places=20)
+
+    def __str__(self):
+        return "{0} ({1}, {2}): {3} {4}".format(self.course_offering.course, self.course_offering.semester, self.course_offering.crn, self.sequence_number, self.text)
+
+    class Meta:
+        ordering = ['sequence_number']
 
 class DeltaCourseOffering(StampedModel):
     """Proposed change to a banner version of a course offering.  Used for communication with the registrar."""
@@ -628,7 +673,7 @@ class DeltaCourseOffering(StampedModel):
     semester = models.ForeignKey(Semester, related_name='delta_offerings', on_delete=models.CASCADE) # this allows us to get the term_code as well, for finding the banner course offering
     course_offering = models.ForeignKey(CourseOffering, related_name='delta_offerings', blank=True, null=True, on_delete=models.CASCADE)
 
-    extra_comment = models.CharField(max_length=200, blank=True, null=True, help_text="(optional comment for the registrar)")
+    extra_comment = models.CharField(max_length=500, blank=True, null=True, help_text="(optional comment for the registrar)")
 
     # the action requested of the registrar
     requested_action = models.IntegerField(choices = ACTION_CHOICES, default = UPDATE)
@@ -640,6 +685,7 @@ class DeltaCourseOffering(StampedModel):
     update_instructors = models.BooleanField(default=False)
     update_semester_fraction = models.BooleanField(default=False)
     update_max_enrollment = models.BooleanField(default=False)
+    update_public_comments = models.BooleanField(default=False)
 
     def __str__(self):
         if self.course_offering is not None:

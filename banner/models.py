@@ -74,9 +74,40 @@ class CourseOffering(StampedModel):
                                         blank=True,
                                         related_name='course_offerings')
     max_enrollment = models.PositiveIntegerField(default=10)
-    banner_comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
+    #banner_comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.CharField(max_length=5)
     ichair_id = models.PositiveIntegerField(blank=True, null=True) # id of corresponding ichair course offering, if it exists
+
+    def comment_list(self):
+        # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
+        comment_list = []
+        ii = 0
+        summary = '---'
+        summary_contains_all_text = True
+        comments = self.offering_comments.all()
+        for comment in comments:
+            comment_list.append({
+                "id": comment.id, 
+                "text": comment.text,
+                "sequence_number": comment.sequence_number})
+            if ii == 0:
+                if len(comments) == 1:
+                    summary = (comment.text[:20] + '...') if len(comment.text) > 20 else comment.text
+                    if len(comment.text) > 20:
+                        summary_contains_all_text = False
+                else:
+                    summary = (comment.text[:20] + '...') if len(comment.text) > 20 else comment.text + '...'
+                    summary_contains_all_text = False
+            ii = ii + 1
+        
+        # summary_contains_all_text is true if the summary text contains all the detail of the comments 
+        # (i.e., there will be no need for a tooltip containing more detail)
+        return { 
+            "summary": summary,
+            "comment_list": comment_list,
+            "summary_contains_all_text": summary_contains_all_text
+        }
+        
 
     def __str__(self):
         return "{0} ({1})".format(self.course, self.term_code)
@@ -86,6 +117,22 @@ class CourseOffering(StampedModel):
         """True if there is a (unique) course offering in the iChair database that has been identified with the current (banner) course offering.""" 
         return self.ichair_id is not None
 
+
+class CourseOfferingComment(StampedModel):
+    """A comment that can be added to the course offering for display on TU's public website."""
+    course_offering = models.ForeignKey(CourseOffering, related_name='offering_comments', on_delete=models.CASCADE)
+    text = models.CharField(max_length=60)
+    # sequence number is stored as a decimal in Banner (why?!?), so I am following that here, although there
+    # could be problems with rounding, since SQLite does not actually have a real decimal type.
+    # To ensure that there are no problems, just use the sequence number to order the comments, and do the 
+    # same in the ichair database.  In this case, small rounding errors shouldn't be a problem.
+    sequence_number = models.DecimalField(max_digits=23, decimal_places=20)
+
+    def __str__(self):
+        return "{0} ({1}, {2}): {3} {4}".format(self.course_offering.course, self.course_offering.term_code, self.course_offering.crn, self.sequence_number, self.text)
+
+    class Meta:
+        ordering = ['sequence_number']
 
 class OfferingInstructor(StampedModel):
     """
@@ -134,3 +181,31 @@ class ScheduledClass(StampedModel):
 
     def __str__(self):
         return '{0} ({1} {2})'.format(self.course_offering, self.day, self.begin_at)
+
+class SubjectToImport(StampedModel):
+    """
+    Abbreviations of Subjects that should be imported from the Data Warehouse (e.g., 'MAT', 'PHY',....)
+    We might not want to import _all_ subjects, so this lets us restrict the scope to the ones that we want.
+    There is not a direct link from these SubjectToImport objects and the Subject objects; the Subject objects get wiped out
+    every time there is an import, but the SubjectToImport objects persist in the database.
+    """
+    abbrev = models.CharField(max_length=10) # EG: COS, SYS
+    
+    def __str__(self):
+        return self.abbrev
+
+    class Meta:
+        ordering = ['abbrev']
+
+class SemesterCodeToImport(StampedModel):
+    """
+    Semester codes (e.g., '202010', '202190') in Banner format for which we should import data.  These will need to be adjusted
+    from time to time, but this allows us the ability to import old data (when setting up a new department, for example).
+    """
+    term_code = models.CharField(max_length=6)
+
+    def __str__(self):
+        return self.term_code
+
+    class Meta:
+        ordering = ['term_code']

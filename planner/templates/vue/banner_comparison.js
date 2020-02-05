@@ -15,11 +15,13 @@ const DELTA_UPDATE_TYPE_MEETING_TIMES = "meetingTimes";
 const DELTA_UPDATE_TYPE_INSTRUCTORS = "instructors";
 const DELTA_UPDATE_TYPE_SEMESTER_FRACTION = "semesterFraction";
 const DELTA_UPDATE_TYPE_ENROLLMENT_CAP = "enrollmentCap";
+const DELTA_UPDATE_TYPE_COMMENTS = "publicComments";
 
 const COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT = "enrollmentCap";
 const COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION = "semesterFraction";
 const COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS = "instructors";
 const COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES = "meetingTimes";
+const COPY_REGISTRAR_TO_ICHAIR_COMMENTS = "publicComments";
 const COPY_REGISTRAR_TO_ICHAIR_ALL = "all";
 
 var app = new Vue({
@@ -32,6 +34,7 @@ var app = new Vue({
       DELTA_UPDATE_TYPE_INSTRUCTORS: DELTA_UPDATE_TYPE_INSTRUCTORS,
       DELTA_UPDATE_TYPE_SEMESTER_FRACTION: DELTA_UPDATE_TYPE_SEMESTER_FRACTION,
       DELTA_UPDATE_TYPE_ENROLLMENT_CAP: DELTA_UPDATE_TYPE_ENROLLMENT_CAP,
+      DELTA_UPDATE_TYPE_COMMENTS: DELTA_UPDATE_TYPE_COMMENTS,
       DELTA_ACTION_SET: DELTA_ACTION_SET,
       DELTA_ACTION_UNSET: DELTA_ACTION_UNSET,
       DELTA_ACTION_CREATE: DELTA_ACTION_CREATE,
@@ -41,9 +44,11 @@ var app = new Vue({
       COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION: COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION,
       COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS: COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS,
       COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES: COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES,
+      COPY_REGISTRAR_TO_ICHAIR_COMMENTS: COPY_REGISTRAR_TO_ICHAIR_COMMENTS,
       COPY_REGISTRAR_TO_ICHAIR_ALL: COPY_REGISTRAR_TO_ICHAIR_ALL,
       semesterFractionsReverse: {}, // used to convert
       semesterFractions: {},
+      semesterFractionsDropdown: [], // used for a drop-down menu
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
       chosenSemesters: [], // ids of semesters chosen to work on
@@ -78,6 +83,9 @@ var app = new Vue({
       courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
       courseOfferings: [],
       newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
+      publicCommentsDialog: false, // true when the public comments dialog is being displayed
+      commentForRegistrarDialog: false, // true when the comment for registrar dialog is being displayed
+      commentForRegistrar: "", // used to stored a comment for the registrar
       courseChoices: [], // used in the new course offering dialog when choosing which course to associate with a course offering that is about to be created
       courseChoice: null, // the course chosen in the new course offering dialog
       newCourseOfferingDialogItem: null, // the courseOfferings 'item' relevant for the new course offering dialog
@@ -86,9 +94,17 @@ var app = new Vue({
       dialog: false, // true when the dialog is being displayed
       dialogTitle: "",
       editMeetings: [], // used to store the data in the class schedule form
-      editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule form
+      editEnrollmentCap: null, // used to store enrollment data in the class schedule form
+      editSemesterFraction: null, // used to store semester fraction data in the class schedule form
+      editComments: [], // used to store the data in the public comments form
+      editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule and public comments forms
       initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
+      initialEnrollmentData: null, // used to hold on to the initial enrollment data (before editing)
+      initialSemesterFractionData: null, // used to hold on to the initial semester fraction data (before editing)
+      initialCommentData: [], // used to hold on to the initial comments (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
+      enrollmentErrorMessage: "", // used to display an enrollment error in the class scheduling form
+      commentFormErrorMessage: "", // used to display errors in the public comments form
       pagination: {
         rowsPerPage: 20
       }
@@ -405,6 +421,7 @@ var app = new Vue({
               instructorsMatch: course.instructors_match,
               semesterFractionsMatch: course.semester_fractions_match,
               enrollmentCapsMatch: course.enrollment_caps_match,
+              publicCommentsMatch: course.public_comments_match,
               ichairSubjectId: course.ichair_subject_id,
               delta: course.delta,
               ichair: course.ichair,
@@ -416,6 +433,8 @@ var app = new Vue({
               bannerChoice: null, //used by a radio select to choose one of the ichairChoices
               showCourseOfferingRadioSelect: showIChairRadioSelect,
               showBannerCourseOfferingRadioSelect: showBannerRadioSelect,
+              showAllIChairComments: false, //used to toggle between showing all comments and showing an abbreviation
+              showAllBannerComments: false, //used to toggle between showing all comments and showing an abbreviation
               banner: course.banner,
               hasIChair: course.has_ichair,
               hasBanner: course.has_banner,
@@ -463,6 +482,48 @@ var app = new Vue({
     deactivateInstructorsLeftArrow(item) {
       return item.instructorsMatch || !item.hasIChair || !item.hasBanner;
     },
+    deactivateMaxEnrollmentRightArrow(item) {
+      if (item.delta !== null) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_max_enrollment
+        ) {
+          return false;
+        }
+      }
+      return item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateMaxEnrollmentLeftArrow(item) {
+      return item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateSemesterFractionRightArrow(item) {
+      if (item.delta !== null) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_semester_fraction
+        ) {
+          return false;
+        }
+      }
+      return item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateSemesterFractionLeftArrow(item) {
+      return item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivatePublicCommentsRightArrow(item) {
+      if (item.delta !== null) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_public_comments
+        ) {
+          return false;
+        }
+      }
+      return item.publicCommentsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivatePublicCommentsLeftArrow(item) {
+      return item.publicCommentsMatch || !item.hasIChair || !item.hasBanner;
+    },
 
     showAll() {
       this.itemsPerPage = this.courseOfferings.length;
@@ -489,7 +550,8 @@ var app = new Vue({
             instructors: false,
             meetingTimes: false,
             enrollmentCap: false,
-            semesterFraction: false
+            semesterFraction: false,
+            publicComments: false,
           }, // request all delta mods by default when issuing a "create" request to the registrar
           deltaId: null, // shouldn't exist at this point, since we are creating a new delta object
           action: DELTA_ACTION_DELETE,
@@ -541,6 +603,9 @@ var app = new Vue({
             item.enrollmentCapsMatch =
               jsonResponse.agreement_update.max_enrollments_match ||
               item.delta.request_update_max_enrollment;
+            item.publicCommentsMatch =
+              jsonResponse.agreement_update.public_comments_match ||
+              item.delta.request_update_public_comments;
             item.instructorsMatch =
               jsonResponse.agreement_update.instructors_match ||
               item.delta.request_update_instructors;
@@ -554,7 +619,8 @@ var app = new Vue({
               item.enrollmentCapsMatch &&
               item.instructorsMatch &&
               item.schedulesMatch &&
-              item.semesterFractionsMatch;
+              item.semesterFractionsMatch &&
+              item.publicCommentsMatch;
             console.log("item after delta update!", item);
             console.log("all course offerings: ", _this.courseOfferings);
             //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
@@ -795,7 +861,8 @@ var app = new Vue({
         crn: item.crn,
         loadAvailable: item.creditHours, //need to warn the user that this has been set automatically
         meetings: [],
-        instructorDetails: []
+        instructorDetails: [],
+        comments: item.banner.comments
       }
       item.banner.meeting_times_detail.forEach(meetingTime => {
         dataForPost.meetings.push({
@@ -826,6 +893,7 @@ var app = new Vue({
               courseOfferingItem.delta = jsonResponse.delta;
               courseOfferingItem.ichair = jsonResponse.ichair_course_offering_data;
               courseOfferingItem.enrollmentCapsMatch = jsonResponse.agreement_update.max_enrollments_match;
+              courseOfferingItem.publicCommentsMatch = jsonResponse.agreement_update.public_comments_match;
               courseOfferingItem.instructorsMatch = jsonResponse.agreement_update.instructors_match;
               courseOfferingItem.schedulesMatch = jsonResponse.agreement_update.meeting_times_match;
               courseOfferingItem.semesterFractionsMatch = jsonResponse.agreement_update.semester_fractions_match;
@@ -833,7 +901,8 @@ var app = new Vue({
                 courseOfferingItem.enrollmentCapsMatch &&
                 courseOfferingItem.instructorsMatch &&
                 courseOfferingItem.schedulesMatch &&
-                courseOfferingItem.semesterFractionsMatch;
+                courseOfferingItem.semesterFractionsMatch &&
+                courseOfferingItem.publicCommentsMatch;
               courseOfferingItem.hasIChair = true;
               courseOfferingItem.linked = true;
               courseOfferingItem.showCourseOfferingRadioSelect = false;
@@ -945,7 +1014,8 @@ var app = new Vue({
             instructors: true,
             meetingTimes: true,
             enrollmentCap: true,
-            semesterFraction: true
+            semesterFraction: true,
+            publicComments: true
           }, // request all delta mods by default when issuing a "create" request to the registrar
           deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
           action: DELTA_ACTION_CREATE,
@@ -1011,6 +1081,9 @@ var app = new Vue({
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match ||
             item.delta.request_update_max_enrollment;
+          item.publicCommentsMatch =
+            jsonResponse.agreement_update.public_comments_match ||
+            item.delta.request_update_public_comments;
           item.instructorsMatch =
             jsonResponse.agreement_update.instructors_match ||
             item.delta.request_update_instructors;
@@ -1024,7 +1097,8 @@ var app = new Vue({
             item.enrollmentCapsMatch &&
             item.instructorsMatch &&
             item.schedulesMatch &&
-            item.semesterFractionsMatch;
+            item.semesterFractionsMatch &&
+            item.publicCommentsMatch;
           console.log("item after delta update!", item);
           console.log("all course offerings: ", _this.courseOfferings);
           //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
@@ -1076,9 +1150,16 @@ var app = new Vue({
 
     //courseOfferings
     editMeetingTimes(courseInfo) {
+      let bannerId = null;
+      if (courseInfo.hasBanner) {
+        bannerId = courseInfo.banner.course_offering_id;
+      }
       this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
         courseOfferingId: courseInfo.ichair.course_offering_id,
-        ichairObject: courseInfo.ichair
+        ichairObject: courseInfo.ichair,
+        bannerId: bannerId,
+        delta: courseInfo.delta
       };
       this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
       let meetingDetails = courseInfo.ichair.meeting_times_detail;
@@ -1088,16 +1169,358 @@ var app = new Vue({
       this.editMeetings.forEach(meeting => {
         meeting.delete = false;
       });
+      this.editEnrollmentCap = courseInfo.ichair.max_enrollment;
+      this.editSemesterFraction = courseInfo.ichair.semester_fraction;
       this.initialMeetingData = meetingDetails;
-      this.addMeetingTime();
-      this.addMeetingTime();
+      this.initialEnrollmentData = this.editEnrollmentCap;
+      this.initialSemesterFractionData = this.editSemesterFraction;
     },
-    editSemesterFraction(courseInfo) {
-      console.log("edit semester fraction!");
+    displayAddNoteButton(courseInfo) {
+      // returns true or false, depending on whether one can add a note for the registrar for this course offering
+      // conditions:
+      //  - if a delta object already exists, but there is not yet a comment, then true
+      //  - if no delta object exists yet:
+      //    - if only have a course offering in iChair, then false (user needs to request that the Banner create a course offering first)
+      //    - if only have a course offering in Banner, then false (user should request a "delete" or should copy the course offering over to iChair first)
+      //    - if the course offering exists in iChair and in Banner, then true (and if the button is clicked, create a delta of "update" type)
+      if (courseInfo.delta !== null) {
+        // a delta object exists
+        return !courseInfo.delta.registrar_comment_exists;
+      } else {
+        return courseInfo.hasIChair && courseInfo.hasBanner;
+      }
     },
-    addNewMeetingTimes(courseInfo) {
-      console.log(courseInfo);
+
+    displayNote(courseInfo) {
+      // whether or not to display a note for the registrar for this course offering
+      if (courseInfo.delta !== null) {
+        // a delta object exists
+        return courseInfo.delta.registrar_comment_exists;
+      } else {
+        return false;
+      }
     },
+
+    displayNoteForRegistrarDialog(courseInfo) {
+      console.log('display note!');
+      let bannerId = null;
+      let iChairId = null;
+      if (courseInfo.hasBanner) {
+        bannerId = courseInfo.banner.course_offering_id;
+      }
+      if (courseInfo.hasIChair) {
+        iChairId = courseInfo.ichair.course_offering_id;
+      }
+      if (courseInfo.delta !== null) {
+        if (courseInfo.delta.registrar_comment_exists) {
+          this.commentForRegistrar = courseInfo.delta.registrar_comment;
+        } else {
+          this.commentForRegistrar = "";
+        }
+      } else {
+        this.commentForRegistrar = "";
+      }
+      this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
+        courseOfferingId: iChairId,
+        ichairObject: courseInfo.ichair,
+        bannerId: bannerId,
+        iChairId: iChairId,
+        delta: courseInfo.delta,
+        hasIChair: courseInfo.hasIChair,
+        hasBanner: courseInfo.hasBanner
+      };
+      this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
+      this.commentForRegistrarDialog = true;
+    },
+
+    deleteNoteForRegistrar(courseInfo) {
+      // used for deleting a note for the registrar on an existing delta object
+      console.log('delete the note!');
+      this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
+      };
+      let noteInfo = {
+        deltaId: courseInfo.delta.id,
+        hasDelta: true,
+        action: 'delete',
+        text: null, // unimportant, since the note is going to be deleted anyways
+        iChairId: courseInfo.hasIChair ? courseInfo.ichair.course_offering_id : null,
+        bannerId: courseInfo.hasBanner ? courseInfo.banner.course_offering_id : null,
+        hasIChair: courseInfo.hasIChair, // but doesn't matter
+        hasBanner: courseInfo.hasBanner, // but doesn't matter
+      }
+      this.createUpdateDeleteNoteForRegistrar(noteInfo);
+    },
+
+    noteForRegistrarTooLong() {
+      return this.commentForRegistrar.length > 500;
+    },
+
+    cancelNoteForRegistrarForm() {
+      console.log('cancel note for registrar dialog');
+      this.editCourseOfferingData = {};
+      this.dialogTitle = "";
+      this.commentForRegistrarDialog = false;
+      this.commentForRegistrar = "";
+    },
+    submitNoteForRegistrar() {
+      // either submitting a new note or updating an existing one; if the user cleared a note by backspacing, may need to delete a note....
+      console.log('submit note for registrar');
+      let OKToSubmit = true;
+      let hasDelta = !(this.editCourseOfferingData.delta === null);
+      let deltaId = null;
+      if (hasDelta) {
+        deltaId = this.editCourseOfferingData.delta.id;
+      }
+      let text = this.commentForRegistrar;
+      if (text === "") {// user wants to delete the note....
+        if (hasDelta) {
+          action = 'delete'; // delete the note, not the delta object itself....
+        } else {
+          OKToSubmit = false;
+          this.cancelNoteForRegistrarForm();
+        }
+      } else { // text is not a blank string
+        if (hasDelta) {
+          action = 'update'; // a delta object already exists, so we're doing an update to the delta object
+        } else {
+          action = 'create'; // no delta object, so need to create one (which will, confusingly, be of the "update" type....)
+        }
+      }
+      let noteInfo = {
+        deltaId: deltaId,
+        hasDelta: hasDelta,
+        action: action,
+        text: text,
+        iChairId: this.editCourseOfferingData.iChairId,
+        bannerId: this.editCourseOfferingData.bannerId,
+        hasIChair: this.editCourseOfferingData.hasIChair,
+        hasBanner: this.editCourseOfferingData.hasBanner
+      }
+      if (OKToSubmit) {
+        this.createUpdateDeleteNoteForRegistrar(noteInfo);
+      }
+    },
+
+    createUpdateDeleteNoteForRegistrar(noteInfo) {
+      console.log('note info: ', noteInfo);
+      var _this = this;
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/create-update-delete-note-for-registrar/",
+        dataType: "json",
+        data: JSON.stringify(noteInfo),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          _this.courseOfferings.forEach(courseOfferingItem => {
+            if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+              courseOfferingItem.delta = jsonResponse.delta_response;
+            }
+          });
+          _this.cancelNoteForRegistrarForm();
+          //console.log('course offerings: ', _this.courseOfferings);
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          //_this.showCreateUpdateErrorMessage();
+          _this.commentFormErrorMessage = "Sorry, there appears to have been an error.";
+        }
+      });
+      
+
+
+    },
+
+    editPublicComments(courseInfo) {
+      this.dialogTitle = "Public Comments for " + courseInfo.course + ": " + courseInfo.name;
+      let bannerId = null;
+      if (courseInfo.hasBanner) {
+        bannerId = courseInfo.banner.course_offering_id;
+      }
+      this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
+        courseOfferingId: courseInfo.ichair.course_offering_id,
+        ichairObject: courseInfo.ichair,
+        bannerId: bannerId,
+        delta: courseInfo.delta
+      };
+      let commentDetails = courseInfo.ichair.comments.comment_list;
+      this.publicCommentsDialog = true;
+      //trick to clone the object: https://www.codementor.io/junedlanja/copy-javascript-object-right-way-ohppc777d
+      this.editComments = JSON.parse(JSON.stringify(commentDetails));
+      this.editComments.forEach(comment => {
+        comment.delete = false;
+        if ((typeof comment.sequence_number) === 'string') {
+          console.log('comment is a string!  fixing....');
+          // https://gomakethings.com/converting-strings-to-numbers-with-vanilla-javascript/
+          comment.sequence_number = Number(comment.sequence_number);
+        }
+      });
+      this.initialCommentData = commentDetails;
+      if (this.editComments.length === 0) {
+        this.addComment();
+      }
+    },
+    commentsTooLong() {
+      let commentsAreLong = false;
+      this.editComments.forEach(comment => {
+        if ( comment.text.length>60 ) {
+          commentsAreLong = true;
+        }
+      });
+      return commentsAreLong;
+    },
+    addComment() {
+      let maxSequenceNumber = -Infinity;
+      this.editComments.forEach(comment => {
+        if (comment.sequence_number > maxSequenceNumber) {
+          maxSequenceNumber = comment.sequence_number;
+        }
+      });
+      if (maxSequenceNumber === -Infinity) {
+        maxSequenceNumber = 1;
+      }
+      this.editComments.push({
+        delete: false,
+        text: "",
+        sequence_number: maxSequenceNumber + 1,
+        id: null
+      });
+      console.log('comment data: ', this.editComments);
+    },
+    cancelCommentsForm() {
+      this.publicCommentsDialog = false;
+      this.dialogTitle = "";
+      this.editComments = [];
+    },
+    showLessOfIChairComments(courseInfo) {
+      courseInfo.showAllIChairComments = false;
+    },
+    showMoreOfIChairComments(courseInfo) {
+      courseInfo.showAllIChairComments = true;
+    },
+    showLessOfBannerComments(courseInfo) {
+      courseInfo.showAllBannerComments = false;
+    },
+    showMoreOfBannerComments(courseInfo) {
+      courseInfo.showAllBannerComments = true;
+    },
+    submitComments() {
+      console.log("submit comments!");
+      let commentsToDelete = []; //list of ids
+      let commentsToUpdate = []; //list of objects
+      let commentsToCreate = []; //list of objects
+      let commentsToLeave = []; //list of objects
+      this.commentFormErrorMessage = "";
+      //let formOK = true;
+      // {'id': 20, 'text': 'Coreq MAT 151: designed to help', 'sequence_number': 1, 'delete': False}
+      this.editComments.forEach(comment => {
+        if (comment.id !== null && comment.delete === true) {
+          commentsToDelete.push(comment.id);
+        } else if (comment.delete === false) {
+          // check if need to make updates....
+          // if the id is null, check if there is any text; if so, create a new comment
+          // if the id is not null, check if there has been a change; if so, do an update (but only if there is some text -- otherwise do a delete)
+          if (comment.id === null) {
+            if (comment.text !== '') {
+              commentsToCreate.push({
+                sequence_number: comment.sequence_number,
+                text: comment.text
+              });
+            }
+          } else { //comment.id is not null, so check if should do an update, or possibly a delete
+            let foundComment = false;
+            let matchingComment = null;
+            let commentsIdentical = true;
+            this.initialCommentData.forEach(initialData => {
+              if (initialData.id === comment.id) {
+                foundComment = true;
+                matchingComment = initialData;
+              }
+            });
+            if (foundComment) {
+              commentsIdentical = matchingComment.text === comment.text;
+            } else {
+              console.log(
+                "something is wrong! cannot find the id for the update...."
+              );
+            }
+            if (commentsIdentical) {
+              commentsToLeave.push({
+                sequence_number: comment.sequence_number,
+                text: comment.text
+              });
+            } else if (comment.text === '') {// user erased the comment, presumably meaning to delete it
+              commentsToDelete.push(comment.id);
+            } else {
+              commentsToUpdate.push({
+                id: comment.id,
+                sequence_number: comment.sequence_number,
+                text: comment.text
+              });
+            }
+          }
+        }
+      });
+      let numChanges =
+        commentsToCreate.length +
+        commentsToUpdate.length +
+        commentsToDelete.length;
+      if (numChanges > 0) {
+        // now post the data...
+        var _this = this;
+        let dataForPost = {
+          courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
+          bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
+          hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
+          delta: this.editCourseOfferingData.delta,
+          delete: commentsToDelete,
+          update: commentsToUpdate,
+          create: commentsToCreate
+        };
+        $.ajax({
+          // initialize an AJAX request
+          type: "POST",
+          url: "/planner/ajax/update-public-comments/",
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(jsonResponse) {
+            console.log("response: ", jsonResponse);
+            _this.courseOfferings.forEach(courseOfferingItem => {
+              if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.delta = jsonResponse.delta;
+                } else {
+                  courseOfferingItem.delta = null;
+                }
+                courseOfferingItem.ichair.comments = jsonResponse.comments;
+                courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
+                courseOfferingItem.allOK =
+                  courseOfferingItem.enrollmentCapsMatch &&
+                  courseOfferingItem.instructorsMatch &&
+                  courseOfferingItem.schedulesMatch &&
+                  courseOfferingItem.semesterFractionsMatch &&
+                  courseOfferingItem.publicCommentsMatch;
+              }
+            });
+            _this.cancelCommentsForm();
+            console.log('course offerings: ', _this.courseOfferings);
+          },
+          error: function(jqXHR, exception) {
+            // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+            console.log(jqXHR);
+            //_this.showCreateUpdateErrorMessage();
+            _this.commentFormErrorMessage = "Sorry, there appears to have been an error.";
+          }
+        });
+      }
+      this.cancelCommentsForm();
+    },
+
     deleteDelta(item) {
       // delete the delta object associated with the item;
       // this is used to delete delta objects that are of the "create" and "delete" type;
@@ -1118,6 +1541,8 @@ var app = new Vue({
           item.delta = null;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match;
+          item.publicCommentsMatch =
+            jsonResponse.agreement_update.max_enrollments_match;
           item.instructorsMatch =
             jsonResponse.agreement_update.instructors_match;
           item.schedulesMatch =
@@ -1128,7 +1553,8 @@ var app = new Vue({
             item.enrollmentCapsMatch &&
             item.instructorsMatch &&
             item.schedulesMatch &&
-            item.semesterFractionsMatch;
+            item.semesterFractionsMatch &&
+            item.publicCommentsMatch;
           if (deltaAction === DELTA_ACTION_CREATE) {
             // we deleted a request to create a new banner course offering, so now we need to show the list of banner choices again
             item.bannerChoice = null;
@@ -1155,6 +1581,7 @@ var app = new Vue({
       //  - DELTA_UPDATE_TYPE_MEETING_TIMES
       //  - DELTA_UPDATE_TYPE_ENROLLMENT_CAP
       //  - DELTA_UPDATE_TYPE_SEMESTER_FRACTION
+      //  - DELTA_UPDATE_TYPE_COMMENTS
       // updateOrUndo is DELTA_ACTION_UPDATE or DELTA_ACTION_UNDO_UPDATE
       //
       // https://www.w3schools.com/jsref/jsref_switch.asp
@@ -1175,6 +1602,11 @@ var app = new Vue({
         case DELTA_UPDATE_TYPE_ENROLLMENT_CAP:
           deltaMods = {
             enrollmentCap: updateSetOrUnset === DELTA_ACTION_SET ? true : false
+          };
+          break;
+        case DELTA_UPDATE_TYPE_COMMENTS:
+          deltaMods = {
+            publicComments: updateSetOrUnset === DELTA_ACTION_SET ? true : false
           };
           break;
         case DELTA_UPDATE_TYPE_SEMESTER_FRACTION:
@@ -1258,6 +1690,9 @@ var app = new Vue({
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match ||
             item.delta.request_update_max_enrollment;
+          item.publicCommentsMatch =
+            jsonResponse.agreement_update.public_comments_match ||
+            item.delta.request_update_public_comments;
           item.instructorsMatch =
             jsonResponse.agreement_update.instructors_match ||
             item.delta.request_update_instructors;
@@ -1271,7 +1706,8 @@ var app = new Vue({
             item.enrollmentCapsMatch &&
             item.instructorsMatch &&
             item.schedulesMatch &&
-            item.semesterFractionsMatch;
+            item.semesterFractionsMatch &&
+            item.publicCommentsMatch;
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
@@ -1311,6 +1747,10 @@ var app = new Vue({
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES) {
         console.log("aligning instructors!");
         dataForPost.propertiesToUpdate.push("meeting_times");
+      } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_COMMENTS) {
+        dataForPost.propertiesToUpdate.push("comments");
+        // WORKING HERE -- next need to probably go into the api endpoint...?!?
+        // ...also, need to do something similar in the opposite case -- requesting create/update for "public comments"
       }
       // COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT
       $.ajax({
@@ -1324,6 +1764,8 @@ var app = new Vue({
           item.delta = jsonResponse.delta_response;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match; // don't need to check item.delta.request_update_max_enrollment, since this was already sorted out by the server-side code....
+          item.publicCommentsMatch =
+            jsonResponse.agreement_update.public_comments_match; // don't need to check item.delta.request_update_max_enrollment, since this was already sorted out by the server-side code....
           item.instructorsMatch =
             jsonResponse.agreement_update.instructors_match;
           item.schedulesMatch =
@@ -1334,7 +1776,8 @@ var app = new Vue({
             item.enrollmentCapsMatch &&
             item.instructorsMatch &&
             item.schedulesMatch &&
-            item.semesterFractionsMatch;
+            item.semesterFractionsMatch &&
+            item.publicCommentsMatch;
           item.ichair = jsonResponse.course_offering_update;
 
           if (jsonResponse.offering_instructors_copied_successfully === false) {
@@ -1381,7 +1824,10 @@ var app = new Vue({
       this.dialog = false;
       this.editMeetings = [];
       this.meetingFormErrorMessage = "";
+      this.enrollmentErrorMessage = "";
       this.editCourseOfferingData = {};
+      this.editEnrollmentCap = null;
+      this.editSemesterFraction = null;
     },
     submitMeetingsForm() {
       let meetingsToDelete = []; //list of ids
@@ -1390,6 +1836,34 @@ var app = new Vue({
       let meetingsToLeave = []; //list of objects
       this.meetingFormErrorMessage = "";
       let formOK = true;
+      updateEnrollmentCap = false;
+      updateSemesterFraction = false;
+      let numChanges = 0;
+      console.log('enrollment cap: ', this.editEnrollmentCap, ' ', typeof this.editEnrollmentCap);
+      console.log('sem fraction: ', this.editSemesterFraction, ' ', typeof this.editSemesterFraction);
+      
+      // this.editEnrollmentCap could be either an int (the original data) or a string (if it's been edited, I think);
+      // the following checks that, no matter if it is a string or an int, it has the form of an int;
+      // using this because parseInt() is pretty forgiving.  If the user types in '8a', we probably don't want to accept that!
+      if (((parseInt(this.editEnrollmentCap).toString().trim()) === this.editEnrollmentCap.toString().trim()) && (parseInt(this.editEnrollmentCap)>0)) {
+        // at this point it looks like an int....
+        if (parseInt(this.editEnrollmentCap) !== this.initialEnrollmentData) {
+          console.log('need to update enrollment!');
+          updateEnrollmentCap = true;
+          numChanges = numChanges + 1;
+        }
+      } else {
+        console.log('enrollment error: ', this.editEnrollmentCap, ' ', typeof this.editEnrollmentCap);
+        this.enrollmentErrorMessage = "Please make sure that the enrollment cap is an integer greater than zero."
+        formOK = false;
+      }
+      // this.editSemesterFraction could be an int or a string, but in either case, parseInt should return the appropriate string
+      if (parseInt(this.editSemesterFraction)!==parseInt(this.initialSemesterFractionData)) {
+        console.log('need to update semester fraction!');
+        updateSemesterFraction = true;
+        numChanges = numChanges + 1;
+      }
+
       this.editMeetings.forEach(meeting => {
         if (meeting.id !== null && meeting.delete === true) {
           meetingsToDelete.push(meeting.id);
@@ -1469,18 +1943,28 @@ var app = new Vue({
           formOK = false;
         }
       }
-      let numChanges =
+      numChanges = numChanges +
         meetingsToCreate.length +
         meetingsToUpdate.length +
         meetingsToDelete.length;
+      console.log('number of changes: ', numChanges);
+      console.log('form OK: ', formOK);
       if (formOK && numChanges > 0) {
         // now post the data...
         var _this = this;
         let data_for_post = {
           courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
+          bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
+          hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
+          delta: this.editCourseOfferingData.delta,
           delete: meetingsToDelete,
           update: meetingsToUpdate,
-          create: meetingsToCreate
+          create: meetingsToCreate,
+          updateSemesterFraction: updateSemesterFraction,
+          updateEnrollmentCap: updateEnrollmentCap,
+          semesterFraction: parseInt(this.editSemesterFraction),
+          enrollmentCap: parseInt(this.editEnrollmentCap)
         };
         // https://stackoverflow.com/questions/53714037/decoding-django-post-request-body
         // https://stackoverflow.com/questions/1208067/wheres-my-json-data-in-my-incoming-django-request
@@ -1491,10 +1975,28 @@ var app = new Vue({
           dataType: "json",
           data: JSON.stringify(data_for_post),
           success: function(jsonResponse) {
-            _this.editCourseOfferingData.ichairObject.meeting_times_detail =
-              jsonResponse.meeting_times_detail;
-            _this.editCourseOfferingData.ichairObject.meeting_times =
-              jsonResponse.meeting_times;
+            _this.courseOfferings.forEach(courseOfferingItem => {
+              if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.delta = jsonResponse.delta;
+                } else {
+                  courseOfferingItem.delta = null;
+                }
+                courseOfferingItem.ichair.meeting_times_detail = jsonResponse.meeting_times_detail;
+                courseOfferingItem.ichair.meeting_times = jsonResponse.meeting_times;
+                courseOfferingItem.ichair.max_enrollment = jsonResponse.max_enrollment;
+                courseOfferingItem.ichair.semester_fraction = jsonResponse.semester_fraction;
+                courseOfferingItem.schedulesMatch = jsonResponse.schedules_match;
+                courseOfferingItem.enrollmentCapsMatch = jsonResponse.max_enrollments_match;
+                courseOfferingItem.semesterFractionsMatch = jsonResponse.semester_fractions_match;
+                courseOfferingItem.allOK =
+                  courseOfferingItem.enrollmentCapsMatch &&
+                  courseOfferingItem.instructorsMatch &&
+                  courseOfferingItem.schedulesMatch &&
+                  courseOfferingItem.semesterFractionsMatch &&
+                  courseOfferingItem.publicCommentsMatch;
+              }
+            });
             _this.cancelMeetingsForm();
           },
           error: function(jqXHR, exception) {
@@ -1504,6 +2006,8 @@ var app = new Vue({
               "Sorry, there appears to have been an error.";
           }
         });
+      } else if (formOK && numChanges === 0) {
+        this.cancelMeetingsForm();
       }
     },
     checkTimes(beginTime, endTime) {
@@ -1607,19 +2111,25 @@ var app = new Vue({
         // initialize an AJAX request
         type: "POST",
         url: "/planner/ajax/generate-pdf/",
-        dataType: "html",
+        dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(response) {
           console.log("response: ", response);
+          console.log("response url", response.UUID);
+          //let fname="ScheduleEdits_Biology_02-01-2020_205536.pdf";
           // https://stackoverflow.com/questions/51920230/open-pdf-in-new-window-with-ajax-call
           // I'm not doing this right....
           //var a = document.createElement('a');
           // the response needs to be a unique url of some sort...(?)  
           //a.href= "data:application/octet-stream;base64,"+response;
+          //a.href = 'ScheduleEdits_Biology_02-01-2020_205536.pdf';
           //a.target = '_blank';
-          //a.download = 'filename.pdf';
+          //a.download = 'ScheduleEdits_Biology_02-01-2020_205536.pdf';
           //a.click();
-        
+          //console.log('response.url: ', JSON.parse(response.file_name));
+          var url = '/planner/scheduleeditspdf/'+response.UUID+'/';
+          window.open(url, "_blank");
+          //window.location = url;
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
@@ -1686,3 +2196,4 @@ var app = new Vue({
     });
   }
 });
+
