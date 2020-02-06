@@ -16,6 +16,7 @@ from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
 # https://github.com/mkleehammer/pyodbc/wiki/Objects
 
+print(f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
 
 class Command(BaseCommand):
     help = "Manage data warehouse information"
