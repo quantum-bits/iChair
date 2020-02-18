@@ -37,17 +37,36 @@ def fetch_semesters(request):
     department_id = request.GET.get('departmentId')
     year_id = request.GET.get('yearId')
 
+    department = Department.objects.get(pk=department_id)
     academic_year = AcademicYear.objects.get(pk=year_id)
     semesters = academic_year.semesters.all()
     semester_choices = []
+    banner_data_exists = False
     for semester in semesters:
+        banner_data_exists_this_semester = False
+        # check if there is any banner data for the given semester, but stop checking once something is found
+        for subject in department.subjects.all():
+            if (not banner_data_exists_this_semester):
+                banner_course_offerings = BannerCourseOffering.objects.filter(
+                    Q(course__subject__abbrev=subject.abbrev) & Q(term_code=semester.banner_code))
+                if (len(banner_course_offerings)>0):
+                    banner_data_exists_this_semester = True
+                    banner_data_exists = True
+        
+        if (banner_data_exists_this_semester):
+            no_data_message = ''
+        else:
+            no_data_message = '(no Registrar data for this semester)'
         semester_choices.append({
-            "semester_name": '{0} {1}'.format(semester.name, semester.year),
+            "semester_name": '{0} {1} {2}'.format(semester.name, semester.year, no_data_message),
             "id": semester.id,
-            "banner_code": semester.banner_code
+            "banner_code": semester.banner_code,
+            'banner_data_exists': banner_data_exists_this_semester
         })
+
     data = {
-        "semester_choices": semester_choices
+        "semester_choices": semester_choices,
+        'banner_data_exists': banner_data_exists
     }
     return JsonResponse(data)
 
@@ -61,7 +80,7 @@ def fetch_courses_to_be_aligned(request):
 
     unmatched_courses = []
     for subject in department.subjects.all():
-        print(subject, subject.abbrev)
+        #print(subject, subject.abbrev)
         # print(BannerCourse.objects.all
         for banner_course in BannerCourse.objects.filter(subject__abbrev=subject.abbrev):
             ichair_courses = Course.objects.filter(
@@ -1157,8 +1176,8 @@ def generate_pdf(request):
 
         if item["delta"]["registrar_comment_exists"]:
             registrar_comment_string_array = split_long_string(item["delta"]["registrar_comment"], layout["registrar_comments_num_chars"])
-            print('registrar comments:')
-            print(registrar_comment_string_array)
+            #print('registrar comments:')
+            #print(registrar_comment_string_array)
 
         if item["delta"]["requested_action"] == 'update':
             #print('we have an update!')
@@ -1275,7 +1294,7 @@ def generate_pdf(request):
 
     #https://stackoverflow.com/questions/961632/converting-integer-to-string
     uuid_string = '{}'.format(uuid_int) # str(...) seems to turn the long string into a string of a real....
-    print('uuid string: ', uuid_string)
+    #print('uuid string: ', uuid_string)
     pdf.write(open("pdf/"+uuid_string+".pdf","wb"))
 
     data = {
@@ -1318,21 +1337,21 @@ def require_page_break(y, layout, item):
         registrar_comment_string_array = split_long_string(item["delta"]["registrar_comment"], num_chars)
         delta_y += dy + dy*len(registrar_comment_string_array)
 
-    print("delta_y", item["crn"], "  ", delta_y/dy)
+    #print("delta_y", item["crn"], "  ", delta_y/dy)
     return y - delta_y < layout["bottom_margin"]
 
 def render_registrar_comment(imgDoc, y, layout, registrar_comment_string_array):
-    print(registrar_comment_string_array)
+    #print(registrar_comment_string_array)
     
     dy = layout["dy"]
     tabs = layout["tabs"]
     y -= dy
     imgDoc.setFont('VeraBd', 9)
-    imgDoc.drawString(tabs["tab1"], y, 'Note for Registrar:')
+    imgDoc.drawString(tabs["tab0"], y, 'Note for Registrar:')
     imgDoc.setFont('Vera', 9)
     for comment_line in registrar_comment_string_array:
         y -= dy
-        imgDoc.drawString(tabs["tab1"], y, comment_line)
+        imgDoc.drawString(tabs["tab0"], y, comment_line)
 
     return y, imgDoc
 
@@ -1381,7 +1400,7 @@ def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_
     return y, imgDoc
 
 def render_creates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_is_sem_fraction = False):
-    print(item_dict)
+    #print(item_dict)
 
     # https://stackoverflow.com/questions/3593193/add-page-break-to-reportlab-canvas-object
 
@@ -1422,7 +1441,7 @@ def split_long_string(original_string, num_chars):
                 current_string += ' '+word
         else:
             string_list.append(current_string)
-            current_string = ''
+            current_string = word
     if current_string != '':
         string_list.append(current_string)
     return string_list

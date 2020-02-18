@@ -1,9 +1,19 @@
 <v-app>
 
     <template v-if="choosingSemesters && semesterChoices">
-
         <v-layout row wrap align-center>
             <v-flex xs10 offset-xs1>
+                <div v-if="!registrarCourseOfferingsExist">
+                    <v-alert
+                    border="left"
+                    color="red lighten-2"
+                    dark
+                    >
+                    There does not appear to be any Registrar data to which your data can
+                    be compared.  Please double check that you are working on the correct academic year.  If that
+                    is not the problem, please get in touch with the site administrator.
+                    </v-alert>
+                </div>
                 <div class="headline">
                     This page allows you to compare your course offerings with those in Banner and
                     request changes from the Registrar.
@@ -15,17 +25,23 @@
         </v-layout>
         <v-layout row wrap class="mt-n12" v-for="semester in semesterChoices">
             <v-flex xs10 offset-xs2 class="my-0">
-
                 <v-checkbox class="mb-n12" color="success" :label="semester.semester_name" :value="semester.id"
                     v-model="chosenSemesters" hide-details></v-checkbox>
             </v-flex>
         </v-layout>
-        <v-layout>
-            <v-flex row>
-                <v-flex xs10 offset-xs1>
-                    <v-btn color="primary" @click="alignCourses()">Get Started</v-btn>
-                </v-flex>
+        <v-layout row>
+            <v-flex xs10 offset-xs1>
+                <v-btn color="primary" @click="alignCourses()">Get Started</v-btn>
             </v-flex>
+            <v-flex xs4 offset-xs4>
+                <v-alert
+                color="#2A3B4D"
+                outlined
+                >
+                For some help getting started on this process, click <a href="https://youtu.be/d1XMtE_gIgw" target="_blank">here</a>.
+                </v-alert>
+            </v-flex>
+            <v-flex xs4></v-flex>
         </v-layout>
     </template>
 
@@ -921,7 +937,7 @@
                                                         <span
                                                             v-if="item.delta.semester_fraction.was == semesterFractions.first_half">
                                                             First Half
-                                                        </span>
+                                                        </<a>
                                                         <span
                                                             v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
                                                             Second Half

@@ -51,6 +51,7 @@ var app = new Vue({
       semesterFractionsDropdown: [], // used for a drop-down menu
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
+      registrarCourseOfferingsExist: true, // set to false if there are no banner course offerings for any semester in the academic year under consideration
       chosenSemesters: [], // ids of semesters chosen to work on
       //aligningCourses: false, // set to true once we start aligning courses (if necessary)
       courseAlignmentPhaseReady: false,
@@ -2192,6 +2193,7 @@ var app = new Vue({
       success: function(incomingData) {
         console.log(incomingData);
         _this.semesterChoices = incomingData.semester_choices;
+        _this.registrarCourseOfferingsExist = incomingData.banner_data_exists;
       }
     });
   }
