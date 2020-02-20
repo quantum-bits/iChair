@@ -161,9 +161,9 @@ class Command(BaseCommand):
                 print('creating new course offering!')
                 if co.part_of_term == '1':
                     semester_fraction = BannerCourseOffering.FULL_SEMESTER
-                elif co.part_of_term == 'H1':
+                elif (co.part_of_term == 'H1') or (co.part_of_term == '2'): # '2' is used for the May session if the semester is 'Summer'
                     semester_fraction = BannerCourseOffering.FIRST_HALF_SEMESTER
-                elif co.part_of_term == 'H2':
+                elif (co.part_of_term == 'H2') or (co.part_of_term == '3'): # '3' is used for June session if the semester is 'Summer'
                     semester_fraction = BannerCourseOffering.SECOND_HALF_SEMESTER
                 else:
                     # this exits the course_offerings loop....
