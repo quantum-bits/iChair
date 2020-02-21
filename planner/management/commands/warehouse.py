@@ -14,6 +14,8 @@ from banner.models import SubjectToImport as BannerSubjectToImport
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
+from django.core.mail import EmailMultiAlternatives
+
 # https://github.com/mkleehammer/pyodbc/wiki/Objects
 
 print(f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
@@ -347,3 +349,16 @@ class Command(BaseCommand):
         if len(error_list) > 0:
             for error in error_list:
                 print(error)
+
+        msg = EmailMultiAlternatives(
+            # title:
+            ("Banner database updated"),
+            # message:
+            "The database was updated!",
+            # from:
+            "noreply@taylor.edu",
+            # to:
+            ["knkiers@taylor.edu"]
+        )
+        #msg.attach_alternative(email_html_message, "text/html")
+        msg.send()

@@ -1,7 +1,7 @@
 # Django settings for iGrad project.
 
 from .run_mode import RunMode
-from .secret import SECRET_KEY
+from .secret import SECRET_KEY, BANNER_DB
 from django.conf import global_settings
 import os.path
 
@@ -25,7 +25,7 @@ if run_mode.dev:
         },
         'banner': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': 'banner.db'
+            'NAME': BANNER_DB #'banner.db'
         }
     }
     DATABASE_ROUTERS = ['banner.banner_router.BannerRouter']
@@ -184,7 +184,7 @@ INSTALLED_APPS = (
 )
 
 CRONJOBS = [
-    ('* * * * *', 'django.core.management.call_command', ['warehouse'], {}, '>> warehouse.log')
+    ('0 4 * * *', 'django.core.management.call_command', ['warehouse'], {}, '>> warehouse.log')
 ]
 
 if run_mode.debug_toolbar:
