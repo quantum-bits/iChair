@@ -187,6 +187,9 @@ CRONJOBS = [
     ('0 4 * * *', 'django.core.management.call_command', ['warehouse'], {}, '>> warehouse.log')
 ]
 
+# email:
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 if run_mode.debug_toolbar:
     INSTALLED_APPS += ('debug_toolbar',)
     MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware') #KK: not sure about this
