@@ -188,7 +188,7 @@ CRONJOBS = [
 ]
 
 # email:
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 if run_mode.debug_toolbar:
     INSTALLED_APPS += ('debug_toolbar',)
