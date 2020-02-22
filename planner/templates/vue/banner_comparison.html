@@ -84,7 +84,19 @@
                                     <v-radio v-for="item in course.choices" :key="item.selectionId" :label="item.text"
                                         :value="item.selectionId" color="success"></v-radio>
                                 </v-radio-group>
-
+                                <div v-if="course.already_matched_ichair_courses.length>0" class="orange--text">
+                                    <strong>Note: </strong> the Registrar's version of this course is already associated
+                                    with the following course(s) in iChair:
+                                    <ul>
+                                        <li v-for="alreadyMatchedCourse in course.already_matched_ichair_courses" :key="alreadyMatchedCourse.id">
+                                            [[alreadyMatchedCourse.subject]] [[alreadyMatchedCourse.number]]:
+                                            [[alreadyMatchedCourse.title]]
+                                            ([[alreadyMatchedCourse.credit_hours]] 
+                                            <span v-if="alreadyMatchedCourse.credit_hours == 1">credit hour)</span>
+                                            <span v-else>credit hours)</span>
+                                        </li>
+                                    </ul>
+                                </div>
                             </td>
                         </tr>
                     </tbody>

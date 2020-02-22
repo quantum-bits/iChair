@@ -88,20 +88,43 @@ def fetch_courses_to_be_aligned(request):
                 Q(number__startswith=banner_course.number) &
                 Q(credit_hours=banner_course.credit_hours))
 
-            exact_match = False
-            multiple_potential_matches = False
+            # could potentially have one Banner course that matches multiple copies of the course in iChair...that's OK; then the user
+            # will just need to sort things out when they do schedule edits.
+            match_found = False
+            #multiple_potential_matches = False
+            ichair_courses_to_list = []
+            already_matched_courses = []
 
             for ichair_course in ichair_courses:
-                # found a match...
                 if (banner_course.title == ichair_course.title) or (banner_course.title in ichair_course.banner_title_list):
-                    # uh-oh...we had already found a match -- this means we have more than one potential match, so we will list them all
-                    if (exact_match == True) and (multiple_potential_matches == False):
-                        exact_match = False
-                        multiple_potential_matches = True
-                    elif (exact_match == False) and (multiple_potential_matches == False):
-                        exact_match = True
+                    # this iChair course is either an exact match, or it has already been assoicated with this banner course;
+                    # in either case, there is nothing left to do
+                    match_found = True
+                    already_matched_courses.append(ichair_course)
+                    print('match found! banner: ', banner_course.title, '; iChair: ', ichair_course.title)
+                    print('iChair banner titles: ', ichair_course.banner_title_list)
+                else:
+                    print('>> this iChair course not yet matched...banner: ', banner_course.title, '; iChair: ', ichair_course.title)
+                    print('iChair banner titles: ', ichair_course.banner_title_list)
+                    # this iChair course is a candidate for matching up with the banner course
+                    ichair_courses_to_list.append(ichair_course)
 
-            if exact_match == False:
+            # if match_found is True, and there are not courses in ichair_courses_to_list, then there is nothing to do
+            # if there is a unique match, then there is nothing left to do; otherwise, add the banner course to the list of 
+            # unmatched courses....
+
+            already_matched_course_data = [  # all the candidate iChair courses
+                    {
+                        "subject": c.subject.abbrev,
+                        "number": c.number,
+                        "credit_hours": c.credit_hours,
+                        "title": c.title,
+                        "id": c.id,
+                        "banner_titles": c.banner_title_list,
+                        "number_offerings_this_year": c.number_offerings_this_year(academic_year)
+                    } for c in already_matched_courses]
+            
+            if not(match_found and (len(ichair_courses_to_list) == 0)):
                 ichair_course_data = [  # all the candidate iChair courses
                     {
                         "subject": c.subject.abbrev,
@@ -111,7 +134,7 @@ def fetch_courses_to_be_aligned(request):
                         "id": c.id,
                         "banner_titles": c.banner_title_list,
                         "number_offerings_this_year": c.number_offerings_this_year(academic_year)
-                    } for c in ichair_courses]
+                    } for c in ichair_courses_to_list]
                 unmatched_courses.append({
                     "ichair_subject_id": subject.id,
                     "banner_course": {
@@ -121,11 +144,12 @@ def fetch_courses_to_be_aligned(request):
                         "credit_hours": banner_course.credit_hours,
                         "title": banner_course.title
                     },
-                    "ichair_courses": ichair_course_data
+                    "ichair_courses": ichair_course_data,
+                    "already_matched_ichair_courses": already_matched_course_data
                 })
 
-    for bc in unmatched_courses:
-        print(bc)
+    #for bc in unmatched_courses:
+    #    print(bc)
 
     data = {
         "unmatched_courses": unmatched_courses
