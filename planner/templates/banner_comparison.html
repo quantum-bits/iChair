@@ -10,6 +10,8 @@
 {% endblock %}
 {% block content %}
 {% load static %}
+
+{% if can_edit %}
 <style>
     * {
         outline
@@ -87,6 +89,11 @@
         margin-bottom: 4px;
     }
 </style>
+
+{% else %}
+    <p> Sorry: You cannot view Schedule Edits. <p>
+{% endif %}
+    
 
 
 <script>
