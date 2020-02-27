@@ -56,6 +56,10 @@
                     This can happen due to small differences
                     in the wording of the title. Please make selections in the
                     following table, as appropriate, and then click 'Continue'.
+                    You may also skip this step.
+                </div>
+                <div align-center>
+                    <v-btn class="my-4" color="primary" @click.stop="skipCourseAlignment()">Skip This Step</v-btn>
                 </div>
             </v-flex>
         </v-layout>
@@ -103,6 +107,7 @@
                 </table>
 
                 <v-btn class="my-4" color="primary" @click.stop="performCourseAlignment()">Continue</v-btn>
+                <v-btn class="my-4" color="primary" @click.stop="skipCourseAlignment()">Skip This Step</v-btn>
 
                 <!--<table style="border: 1px solid grey; margin: 10px; padding: 10px">-->
 

@@ -216,6 +216,9 @@ var app = new Vue({
         }
       });
     },
+    skipCourseAlignment() {
+      this.alignCourseOfferings();
+    },
     performCourseAlignment() {
       console.log(this.unmatchedCourses);
       var _this = this;
