@@ -67,6 +67,7 @@ class Command(BaseCommand):
                 , dmt.end_time AS ENDTIME
                 , dmt.day_of_week AS DAY
                 , fcm.course_section_key AS faculty_course_meeting_key
+                , dmt.meeting_time_key AS MEETINGTIMEKEY
                 , term
                 , part_of_term
             FROM dw.dim_course_section dcs -- Use the course section dimension as base.
@@ -156,9 +157,9 @@ class Command(BaseCommand):
                 raise CommandError(error_string)
 
             # apparently the CRN+term combination is guaranteed to be a unique identifier....
-            course_offerings = BannerCourseOffering.objects.filter(Q(crn = co.course_reference_number)&Q(term_code = co.term))
+            banner_course_offerings = BannerCourseOffering.objects.filter(Q(crn = co.course_reference_number)&Q(term_code = co.term))
 
-            if len(course_offerings) == 0:
+            if len(banner_course_offerings) == 0:
                 # create new course offering
                 print('creating new course offering!')
                 if co.part_of_term == '1':
@@ -181,10 +182,10 @@ class Command(BaseCommand):
                     max_enrollment = co.section_capacity,
                     crn = co.course_reference_number)
                 course_offering.save()
-            elif len(course_offerings) == 1:
+            elif len(banner_course_offerings) == 1:
                 # assume that all other course offering properties are consistent, since the CRN+term are supposed to be a unique identifier
                 print('there is already one copy of the course offering with CRN '+co.course_reference_number+' for the semester '+co.term)
-                course_offering = course_offerings[0]
+                course_offering = banner_course_offerings[0] # I don't think that this actually gets used....
             else:
                 # this exits the course_offerings loop....
                 number_errors = number_errors +1
@@ -194,12 +195,24 @@ class Command(BaseCommand):
 
 
         num_no_mtgs_sched = 0
+        classes_missing_scheduled_meeting_info = []
         for co_meeting in course_offering_meetings:
             if co_meeting.faculty_course_meeting_key is None:
                 # there is nothing to do, since the course offering has already been created...should be good to go
                 num_no_mtgs_sched = num_no_mtgs_sched + 1
                 print('%s %s %s %s -- no meeting times or anything scheduled!!!' %
                       (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE))
+            elif (co_meeting.DAY == None) or (co_meeting.STARTTIME == None) or (co_meeting.ENDTIME == None):
+                # iChair needs all of these in order to have a ScheduledClass object, so if any are missing, we need to skip it (at least for now)
+                # if all of these are missing, there's nothing to worry about.  If only some are missing, then we may need to think a bit more....
+                num_no_mtgs_sched = num_no_mtgs_sched + 1
+                print('%s %s %s %s %s %s %s %s -- have partial meeting time information!!!' %
+                      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.MEETINGTIMEKEY))
+                if not ((co_meeting.DAY == None) and (co_meeting.STARTTIME == None) and (co_meeting.ENDTIME == None)):
+                    # at least one of these is not None....
+                    classes_missing_scheduled_meeting_info.append(co_meeting)
+                    print('%s %s %s %s %s %s %s -- have partial meeting time information!!!' %
+                      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
             else:
                 print('%s %s %s %s %s %s %s %s %s %s %s ' % (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.CREDHRS,
                                                          co_meeting.ENRLCAP, co_meeting.term, co_meeting.part_of_term, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
@@ -345,6 +358,18 @@ class Command(BaseCommand):
                     sequence_number = co_comment.SEQNO)
                 course_offering_comment.save()
 
+        print(' ')
+        print('classes with partial meeting info: ')
+        print(' ')
+        for pmi_course in classes_missing_scheduled_meeting_info:
+            print('   %s %s %s %s %s %s %s %s ' %
+                (pmi_course.CMP, pmi_course.CRN, pmi_course.COURSE, pmi_course.TITLE, pmi_course.DAY, pmi_course.STARTTIME, pmi_course.ENDTIME, pmi_course.MEETINGTIMEKEY))
+            
+        print('number of classes with partial meeting info: ', len(classes_missing_scheduled_meeting_info))
+        if len(classes_missing_scheduled_meeting_info) > 0:
+            print('There are some classes with only partial meeting info...need to deal with this!')
+        
+        print(' ')
         print('total number of errors encountered: ', number_errors)
         if len(error_list) > 0:
             for error in error_list:
