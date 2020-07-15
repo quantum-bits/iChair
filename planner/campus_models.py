@@ -66,8 +66,25 @@ class Department(models.Model):
         return course_list
 
     def is_trusted_by_subject(self, subject):
-        """True if the present department is trusted by the subject in the other department"""
+        """True if the present department is trusted by the subject in the other department."""
         return self in subject.trusted_departments.all()
+
+    def available_instructors(self, academic_year, faculty_to_view_ids):
+        """Returns a list of instructors that are available to teach courses in this academic year."""
+        instructors_available_to_teach = [{
+                                            'id': fm.id,
+                                            'name': fm.first_name+' ' + fm.last_name
+                                        } for fm in self.faculty.all() if fm.is_active(academic_year)]
+        active_fm_ids = [fm["id"] for fm in instructors_available_to_teach]
+        # in addition, there could be faculty from other depts that are in the group of "faculty_to_view" in user preferences, so add those in, too....
+        for fm_to_view_id in faculty_to_view_ids:
+            fm = FacultyMember.objects.get(pk = fm_to_view_id)
+            if fm.is_active(academic_year) and (fm.id not in active_fm_ids):
+                instructors_available_to_teach.append({
+                    'id': fm.id,
+                    'name': fm.first_name+' ' + fm.last_name
+                    })
+        return instructors_available_to_teach
 
     def __str__(self):
         return self.name

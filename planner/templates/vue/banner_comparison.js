@@ -51,6 +51,7 @@ var app = new Vue({
       semesterFractionsDropdown: [], // used for a drop-down menu
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
+      facultyChoices: [], // faculty available to teach courses
       registrarCourseOfferingsExist: true, // set to false if there are no banner course offerings for any semester in the academic year under consideration
       chosenSemesters: [], // ids of semesters chosen to work on
       //aligningCourses: false, // set to true once we start aligning courses (if necessary)
@@ -94,7 +95,9 @@ var app = new Vue({
       newCourseOfferingDialogErrorMessage: "", // error message used in the new course offering dialog
       dialog: false, // true when the dialog is being displayed
       dialogTitle: "",
+      editInstructorsDialog: false, // true when the dialog is being displayed
       editMeetings: [], // used to store the data in the class schedule form
+      editInstructors: [], // used to store the data in the edit instructors form
       editEnrollmentCap: null, // used to store enrollment data in the class schedule form
       editSemesterFraction: null, // used to store semester fraction data in the class schedule form
       editComments: [], // used to store the data in the public comments form
@@ -104,6 +107,7 @@ var app = new Vue({
       initialSemesterFractionData: null, // used to hold on to the initial semester fraction data (before editing)
       initialCommentData: [], // used to hold on to the initial comments (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
+      instructorFormErrorMessage: "", // used to display errors in the instructor form
       enrollmentErrorMessage: "", // used to display an enrollment error in the class scheduling form
       commentFormErrorMessage: "", // used to display errors in the public comments form
       pagination: {
@@ -299,6 +303,8 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(incomingData) {
+          _this.facultyChoices = incomingData.available_faculty;
+          console.log('faculty choices: ', _this.facultyChoices);
           // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
           incomingData.course_data.forEach(course => {
             let ichairChoices = [];
@@ -1179,6 +1185,139 @@ var app = new Vue({
       this.initialEnrollmentData = this.editEnrollmentCap;
       this.initialSemesterFractionData = this.editSemesterFraction;
     },
+
+    editOfferingInstructors(courseInfo) {
+      console.log('course info: ', courseInfo);
+      this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
+      let instructorDetails = courseInfo.ichair.instructors_detail;
+      this.editInstructors = JSON.parse(JSON.stringify(instructorDetails));
+      console.log('edit instructors: ', this.editInstructors);
+      let index = 0;
+      this.editInstructors.forEach(instructor => {
+        instructor.index = index;
+        instructor.delete = false;
+        instructor.is_primary_disabled = (this.editInstructors.length === 1) && instructor.is_primary;
+        index += 1;
+      });
+      this.editInstructorsDialog = true;
+    },
+
+    addInstructor() {
+      console.log('got here!');
+      maxIndex = -Infinity;
+      this.editInstructors.forEach(instructor => {
+        if (instructor.index > maxIndex) {
+          maxIndex = instructor.index;
+        }
+      });
+      this.editInstructors.push({
+        delete: false,
+        id: null,
+        name: "",
+        is_primary: false,
+        is_primary_disabled: false,
+        index: maxIndex + 1,
+        load_credit: 0
+      });
+      this.editInstructors.forEach(instructor => {
+        instructor.is_primary_disabled = false;
+      })
+    },
+
+    onIsPrimaryChanged(instructor) {
+      console.log('instructor: ', instructor);
+      if (instructor.is_primary) {
+        // this instructor has just been named the primary instructor, so set the is_primary setting for all other instructors to false
+        this.editInstructors.forEach(instructorInList => {
+          if (instructorInList.index !== instructor.index) {
+            instructorInList.is_primary = false;
+          }
+        });
+      }
+    },
+
+    cancelInstructorsForm() {
+      this.editInstructorsDialog = false;
+      this.editInstructors = [];
+      this.instructorFormErrorMessage = "";
+    },
+
+    submitInstructorsForm() {
+      // form validation is a bit messy here because of all the edge cases...!
+      this.instructorFormErrorMessage = "";
+      let instructorList = [];
+      console.log('submit!');
+      let errorInForm = false;
+      let numPrimaryInstructors = 0;
+      let numInstructors = 0;
+      this.editInstructors.forEach(instructor => {
+        if (instructor.is_primary && (!this.instructorToBeDeleted(instructor))) {
+          numPrimaryInstructors += 1;
+        }
+        if (!this.instructorToBeDeleted(instructor)) {
+          numInstructors += 1;
+        }
+      });
+      if ((numInstructors > 0) && (numPrimaryInstructors !== 1)) {
+        this.instructorFormErrorMessage = "Please choose a primary instructor.";
+        errorInForm = true;
+      }
+      if (!errorInForm) {
+        this.editInstructors.forEach(instructor => {
+          console.log('type of initial load credit: ', typeof instructor.load_credit);
+          let loadCredit = +instructor.load_credit;
+          // https://www.w3schools.com/jsref/jsref_isnan.asp
+          if (Number.isNaN(loadCredit)) {
+            this.instructorFormErrorMessage = "The number of load hours must be a number.";
+            errorInForm = true;
+          }
+          if ((!errorInForm) && (!this.instructorToBeDeleted(instructor))) {
+            if (instructor.id === null) {
+              errorInForm = true;
+              this.instructorFormErrorMessage = "Please choose an instructor for each entry.";
+            } else if (loadCredit < 0) {
+              errorInForm = true;
+              this.instructorFormErrorMessage = "The number of load hours for each instructor must be greater than or equal to zero.";
+            }
+            if ((!errorInForm) && (!this.instructorToBeDeleted(instructor))) {
+              instructorList.forEach(instructoryInList => {
+                // make sure they're both numbers....
+                let instructorId = +instructor.id;
+                let instructorInListId = +instructoryInList.id;
+                if (instructorId === instructorInListId) {
+                  errorInForm = true;
+                  this.instructorFormErrorMessage = "Please choose each instructor at most once.";
+                }
+              });
+              if (!errorInForm) {
+                instructorList.push({
+                  id: +instructor.id,
+                  loadCredit: loadCredit,
+                  isPrimary: instructor.is_primary
+                });
+              }
+            }
+          }
+        });
+      }
+
+
+      if (!errorInForm) {
+        console.log('ready to submit! ', instructorList);
+        // submit
+        // WORKING HERE: write endpoint and submit(!)
+
+
+
+      }
+
+
+    },
+    instructorToBeDeleted(instructor) {
+      let loadCredit = +instructor.load_credit;
+      return instructor.delete || ((instructor.id === null) && (loadCredit === 0) && (!instructor.is_primary));
+    },
+
     displayAddNoteButton(courseInfo) {
       // returns true or false, depending on whether one can add a note for the registrar for this course offering
       // conditions:

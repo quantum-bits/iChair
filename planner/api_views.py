@@ -370,6 +370,7 @@ def create_course_offering(request):
         presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
     ico_instructors = construct_instructor_list(course_offering)
+    ico_instructors_detail = construct_ichair_instructor_detail_list(course_offering)
 
     meeting_times_detail = construct_meeting_times_detail(
         course_offering)
@@ -393,6 +394,7 @@ def create_course_offering(request):
         "meeting_times_detail": meeting_times_detail,
         # "rooms": ico_room_list,
         "instructors": ico_instructors,
+        "instructors_detail": ico_instructors_detail,
         "semester": course_offering.semester.name.name,
         "semester_fraction": int(course_offering.semester_fraction),
         "max_enrollment": int(course_offering.max_enrollment),
@@ -425,6 +427,9 @@ def create_course_offering(request):
 @csrf_exempt
 def banner_comparison_data(request):
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    
     json_data = json.loads(request.body)
     department_id = json_data['departmentId']
     year_id = json_data['yearId']
@@ -452,7 +457,7 @@ def banner_comparison_data(request):
     print(semester_sorter_dict)
 
     department = Department.objects.get(pk=department_id)
-    # academic_year = AcademicYear.objects.get(pk = year_id)
+    academic_year = AcademicYear.objects.get(pk = year_id)
 
     semester_fractions = {
         'full': CourseOffering.FULL_SEMESTER,
@@ -583,6 +588,7 @@ def banner_comparison_data(request):
                             presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
                         ico_instructors = construct_instructor_list(ico)
+                        ico_instructors_detail = construct_ichair_instructor_detail_list(ico)
 
                         meeting_times_detail = construct_meeting_times_detail(
                             ico)
@@ -648,6 +654,7 @@ def banner_comparison_data(request):
                             "meeting_times_detail": meeting_times_detail,
                             # "rooms": ico_room_list,
                             "instructors": ico_instructors,
+                            "instructors_detail": ico_instructors_detail,
                             "semester": ico.semester.name.name,
                             "semester_fraction": int(ico.semester_fraction),
                             "max_enrollment": int(ico.max_enrollment),
@@ -688,6 +695,7 @@ def banner_comparison_data(request):
 
                         ico_instructors = construct_instructor_list(
                             unlinked_ico)
+                        ico_instructors_detail = construct_ichair_instructor_detail_list(unlinked_ico)
 
                         meeting_times_detail = construct_meeting_times_detail(
                             unlinked_ico)
@@ -702,6 +710,7 @@ def banner_comparison_data(request):
                             "meeting_times_detail": meeting_times_detail,
                             # "rooms": ico_room_list,
                             "instructors": ico_instructors,
+                            "instructors_detail": ico_instructors_detail,
                             "semester": unlinked_ico.semester.name.name,
                             "semester_fraction": int(unlinked_ico.semester_fraction),
                             "max_enrollment": int(unlinked_ico.max_enrollment)})
@@ -757,6 +766,7 @@ def banner_comparison_data(request):
                     presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
                 ico_instructors = construct_instructor_list(ico)
+                ico_instructors_detail = construct_ichair_instructor_detail_list(ico)
                 meeting_times_detail = construct_meeting_times_detail(ico)
 
                 unlinked_banner_course_offerings = find_unlinked_banner_course_offerings(
@@ -849,6 +859,7 @@ def banner_comparison_data(request):
                         "meeting_times_detail": meeting_times_detail,
                         # "rooms": ico_room_list,
                         "instructors": ico_instructors,
+                        "instructors_detail": ico_instructors_detail,
                         "semester": ico.semester.name.name,
                         "semester_fraction": int(ico.semester_fraction),
                         "max_enrollment": int(ico.max_enrollment),
@@ -874,14 +885,15 @@ def banner_comparison_data(request):
     sorted_course_offerings = sorted(course_offering_data, key=lambda item: (
         semester_sorter_dict[item["semester_id"]], item["course"]))
 
+    faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
+
     data = {
-        "message": "hello!",
+        "available_faculty": department.available_instructors(academic_year, faculty_to_view_ids),
         "course_data": sorted_course_offerings,  # course_offering_data,
         "semester_fractions": semester_fractions,
         "semester_fractions_reverse": semester_fractions_reverse
     }
     return JsonResponse(data)
-
 
 def construct_instructor_list(course_offering):
     """Constructs a list of instructors for a given (banner or iChair) course offering."""
@@ -897,6 +909,14 @@ def construct_instructor_detail_list(bco):
         "is_primary": instr.is_primary,
         "name": instr.instructor.first_name + ' ' + instr.instructor.last_name}  for instr in bco.offering_instructors.all()]
 
+def construct_ichair_instructor_detail_list(ico):
+    """Constructs a list of instructors for a given iChair course offering."""
+    return [{
+        "id": instr.instructor.id,
+        "pidm": instr.instructor.pidm,
+        "is_primary": instr.is_primary,
+        "load_credit": instr.load_credit,
+        "name": instr.instructor.first_name + ' ' + instr.instructor.last_name}  for instr in ico.offering_instructors.all()]
 
 def delta_update_status(bco, ico, delta):
     """Uses a delta object to compare the current status of a banner course offering compared to its corresponding iChair course offering."""
@@ -2521,6 +2541,7 @@ def copy_registrar_course_offering_data_to_ichair(request):
         ico_meeting_times_list = sorted(
             presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
         ico_instructors = construct_instructor_list(ico)
+        ico_instructors_detail = construct_ichair_instructor_detail_list(ico)
         meeting_times_detail = construct_meeting_times_detail(ico)
 
         if delta_id is not None:
@@ -2560,6 +2581,7 @@ def copy_registrar_course_offering_data_to_ichair(request):
             "meeting_times_detail": meeting_times_detail,
             # "rooms": ico_room_list,
             "instructors": ico_instructors,
+            "instructors_detail": ico_instructors_detail,
             "semester": ico.semester.name.name,
             "semester_fraction": int(ico.semester_fraction),
             "max_enrollment": int(ico.max_enrollment),

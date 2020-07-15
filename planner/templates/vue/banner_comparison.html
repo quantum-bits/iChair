@@ -4,14 +4,10 @@
         <v-layout row wrap align-center>
             <v-flex xs10 offset-xs1>
                 <div v-if="!registrarCourseOfferingsExist">
-                    <v-alert
-                    border="left"
-                    color="red lighten-2"
-                    dark
-                    >
-                    There does not appear to be any Registrar data to which your data can
-                    be compared.  Please double check that you are working on the correct academic year.  If that
-                    is not the problem, please get in touch with the site administrator.
+                    <v-alert border="left" color="red lighten-2" dark>
+                        There does not appear to be any Registrar data to which your data can
+                        be compared. Please double check that you are working on the correct academic year. If that
+                        is not the problem, please get in touch with the site administrator.
                     </v-alert>
                 </div>
                 <div class="headline">
@@ -34,11 +30,9 @@
                 <v-btn color="primary" @click="alignCourses()">Get Started</v-btn>
             </v-flex>
             <v-flex xs4 offset-xs4>
-                <v-alert
-                color="#2A3B4D"
-                outlined
-                >
-                For some help getting started on this process, click <a href="https://youtu.be/d1XMtE_gIgw" target="_blank">here</a>.
+                <v-alert color="#2A3B4D" outlined>
+                    For some help getting started on this process, click <a href="https://youtu.be/d1XMtE_gIgw"
+                        target="_blank">here</a>.
                 </v-alert>
             </v-flex>
             <v-flex xs4></v-flex>
@@ -92,10 +86,11 @@
                                     <strong>Note: </strong> the Registrar's version of this course is already associated
                                     with the following course(s) in iChair:
                                     <ul>
-                                        <li v-for="alreadyMatchedCourse in course.already_matched_ichair_courses" :key="alreadyMatchedCourse.id">
+                                        <li v-for="alreadyMatchedCourse in course.already_matched_ichair_courses"
+                                            :key="alreadyMatchedCourse.id">
                                             [[alreadyMatchedCourse.subject]] [[alreadyMatchedCourse.number]]:
                                             [[alreadyMatchedCourse.title]]
-                                            ([[alreadyMatchedCourse.credit_hours]] 
+                                            ([[alreadyMatchedCourse.credit_hours]]
                                             <span v-if="alreadyMatchedCourse.credit_hours == 1">credit hour)</span>
                                             <span v-else>credit hours)</span>
                                         </li>
@@ -168,6 +163,82 @@
                 <td :colspan="headers.length" style="border-bottom: 1px solid grey;">
 
                     <v-container>
+                        <template>
+                            <div class="text-center">
+                                <v-dialog persistent v-model="editInstructorsDialog" width="800">
+                                    <v-card>
+                                        <v-card-title class="headline grey lighten-2" primary-title>
+                                            [[dialogTitle]]
+                                        </v-card-title>
+                                        <v-card-text>
+                                            <v-container grid-list-md>
+                                                <v-layout wrap>
+                                                    <v-flex xs5>Instructor</v-flex>
+                                                    <v-flex xs2># Load Hours</v-flex>
+                                                    <v-flex xs3>Primary Instructor</v-flex>
+                                                    <v-flex xs2>Delete</v-flex>
+                                                </v-layout>
+                                                <div v-for="(instructorDetail, index) in editInstructors">
+                                                    <v-layout wrap>
+                                                        <v-flex xs5>
+                                                            <select class="mt-2"
+                                                                style="border-style: solid; height: 32px; width: 100%;"
+                                                                id="instructor_select" v-model="instructorDetail.id">
+                                                                <option v-for="facultyChoice in facultyChoices"
+                                                                    :value="facultyChoice.id">[[facultyChoice.name]]
+                                                                </option>
+
+                                                            </select>
+                                                        </v-flex>
+                                                        <v-flex xs2>
+                                                            <!-- https://stackoverflow.com/questions/19011861/is-there-a-float-input-type-in-html5 -->
+                                                            <input class="mt-2" style="height: 32px; width: 100%;"
+                                                                type="number" min="0" step="any" v-model="instructorDetail.load_credit">
+                                                        </v-flex>
+                                                        <v-flex xs3>
+                                                            <!-- https://stackoverflow.com/questions/50506235/vuejs-click-event-from-checkbox/50506564 -->
+                                                            <v-checkbox 
+                                                                class="mt-2" 
+                                                                @change="onIsPrimaryChanged(instructorDetail)"
+                                                                :disabled = "instructorDetail.is_primary_disabled"
+                                                                v-model="instructorDetail.is_primary">
+                                                            </v-checkbox>
+                                                        </v-flex>
+                                                        <v-flex xs2>
+                                                            <v-checkbox class="mt-2" v-model="instructorDetail.delete">
+                                                            </v-checkbox>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </div>
+                                                <v-layout>
+                                                    <v-flex xs12>
+                                                        <v-btn color="primary" @click="addInstructor()">Add Another
+                                                        </v-btn>
+                                                    </v-flex>
+                                                </v-layout>
+                                                <v-layout text-center>
+                                                    <v-flex xs12>
+                                                        <div class="red--text">
+                                                            [[instructorFormErrorMessage]]</div>
+                                                    </v-flex>
+                                                </v-layout>
+                                            </v-container>
+
+                                        </v-card-text>
+                                        <v-divider></v-divider>
+                                        <v-card-actions>
+                                            <v-spacer></v-spacer>
+                                            <v-btn color="primary" text @click="cancelInstructorsForm()">
+                                                Cancel
+                                            </v-btn>
+                                            <v-btn color="primary" text @click="submitInstructorsForm()">
+                                                Submit
+                                            </v-btn>
+                                        </v-card-actions>
+                                    </v-card>
+                                </v-dialog>
+                            </div>
+                        </template>
 
                         <template>
                             <div class="text-center">
@@ -185,8 +256,8 @@
                                                         </div>
                                                     </v-flex>
                                                     <v-flex xs1>
-                                                        <input class="mt-2" style="height: 32px; width: 100%" type="text"
-                                                                v-model="editEnrollmentCap">
+                                                        <input class="mt-2" style="height: 32px; width: 100%"
+                                                            type="text" v-model="editEnrollmentCap">
                                                     </v-flex>
                                                     <v-flex xs3 offset-xs1>
                                                         <div class="mt-2">
@@ -195,7 +266,8 @@
                                                     </v-flex>
                                                     <v-flex xs3>
                                                         <select class="mt-2" style="border-style: solid; height: 32px;"
-                                                                id="semester_fraction_select" v-model="editSemesterFraction">
+                                                            id="semester_fraction_select"
+                                                            v-model="editSemesterFraction">
                                                             <option value="0">Full Semester</option>
                                                             <option value="1">First Half Semester</option>
                                                             <option value="2">Second Half Semester</option>
@@ -219,7 +291,8 @@
                                                     <v-layout wrap>
                                                         <v-flex xs4>
 
-                                                            <select class="mt-2" style="border-style: solid; height: 32px;"
+                                                            <select class="mt-2"
+                                                                style="border-style: solid; height: 32px;"
                                                                 id="day_select" v-model="meetingTimeDetail.day">
                                                                 <option value="0">Monday</option>
                                                                 <option value="1">Tuesday</option>
@@ -229,23 +302,23 @@
                                                             </select>
                                                         </v-flex>
                                                         <v-flex xs3>
-                                                            <input class="mt-2" style="height: 32px; width: 140px;" type="text"
-                                                                v-model="meetingTimeDetail.begin_at">
+                                                            <input class="mt-2" style="height: 32px; width: 140px;"
+                                                                type="text" v-model="meetingTimeDetail.begin_at">
                                                         </v-flex>
                                                         <v-flex xs3>
-                                                            <input class="mt-2" style="height: 32px; width: 140px;" type="text"
-                                                                v-model="meetingTimeDetail.end_at">
+                                                            <input class="mt-2" style="height: 32px; width: 140px;"
+                                                                type="text" v-model="meetingTimeDetail.end_at">
                                                         </v-flex>
                                                         <v-flex xs2>
-                                                            <v-checkbox class="mt-2"
-                                                                v-model="meetingTimeDetail.delete">
+                                                            <v-checkbox class="mt-2" v-model="meetingTimeDetail.delete">
                                                             </v-checkbox>
                                                         </v-flex>
                                                     </v-layout>
                                                 </div>
                                                 <v-layout>
-                                                    <v-flex xs12 >
-                                                        <v-btn color="primary"@click="addMeetingTime()">Add Another</v-btn>
+                                                    <v-flex xs12>
+                                                        <v-btn color="primary" @click="addMeetingTime()">Add Another
+                                                        </v-btn>
                                                     </v-flex>
                                                 </v-layout>
                                                 <v-layout text-center>
@@ -332,7 +405,8 @@
                                             <v-container grid-list-md>
                                                 <v-layout wrap>
                                                     <v-flex xs12>
-                                                        These are comments that will be publicly available to students on Taylor's website.
+                                                        These are comments that will be publicly available to students
+                                                        on Taylor's website.
                                                     </v-flex>
                                                 </v-layout>
                                                 <v-layout wrap>
@@ -342,22 +416,23 @@
                                                     <v-layout wrap>
                                                         <v-flex xs9 class="text-right">
                                                             <div>
-                                                                <input class="mt-2" style="height: 32px; width: 100%" type="text" v-model="comment.text">
+                                                                <input class="mt-2" style="height: 32px; width: 100%"
+                                                                    type="text" v-model="comment.text">
                                                             </div>
-                                                            <div class="text-right" :class="{'red--text': comment.text.length > 60}">
+                                                            <div class="text-right"
+                                                                :class="{'red--text': comment.text.length > 60}">
                                                                 [[comment.text.length]]/60
                                                             </div>
                                                         </v-flex>
                                                         <v-flex xs2 offset-xs1>
-                                                            <v-checkbox class="mt-2"
-                                                                v-model="comment.delete"
-                                                            ></v-checkbox>
+                                                            <v-checkbox class="mt-2" v-model="comment.delete">
+                                                            </v-checkbox>
                                                         </v-flex>
                                                     </v-layout>
                                                 </div>
                                                 <v-layout>
-                                                    <v-flex xs12 >
-                                                        <v-btn color="primary"@click="addComment()">Add Another</v-btn>
+                                                    <v-flex xs12>
+                                                        <v-btn color="primary" @click="addComment()">Add Another</v-btn>
                                                     </v-flex>
                                                 </v-layout>
                                                 <v-layout v-if="commentsTooLong()" text-center>
@@ -380,12 +455,8 @@
                                             <v-btn color="primary" text @click="cancelCommentsForm()">
                                                 Cancel
                                             </v-btn>
-                                            <v-btn 
-                                                color="primary" 
-                                                text 
-                                                @click="submitComments()"
-                                                :disabled="commentsTooLong()"
-                                                >
+                                            <v-btn color="primary" text @click="submitComments()"
+                                                :disabled="commentsTooLong()">
                                                 Submit
                                             </v-btn>
                                         </v-card-actions>
@@ -408,17 +479,16 @@
                                                         Comments for the registrar about this course offering.
                                                     </v-flex>
                                                 </v-layout>
-                                                
+
                                                 <v-layout>
                                                     <v-flex xs12>
-                                                        <v-textarea 
-                                                            v-model="commentForRegistrar"
-                                                        ></v-textarea>
-                                                        <div class="text-right" :class="{'red--text': commentForRegistrar.length > 500}">
+                                                        <v-textarea v-model="commentForRegistrar"></v-textarea>
+                                                        <div class="text-right"
+                                                            :class="{'red--text': commentForRegistrar.length > 500}">
                                                             [[commentForRegistrar.length]]/500
                                                         </div>
                                                     </v-flex>
-                                                
+
                                                 </v-layout>
                                             </v-container>
                                         </v-card-text>
@@ -428,15 +498,11 @@
                                             <v-btn color="primary" text @click="cancelNoteForRegistrarForm()">
                                                 Cancel
                                             </v-btn>
-                                            <v-btn 
-                                                color="primary" 
-                                                text 
-                                                @click="submitNoteForRegistrar()"
-                                                :disabled="noteForRegistrarTooLong()"
-                                                >
+                                            <v-btn color="primary" text @click="submitNoteForRegistrar()"
+                                                :disabled="noteForRegistrarTooLong()">
                                                 Submit
                                             </v-btn>
-            
+
                                         </v-card-actions>
                                     </v-card>
                                 </v-dialog>
@@ -651,14 +717,14 @@
                                         <tr>
                                             <td>Instructor(s)</td>
                                             <td v-if="item.hasIChair" class="text-center">
-                                                <a @click="editMeetingTimes(item)">
+                                                <a @click="editOfferingInstructors(item)">
                                                     <div v-for="instructor in item.ichair.instructors">
                                                         [[instructor]]
                                                     </div>
                                                 </a>
                                             </td>
                                             <td v-else class="text-center">
-                                                <a @click="editMeetingTimes(item)">
+                                                <a @click="editOfferingInstructors(item)">
                                                     ---
                                                 </a>
                                             </td>
@@ -954,26 +1020,26 @@
                                                         <span
                                                             v-if="item.delta.semester_fraction.was == semesterFractions.first_half">
                                                             First Half
-                                                        </<a>
-                                                        <span
-                                                            v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
-                                                            Second Half
-                                                        </span>
-                                                    </span>
-
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top"
-                                                                    color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
-                                                                    mdi-close-circle
-                                                                </v-icon>
+                                                            </<a>
+                                                            <span
+                                                                v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
+                                                                Second Half
                                                             </span>
-                                                        </template>
-                                                        <span>Undo</span>
-                                                    </v-tooltip>
+                                                        </span>
+
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
+                                                                        v-on="on">
+                                                                        mdi-close-circle
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
 
                                                 </div>
                                                 <div>
@@ -1016,16 +1082,18 @@
                                                     <a @click="editPublicComments(item)">
                                                         [[item.ichair.comments.summary]]
                                                     </a>
-                                                    
+
                                                 </div>
                                                 <div v-else-if="item.showAllIChairComments">
                                                     <a @click="editPublicComments(item)">
-                                                        <div v-for="comment in item.ichair.comments.comment_list" class="caption text-left">
-                                                            [[comment.text]]              
+                                                        <div v-for="comment in item.ichair.comments.comment_list"
+                                                            class="caption text-left">
+                                                            [[comment.text]]
                                                         </div>
                                                     </a>
                                                     <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showLessOfIChairComments(item)">Show Less</v-btn>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                            @click="showLessOfIChairComments(item)">Show Less</v-btn>
                                                     </div>
                                                 </div>
                                                 <div v-else>
@@ -1039,18 +1107,19 @@
                                                                 </div>
                                                             </template>
                                                             <div v-for="comment in item.ichair.comments.comment_list">
-                                                                [[comment.text]]              
+                                                                [[comment.text]]
                                                             </div>
                                                         </v-tooltip>
                                                     </div>
                                                     <br>
                                                     <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showMoreOfIChairComments(item)">Show More</v-btn>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                            @click="showMoreOfIChairComments(item)">Show More</v-btn>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td v-else class="text-center">
-                                                    ---
+                                                ---
                                             </td>
                                             <td>
                                                 <div class="arrow-group">
@@ -1100,11 +1169,13 @@
                                                     [[item.banner.comments.summary]]
                                                 </div>
                                                 <div v-else-if="item.showAllBannerComments">
-                                                    <div v-for="comment in item.banner.comments.comment_list" class="caption text-left">
-                                                        [[comment.text]]              
+                                                    <div v-for="comment in item.banner.comments.comment_list"
+                                                        class="caption text-left">
+                                                        [[comment.text]]
                                                     </div>
                                                     <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showLessOfBannerComments(item)">Show Less</v-btn>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                            @click="showLessOfBannerComments(item)">Show Less</v-btn>
                                                     </div>
                                                 </div>
                                                 <div v-else>
@@ -1116,13 +1187,14 @@
                                                                 </div>
                                                             </template>
                                                             <div v-for="comment in item.banner.comments.comment_list">
-                                                                [[comment.text]]              
+                                                                [[comment.text]]
                                                             </div>
                                                         </v-tooltip>
                                                     </div>
                                                     <br>
                                                     <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2" @click="showMoreOfBannerComments(item)">Show More</v-btn>
+                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                            @click="showMoreOfBannerComments(item)">Show More</v-btn>
                                                     </div>
                                                 </div>
                                             </td>
@@ -1172,8 +1244,8 @@
 
 
                                         </tr>
-                                        
-                                            
+
+
 
                                     </tbody>
                                 </table>
@@ -1181,7 +1253,8 @@
                         </v-layout>
                         <v-layout>
                             <v-flex v-if="displayAddNoteButton(item)" xs12>
-                                <v-btn small class="ml-4" color="primary"@click="displayNoteForRegistrarDialog(item)">Add Note for Registrar</v-btn>
+                                <v-btn small class="ml-4" color="primary" @click="displayNoteForRegistrarDialog(item)">
+                                    Add Note for Registrar</v-btn>
                             </v-flex>
                         </v-layout>
                         <v-layout v-if="displayNote(item)">
@@ -1192,25 +1265,18 @@
                                 some controls
                             </v-flex>-->
                             <v-flex xs8 offset-xs1>
-                                <v-alert
-                                    border="left"
-                                    colored-border
-                                    color="primary"
-                                    elevation="1"
-                                    class="body-2"
-                                    >
+                                <v-alert border="left" colored-border color="primary" elevation="1" class="body-2">
                                     <strong>Note for Registrar:</strong> [[item.delta.registrar_comment]]
-                                    
+
                                 </v-alert>
-                                
+
                             </v-flex>
                             <v-flex xs3 class="pl-3">
                                 <v-tooltip top>
                                     <template v-slot:activator="{ on }">
                                         <span class="float-left">
-                                            <v-icon class="include-pointer icon-padding-top"
-                                                color="primary" @click="deleteNoteForRegistrar(item)"
-                                                v-on="on">
+                                            <v-icon class="include-pointer icon-padding-top" color="primary"
+                                                @click="deleteNoteForRegistrar(item)" v-on="on">
                                                 mdi-close-circle
                                             </v-icon>
                                         </span>
@@ -1220,9 +1286,8 @@
                                 <v-tooltip top>
                                     <template v-slot:activator="{ on }">
                                         <span class="float-left pl-3">
-                                            <v-icon class="include-pointer icon-padding-top"
-                                                color="primary" @click="displayNoteForRegistrarDialog(item)"
-                                                v-on="on">
+                                            <v-icon class="include-pointer icon-padding-top" color="primary"
+                                                @click="displayNoteForRegistrarDialog(item)" v-on="on">
                                                 mdi-pencil
                                             </v-icon>
                                         </span>
@@ -1232,7 +1297,7 @@
                             </v-flex>
 
 
-                            
+
                         </v-layout>
                         <v-layout>
                             <v-flex>
