@@ -473,6 +473,13 @@ var app = new Vue({
           !item.delta.request_update_meeting_times
         ) {
           return false;
+          /*
+          if (item.hasIChair) {// it must have iChair, since the delta object is of type CREATE at this point...but just in case....
+            return item.ichair.meeting_times.length === 0;// deactivates if there are no iChair meeting times, since then it agrees with Banner...which currently has nothing
+          } else {
+            return true;
+          }
+          */
         }
       }
       return item.schedulesMatch || !item.hasIChair || !item.hasBanner;
@@ -1331,7 +1338,6 @@ var app = new Vue({
         });
       }
 
-
       if (!errorInForm) {
         console.log('ready to submit! ', instructorList);
         // submit
@@ -1357,7 +1363,19 @@ var app = new Vue({
           data: JSON.stringify(dataForPost),
           success: function(jsonResponse) {
             console.log("response: ", jsonResponse);
-            /*
+            /**
+             * 
+    data = {
+        'instructors_detail': ico_instructors_detail,
+        'instructors': ico_instructors,
+        "updated_load_available": updated_load_available,
+        "updates_completed": updates_completed,
+        "instructors_match": inst_match,
+        'has_delta': has_delta,
+        'delta': delta_response # will be None if there is no delta object
+    }
+             */
+            
             _this.courseOfferings.forEach(courseOfferingItem => {
               if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
                 if (jsonResponse.has_delta) {
@@ -1365,8 +1383,10 @@ var app = new Vue({
                 } else {
                   courseOfferingItem.delta = null;
                 }
-                courseOfferingItem.ichair.comments = jsonResponse.comments;
-                courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
+                courseOfferingItem.load_available = jsonResponse.load_available;
+                courseOfferingItem.ichair.instructors = jsonResponse.instructors;
+                courseOfferingItem.ichair.instructors_detail = jsonResponse.instructors_detail;
+                courseOfferingItem.instructorsMatch = jsonResponse.instructors_match;
                 courseOfferingItem.allOK =
                   courseOfferingItem.enrollmentCapsMatch &&
                   courseOfferingItem.instructorsMatch &&
@@ -1375,7 +1395,13 @@ var app = new Vue({
                   courseOfferingItem.publicCommentsMatch;
               }
             });
-            */
+            if (!jsonResponse.updates_completed) {
+              _this.instructorFormErrorMessage = "Sorry, there appears to have been a problem with performing the requested update(s).";
+            } else {
+              _this.cancelInstructorsForm();
+            }
+            
+            
             //_this.cancelCommentsForm();
             //console.log('course offerings: ', _this.courseOfferings);
           },

@@ -591,7 +591,7 @@ class CourseOffering(StampedModel):
         # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
         comment_list = []
         ii = 0
-        summary = '---'
+        summary = ''
         summary_contains_all_text = True
         comments = self.offering_comments.all()
         for comment in comments:

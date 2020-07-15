@@ -619,8 +619,13 @@
                                             <td>Meeting Times</td>
                                             <td v-if="item.hasIChair" class="text-center">
                                                 <a @click="editMeetingTimes(item)">
-                                                    <div v-for="meetingTime in item.ichair.meeting_times">
-                                                        [[meetingTime]]
+                                                    <div v-if="item.ichair.meeting_times.length > 0">
+                                                        <div v-for="meetingTime in item.ichair.meeting_times">
+                                                            [[meetingTime]]
+                                                        </div>
+                                                    </div>
+                                                    <div v-else>
+                                                        ---
                                                     </div>
                                                 </a>
                                             </td>
@@ -729,8 +734,13 @@
                                             <td>Instructor(s)</td>
                                             <td v-if="item.hasIChair" class="text-center">
                                                 <a @click="editOfferingInstructors(item)">
-                                                    <div v-for="instructor in item.ichair.instructors">
-                                                        [[instructor]]
+                                                    <div v-if="item.ichair.instructors.length > 0">
+                                                        <div v-for="instructor in item.ichair.instructors">
+                                                            [[instructor]]
+                                                        </div>
+                                                    </div>
+                                                    <div v-else>
+                                                        ---
                                                     </div>
                                                 </a>
                                             </td>
@@ -1091,7 +1101,12 @@
                                             <td v-if="item.hasIChair" class="text-center">
                                                 <div v-if="item.ichair.comments.summary_contains_all_text">
                                                     <a @click="editPublicComments(item)">
-                                                        [[item.ichair.comments.summary]]
+                                                        <div v-if="item.ichair.comments.summary ===''">
+                                                            ---
+                                                        </div>
+                                                        <div v-else>
+                                                            [[item.ichair.comments.summary]]
+                                                        </div>
                                                     </a>
 
                                                 </div>

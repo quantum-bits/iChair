@@ -288,6 +288,12 @@ def update_instructors_for_course_offering(request):
     load_available_requires_update = json_data['loadAvailableRequiresUpdate']
     instructor_list = json_data['instructorList']
     banner_course_offering_id = json_data['bannerId']
+    has_delta = json_data['hasDelta']
+    has_banner = json_data['hasBanner']
+    delta = json_data["delta"]
+
+    # delta course offering actions from the model itself:
+    delta_course_offering_actions = DeltaCourseOffering.actions()
 
     print(ichair_course_offering_id)
     print(load_available)
@@ -295,56 +301,82 @@ def update_instructors_for_course_offering(request):
     print(instructor_list)
     print(banner_course_offering_id)
 
-    update_errors = False
+    updates_completed = True
 
     ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
     print(ico)
 
-    updated_instructor_list = []
-    if len(instructor_list) > 0:
-        all_instructors_exist = True
+    all_instructors_exist = True
+    for instructor_data in instructor_list:
+        try:
+            instructor = FacultyMember.objects.get(pk=instructor_data["id"])
+            print(instructor)
+        except FacultyMember.DoesNotExist:
+            print("oops! faculty member does not exist")
+            all_instructors_exist = False
+            updates_completed = False
+    if all_instructors_exist:
+        #print('offering instructors before delete: ')
+        #for oi in ico.offering_instructors.all():
+        #    print(oi)
+        # delete all of the offering instructors and start over...simpler than trying to figure out the differences
+        ico.offering_instructors.all().delete()
+        #print('offering instructors after delete: ')
+        #for oi in ico.offering_instructors.all():
+        #    print(oi)
         for instructor_data in instructor_list:
-            try:
-                instructor = FacultyMember.objects.get(pk=instructor_data["id"])
-                print(instructor)
-            except FacultyMember.DoesNotExist:
-                print("oops! faculty member does not exist")
-                all_instructors_exist = False
-                update_errors = True
-        if all_instructors_exist:
-            print('offering instructors before delete: ')
-            for oi in ico.offering_instructors.all():
-                print(oi)
-            # delete all of the offering instructors and start over...simpler than trying to figure out the differences
-            ico.offering_instructors.all().delete()
-            print('offering instructors after delete: ')
-            for oi in ico.offering_instructors.all():
-                print(oi)
-            for instructor_data in instructor_list:
-                instructor = FacultyMember.objects.get(pk=instructor_data["id"])
-                offering_instructor = OfferingInstructor.objects.create(
-                    course_offering=ico,
-                    instructor=instructor,
-                    load_credit = instructor_data["loadCredit"],
-                    is_primary= instructor_data["isPrimary"])
-                offering_instructor.save()
+            instructor = FacultyMember.objects.get(pk=instructor_data["id"])
+            offering_instructor = OfferingInstructor.objects.create(
+                course_offering=ico,
+                instructor=instructor,
+                load_credit = instructor_data["loadCredit"],
+                is_primary= instructor_data["isPrimary"])
+            offering_instructor.save()
             
-    print('offering instructors after update: ')
-    updated_instructor_list = construct_ichair_instructor_detail_list(ico)
-    print(updated_instructor_list)
+    ico_instructors = construct_instructor_list(ico)
+    ico_instructors_detail = construct_ichair_instructor_detail_list(ico)
 
     if load_available < 0:
-        update_errors = True
+        updates_completed = False
     elif load_available_requires_update and (load_available >= 0):
         ico.load_available = load_available
         ico.save()
     
     updated_load_available = ico.load_available
 
+    # now update things related to deltas so can update this stuff in the UI
+    #schedules_match = False
+    #enrollment_caps_match = False
+    #sem_fractions_match = False
+    
+    delta_response = None
+    inst_match = False
+
+    if has_banner and ico:
+        bco = BannerCourseOffering.objects.get(pk=banner_course_offering_id)
+        inst_match = instructors_match(bco, ico)
+
+        if has_delta:
+            dco = DeltaCourseOffering.objects.get(pk=delta["id"])
+            delta_response = delta_update_status(bco, ico, dco)
+    elif (not(has_banner)) and ico:
+        if has_delta:
+            # in this case we are talking about a delta requested action of "create"
+            dco = DeltaCourseOffering.objects.get(pk=delta["id"])
+            if dco.requested_action != delta_course_offering_actions["create"]:
+                print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
+            else:
+                delta_response = delta_create_status(ico, dco)
+                inst_match = delta_response["request_update_instructors"]
+      
     data = {
-        'updated_instructor_list': updated_instructor_list,
-        "updated_load_available": updated_load_available,
-        "updates_completed": not update_errors
+        'instructors_detail': ico_instructors_detail,
+        'instructors': ico_instructors,
+        "load_available": updated_load_available,
+        "updates_completed": updates_completed,
+        "instructors_match": inst_match,
+        'has_delta': has_delta,
+        'delta': delta_response # will be None if there is no delta object
     }
     return JsonResponse(data)
 
@@ -397,6 +429,7 @@ def create_course_offering(request):
         semester=semester,
         semester_fraction=semester_fraction,
         max_enrollment=max_enrollment,
+        load_available=course.credit_hours,
         crn=crn)
     course_offering.save()
 
