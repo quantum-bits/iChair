@@ -263,6 +263,92 @@ def get_courses(request):
     }
     return JsonResponse(data)
 
+@login_required
+@csrf_exempt
+def update_instructors_for_course_offering(request):
+    """
+    Update the instructors for an iChair course offering (including load hours).
+    Possibly also change the total number of load hours available for the course offering.
+    """
+    json_data = json.loads(request.body)
+    """
+    courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
+          bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
+          hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
+          delta: this.editCourseOfferingData.delta,
+          instructorList: instructorList,
+          loadAvailable: loadAvailable,
+          loadAvailableRequiresUpdate: !(loadAvailable === this.initialLoadAvailableData),
+    """
+
+    ichair_course_offering_id = json_data['courseOfferingId']
+    
+    load_available = json_data['loadAvailable']
+    load_available_requires_update = json_data['loadAvailableRequiresUpdate']
+    instructor_list = json_data['instructorList']
+    banner_course_offering_id = json_data['bannerId']
+
+    print(ichair_course_offering_id)
+    print(load_available)
+    print(load_available_requires_update)
+    print(instructor_list)
+    print(banner_course_offering_id)
+
+    update_errors = False
+
+    ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+    print(ico)
+
+    updated_instructor_list = []
+    if len(instructor_list) > 0:
+        all_instructors_exist = True
+        for instructor_data in instructor_list:
+            try:
+                instructor = FacultyMember.objects.get(pk=instructor_data["id"])
+                print(instructor)
+            except FacultyMember.DoesNotExist:
+                print("oops! faculty member does not exist")
+                all_instructors_exist = False
+                update_errors = True
+        if all_instructors_exist:
+            print('offering instructors before delete: ')
+            for oi in ico.offering_instructors.all():
+                print(oi)
+            # delete all of the offering instructors and start over...simpler than trying to figure out the differences
+            ico.offering_instructors.all().delete()
+            print('offering instructors after delete: ')
+            for oi in ico.offering_instructors.all():
+                print(oi)
+            for instructor_data in instructor_list:
+                instructor = FacultyMember.objects.get(pk=instructor_data["id"])
+                offering_instructor = OfferingInstructor.objects.create(
+                    course_offering=ico,
+                    instructor=instructor,
+                    load_credit = instructor_data["loadCredit"],
+                    is_primary= instructor_data["isPrimary"])
+                offering_instructor.save()
+            
+    print('offering instructors after update: ')
+    updated_instructor_list = construct_ichair_instructor_detail_list(ico)
+    print(updated_instructor_list)
+
+    if load_available < 0:
+        update_errors = True
+    elif load_available_requires_update and (load_available >= 0):
+        ico.load_available = load_available
+        ico.save()
+    
+    updated_load_available = ico.load_available
+
+    data = {
+        'updated_instructor_list': updated_instructor_list,
+        "updated_load_available": updated_load_available,
+        "updates_completed": not update_errors
+    }
+    return JsonResponse(data)
+
+
 
 @login_required
 @csrf_exempt
@@ -395,6 +481,7 @@ def create_course_offering(request):
         # "rooms": ico_room_list,
         "instructors": ico_instructors,
         "instructors_detail": ico_instructors_detail,
+        "load_available": course_offering.load_available,
         "semester": course_offering.semester.name.name,
         "semester_fraction": int(course_offering.semester_fraction),
         "max_enrollment": int(course_offering.max_enrollment),
@@ -655,6 +742,7 @@ def banner_comparison_data(request):
                             # "rooms": ico_room_list,
                             "instructors": ico_instructors,
                             "instructors_detail": ico_instructors_detail,
+                            "load_available": ico.load_available,
                             "semester": ico.semester.name.name,
                             "semester_fraction": int(ico.semester_fraction),
                             "max_enrollment": int(ico.max_enrollment),
@@ -711,6 +799,7 @@ def banner_comparison_data(request):
                             # "rooms": ico_room_list,
                             "instructors": ico_instructors,
                             "instructors_detail": ico_instructors_detail,
+                            "load_available": unlinked_ico.load_available,
                             "semester": unlinked_ico.semester.name.name,
                             "semester_fraction": int(unlinked_ico.semester_fraction),
                             "max_enrollment": int(unlinked_ico.max_enrollment)})
@@ -860,6 +949,7 @@ def banner_comparison_data(request):
                         # "rooms": ico_room_list,
                         "instructors": ico_instructors,
                         "instructors_detail": ico_instructors_detail,
+                        "load_available": ico.load_available,
                         "semester": ico.semester.name.name,
                         "semester_fraction": int(ico.semester_fraction),
                         "max_enrollment": int(ico.max_enrollment),
@@ -2582,6 +2672,7 @@ def copy_registrar_course_offering_data_to_ichair(request):
             # "rooms": ico_room_list,
             "instructors": ico_instructors,
             "instructors_detail": ico_instructors_detail,
+            "load_available": ico.load_available,
             "semester": ico.semester.name.name,
             "semester_fraction": int(ico.semester_fraction),
             "max_enrollment": int(ico.max_enrollment),

@@ -193,14 +193,14 @@
                                                         <v-flex xs2>
                                                             <!-- https://stackoverflow.com/questions/19011861/is-there-a-float-input-type-in-html5 -->
                                                             <input class="mt-2" style="height: 32px; width: 100%;"
-                                                                type="number" min="0" step="any" v-model="instructorDetail.load_credit">
+                                                                type="number" min="0" step="any"
+                                                                v-model="instructorDetail.load_credit">
                                                         </v-flex>
                                                         <v-flex xs3>
                                                             <!-- https://stackoverflow.com/questions/50506235/vuejs-click-event-from-checkbox/50506564 -->
-                                                            <v-checkbox 
-                                                                class="mt-2" 
+                                                            <v-checkbox class="mt-2"
                                                                 @change="onIsPrimaryChanged(instructorDetail)"
-                                                                :disabled = "instructorDetail.is_primary_disabled"
+                                                                :disabled="instructorDetail.is_primary_disabled"
                                                                 v-model="instructorDetail.is_primary">
                                                             </v-checkbox>
                                                         </v-flex>
@@ -214,6 +214,17 @@
                                                     <v-flex xs12>
                                                         <v-btn color="primary" @click="addInstructor()">Add Another
                                                         </v-btn>
+                                                    </v-flex>
+                                                </v-layout>
+                                                <v-layout class="mt-2" wrap>
+                                                    <v-flex xs5>
+                                                        <div class="mt-2">
+                                                            Total Number of Load Hours Available:
+                                                        </div>
+                                                    </v-flex>
+                                                    <v-flex xs2>
+                                                        <input class="mt-2" style="height: 32px; width: 100%"
+                                                            type="number" step="any" min="0" v-model="editLoadAvailable">
                                                     </v-flex>
                                                 </v-layout>
                                                 <v-layout text-center>

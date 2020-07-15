@@ -99,11 +99,13 @@ var app = new Vue({
       editMeetings: [], // used to store the data in the class schedule form
       editInstructors: [], // used to store the data in the edit instructors form
       editEnrollmentCap: null, // used to store enrollment data in the class schedule form
+      editLoadAvailable: null, // used to store "load available" data in the edit intructors form
       editSemesterFraction: null, // used to store semester fraction data in the class schedule form
       editComments: [], // used to store the data in the public comments form
       editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule and public comments forms
       initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
       initialEnrollmentData: null, // used to hold on to the initial enrollment data (before editing)
+      initialLoadAvailableData: null, // used to hold on to the initial "load available" data (before editing)
       initialSemesterFractionData: null, // used to hold on to the initial semester fraction data (before editing)
       initialCommentData: [], // used to hold on to the initial comments (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
@@ -1187,8 +1189,21 @@ var app = new Vue({
     },
 
     editOfferingInstructors(courseInfo) {
+      let bannerId = null;
+      if (courseInfo.hasBanner) {
+        bannerId = courseInfo.banner.course_offering_id;
+      }
+      this.editCourseOfferingData = {
+        courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
+        courseOfferingId: courseInfo.ichair.course_offering_id,
+        ichairObject: courseInfo.ichair,
+        bannerId: bannerId,
+        delta: courseInfo.delta
+      };
       console.log('course info: ', courseInfo);
       this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
+      this.editLoadAvailable = courseInfo.ichair.load_available;
+      this.initialLoadAvailableData = this.editLoadAvailable;
       let instructorDetails = courseInfo.ichair.instructors_detail;
       this.editInstructors = JSON.parse(JSON.stringify(instructorDetails));
       console.log('edit instructors: ', this.editInstructors);
@@ -1240,16 +1255,31 @@ var app = new Vue({
       this.editInstructorsDialog = false;
       this.editInstructors = [];
       this.instructorFormErrorMessage = "";
+      this.editLoadAvailable = null;
+      this.initialLoadAvailableData = null;
+      this.editCourseOfferingData = {};
     },
 
-    submitInstructorsForm() {
-      // form validation is a bit messy here because of all the edge cases...!
+    submitInstructorsForm(courseInfo) {
+      // form validation is a bit messy here because of all the edge cases...!      
       this.instructorFormErrorMessage = "";
       let instructorList = [];
       console.log('submit!');
       let errorInForm = false;
       let numPrimaryInstructors = 0;
       let numInstructors = 0;
+
+      let loadAvailable = +this.editLoadAvailable;
+      if (Number.isNaN(loadAvailable)) {
+        console.log('not a number!');
+        this.instructorFormErrorMessage = "The total number of load hours available must be a number greater than or equal to zero.";
+        errorInForm = true;
+      } else if (loadAvailable < 0) {// at this point it is presumably a number....
+        console.log('negative!');
+        this.instructorFormErrorMessage = "The total number of load hours available must be a number greater than or equal to zero.";
+        errorInForm = true;
+      }
+
       this.editInstructors.forEach(instructor => {
         if (instructor.is_primary && (!this.instructorToBeDeleted(instructor))) {
           numPrimaryInstructors += 1;
@@ -1307,12 +1337,59 @@ var app = new Vue({
         // submit
         // WORKING HERE: write endpoint and submit(!)
 
-
-
+        let dataForPost = {
+          courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
+          bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
+          hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
+          delta: this.editCourseOfferingData.delta,
+          instructorList: instructorList,
+          loadAvailable: loadAvailable,
+          loadAvailableRequiresUpdate: !(loadAvailable === this.initialLoadAvailableData),
+        };
+        console.log('data for post: ', dataForPost);
+        let _this = this;
+        $.ajax({
+          // initialize an AJAX request
+          type: "POST",
+          url: "/planner/ajax/update-instructors-for-course-offering/",
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(jsonResponse) {
+            console.log("response: ", jsonResponse);
+            /*
+            _this.courseOfferings.forEach(courseOfferingItem => {
+              if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.delta = jsonResponse.delta;
+                } else {
+                  courseOfferingItem.delta = null;
+                }
+                courseOfferingItem.ichair.comments = jsonResponse.comments;
+                courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
+                courseOfferingItem.allOK =
+                  courseOfferingItem.enrollmentCapsMatch &&
+                  courseOfferingItem.instructorsMatch &&
+                  courseOfferingItem.schedulesMatch &&
+                  courseOfferingItem.semesterFractionsMatch &&
+                  courseOfferingItem.publicCommentsMatch;
+              }
+            });
+            */
+            //_this.cancelCommentsForm();
+            //console.log('course offerings: ', _this.courseOfferings);
+          },
+          error: function(jqXHR, exception) {
+            // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+            console.log(jqXHR);
+            //_this.showCreateUpdateErrorMessage();
+            _this.instructorFormErrorMessage = "Sorry, there appears to have been an error.";
+          }
+        });
       }
-
-
+      this.cancelCommentsForm();
     },
+
     instructorToBeDeleted(instructor) {
       let loadCredit = +instructor.load_credit;
       return instructor.delete || ((instructor.id === null) && (loadCredit === 0) && (!instructor.is_primary));
@@ -1862,7 +1939,8 @@ var app = new Vue({
       });
     },
     copyRegistrarDataToiChair(item, dataToUpdate) {
-      // assume for now that an iChair course offering object exists already, but maybe could generalize...(?)
+      // assume for now that an iChair course offering object exists already (I believe that the actual creation of a an
+      // iChair course offering -- i.e., copying it from Banner -- already happens in another method);
       // also assume that a banner course offering exists, or else we have nothing to copy from....
       console.log("item: ", item);
       console.log("data to update: ", dataToUpdate);
