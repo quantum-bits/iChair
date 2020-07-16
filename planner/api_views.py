@@ -316,14 +316,9 @@ def update_instructors_for_course_offering(request):
             all_instructors_exist = False
             updates_completed = False
     if all_instructors_exist:
-        #print('offering instructors before delete: ')
-        #for oi in ico.offering_instructors.all():
-        #    print(oi)
         # delete all of the offering instructors and start over...simpler than trying to figure out the differences
+        # https://stackoverflow.com/questions/9143262/delete-multiple-objects-in-django
         ico.offering_instructors.all().delete()
-        #print('offering instructors after delete: ')
-        #for oi in ico.offering_instructors.all():
-        #    print(oi)
         for instructor_data in instructor_list:
             instructor = FacultyMember.objects.get(pk=instructor_data["id"])
             offering_instructor = OfferingInstructor.objects.create(
@@ -579,6 +574,8 @@ def banner_comparison_data(request):
     department = Department.objects.get(pk=department_id)
     academic_year = AcademicYear.objects.get(pk = year_id)
 
+    faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
+
     semester_fractions = {
         'full': CourseOffering.FULL_SEMESTER,
         'first_half': CourseOffering.FIRST_HALF_SEMESTER,
@@ -709,6 +706,7 @@ def banner_comparison_data(request):
 
                         ico_instructors = construct_instructor_list(ico)
                         ico_instructors_detail = construct_ichair_instructor_detail_list(ico)
+                        available_instructors = department.available_instructors(academic_year, ico, faculty_to_view_ids)
 
                         meeting_times_detail = construct_meeting_times_detail(
                             ico)
@@ -775,6 +773,7 @@ def banner_comparison_data(request):
                             # "rooms": ico_room_list,
                             "instructors": ico_instructors,
                             "instructors_detail": ico_instructors_detail,
+                            "available_instructors": available_instructors,
                             "load_available": ico.load_available,
                             "semester": ico.semester.name.name,
                             "semester_fraction": int(ico.semester_fraction),
@@ -817,6 +816,7 @@ def banner_comparison_data(request):
                         ico_instructors = construct_instructor_list(
                             unlinked_ico)
                         ico_instructors_detail = construct_ichair_instructor_detail_list(unlinked_ico)
+                        available_instructors = department.available_instructors(academic_year, unlinked_ico, faculty_to_view_ids)
 
                         meeting_times_detail = construct_meeting_times_detail(
                             unlinked_ico)
@@ -832,6 +832,7 @@ def banner_comparison_data(request):
                             # "rooms": ico_room_list,
                             "instructors": ico_instructors,
                             "instructors_detail": ico_instructors_detail,
+                            "available_instructors": available_instructors,
                             "load_available": unlinked_ico.load_available,
                             "semester": unlinked_ico.semester.name.name,
                             "semester_fraction": int(unlinked_ico.semester_fraction),
@@ -889,6 +890,8 @@ def banner_comparison_data(request):
 
                 ico_instructors = construct_instructor_list(ico)
                 ico_instructors_detail = construct_ichair_instructor_detail_list(ico)
+                available_instructors = department.available_instructors(academic_year, ico, faculty_to_view_ids)
+
                 meeting_times_detail = construct_meeting_times_detail(ico)
 
                 unlinked_banner_course_offerings = find_unlinked_banner_course_offerings(
@@ -982,6 +985,7 @@ def banner_comparison_data(request):
                         # "rooms": ico_room_list,
                         "instructors": ico_instructors,
                         "instructors_detail": ico_instructors_detail,
+                        "available_instructors": available_instructors,
                         "load_available": ico.load_available,
                         "semester": ico.semester.name.name,
                         "semester_fraction": int(ico.semester_fraction),
@@ -1008,10 +1012,7 @@ def banner_comparison_data(request):
     sorted_course_offerings = sorted(course_offering_data, key=lambda item: (
         semester_sorter_dict[item["semester_id"]], item["course"]))
 
-    faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
-
     data = {
-        "available_faculty": department.available_instructors(academic_year, faculty_to_view_ids),
         "course_data": sorted_course_offerings,  # course_offering_data,
         "semester_fractions": semester_fractions,
         "semester_fractions_reverse": semester_fractions_reverse
@@ -2466,6 +2467,11 @@ def copy_registrar_course_offering_data_to_ichair(request):
     # user = request.user
     # user_preferences = user.user_preferences.all()[0]
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+
+    faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
+
     day_sorter_dict = {
         'M': 0,
         'T': 1,
@@ -2490,6 +2496,12 @@ def copy_registrar_course_offering_data_to_ichair(request):
     ichair_course_offering_id = json_data['iChairCourseOfferingId']
     banner_course_offering_id = json_data['bannerCourseOfferingId']
     properties_to_update = json_data["propertiesToUpdate"]
+
+    department_id = json_data['departmentId']
+    year_id = json_data['yearId']
+
+    department = Department.objects.get(pk=department_id)
+    academic_year = AcademicYear.objects.get(pk = year_id)
 
     # if there is no banner course offering id, this will be None
     delta_id = json_data['deltaId']
@@ -2665,6 +2677,8 @@ def copy_registrar_course_offering_data_to_ichair(request):
             presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
         ico_instructors = construct_instructor_list(ico)
         ico_instructors_detail = construct_ichair_instructor_detail_list(ico)
+        available_instructors = department.available_instructors(academic_year, ico, faculty_to_view_ids)
+
         meeting_times_detail = construct_meeting_times_detail(ico)
 
         if delta_id is not None:
@@ -2705,6 +2719,7 @@ def copy_registrar_course_offering_data_to_ichair(request):
             # "rooms": ico_room_list,
             "instructors": ico_instructors,
             "instructors_detail": ico_instructors_detail,
+            "available_instructors": available_instructors,
             "load_available": ico.load_available,
             "semester": ico.semester.name.name,
             "semester_fraction": int(ico.semester_fraction),

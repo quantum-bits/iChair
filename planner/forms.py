@@ -4,7 +4,6 @@ from django.db.models import Q
 from .models import *
 from django.forms.widgets import RadioSelect
 
-
 class RequirementForm(forms.ModelForm):
     class Meta:
         model = Requirement
@@ -228,7 +227,7 @@ class BaseInstructorFormSet(forms.models.BaseInlineFormSet):
 
 class InstructorForm(forms.ModelForm):
 
-    def __init__(self, department_id, year, faculty_to_view_ids, *args, **kwargs):
+    def __init__(self, department_id, year, faculty_to_view_ids, course_offering, *args, **kwargs):
         super (InstructorForm,self).__init__(*args,**kwargs)
         # following code from Tom Nurkkala
         # list of all active faculty in the dept (used for dropdown lists)
@@ -240,6 +239,17 @@ class InstructorForm(forms.ModelForm):
             fm = FacultyMember.objects.get(pk = fm_to_view_id)
             if fm.is_active(year) and (fm.id not in active_fm_ids):
                 active_fm_ids.append(fm.id)
+        # in addition, need to add to this list anyone who is already teaching this course offering,
+        # or else that faculty member won't show up on drop-down lists, which can lead to a form crashing 
+        # (if you try to edit the loads and that instructor is already teaching the course offering but
+        # is not being viewed(!))
+        for oi in course_offering.offering_instructors.all():
+            if oi.instructor.id not in active_fm_ids:
+                print('found an instructor that needed to be added!!!')
+                print(oi.instructor)
+                active_fm_ids.append(oi.instructor.id)
+        #for choice in self.fields['course_offering'].choices:
+        #    print(choice)
         fm_objects = FacultyMember.objects.filter(id__in=active_fm_ids)
         self.fields['instructor'].queryset = fm_objects
 
@@ -500,9 +510,27 @@ class UpdateFacultyMemberForm(forms.ModelForm):
             years_with_nonzero_load = []
             have_problem = False
             for year in AcademicYear.objects.all():
-                if ((self.instance.load(year)>0) and (year.begin_on >= inactive_starting_year.begin_on)):
-                    have_problem = True
-                    years_with_nonzero_load.append('{0}-{1}'.format(year.begin_on.year, year.end_on.year))
+                if year.begin_on >= inactive_starting_year.begin_on:
+                    #have_problem = True
+                    #years_with_nonzero_load.append('{0}-{1}'.format(year.begin_on.year, year.end_on.year))
+                    for oi in self.instance.offering_instructors.filter(course_offering__semester__year=year):
+                        have_problem = True
+                        course_string = '{0} {1} ({2}-{3})'.format(
+                            oi.course_offering.course.subject.abbrev,
+                            oi.course_offering.course.number,
+                            year.begin_on.year, 
+                            year.end_on.year
+                        )
+                        years_with_nonzero_load.append(course_string)
+                    for ol in self.instance.other_loads.filter(semester__year=year):
+                        have_problem = True
+                        print(ol.load_type.load_type)
+                        other_load_string = '{0} ({1}-{2})'.format(
+                            ol.load_type.load_type,
+                            year.begin_on.year, 
+                            year.end_on.year
+                        )
+                        years_with_nonzero_load.append(other_load_string)
             if have_problem:
                 year_string = ''
                 for year in years_with_nonzero_load:
@@ -510,7 +538,7 @@ class UpdateFacultyMemberForm(forms.ModelForm):
                 if len(year_string)>2:
                     year_string=year_string[:-2]
                 
-                error_message = 'This faculty member is carrying load during one or more academic years (' + year_string + ') that prevent him or her from being listed as inactive during '+'{0}-{1}'.format(inactive_starting_year.begin_on.year, inactive_starting_year.end_on.year) + '.  Please reassign the load for the years in question before listing the faculty member as inactive.'                          
+                error_message = 'This faculty member is carrying load during one or more academic years [' + year_string + '] that prevent her or him from being listed as inactive during '+'{0}-{1}'.format(inactive_starting_year.begin_on.year, inactive_starting_year.end_on.year) + '.  Please reassign the load for the years in question before listing the faculty member as inactive.'                          
                 raise forms.ValidationError(error_message)
 
         return self.cleaned_data

@@ -69,21 +69,25 @@ class Department(models.Model):
         """True if the present department is trusted by the subject in the other department."""
         return self in subject.trusted_departments.all()
 
-    def available_instructors(self, academic_year, faculty_to_view_ids):
-        """Returns a list of instructors that are available to teach courses in this academic year."""
-        instructors_available_to_teach = [{
-                                            'id': fm.id,
-                                            'name': fm.first_name+' ' + fm.last_name
-                                        } for fm in self.faculty.all() if fm.is_active(academic_year)]
-        active_fm_ids = [fm["id"] for fm in instructors_available_to_teach]
+    def available_instructors(self, academic_year, course_offering, faculty_to_view_ids):
+        """Returns a list of instructors that are available to teach this course offering in this academic year."""
+        active_fm_ids = [fm.id for fm in self.faculty.all() if fm.is_active(academic_year)]
         # in addition, there could be faculty from other depts that are in the group of "faculty_to_view" in user preferences, so add those in, too....
         for fm_to_view_id in faculty_to_view_ids:
             fm = FacultyMember.objects.get(pk = fm_to_view_id)
             if fm.is_active(academic_year) and (fm.id not in active_fm_ids):
-                instructors_available_to_teach.append({
-                    'id': fm.id,
-                    'name': fm.first_name+' ' + fm.last_name
-                    })
+                active_fm_ids.append(fm.id)
+        # finally, since this is used to populate drop-down lists, should add in any faculty members who *may already be teaching this course
+        # offering*, since otherwise will get strange behaviour in forms when trying to edit loads
+        for oi in course_offering.offering_instructors.all():
+            if oi.instructor.id not in active_fm_ids:
+                active_fm_ids.append(oi.instructor.id)
+                
+        instructors_available_to_teach = [{
+                                            'id': fm.id,
+                                            'name': fm.first_name+' ' + fm.last_name
+                                        } for fm in FacultyMember.objects.filter(id__in=active_fm_ids)]
+
         return instructors_available_to_teach
 
     def __str__(self):

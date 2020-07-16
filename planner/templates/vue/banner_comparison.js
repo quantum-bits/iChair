@@ -305,8 +305,8 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(incomingData) {
-          _this.facultyChoices = incomingData.available_faculty;
-          console.log('faculty choices: ', _this.facultyChoices);
+          //_this.facultyChoices = incomingData.available_faculty;
+          //console.log('faculty choices: ', _this.facultyChoices);
           // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
           incomingData.course_data.forEach(course => {
             let ichairChoices = [];
@@ -1207,6 +1207,8 @@ var app = new Vue({
         bannerId: bannerId,
         delta: courseInfo.delta
       };
+      this.facultyChoices = courseInfo.ichair.available_instructors; // set the faculty choices for the drop-down for this course offering
+      console.log('initializing dialog; faculty choices: ', this.facultyChoices);
       console.log('course info: ', courseInfo);
       this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
       this.editLoadAvailable = courseInfo.ichair.load_available;
@@ -1265,6 +1267,8 @@ var app = new Vue({
       this.editLoadAvailable = null;
       this.initialLoadAvailableData = null;
       this.editCourseOfferingData = {};
+      this.facultyChoices = [];
+      console.log('faculty choices: ', this.facultyChoices);
     },
 
     submitInstructorsForm(courseInfo) {
@@ -1363,19 +1367,6 @@ var app = new Vue({
           data: JSON.stringify(dataForPost),
           success: function(jsonResponse) {
             console.log("response: ", jsonResponse);
-            /**
-             * 
-    data = {
-        'instructors_detail': ico_instructors_detail,
-        'instructors': ico_instructors,
-        "updated_load_available": updated_load_available,
-        "updates_completed": updates_completed,
-        "instructors_match": inst_match,
-        'has_delta': has_delta,
-        'delta': delta_response # will be None if there is no delta object
-    }
-             */
-            
             _this.courseOfferings.forEach(courseOfferingItem => {
               if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
                 if (jsonResponse.has_delta) {
@@ -1975,6 +1966,7 @@ var app = new Vue({
       if (item.delta !== null) {
         deltaId = item.delta.id;
       }
+
       dataForPost = {
         action: "update",
         // if 'update', then an ichair course offering id must be provided
@@ -1982,7 +1974,9 @@ var app = new Vue({
         iChairCourseOfferingId: item.ichair.course_offering_id,
         bannerCourseOfferingId: item.banner.course_offering_id,
         deltaId: deltaId,
-        propertiesToUpdate: []
+        propertiesToUpdate: [],
+        departmentId: json_data.departmentId, // add the faculty id to the GET parameters
+        yearId: json_data.yearId,
       };
       if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT) {
         dataForPost.propertiesToUpdate.push("max_enrollment");
@@ -2092,7 +2086,7 @@ var app = new Vue({
       // this.editEnrollmentCap could be either an int (the original data) or a string (if it's been edited, I think);
       // the following checks that, no matter if it is a string or an int, it has the form of an int;
       // using this because parseInt() is pretty forgiving.  If the user types in '8a', we probably don't want to accept that!
-      if (((parseInt(this.editEnrollmentCap).toString().trim()) === this.editEnrollmentCap.toString().trim()) && (parseInt(this.editEnrollmentCap)>0)) {
+      if (((parseInt(this.editEnrollmentCap).toString().trim()) === this.editEnrollmentCap.toString().trim()) && (parseInt(this.editEnrollmentCap)>=0)) {
         // at this point it looks like an int....
         if (parseInt(this.editEnrollmentCap) !== this.initialEnrollmentData) {
           console.log('need to update enrollment!');
@@ -2101,7 +2095,7 @@ var app = new Vue({
         }
       } else {
         console.log('enrollment error: ', this.editEnrollmentCap, ' ', typeof this.editEnrollmentCap);
-        this.enrollmentErrorMessage = "Please make sure that the enrollment cap is an integer greater than zero."
+        this.enrollmentErrorMessage = "Please make sure that the enrollment cap is an integer greater than or equal to zero."
         formOK = false;
       }
       // this.editSemesterFraction could be an int or a string, but in either case, parseInt should return the appropriate string

@@ -647,11 +647,16 @@ def collect_data_for_summary(request):
             for key in instructordict:
                 total_other_load = total_other_load + sum(row['load_hour_list'][instructordict[key]])
             element = row['load_hour_list'][instructordict[instructor_id]]
-            #if element[0] > 0 or element[1] > 0 or element[2] > 0:
+            # the following checks if the instructor actually has this load type, even if she or he may be receiving zero credit for it
+            other_load_type_this_instructor = OtherLoad.objects.filter(
+                                                        Q(instructor__id = instructor_id)&
+                                                        Q(semester__year = academic_year_object)&
+                                                        Q(load_type__id = row['id']))
             admin_data.append({'load_type':row['load_type'],
                                 'load_hour_list':element,
                                 'id': row['id'],
-                                'total_load':load_hour_rounder(total_other_load)
+                                'total_load':load_hour_rounder(total_other_load),
+                                'has_this_load_type': len(other_load_type_this_instructor)>0
                                 })
 
         instructor_is_in_this_dept = True
@@ -1231,7 +1236,7 @@ def update_course_offering(request,id, daisy_chain):
                                               exclude = [])
     #InstructorFormset.form = staticmethod(curry(InstructorForm, department_id=dept_id, year = year))
     # https://github.com/AndrewIngram/django-extra-views/issues/137
-    InstructorFormset.form = wraps(InstructorForm)(partial(InstructorForm, department_id=dept_id, year = year, faculty_to_view_ids = faculty_to_view_ids))
+    InstructorFormset.form = wraps(InstructorForm)(partial(InstructorForm, department_id=dept_id, year = year, faculty_to_view_ids = faculty_to_view_ids, course_offering = instance))
     
     # create the formset
     formset = InstructorFormset(instance = instance)

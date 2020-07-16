@@ -306,8 +306,8 @@ class="btn btn-warning"
 									<td> </td>
 									{% for loadelement in data_element.load_hour_list %}
 									<td style="text-align: center;">
-										{% if loadelement > 0 %}
-										{{loadelement}}
+										{% if data_element.has_this_load_type %}
+											{{loadelement}}
 										{% endif %}
 									</td>
 									{% endfor %}
