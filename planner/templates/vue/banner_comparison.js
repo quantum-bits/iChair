@@ -590,6 +590,12 @@ var app = new Vue({
             item.ichair = iChairOption; //this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
           }
         });
+        // add the banner title to the iChair version of the course;
+        // the api endpoint checks to see if the banner title already exists,
+        // and doesn't add it again if it does, so there's no harm in just 
+        // adding it here
+        console.log('updating banner title....');
+        this.addBannerTitle(item.ichair.course_id, item.banner.course_title);
         item.hasIChair = true;
         item.linked = true; // not sure if this is used anywhere, but OK....
         // generate a delta object for the item; not necessary, strictly speaking, but then we can also
@@ -654,6 +660,39 @@ var app = new Vue({
           }
         });
       }
+    },
+
+    addBannerTitle(ichairCourseId, bannerTitle) {
+      // add a banner title to an iChair course; the server will check if the banner title is redundant and, if so, will not add it
+      let dataForPost = {
+        create: [],
+        update: [{
+          ichair_course_id: ichairCourseId,
+          banner_title: bannerTitle
+        }]
+      };
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/create-update-courses/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          if (!(jsonResponse.updates_successful && jsonResponse.creates_successful)) {
+            console.log('the update to the banner title was not successful....');
+          } else {
+            console.log('successfully added the banner title to the course!');
+          }
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          //_this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
     },
 
     getCoursesForCourseOffering(item) {
@@ -1066,6 +1105,8 @@ var app = new Vue({
           }
         });
         console.log("item: ", item);
+        // now add the banner title to the iChair course for future reference....
+        this.addBannerTitle(item.ichair.course_id, item.banner.course_title);
         item.hasBanner = true;
         item.linked = true; // not sure if this is used anywhere, but OK....
         // generate a delta object for the item; not necessary, strictly speaking, but then we can also
@@ -1374,10 +1415,15 @@ var app = new Vue({
                 } else {
                   courseOfferingItem.delta = null;
                 }
+
                 courseOfferingItem.load_available = jsonResponse.load_available;
                 courseOfferingItem.ichair.instructors = jsonResponse.instructors;
                 courseOfferingItem.ichair.instructors_detail = jsonResponse.instructors_detail;
-                courseOfferingItem.instructorsMatch = jsonResponse.instructors_match;
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.instructorsMatch = jsonResponse.instructors_match || jsonResponse.delta.request_update_instructors;
+                } else {
+                  courseOfferingItem.instructorsMatch = jsonResponse.instructors_match;
+                }
                 courseOfferingItem.allOK =
                   courseOfferingItem.enrollmentCapsMatch &&
                   courseOfferingItem.instructorsMatch &&
@@ -1404,7 +1450,7 @@ var app = new Vue({
           }
         });
       }
-      this.cancelCommentsForm();
+      //this.cancelInstructorsForm();
     },
 
     instructorToBeDeleted(instructor) {
@@ -1734,8 +1780,13 @@ var app = new Vue({
                 } else {
                   courseOfferingItem.delta = null;
                 }
+
                 courseOfferingItem.ichair.comments = jsonResponse.comments;
-                courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match || jsonResponse.delta.request_update_public_comments;
+                } else {
+                  courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match;
+                }
                 courseOfferingItem.allOK =
                   courseOfferingItem.enrollmentCapsMatch &&
                   courseOfferingItem.instructorsMatch &&
@@ -2216,6 +2267,7 @@ var app = new Vue({
           dataType: "json",
           data: JSON.stringify(data_for_post),
           success: function(jsonResponse) {
+            console.log(jsonResponse);
             _this.courseOfferings.forEach(courseOfferingItem => {
               if (_this.editCourseOfferingData.courseOfferingIndex === courseOfferingItem.index) {
                 if (jsonResponse.has_delta) {
@@ -2223,13 +2275,21 @@ var app = new Vue({
                 } else {
                   courseOfferingItem.delta = null;
                 }
+               
                 courseOfferingItem.ichair.meeting_times_detail = jsonResponse.meeting_times_detail;
                 courseOfferingItem.ichair.meeting_times = jsonResponse.meeting_times;
                 courseOfferingItem.ichair.max_enrollment = jsonResponse.max_enrollment;
                 courseOfferingItem.ichair.semester_fraction = jsonResponse.semester_fraction;
-                courseOfferingItem.schedulesMatch = jsonResponse.schedules_match;
-                courseOfferingItem.enrollmentCapsMatch = jsonResponse.max_enrollments_match;
-                courseOfferingItem.semesterFractionsMatch = jsonResponse.semester_fractions_match;
+
+                if (jsonResponse.has_delta) {
+                  courseOfferingItem.schedulesMatch = jsonResponse.schedules_match || jsonResponse.delta.request_update_meeting_times;
+                  courseOfferingItem.enrollmentCapsMatch = jsonResponse.max_enrollments_match || jsonResponse.delta.request_update_max_enrollment;
+                  courseOfferingItem.semesterFractionsMatch = jsonResponse.semester_fractions_match || jsonResponse.delta.request_update_semester_fraction;
+                } else {
+                  courseOfferingItem.schedulesMatch = jsonResponse.schedules_match;
+                  courseOfferingItem.enrollmentCapsMatch = jsonResponse.max_enrollments_match;
+                  courseOfferingItem.semesterFractionsMatch = jsonResponse.semester_fractions_match;
+                }
                 courseOfferingItem.allOK =
                   courseOfferingItem.enrollmentCapsMatch &&
                   courseOfferingItem.instructorsMatch &&

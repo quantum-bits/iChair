@@ -173,7 +173,7 @@ def create_update_courses(request):
     print('updating....')
     for update_item in update_dict:
         print(' ')
-        print(update_item)
+        #print(update_item)
         # course = Course.objects.get(pk = update_item.ichair_course_id)
         try:
             course = Course.objects.get(pk=update_item["ichair_course_id"])
@@ -186,7 +186,7 @@ def create_update_courses(request):
                     title = update_item["banner_title"]
                 )
                 banner_title.save()
-            print('>>>>>> new banner title created!', banner_title)
+                print('>>>>>> new banner title created!', banner_title)
             #course.banner_title = update_item["banner_title"]
             #course.save()
         except:
@@ -504,6 +504,7 @@ def create_course_offering(request):
 
     ichair_course_offering_data = {
         "course_offering_id": course_offering.id,
+        "course_id": course_offering.course.id,
         "meeting_times": ico_meeting_times_list,
         "meeting_times_detail": meeting_times_detail,
         # "rooms": ico_room_list,
@@ -768,6 +769,7 @@ def banner_comparison_data(request):
 
                         course_offering_item["ichair"] = {
                             "course_offering_id": ico.id,
+                            "course_id": ico.course.id,
                             "meeting_times": ico_meeting_times_list,
                             "meeting_times_detail": meeting_times_detail,
                             # "rooms": ico_room_list,
@@ -827,6 +829,7 @@ def banner_comparison_data(request):
                             "number": unlinked_ico.course.number,
                             "credit_hours": unlinked_ico.course.credit_hours,
                             "course_offering_id": unlinked_ico.id,
+                            "course_id": unlinked_ico.course.id,
                             "meeting_times": ico_meeting_times_list,
                             "meeting_times_detail": meeting_times_detail,
                             # "rooms": ico_room_list,
@@ -980,6 +983,7 @@ def banner_comparison_data(request):
                     "banner": {},
                     "ichair": {
                         "course_offering_id": ico.id,
+                        "course_id": ico.course.id,
                         "meeting_times": ico_meeting_times_list,
                         "meeting_times_detail": meeting_times_detail,
                         # "rooms": ico_room_list,
@@ -2714,6 +2718,7 @@ def copy_registrar_course_offering_data_to_ichair(request):
 
         course_offering_update = {
             "course_offering_id": ico.id,
+            "course_id": ico.course.id,
             "meeting_times": ico_meeting_times_list,
             "meeting_times_detail": meeting_times_detail,
             # "rooms": ico_room_list,
