@@ -71,6 +71,7 @@ var app = new Vue({
       buttonRipple: false,
       headers: [
         { text: "Semester", value: "semester" },
+        { text: "Code", value: "termCode" },
         { text: "CRN", value: "crn" },
         {
           text: "Number",
@@ -818,6 +819,7 @@ var app = new Vue({
         this.newCourseOfferingDialogErrorMessage = "Please select one of the options."
       } else if (choice === CREATE_NEW_COURSE) {
         console.log('creating a new course for this course offering....');
+        this.cancelCourseOfferingDialog();
         this.createNewCourse(item);
       } else {
         console.log('all appears to be good...creating the course offering!');
@@ -845,6 +847,7 @@ var app = new Vue({
     createNewCourse(item) {
       // no course options were found for the course offering that we are attempting to create, so we first
       // need to create the course, after which we will create the associated course offering
+      console.log('Creating a new course before creating the course offering');
       var _this = this;
       let dataForPost = {
         create: [],
@@ -874,6 +877,7 @@ var app = new Vue({
           } else {
             if (jsonResponse.created_course_ids.length === 1) {
               // we have successfully created the new course, so now proceed to associate the course offering with it....
+              console.log('course created successfully; moving on to create the course offering');
               _this.createNewCourseOffering(
                 item,
                 jsonResponse.created_course_ids[0]
@@ -883,6 +887,7 @@ var app = new Vue({
                 "there were more or fewer than one course created! course id(s): ",
                 jsonResponse.created_course_ids
               );
+              _this.addGenericServerErrorMessage(item);
             }
           }
         },
@@ -890,8 +895,17 @@ var app = new Vue({
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
           console.log(jqXHR);
           _this.showCreateUpdateErrorMessage();
+          _this.addGenericServerErrorMessage(item);
           //_this.meetingFormErrorMessage =
           //  "Sorry, there appears to have been an error.";
+        }
+      });
+    },
+
+    addGenericServerErrorMessage(item) {
+      this.courseOfferings.forEach(courseOfferingItem => {
+        if (item.index === courseOfferingItem.index) {
+          courseOfferingItem.errorMessage = "Sorry, there appears to have been an error.  If the problem persists, please contact the iChair administrator.";
         }
       });
     },
@@ -964,7 +978,6 @@ var app = new Vue({
               courseOfferingItem.hasIChair = true;
               courseOfferingItem.linked = true;
               courseOfferingItem.showCourseOfferingRadioSelect = false;
-
               if (jsonResponse.instructors_created_successfully === false) {
                 console.log("error copying instructors!");
                 courseOfferingItem.errorMessage =
@@ -980,6 +993,8 @@ var app = new Vue({
                 courseOfferingItem.classroomsUnassignedWarning =
                   "One or more meeting times were scheduled within iChair, but without rooms being assigned.  If you know the appropriate room(s), you may wish to correct this.";
               }
+              // now add the banner title to the course, in case that banner title is not yet associated with that course
+              _this.addBannerTitle(courseOfferingItem.ichair.course_id, courseOfferingItem.banner.course_title);
             }
           });
         },
@@ -1430,6 +1445,7 @@ var app = new Vue({
                   courseOfferingItem.schedulesMatch &&
                   courseOfferingItem.semesterFractionsMatch &&
                   courseOfferingItem.publicCommentsMatch;
+                courseOfferingItem.errorMessage = ""; // clear out any error that may have been there, since things are probably OK now....and if not, the user will see an error in the dialog
               }
             });
             if (!jsonResponse.updates_completed) {

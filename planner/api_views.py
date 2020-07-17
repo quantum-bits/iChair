@@ -58,7 +58,7 @@ def fetch_semesters(request):
         else:
             no_data_message = '(no Registrar data for this semester)'
         semester_choices.append({
-            "semester_name": '{0} {1} {2}'.format(semester.name, semester.year, no_data_message),
+            "semester_name": '{0} {1} (Banner code: {2}) {3} '.format(semester.name, semester.year, semester.banner_code, no_data_message),
             "id": semester.id,
             "banner_code": semester.banner_code,
             'banner_data_exists': banner_data_exists_this_semester
@@ -2565,7 +2565,7 @@ def copy_registrar_course_offering_data_to_ichair(request):
                     print(
                         'one of the iChair instructors does not have a pidm...bailing!')
                     offering_instructors_copied_successfully = False
-                    break
+                    #break
                 elif ichair_oi.instructor.pidm not in banner_instructor_pidms:
                     print('the following iChair instructor is not in the banner list: ',
                           ichair_oi.instructor.first_name, ichair_oi.instructor.last_name)
@@ -2605,7 +2605,6 @@ def copy_registrar_course_offering_data_to_ichair(request):
                         print(
                             'there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
                     else:
-                        # WORKING HERE: assign load in a better way by summing up for the previous instructors and giving the remaining person what's left
                         instructor = ichair_instructors[0]
                         offering_instructor = OfferingInstructor.objects.create(
                             course_offering=ico,
