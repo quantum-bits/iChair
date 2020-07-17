@@ -476,6 +476,32 @@ class Course(StampedModel):
         """Returns a list of banner titles (as strings) for this course."""
         return [banner_title.title for banner_title in self.banner_titles.all()]
 
+    @property
+    def banner_title_dict_list(self):
+        """Returns a list of banner title dicts."""
+        return [{ 
+                "title": banner_title.title,
+                "id": banner_title.id
+                } for banner_title in self.banner_titles.all()]
+
+    @property
+    def banner_titles_string(self):
+        """Returns a list of banner titles in a string form that can be used as a tooltip."""
+
+        banner_title_list = [banner_title.title for banner_title in self.banner_titles.all()]
+        if len(banner_title_list) == 0:
+            banner_titles = 'Banner Name(s):\n' + '   same as iChair (or unknown)'
+        else:
+            banner_titles = 'Banner Name(s):\n'
+            counter = 1
+            for bt in banner_title_list:
+                if counter < len(banner_title_list):
+                    banner_titles += '   ' + bt + '\n'
+                else:
+                    banner_titles += '   ' + bt
+                counter += 1
+        return banner_titles
+
     class Meta:
         ordering = ['subject', 'number' , 'title']
 

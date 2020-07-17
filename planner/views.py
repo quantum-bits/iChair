@@ -37,6 +37,8 @@ from io import BytesIO
 from functools import partial
 from functools import wraps
 
+import math
+
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
 def render_to_pdf(template_src, context_dict={}):
     template = get_template(template_src)
@@ -2302,16 +2304,27 @@ def convert_time_to_pixels(height_hour_block, base_hour, time_hour, time_minute)
 
 
 @login_required
-def course_summary(request, allow_delete):
+def course_summary(request, allow_delete, show_all_years='0'):
     """Display courses for the department and semesters in which they are taught"""
 # allow_delete == 0 => cannot delete courses
 # allow_delete == 1 => can delete courses
+# https://stackoverflow.com/questions/14351048/django-optional-url-parameters
+# show_all_years == 0 => truncate # of years shown (this is the default)
+# show_all_years == 1 => show data for all years (is a bit crowded, but might want to see data from the early years)
     request.session["return_to_page"] = "/planner/coursesummary/0/"
     close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+
+    if int(show_all_years) == 0:
+        number_years_to_show = 7
+        showing_all_years = False
+    else:
+        # https://stackoverflow.com/questions/7781260/how-can-i-represent-an-infinite-number-in-python
+        number_years_to_show = math.inf
+        showing_all_years = True
 
     department = user_preferences.department_to_view
 
@@ -2330,13 +2343,19 @@ def course_summary(request, allow_delete):
         ii=ii+1
     number_semesters = ii
 
+    max_year = 2000 #probably safe....
+    for year in AcademicYear.objects.all():
+        if year.begin_on.year > max_year:
+            max_year = year.begin_on.year
+    
     year_list = []
     academic_year_dict=dict()
     ii = 0
     for year in AcademicYear.objects.all():
-        year_list.append(str(year.begin_on.year)+'-'+str(year.begin_on.year + 1))
-        academic_year_dict[year.begin_on.year] = ii
-        ii=ii+1
+        if year.begin_on.year > max_year - number_years_to_show:
+            year_list.append(str(year.begin_on.year)+'-'+str(year.begin_on.year + 1))
+            academic_year_dict[year.begin_on.year] = ii
+            ii=ii+1
 
     data_list = []
 
@@ -2395,6 +2414,7 @@ def course_summary(request, allow_delete):
 
             data_list.append({'number':number,
                               'name':course_name,
+                              'banner_titles': course.banner_titles_string,
                               'offering_list': offering_list,
                               'id':course.id,
                               'credit_hrs':course.credit_hours,
@@ -2409,7 +2429,8 @@ def course_summary(request, allow_delete):
              'year':academic_year_string, 
              'id': user_preferences.id, 
              'department': user_preferences.department_to_view,
-             'allow_delete': int(allow_delete)}
+             'allow_delete': int(allow_delete),
+             'showing_all_years': showing_all_years}
     return render(request, 'course_summary.html', context)
 
 
@@ -2649,12 +2670,12 @@ def add_course(request, daisy_chain):
 #                print url_string
                 return redirect(url_string)
         else:
-            context = {'form': form, 'title': 'Add New Course', 'course_list':course_list}
+            context = {'form': form, 'title': 'Add New Course', 'course_list':course_list, 'banner_title_list': []}
             return render(request, 'add_course.html', context)
 
     else:
         form = AddCourseForm(department_id)
-        context = {'form': form, 'title': 'Add New Course', 'course_list':course_list}
+        context = {'form': form, 'title': 'Add New Course', 'course_list':course_list, 'banner_title_list': []}
         return render(request, 'add_course.html', context)
 
 def add_course_offering(request, course_id, daisy_chain):
@@ -2703,9 +2724,50 @@ def add_course_offering(request, course_id, daisy_chain):
         return render(request, 'add_course_offering.html', context)
 
 
-
 @login_required
 def update_course(request, id):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department_id = user_preferences.department_to_view.id
+
+    print('inside update course!')
+    instance = Course.objects.get(pk = id)
+    banner_title_list = instance.banner_title_dict_list
+    course_list=[]
+
+    banner_titles_to_delete = request.POST.getlist('banner_titles_to_delete')
+
+    print(banner_titles_to_delete)
+
+    if request.method == 'POST':
+        form = AddCourseForm(department_id, request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            for banner_title_id in banner_titles_to_delete:
+                banner_title = BannerTitle.objects.get(pk=int(banner_title_id))
+                banner_title.delete()
+
+            next = request.GET.get('next', 'home')
+            return redirect(next)
+#            return redirect('course_summary')
+        else:
+            context = {
+                'form': form, 
+                'title': 'Edit Course', 
+                'course_list': course_list, 
+                'banner_title_list': banner_title_list
+                }
+            return render(request, 'add_course.html', context)
+    else:
+        form = AddCourseForm(department_id, instance=instance)
+        context = {'form': form, 'title': 'Edit Course', 'course_list':course_list, 'banner_title_list': banner_title_list}
+        return render(request, 'add_course.html', context)
+
+
+@login_required
+def update_course_original(request, id):
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -2977,6 +3039,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
 
                     registrar_data_list.append({'number':number,
                                                 'name':course_name,
+                                                'banner_titles': course.banner_titles_string,
                                                 'can_edit':co.course.subject.department == department,
                                                 'room_list': room_list,
                                                 'meeting_times_list': meeting_times_list,

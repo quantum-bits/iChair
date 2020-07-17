@@ -10,18 +10,30 @@
  <div class="content-center">
 
 {% if can_edit %}
-<p> <a class="btn btn-info" href="{% url 'add_course' 0 %}">Add a New Course</a></p>
+<p> 
+	<a class="btn btn-info" href="{% url 'add_course' 0 %}">Add a New Course</a>
+	{% if showing_all_years %}
+		<a class="btn btn-info" href="{% url 'course_summary' 0 %}">Hide Earlier Years</a>
+	{% else %}
+		<a class="btn btn-info" href="{% url 'course_summary' 0 1 %}">Show All Years</a>
+	{% endif %}
+</p>
 {% endif %}
 
 
 <table class="table table-striped table-bordered table-hover">
 	     <thead>
 	       <tr>
-		<th colspan="3">Courses and Number of Sections Offered ( Summer | Fall | J-term | Spring )</th>
+		<th colspan="100%">
+			<span>Courses and Number of Sections Offered ( Summer | Fall | J-term | Spring )</span>
+		</th>
 		</tr>
 	       <tr>
 	       <td> Number </td>
-	       <td> Name </td>
+	       <td> 
+			   <div>Name</div>
+			   <div>...hover for Banner name(s)</div>
+			</td>
 	       <td style="text-align: center;"> Cr Hrs </td>
 		{% for year in year_list %}
 		   <td colspan={{number_semesters}} style="text-align: center;"> {{year}} </td>
@@ -45,7 +57,7 @@
 		{% else %}
 			<td>{{course.number}}*</td>
 		{% endif %}
-      <td> {{course.name}}</td>
+      <td title="{{course.banner_titles}}"> {{course.name}}</td>
       <td style="text-align: center;"> 
 	{{course.credit_hrs}}
       </td>
@@ -86,6 +98,7 @@
    }
  </script>
 -->
+
   <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");
