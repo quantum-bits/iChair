@@ -27,7 +27,8 @@
         </v-layout>
         <v-layout row>
             <v-flex xs10 offset-xs1>
-                <v-btn color="primary" @click="alignCourses()">Get Started</v-btn>
+                <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
+                <v-btn color="primary" @click="alignCourseOfferings()">Get Started</v-btn>
             </v-flex>
             <v-flex xs4 offset-xs4>
                 <v-alert color="#2A3B4D" outlined>
@@ -36,6 +37,17 @@
                 </v-alert>
             </v-flex>
             <v-flex xs4></v-flex>
+        </v-layout>
+    </template>
+
+    <template v-if="showLinearProgressBar">
+        <v-layout row wrap align-top>
+            <v-flex xs6 offset-xs3>
+                <div class="text-center mb-10">
+                    Fetching data -- this could take a moment....
+                </div>
+                <v-progress-linear indeterminate color="primary"></v-progress-linear>
+            </v-flex>
         </v-layout>
     </template>
 
@@ -225,7 +237,8 @@
                                                     </v-flex>
                                                     <v-flex xs2>
                                                         <input class="mt-2" style="height: 32px; width: 100%"
-                                                            type="number" step="any" min="0" v-model="editLoadAvailable">
+                                                            type="number" step="any" min="0"
+                                                            v-model="editLoadAvailable">
                                                     </v-flex>
                                                 </v-layout>
                                                 <v-layout text-center>

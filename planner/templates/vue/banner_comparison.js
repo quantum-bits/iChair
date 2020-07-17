@@ -83,6 +83,7 @@ var app = new Vue({
         { text: "Credit Hours", value: "creditHours", align: "left" },
         { text: "Status", value: "status", align: "center" }
       ],
+      showLinearProgressBar: false,
       courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
       courseOfferings: [],
       newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
@@ -287,6 +288,8 @@ var app = new Vue({
       this.courseAlignmentPhaseReady = false;
     },
     alignCourseOfferings() {
+      this.showLinearProgressBar = true;
+      this.choosingSemesters = false;
       this.courseAlignmentPhaseReady = false;
       this.displayCreateUpdateErrorMessage = false;
       console.log("align course offerings!");
@@ -306,6 +309,7 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(incomingData) {
+          _this.showLinearProgressBar = false;
           //_this.facultyChoices = incomingData.available_faculty;
           //console.log('faculty choices: ', _this.facultyChoices);
           // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
