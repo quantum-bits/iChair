@@ -1861,11 +1861,17 @@ def scheduled_classes_match(banner_course_offering, ichair_course_offering):
 
 
 def instructors_match(banner_course_offering, ichair_course_offering):
-    """Returns true if the instructors for an iChair course offering exactly match those for the corresponding banner course offering."""
+    """
+    Returns true if the instructors for an iChair course offering exactly match those for the corresponding banner course offering. 
+    Regarding the is_primary flag, instructors are considered to match...
+        - if there are 0 or 1 instructor (in the latter case, the iChair instructor might not have the flag set); or
+        - if the is_primary flags match exactly (when there are two or more instructors)
+    """
     banner_instructors = banner_course_offering.offering_instructors.all()
     ichair_instructors = ichair_course_offering.offering_instructors.all()
 
     inst_match = True
+    is_primary_flags_match = True
     if len(banner_instructors) != len(ichair_instructors):
         inst_match = False
         # print('instructors match: ', inst_match)
@@ -1878,9 +1884,15 @@ def instructors_match(banner_course_offering, ichair_course_offering):
             if banner_instructor.instructor.pidm == ichair_instructor.instructor.pidm:
                 # print('ichair instructor: ', ichair_instructor.instructor)
                 one_fits = True
+                if banner_instructor.is_primary != ichair_instructor.is_primary:
+                    is_primary_flags_match = False
         if not one_fits:
             inst_match = False
 
+    if inst_match and (len(ichair_instructors) >= 2):
+        if not is_primary_flags_match:
+            inst_match = False
+            
     # print('instructors match: ', inst_match)
     return inst_match
 

@@ -3024,8 +3024,14 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                     scheduled_classes=[]
                     instructor_list=[]
                     load_assigned = 0
-                    for instructor in co.offering_instructors.all():
-                        instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name+
+                    all_course_offering_instructors = co.offering_instructors.all()
+                    for instructor in all_course_offering_instructors:
+                        if (len(all_course_offering_instructors) >= 2) and instructor.is_primary:
+                            primary_instructor_indicator = '*'
+                        else:
+                            primary_instructor_indicator = ''
+                        
+                        instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name+primary_instructor_indicator+
                                                ' ['+str(load_hour_rounder(instructor.load_credit))+'/'
                                                +str(load_hour_rounder(co.load_available))+']'
                                                )
