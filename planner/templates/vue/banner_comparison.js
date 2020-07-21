@@ -121,6 +121,23 @@ var app = new Vue({
     };
   },
   methods: {
+    rowClicked(value) {
+      console.log('value: ', value);
+      console.log('expanded (before): ', this.expanded);
+      const index = this.expanded.indexOf(value)
+      if (index === -1) {
+        this.expanded.push(value)
+      } else {
+        this.expanded.splice(index, 1)
+      }
+      console.log('expanded (after): ', this.expanded);
+    },
+    detailsClicked(item) {
+      console.log('details clicked', item);
+      console.log(this.expanded);
+      this.expanded.push(item.index);
+      console.log(this.expanded);
+    },
     alignCourses() {
       // second step of the process...so we turn off the 'select semesters' template
       console.log("inside align courses");
