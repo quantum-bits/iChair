@@ -1978,6 +1978,7 @@ def generate_update_delta(request):
     print('delta id: ', delta_id)
 
     delta_generation_successful = True
+    number_ichair_primary_instructors_OK = True
 
     if delta_id is None:
         print('creating a new delta!')
@@ -2020,7 +2021,14 @@ def generate_update_delta(request):
                 update_meeting_times = False
 
             if 'instructors' in delta_mods.keys():
-                update_instructors = delta_mods['instructors']
+                if delta_mods['instructors'] and ((requested_action == delta_course_offering_actions["create"]) or (requested_action == delta_course_offering_actions["update"])):
+                    # check first to see if the iChair version of the instructors have at most one primary instructor, etc.
+                    # if not, don't allow the update and send back a message
+                    if number_primary_instructors_OK(ico):
+                        update_instructors = delta_mods['instructors']
+                    else:
+                        update_instructors = False
+                        number_ichair_primary_instructors_OK = False
             else:
                 update_instructors = False
 
@@ -2113,12 +2121,33 @@ def generate_update_delta(request):
         # WORKING HERE: need to add some other functionality for the delete' action....
 
     data = {
+        'number_ichair_primary_instructors_OK': number_ichair_primary_instructors_OK,
         'delta_generation_successful': delta_generation_successful,
         'delta': delta_response,
         'agreement_update': agreement_update
     }
 
     return JsonResponse(data)
+
+def number_primary_instructors_OK(ico):
+    """
+    This method checks to the iChair instructors for this course offering.  It returns the following:
+    0 instructors: True (no primary instructors, but that's OK)
+    1 instructor: True (doesn't matter whether or not the instructor is labelled as primary, since there is only one)
+    >=2 instructors: True if exactly one of them is primary; otherwise False
+    """
+
+    offering_instructors = ico.offering_instructors.all()
+    num_instructors = 0
+    num_primary_instructors = 0
+    for oi in offering_instructors:
+        num_instructors += 1
+        if oi.is_primary:
+            num_primary_instructors += 1
+    if num_instructors >= 2:
+        return num_primary_instructors == 1
+    else:
+        return True
 
 @login_required
 @csrf_exempt

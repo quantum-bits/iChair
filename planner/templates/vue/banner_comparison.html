@@ -176,6 +176,38 @@
                 <td :colspan="headers.length" style="border-bottom: 1px solid grey;">
 
                     <v-container>
+
+                        <template>
+                            <div class="text-center">
+                                <v-dialog v-model="numberPrimaryInstructorsIncorrectDialog" max-width="500">
+                                    <v-card>
+                                        <v-card-title class="headline grey lighten-2" primary-title>Primary Instructors
+                                        </v-card-title>
+
+                                        <v-card-text class="pb-0">
+                                            <v-container grid-list-md>
+                                                <v-layout wrap>
+                                                    <v-flex xs12>
+                                                        There should be one primary instructor for this course offering.
+                                                        Please fix
+                                                        this first before requesting an instructor update from the registrar.
+                                                    </v-flex>
+                                                </v-layout>
+                                            </v-container>
+                                        </v-card-text>
+                                        <v-divider class="ma-0"></v-divider>
+                                        <v-card-actions>
+                                            <v-spacer></v-spacer>
+                                            <v-btn color="primary" text
+                                                @click="numberPrimaryInstructorsIncorrectDialog = false">
+                                                Got it!
+                                            </v-btn>
+                                        </v-card-actions>
+                                    </v-card>
+                                </v-dialog>
+                                </v-row>
+                        </template>
+
                         <template>
                             <div class="text-center">
                                 <v-dialog persistent v-model="editInstructorsDialog" width="800">
@@ -183,7 +215,7 @@
                                         <v-card-title class="headline grey lighten-2" primary-title>
                                             [[dialogTitle]]
                                         </v-card-title>
-                                        <v-card-text>
+                                        <v-card-text class="pb-0">
                                             <v-container grid-list-md>
                                                 <v-layout wrap>
                                                     <v-flex xs5>Instructor</v-flex>
@@ -250,7 +282,7 @@
                                             </v-container>
 
                                         </v-card-text>
-                                        <v-divider></v-divider>
+                                        <v-divider class="ma-0"></v-divider>
                                         <v-card-actions>
                                             <v-spacer></v-spacer>
                                             <v-btn color="primary" text @click="cancelInstructorsForm()">
@@ -272,7 +304,7 @@
                                         <v-card-title class="headline grey lighten-2" primary-title>
                                             [[dialogTitle]]
                                         </v-card-title>
-                                        <v-card-text>
+                                        <v-card-text class="pb-0">
                                             <v-container grid-list-md>
                                                 <v-layout class="mt-2" wrap>
                                                     <v-flex xs3>
@@ -354,7 +386,7 @@
                                                 </v-layout>
                                             </v-container>
                                         </v-card-text>
-                                        <v-divider></v-divider>
+                                        <v-divider class="ma-0"></v-divider>
                                         <v-card-actions>
                                             <v-spacer></v-spacer>
                                             <v-btn color="primary" text @click="cancelMeetingsForm()">
@@ -376,7 +408,7 @@
                                         <v-card-title class="headline grey lighten-2" primary-title>
                                             Create a New Course Offering
                                         </v-card-title>
-                                        <v-card-text>
+                                        <v-card-text class="pb-0">
                                             <v-container grid-list-md>
                                                 <v-layout wrap>
                                                     <v-flex xs12>
@@ -404,7 +436,7 @@
                                                 </v-layout>
                                             </v-container>
                                         </v-card-text>
-                                        <v-divider></v-divider>
+                                        <v-divider class="ma-0"></v-divider>
                                         <v-card-actions>
                                             <v-spacer></v-spacer>
                                             <v-btn color="primary" text @click="cancelCourseOfferingDialog()">
@@ -426,7 +458,7 @@
                                         <v-card-title class="headline grey lighten-2" primary-title>
                                             [[dialogTitle]]
                                         </v-card-title>
-                                        <v-card-text>
+                                        <v-card-text class="pb-0">
                                             <v-container grid-list-md>
                                                 <v-layout wrap>
                                                     <v-flex xs12>
@@ -474,7 +506,7 @@
                                                 </v-layout>
                                             </v-container>
                                         </v-card-text>
-                                        <v-divider></v-divider>
+                                        <v-divider class="ma-0"></v-divider>
                                         <v-card-actions>
                                             <v-spacer></v-spacer>
                                             <v-btn color="primary" text @click="cancelCommentsForm()">
@@ -497,7 +529,7 @@
                                         <v-card-title class="headline grey lighten-2" primary-title>
                                             [[dialogTitle]]
                                         </v-card-title>
-                                        <v-card-text>
+                                        <v-card-text class="pb-0">
                                             <v-container grid-list-md>
                                                 <v-layout wrap>
                                                     <v-flex xs12>
@@ -517,7 +549,7 @@
                                                 </v-layout>
                                             </v-container>
                                         </v-card-text>
-                                        <v-divider></v-divider>
+                                        <v-divider class="ma-0"></v-divider>
                                         <v-card-actions>
                                             <v-spacer></v-spacer>
                                             <v-btn color="primary" text @click="cancelNoteForRegistrarForm()">
@@ -1361,10 +1393,11 @@
                                 <div v-if="item.errorMessage">
                                     <strong class="red--text">[[item.errorMessage]]</strong>
                                 </div>
+                                <div v-if="item.numberPrimaryInstructorsIncorrectMessage">
+                                    <strong class="red--text">[[item.numberPrimaryInstructorsIncorrectMessage]]</strong>
+                                </div>
                             </v-flex>
                         </v-layout>
-
-
 
 
                     </v-container>

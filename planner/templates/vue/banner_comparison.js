@@ -86,6 +86,7 @@ var app = new Vue({
       showLinearProgressBar: false,
       courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
       courseOfferings: [],
+      numberPrimaryInstructorsIncorrectDialog: false, // set to true in order to display a message about the number of primary instructors being incorrect
       newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
       publicCommentsDialog: false, // true when the public comments dialog is being displayed
       commentForRegistrarDialog: false, // true when the comment for registrar dialog is being displayed
@@ -460,7 +461,8 @@ var app = new Vue({
               index: course.index, // used as an item-key in the table
               errorMessage: "",
               loadsAdjustedWarning: "",
-              classroomsUnassignedWarning: ""
+              classroomsUnassignedWarning: "",
+              numberPrimaryInstructorsIncorrectMessage: "" // used to display a message saying that the number of primary instructors is incorrect
             });
           });
           _this.semesterFractionsReverse =
@@ -628,7 +630,10 @@ var app = new Vue({
           data: JSON.stringify(dataForPost),
           success: function(jsonResponse) {
             console.log("in success: ", dataForPost);
-            console.log("response: ", jsonResponse);
+            console.log("in response: ", jsonResponse);
+            if (!jsonResponse.number_ichair_primary_instructors_OK) {
+              item.numberPrimaryInstructorsIncorrectMessage = "There should be one primary instructor for this course offering in iChair.  Please fix this before requesting an instructor update from the registrar.";
+            }
             item.delta = jsonResponse.delta;
             item.enrollmentCapsMatch =
               jsonResponse.agreement_update.max_enrollments_match ||
@@ -1155,7 +1160,10 @@ var app = new Vue({
         data: JSON.stringify(dataForPost),
         success: function(jsonResponse) {
           console.log("in success: ", dataForPost);
-          console.log("response: ", jsonResponse);
+          console.log("back in response: ", jsonResponse);
+          if (!jsonResponse.number_ichair_primary_instructors_OK) {
+            item.numberPrimaryInstructorsIncorrectMessage = "There should be one primary instructor for this course offering in iChair.  Please fix this before requesting an instructor update from the registrar.";
+          }
           item.delta = jsonResponse.delta;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match ||
@@ -1449,6 +1457,7 @@ var app = new Vue({
                   courseOfferingItem.schedulesMatch &&
                   courseOfferingItem.semesterFractionsMatch &&
                   courseOfferingItem.publicCommentsMatch;
+                courseOfferingItem.numberPrimaryInstructorsIncorrectMessage = "";
                 courseOfferingItem.errorMessage = ""; // clear out any error that may have been there, since things are probably OK now....and if not, the user will see an error in the dialog
               }
             });
@@ -1894,10 +1903,24 @@ var app = new Vue({
       //
       // https://www.w3schools.com/jsref/jsref_switch.asp
 
+      //deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_SET)
+      // 
+
+
+
       let updateTypeOK = true;
+      let dataOK = true;
       let deltaMods = {};
       switch (updateType) {
         case DELTA_UPDATE_TYPE_INSTRUCTORS:
+          if ( updateSetOrUnset === DELTA_ACTION_SET ) {
+            // check if there is more than one primary instructor; if so, notify the user (via a dialog) that this needs to be fixed first
+            console.log('number primary instructors is OK: ', this.numberPrimaryInstructorsOK(item));
+            if (!this.numberPrimaryInstructorsOK(item)) {
+              this.numberPrimaryInstructorsIncorrectDialog = true;
+              dataOK = false;
+            }
+          }
           deltaMods = {
             instructors: updateSetOrUnset === DELTA_ACTION_SET ? true : false
           };
@@ -1927,10 +1950,35 @@ var app = new Vue({
           updateTypeOK = false;
       }
 
-      if (updateTypeOK) {
+      if (updateTypeOK && dataOK) {
         console.log("generate delta: ", updateType);
         console.log("item", item);
         this.generateUpdateDelta(item, deltaMods);
+      }
+    },
+
+    numberPrimaryInstructorsOK(item) {
+      // This method checks to the iChair instructors for this course offering.  It returns the following:
+      // 0 instructors: true (no primary instructors, but that's OK)
+      // 1 instructor: true (doesn't matter whether or not the instructor is labelled as primary, since there is only one)
+      // >=2 instructors: true if exactly one of them is primary; otherwise false;
+      // If the item does not contain an iChair section (which shouldn't happen!), it returns true, thereby failing silently
+      console.log(item);
+      if (item.hasIChair) {
+        let numInstructors = item.ichair.instructors_detail.length;
+        let numPrimaryInstructors = 0;
+        item.ichair.instructors_detail.forEach(instructor => {
+          if (instructor.is_primary === true) {
+            numPrimaryInstructors += 1;
+          }
+        });
+        if (numInstructors >= 2) {
+          return numPrimaryInstructors === 1;
+        } else {
+          return true;
+        }
+      } else {
+        return true;
       }
     },
 
@@ -1993,7 +2041,10 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(jsonResponse) {
-          console.log("response: ", jsonResponse);
+          console.log("back in response: ", jsonResponse);
+          if (!jsonResponse.number_ichair_primary_instructors_OK) {
+            item.numberPrimaryInstructorsIncorrectMessage = "There should be one primary instructor for this course offering in iChair.  Please fix this before requesting an instructor update from the registrar.";
+          }
           item.delta = jsonResponse.delta;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match ||
