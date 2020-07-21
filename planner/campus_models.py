@@ -784,7 +784,7 @@ class OfferingInstructor(StampedModel):
     course_offering = models.ForeignKey(CourseOffering, related_name='offering_instructors', on_delete=models.CASCADE)
     instructor = models.ForeignKey(FacultyMember,related_name='offering_instructors', on_delete=models.CASCADE)
     load_credit = models.FloatField(validators = [MinValueValidator(0.0), MaxValueValidator(100.0)])
-    is_primary = models.BooleanField(default=True)
+    is_primary = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['instructor__last_name','instructor__first_name']

@@ -211,6 +211,8 @@ class BaseInstructorFormSet(forms.models.BaseInlineFormSet):
         if any(self.errors):
             return
         instructors = []
+        instructor_error = False
+        print('inside clean method')
         for subform in self.forms:
 # need to do a "try/except" here b/c the form could have some blank rows if the user skips
 # down and enters data a few rows down....
@@ -218,11 +220,34 @@ class BaseInstructorFormSet(forms.models.BaseInlineFormSet):
                 instructor = subform.cleaned_data['instructor']
 #                delete = subform.cleaned_data['delete']
 #                print delete
-                if instructor in instructors:
-                    raise forms.ValidationError("Each instructor can only be listed once.")
-                instructors.append(instructor)
+                if not subform.cleaned_data["DELETE"]:
+                    if instructor in instructors:
+                        instructor_error = True
+                        raise forms.ValidationError("Each instructor can only be listed once.")
+                    instructors.append(instructor)
             except KeyError:
                 pass
+        print('instructors: ', instructors)
+        if not instructor_error:
+            print('no instructor error!')
+            number_primary_instructors = 0
+            for subform in self.forms:
+                try:
+                    print(subform.cleaned_data)
+                    is_primary = subform.cleaned_data['is_primary']
+                    to_be_deleted = subform.cleaned_data['DELETE']
+            
+                    print(is_primary)
+                    print('delete?', to_be_deleted)
+#                   delete = subform.cleaned_data['delete']
+#                   print delete
+                    if (is_primary) and (not to_be_deleted): 
+                        number_primary_instructors += 1
+                except KeyError:
+            #    print('key error')
+                    pass
+            if (len(instructors) > 1) and (number_primary_instructors != 1):
+                raise forms.ValidationError("Please choose one instructor to be the primary instructor.")
 
 
 class InstructorForm(forms.ModelForm):
@@ -253,10 +278,10 @@ class InstructorForm(forms.ModelForm):
         fm_objects = FacultyMember.objects.filter(id__in=active_fm_ids)
         self.fields['instructor'].queryset = fm_objects
 
+
     class Meta:
         model = OfferingInstructor
-        # may want to have "is_primary" back in at some point....
-        exclude = ('is_primary',)
+        exclude = ()
         #fields = "__all__"
 
 

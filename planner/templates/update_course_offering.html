@@ -53,13 +53,15 @@
 	<table class="table table-striped table-bordered table-hover table-condensed">
 	<tr>
 	<td> Instructor </td>
-	<td> Load Hours </td>
+        <td> Load Hours </td>
+        <td> Primary </td>
 	<td> Delete </td>
 	</tr>
 	{% for subform in formset %}
 	<tr>
         <td>{{subform.id}} {{ subform.instructor }}</td>
-	<td>{{subform.id}} {{ subform.load_credit }}</td>
+        <td>{{subform.id}} {{ subform.load_credit }}</td>
+        <td>{{subform.id}} {{ subform.is_primary }}</td>
 	<td>{{subform.id}} {{ subform.DELETE }} </td>
 	</tr>
 	{% endfor %}

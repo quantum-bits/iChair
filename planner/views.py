@@ -1262,9 +1262,28 @@ def update_course_offering(request,id, daisy_chain):
         prof_repeated_errors=formset.non_form_errors()
 
         if form.is_valid() and formset.is_valid() and not prof_repeated_errors:
+
+            number_instructors = 0
+            for subform in formset:
+                if (subform.cleaned_data.get("instructor") != None):
+                    print('initial assessment....', subform.cleaned_data.get("instructor"), 'delete?', subform.cleaned_data.get("DELETE"))
+                    if not subform.cleaned_data.get("DELETE"):
+                        number_instructors += 1
+        
             form.save()
             formset.save()
+            # if there is only one offering instructor, make that instructor the primary one
+            if (number_instructors == 1):
+                course_offering = CourseOffering.objects.get(pk = id)
+                offering_instructors = course_offering.offering_instructors.all()
+                if len(offering_instructors) == 1:
+                    # there should only be one instructor by this point, but not a bad idea to check first....
+                    offering_instructor = offering_instructors[0]
+                    offering_instructor.is_primary = True
+                    offering_instructor.save()
+
 #            next = request.GET.get('next', 'profile')
+            
             if "return_to_page" in request.session:
                 next = request.session["return_to_page"]
             else:
