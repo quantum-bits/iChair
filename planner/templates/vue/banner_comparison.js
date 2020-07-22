@@ -52,8 +52,18 @@ var app = new Vue({
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
       facultyChoices: [], // faculty available to teach courses
+      extraDepartmentalCourseChoices: [], // courses to possible include in schedule editing
+      extraDepartmentalSubjectAndCourseChoices: [], // subjects and courses from which to choose for schedule editing
+      extraDepartmentalSubjectChoices: [], // subjects from which to choose for schedule editing
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/NEGATIVE_INFINITY
+      extraDepartmentalSubjectChoice: Number.NEGATIVE_INFINITY, // choice for a subject id to look at
+      extraDepartmentalCourseChoice: Number.NEGATIVE_INFINITY, // choice for a course id to look at
+      extraCourseDialogChoices: [], // used in the extra-departmental course-choosing dialog (choices in a drop-down)
+      selectedExtraCoursesInDialog: [], // used in the extra-departmental course-choosing dialog (choices selected from a drop-down)
+      searchOtherCoursesDialog: false, // set to true when using the dialog to choose extra-departmental courses
       registrarCourseOfferingsExist: true, // set to false if there are no banner course offerings for any semester in the academic year under consideration
       chosenSemesters: [], // ids of semesters chosen to work on
+      chosenExtraCourses: [], // extra-departmental courses chosen for schedule editing
       //aligningCourses: false, // set to true once we start aligning courses (if necessary)
       courseAlignmentPhaseReady: false,
       //courseAlignmentChoices: [], // used to populate radio select elements in the table used for aligning courses
@@ -121,23 +131,90 @@ var app = new Vue({
     };
   },
   methods: {
-    rowClicked(value) {
-      console.log('value: ', value);
-      console.log('expanded (before): ', this.expanded);
-      const index = this.expanded.indexOf(value)
-      if (index === -1) {
-        this.expanded.push(value)
-      } else {
-        this.expanded.splice(index, 1)
-      }
-      console.log('expanded (after): ', this.expanded);
+    launchSearchOtherCoursesDialog() {
+      this.extraCourseDialogChoices = [{
+        id: Number.NEGATIVE_INFINITY,
+        name: '-----'
+      }];
+      this.selectedExtraCoursesInDialog = [];
+      this.extraDepartmentalSubjectChoice = Number.NEGATIVE_INFINITY;
+      this.extraDepartmentalCourseChoice = Number.NEGATIVE_INFINITY;
+
+      this.searchOtherCoursesDialog = true;
     },
-    detailsClicked(item) {
-      console.log('details clicked', item);
-      console.log(this.expanded);
-      this.expanded.push(item.index);
-      console.log(this.expanded);
+    onSubjectSelected(event) {
+      console.log('subject id: ', event.target.value, typeof event.target.value);
+      this.extraDepartmentalSubjectChoice = +event.target.value;
+      console.log(this.extraDepartmentalSubjectChoice, typeof this.extraDepartmentalSubjectChoice);
+      this.refreshExtraCourseDialogChoices();
     },
+    onCourseSelected(event) {
+      console.log('course! ', event.target.value, typeof event.target.value);
+      let selectedCourseId = +event.target.value;
+      this.extraDepartmentalSubjectAndCourseChoices.forEach( subject => {
+        subject.courses.forEach( course => { 
+          if (course.id === selectedCourseId) {
+            this.selectedExtraCoursesInDialog.push({
+              id: selectedCourseId,
+              name: course.name
+            });
+          }
+        });
+      });
+      this.extraDepartmentalCourseChoice = Number.NEGATIVE_INFINITY;
+      this.refreshExtraCourseDialogChoices();
+    },
+
+    refreshExtraCourseDialogChoices() {
+      // used to refresh a course drop-down list in the extra course choice dialog
+      let alreadySelectedCourseIds = [];
+      this.extraDepartmentalCourseChoices.forEach( course => {
+        alreadySelectedCourseIds.push(course.id);
+      });
+      this.selectedExtraCoursesInDialog.forEach( course => {
+        alreadySelectedCourseIds.push(course.id);
+      });
+      this.extraCourseDialogChoices = [{
+        id: Number.NEGATIVE_INFINITY,
+        name: '-----'
+      }];
+      this.extraDepartmentalSubjectAndCourseChoices.forEach( subject => {
+        if (subject.id === this.extraDepartmentalSubjectChoice) {
+          console.log('subject found! ', subject.abbrev);
+          subject.courses.forEach( course => {
+            //https://www.w3schools.com/jsref/jsref_includes_array.asp
+            if (!(alreadySelectedCourseIds.includes(course.id))) {
+              alreadySelectedCourseIds.push(course.id);
+              this.extraCourseDialogChoices.push({
+                name: course.name,
+                id: course.id
+              });
+            }
+          });
+        }
+      });
+    },
+    addExtraCoursesToList() {
+      this.selectedExtraCoursesInDialog.forEach( course => {
+        this.extraDepartmentalCourseChoices.push(course);
+        this.chosenExtraCourses.push(course.id);
+      });
+      this.cancelExtraCoursesDialog();
+    },
+    clearFromExtraCourseList(courseId) {
+      let newArray = this.selectedExtraCoursesInDialog.filter( course => course.id !== courseId );
+      this.selectedExtraCoursesInDialog = JSON.parse(JSON.stringify(newArray));
+      this.refreshExtraCourseDialogChoices();
+    },
+
+    cancelExtraCoursesDialog() {
+      this.extraDepartmentalSubjectChoice = Number.NEGATIVE_INFINITY;
+      this.extraDepartmentalCourseChoice = Number.NEGATIVE_INFINITY;
+      this.extraCourseDialogChoices = [];
+      this.selectedExtraCoursesInDialog =[];
+      this.searchOtherCoursesDialog = false;
+    },
+    
     alignCourses() {
       // second step of the process...so we turn off the 'select semesters' template
       console.log("inside align courses");
@@ -2572,7 +2649,7 @@ var app = new Vue({
     $.ajax({
       // initialize an AJAX request
       type: "GET",
-      url: "/planner/ajax/fetch-semesters/", // set the url of the request
+      url: "/planner/ajax/fetch-semesters-and-extra-departmental-courses/", // set the url of the request
       dataType: "json",
       data: {
         departmentId: json_data.departmentId, // add the department id to the GET parameters
@@ -2581,6 +2658,22 @@ var app = new Vue({
       success: function(incomingData) {
         console.log(incomingData);
         _this.semesterChoices = incomingData.semester_choices;
+        _this.extraDepartmentalCourseChoices = incomingData.extra_courses_this_year;
+        _this.chosenExtraCourses = [];
+        _this.extraDepartmentalSubjectChoices = [{
+          id: Number.NEGATIVE_INFINITY,
+          abbrev: '-----'
+        }];
+        _this.extraDepartmentalCourseChoices.forEach(course => {
+          _this.chosenExtraCourses.push(course.id);
+        });
+        _this.extraDepartmentalSubjectAndCourseChoices = incomingData.extra_departmental_course_choices;
+        _this.extraDepartmentalSubjectAndCourseChoices.forEach(subject => {
+          _this.extraDepartmentalSubjectChoices.push({
+            id: subject.id,
+            abbrev: subject.abbrev
+          });
+        });
         _this.registrarCourseOfferingsExist = incomingData.banner_data_exists;
       }
     });

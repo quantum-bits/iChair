@@ -33,7 +33,7 @@ import uuid
 
 
 @login_required
-def fetch_semesters(request):
+def fetch_semesters_and_extra_departmental_courses(request):
     department_id = request.GET.get('departmentId')
     year_id = request.GET.get('yearId')
 
@@ -42,6 +42,32 @@ def fetch_semesters(request):
     semesters = academic_year.semesters.all()
     semester_choices = []
     banner_data_exists = False
+    extra_departmental_courses_planned_this_year = [{
+                                                        "id": course.id,
+                                                        "name": "{0} {1} - {2} ({3} hr)".format(course.subject, course.number, course.title, course.credit_hours)
+                                                    } for course in department.outside_courses_this_year(academic_year)] # contains a list of all the extra-departmental courses taught by department members this year
+    extra_course_ids = [course["id"] for course in extra_departmental_courses_planned_this_year]
+
+    #print(extra_departmental_courses_planned_this_year)
+    #print(department.subject_trusting_departments.all())
+
+    other_extra_departmental_courses = []
+    for subject in department.subject_trusting_departments.all():
+        course_list = []
+        for course in subject.courses.all():
+            if course.id not in extra_course_ids:
+                course_list.append({
+                    "id": course.id,
+                    "name": "{0} {1} - {2} ({3} hr)".format(course.subject, course.number, course.title, course.credit_hours)
+                })
+        other_extra_departmental_courses.append({
+            "id": subject.id,
+            "abbrev": subject.abbrev,
+            "courses": course_list
+        })
+    #print(other_extra_departmental_courses)
+
+
     for semester in semesters:
         banner_data_exists_this_semester = False
         # check if there is any banner data for the given semester, but stop checking once something is found
@@ -61,12 +87,14 @@ def fetch_semesters(request):
             "semester_name": '{0} {1} (Banner code: {2}) {3} '.format(semester.name, semester.year, semester.banner_code, no_data_message),
             "id": semester.id,
             "banner_code": semester.banner_code,
-            'banner_data_exists': banner_data_exists_this_semester
+            "banner_data_exists": banner_data_exists_this_semester
         })
 
     data = {
         "semester_choices": semester_choices,
-        'banner_data_exists': banner_data_exists
+        "banner_data_exists": banner_data_exists,
+        "extra_departmental_course_choices": other_extra_departmental_courses,
+        "extra_courses_this_year": extra_departmental_courses_planned_this_year
     }
     return JsonResponse(data)
 
@@ -572,6 +600,37 @@ def banner_comparison_data(request):
     print('semesters')
     print(semester_sorter_dict)
 
+    """
+
+    During the semester choice phase, allow the user to also choose from courses normally taught by dept, and add in any
+    others for "trusted" subject....then pass that list in here, and be careful to add the appropriate subjects and courses
+    ===> that way a dept can edit any course offerings that make sense....
+
+
+    outside_course_list = department.outside_courses_this_year(user_preferences.academic_year_to_view)
+
+    subject_list = [subj for subj in department.subjects.all()]
+        
+    # add in subjects for outside courses
+    for course in outside_course_list:
+        if course.subject not in subject_list:
+            subject_list.append(course.subject)
+
+    ---------
+
+    subject_list = [subj for subj in department.subjects.all()]
+    outside_course_list = department.outside_courses_any_year()
+    other_subject_list = []
+    for oco in outside_course_list:
+        if oco.subject not in other_subject_list:
+            other_subject_list.append(oco.subject)
+    other_subject_list.sort(key=lambda x: x.abbrev)
+    for other_subject in other_subject_list:
+        if other_subject not in subject_list:
+            subject_list.append(other_subject)
+    """
+
+
     department = Department.objects.get(pk=department_id)
     academic_year = AcademicYear.objects.get(pk = year_id)
 
@@ -610,7 +669,7 @@ def banner_comparison_data(request):
         semester = Semester.objects.get(pk=semester_id)
         term_code = semester.banner_code
         # eventually expand this to include extra-departmental courses taught by dept...?
-        for subject in department.subjects.all():
+        for subject in department.subjects_including_outside_courses(semester): #department.subjects.all():
             # first should reset all crns of the iChair course offerings, so we start with a clean slate
             # should also reset all ichair_ids for the Banner course offerings, for the same reason (that's done below)
 

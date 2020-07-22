@@ -14,23 +14,38 @@
                     This page allows you to compare your course offerings with those in Banner and
                     request changes from the Registrar.
                 </div>
-                <div class="subtitle-1 mt-2">
-                    Please choose one or more semesters to work on:
-                </div>
             </v-flex>
         </v-layout>
-        <v-layout row wrap class="mt-n12" v-for="semester in semesterChoices">
-            <v-flex xs10 offset-xs2 class="my-0">
-                <v-checkbox class="mb-n12" color="success" :label="semester.semester_name" :value="semester.id"
+        <v-layout row wrap class="mt-2">
+            <v-flex xs10 offset-xs1 class="subtitle-1 mt-2">
+                Please choose one or more semesters to work on:
+            </v-flex>
+            <v-flex xs10 offset-xs2 class="my-0" v-for="semester in semesterChoices">
+                <v-checkbox class="mb-0" color="success" :label="semester.semester_name" :value="semester.id"
                     v-model="chosenSemesters" hide-details></v-checkbox>
             </v-flex>
         </v-layout>
+        <v-layout row wrap class="mt-2">
+            <v-flex xs9 offset-xs1 class="subtitle-1 mt-2">
+                Please select which courses from other departments you might want to edit:
+            </v-flex>
+
+            <v-flex xs10 offset-xs2 class="my-0" class="mt-n12" v-for="course in extraDepartmentalCourseChoices">
+                <v-checkbox class="mb-0" color="success" :label="course.name" :value="course.id"
+                    v-model="chosenExtraCourses" hide-details></v-checkbox>
+            </v-flex>
+            <v-flex xs10 offset-xs2 mt-2>
+                <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
+                <v-btn outlined color="success" @click="launchSearchOtherCoursesDialog()">Add Other Courses</v-btn>
+            </v-flex>
+        </v-layout>
+        [[chosenExtraCourses]]
         <v-layout row>
             <v-flex xs10 offset-xs1>
                 <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
                 <v-btn color="primary" @click="alignCourseOfferings()">Get Started</v-btn>
             </v-flex>
-            <v-flex xs4 offset-xs4>
+            <v-flex xs6 offset-xs3>
                 <v-alert color="#2A3B4D" outlined>
                     For some help getting started on this process, click <a href="https://youtu.be/d1XMtE_gIgw"
                         target="_blank">here</a>.
@@ -39,6 +54,72 @@
             <v-flex xs4></v-flex>
         </v-layout>
     </template>
+
+    <template>
+        <div class="text-center">
+            <v-dialog v-model="searchOtherCoursesDialog" max-width="600">
+                <v-card>
+                    <v-card-title class="headline grey lighten-2" primary-title>
+                        Choose Course(s) From Other Departments
+                    </v-card-title>
+
+                    <v-card-text class="pb-0">
+                        <v-container grid-list-md>
+                            <v-layout wrap>
+                                <v-flex xs3 class="pa-0">
+                                    Subject:
+                                </v-flex>
+                                <v-flex xs9 class="pa-0">
+                                    Course:
+                                </v-flex>
+                                <v-flex xs3 class="pt-0 pb-0 pl-2 pr-5">
+                                    <select class="mt-2" style="border-style: solid; height: 32px; width: 100%;"
+                                        id="subject_select" v-model="extraDepartmentalSubjectChoice"
+                                        @change="onSubjectSelected($event)">
+                                        <option v-for="subject in extraDepartmentalSubjectChoices" :value="subject.id">
+                                            [[subject.abbrev]]
+                                        </option>
+                                    </select>
+                                </v-flex>
+                                <v-flex xs9 class="pt-0 pb-0 pl-2 pr-2">
+                                    <select class="mt-2" style="border-style: solid; height: 32px; width: 100%;"
+                                        id="course_select" v-model="extraDepartmentalCourseChoice"
+                                        @change="onCourseSelected($event)">
+                                        <option v-for="course in extraCourseDialogChoices" :value="course.id">
+                                            [[course.name]]
+                                        </option>
+                                    </select>
+                                </v-flex>
+                                <v-flex xs12 class="pa-0">
+                                    Choice(s):
+                                </v-flex>
+                                <v-flex xs12 v-for="course in selectedExtraCoursesInDialog">
+                                    <v-icon class="include-pointer" color="primary"
+                                        @click="clearFromExtraCourseList(course.id)">
+                                        mdi-close-circle
+                                    </v-icon> <span class="ml-5">[[course.name]]</span>
+                                </v-flex>
+                            </v-layout>
+                        </v-container>
+                    </v-card-text>
+                    <v-divider class="ma-0"></v-divider>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="primary" text @click="cancelExtraCoursesDialog()">
+                            Cancel
+                        </v-btn>
+                        <v-btn color="primary" text @click="addExtraCoursesToList()">
+                            Submit
+                        </v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+            </v-row>
+    </template>
+
+
+
+
 
     <template v-if="showLinearProgressBar">
         <v-layout row wrap align-top>

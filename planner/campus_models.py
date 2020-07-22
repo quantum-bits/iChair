@@ -63,7 +63,26 @@ class Department(models.Model):
                 if co.course not in course_list:
                     course_list.append(co.course)
         course_list.sort(key=lambda x: x.number)
-        return course_list
+        return course_list 
+
+    def subjects_including_outside_courses(self, semester_object):
+        subject_id_list = []
+        subject_id_list = [subj.id for subj in self.subjects.all()]
+        """
+        for fac in self.faculty.all():
+            for co in fac.course_offerings.filter((~Q(course__subject__pk__in = subject_id_list)) and Q(semester = semester_object)):
+                if co.course.subject.id not in subject_id_list:
+                    subject_id_list.append(co.course.subject.id)
+        """
+        # now fetch the objects themselves
+        subject_list = []
+        for subject_id in subject_id_list:
+            subject = Subject.objects.get(pk = subject_id)
+            subject_list.append(subject)
+        subject_list.sort(key=lambda x: x.abbrev)
+        return subject_list
+
+    # department.subjects.all():
 
     def is_trusted_by_subject(self, subject):
         """True if the present department is trusted by the subject in the other department."""
