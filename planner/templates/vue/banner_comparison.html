@@ -145,983 +145,512 @@
     <template v-if="courseOfferingAlignmentPhaseReady">
         <template>
             <v-toolbar flat color="white">
-                <v-toolbar-title>Course Offerings</v-toolbar-title>
+                <v-toolbar-title>
+                    <div>
+                        Course Offerings
+                    </div>
+                    <div class="caption">
+                        (click rows to show/hide detail)
+                    </div>
+                </v-toolbar-title>
                 <v-spacer></v-spacer>
                 <v-btn color="primary" class="mt-2" @click="generatePDF()">Generate PDF</v-btn>
             </v-toolbar>
         </template>
         <!-- :expanded.sync="expanded :single-expand="singleExpand"" -->
-        <v-data-table 
-            :headers="headers" 
-            :items="courseOfferings" 
-            show-expand 
-            :page.sync="page" 
-            :items-per-page="itemsPerPage" 
-            hide-default-footer
-            item-key="index" 
-            class="elevation-1" 
-            @click:row="rowClicked"
-            :expanded.sync="expanded" 
-            :single-expand="singleExpand"
-            @page-count="pageCount = $event">
-            <template v-slot:item="{ item, expand, isExpanded }">
-                <tr @click="expand(!isExpanded)" class="include-pointer">
-                    <td>
-                    </td>
-                    <td>[[item.semester]] </td>
-                    <td>[[item.termCode]] </td>
-                    <td>[[item.crn]] </td>
-                    <td class="text-xs-left">[[item.course]]</td>
-                    <td class="text-xs-left">[[item.name]] </td>
-                    <td class="text-xs-left">[[item.creditHours]] </td>
-                    <td class="text-xs-center">
-                        <v-icon class="green--text" v-if="item.allOK">mdi-check-circle</v-icon>
-                        <v-icon class="orange--text" v-else>mdi-alert</v-icon>
-                        <v-icon class="green--text" v-if="item.delta && item.delta.messages_exist">
-                            mdi-message-text-outline</v-icon>
-                    </td>
-                </tr>
-            </template>
-            <template v-slot:expanded-item="{ item, headers }">
-                <td :colspan="headers.length" style="border-bottom: 1px solid grey;">
+        <template>
+            <v-data-table :headers="headers" :items="courseOfferings" show-expand :page.sync="page"
+                :items-per-page="itemsPerPage" hide-default-footer item-key="index" class="elevation-1"
+                @click:row="rowClicked" :expanded.sync="expanded" :single-expand="singleExpand"
+                @page-count="pageCount = $event">
+                <template v-slot:item="{ item, expand, isExpanded }">
+                    <tr @click="expand(!isExpanded)" class="include-pointer">
+                        <td>
+                        </td>
+                        <td>[[item.semester]] </td>
+                        <td>[[item.termCode]] </td>
+                        <td>[[item.crn]] </td>
+                        <td class="text-xs-left">[[item.course]]</td>
+                        <td class="text-xs-left">[[item.name]] </td>
+                        <td class="text-xs-left">[[item.creditHours]] </td>
+                        <td class="text-xs-center">
+                            <v-icon class="green--text" v-if="item.allOK">mdi-check-circle</v-icon>
+                            <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                            <v-icon class="green--text" v-if="item.delta && item.delta.messages_exist">
+                                mdi-message-text-outline</v-icon>
+                        </td>
+                    </tr>
+                </template>
+                <template v-slot:expanded-item="{ item, headers }">
+                    <td :colspan="headers.length" style="border-bottom: 1px solid grey;">
 
-                    <v-container>
+                        <v-container>
 
-                        <template>
-                            <div class="text-center">
-                                <v-dialog v-model="numberPrimaryInstructorsIncorrectDialog" max-width="500">
-                                    <v-card>
-                                        <v-card-title class="headline grey lighten-2" primary-title>Primary Instructors
-                                        </v-card-title>
+                            <template>
+                                <div class="text-center">
+                                    <v-dialog v-model="numberPrimaryInstructorsIncorrectDialog" max-width="500">
+                                        <v-card>
+                                            <v-card-title class="headline grey lighten-2" primary-title>Primary
+                                                Instructors
+                                            </v-card-title>
 
-                                        <v-card-text class="pb-0">
-                                            <v-container grid-list-md>
-                                                <v-layout wrap>
-                                                    <v-flex xs12>
-                                                        There should be one primary instructor for this course offering.
-                                                        Please fix
-                                                        this first before requesting an instructor update from the registrar.
-                                                    </v-flex>
-                                                </v-layout>
-                                            </v-container>
-                                        </v-card-text>
-                                        <v-divider class="ma-0"></v-divider>
-                                        <v-card-actions>
-                                            <v-spacer></v-spacer>
-                                            <v-btn color="primary" text
-                                                @click="numberPrimaryInstructorsIncorrectDialog = false">
-                                                Got it!
-                                            </v-btn>
-                                        </v-card-actions>
-                                    </v-card>
-                                </v-dialog>
-                                </v-row>
-                        </template>
-
-                        <template>
-                            <div class="text-center">
-                                <v-dialog persistent v-model="editInstructorsDialog" width="800">
-                                    <v-card>
-                                        <v-card-title class="headline grey lighten-2" primary-title>
-                                            [[dialogTitle]]
-                                        </v-card-title>
-                                        <v-card-text class="pb-0">
-                                            <v-container grid-list-md>
-                                                <v-layout wrap>
-                                                    <v-flex xs5>Instructor</v-flex>
-                                                    <v-flex xs2># Load Hours</v-flex>
-                                                    <v-flex xs3>Primary Instructor</v-flex>
-                                                    <v-flex xs2>Delete</v-flex>
-                                                </v-layout>
-                                                <div v-for="(instructorDetail, index) in editInstructors">
+                                            <v-card-text class="pb-0">
+                                                <v-container grid-list-md>
                                                     <v-layout wrap>
-                                                        <v-flex xs5>
-                                                            <select class="mt-2"
-                                                                style="border-style: solid; height: 32px; width: 100%;"
-                                                                id="instructor_select" v-model="instructorDetail.id">
-                                                                <option v-for="facultyChoice in facultyChoices"
-                                                                    :value="facultyChoice.id">[[facultyChoice.name]]
-                                                                </option>
-
-                                                            </select>
-                                                        </v-flex>
-                                                        <v-flex xs2>
-                                                            <!-- https://stackoverflow.com/questions/19011861/is-there-a-float-input-type-in-html5 -->
-                                                            <input class="mt-2" style="height: 32px; width: 100%;"
-                                                                type="number" min="0" step="any"
-                                                                v-model="instructorDetail.load_credit">
-                                                        </v-flex>
-                                                        <v-flex xs3>
-                                                            <!-- https://stackoverflow.com/questions/50506235/vuejs-click-event-from-checkbox/50506564 -->
-                                                            <v-checkbox class="mt-2"
-                                                                @change="onIsPrimaryChanged(instructorDetail)"
-                                                                :disabled="instructorDetail.is_primary_disabled"
-                                                                v-model="instructorDetail.is_primary">
-                                                            </v-checkbox>
-                                                        </v-flex>
-                                                        <v-flex xs2>
-                                                            <v-checkbox class="mt-2" v-model="instructorDetail.delete">
-                                                            </v-checkbox>
+                                                        <v-flex xs12>
+                                                            There should be one primary instructor for this course
+                                                            offering.
+                                                            Please fix
+                                                            this first before requesting an instructor update from the
+                                                            registrar.
                                                         </v-flex>
                                                     </v-layout>
-                                                </div>
-                                                <v-layout>
-                                                    <v-flex xs12>
-                                                        <v-btn color="primary" @click="addInstructor()">Add Another
-                                                        </v-btn>
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout class="mt-2" wrap>
-                                                    <v-flex xs5>
-                                                        <div class="mt-2">
-                                                            Total Number of Load Hours Available:
-                                                        </div>
-                                                    </v-flex>
-                                                    <v-flex xs2>
-                                                        <input class="mt-2" style="height: 32px; width: 100%"
-                                                            type="number" step="any" min="0"
-                                                            v-model="editLoadAvailable">
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout text-center>
-                                                    <v-flex xs12>
-                                                        <div class="red--text">
-                                                            [[instructorFormErrorMessage]]</div>
-                                                    </v-flex>
-                                                </v-layout>
-                                            </v-container>
+                                                </v-container>
+                                            </v-card-text>
+                                            <v-divider class="ma-0"></v-divider>
+                                            <v-card-actions>
+                                                <v-spacer></v-spacer>
+                                                <v-btn color="primary" text
+                                                    @click="numberPrimaryInstructorsIncorrectDialog = false">
+                                                    Got it!
+                                                </v-btn>
+                                            </v-card-actions>
+                                        </v-card>
+                                    </v-dialog>
+                                    </v-row>
+                            </template>
 
-                                        </v-card-text>
-                                        <v-divider class="ma-0"></v-divider>
-                                        <v-card-actions>
-                                            <v-spacer></v-spacer>
-                                            <v-btn color="primary" text @click="cancelInstructorsForm()">
-                                                Cancel
-                                            </v-btn>
-                                            <v-btn color="primary" text @click="submitInstructorsForm()">
-                                                Submit
-                                            </v-btn>
-                                        </v-card-actions>
-                                    </v-card>
-                                </v-dialog>
-                            </div>
-                        </template>
-
-                        <template>
-                            <div class="text-center">
-                                <v-dialog persistent v-model="dialog" width="800">
-                                    <v-card>
-                                        <v-card-title class="headline grey lighten-2" primary-title>
-                                            [[dialogTitle]]
-                                        </v-card-title>
-                                        <v-card-text class="pb-0">
-                                            <v-container grid-list-md>
-                                                <v-layout class="mt-2" wrap>
-                                                    <v-flex xs3>
-                                                        <div class="mt-3">
-                                                            Enrollment Cap:
-                                                        </div>
-                                                    </v-flex>
-                                                    <v-flex xs1>
-                                                        <input class="mt-2" style="height: 32px; width: 100%"
-                                                            type="number" min="0" v-model="editEnrollmentCap">
-                                                    </v-flex>
-                                                    <v-flex xs3 offset-xs1>
-                                                        <div class="mt-2">
-                                                            Semester Fraction:
-                                                        </div>
-                                                    </v-flex>
-                                                    <v-flex xs3>
-                                                        <select class="mt-2" style="border-style: solid; height: 32px;"
-                                                            id="semester_fraction_select"
-                                                            v-model="editSemesterFraction">
-                                                            <option value="0">Full Semester</option>
-                                                            <option value="1">First Half Semester</option>
-                                                            <option value="2">Second Half Semester</option>
-                                                        </select>
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout text-center>
-                                                    <v-flex xs12>
-                                                        <div class="red--text">
-                                                            [[enrollmentErrorMessage]]</div>
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-divider></v-divider>
-                                                <v-layout wrap>
-                                                    <v-flex xs4>Day</v-flex>
-                                                    <v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
-                                                    <v-flex xs3>End Time (e.g., 13:50)</v-flex>
-                                                    <v-flex xs2>Delete</v-flex>
-                                                </v-layout>
-                                                <div v-for="meetingTimeDetail in editMeetings">
+                            <template>
+                                <div class="text-center">
+                                    <v-dialog persistent v-model="editInstructorsDialog" width="800">
+                                        <v-card>
+                                            <v-card-title class="headline grey lighten-2" primary-title>
+                                                [[dialogTitle]]
+                                            </v-card-title>
+                                            <v-card-text class="pb-0">
+                                                <v-container grid-list-md>
                                                     <v-layout wrap>
-                                                        <v-flex xs4>
+                                                        <v-flex xs5>Instructor</v-flex>
+                                                        <v-flex xs2># Load Hours</v-flex>
+                                                        <v-flex xs3>Primary Instructor</v-flex>
+                                                        <v-flex xs2>Delete</v-flex>
+                                                    </v-layout>
+                                                    <div v-for="(instructorDetail, index) in editInstructors">
+                                                        <v-layout wrap>
+                                                            <v-flex xs5>
+                                                                <select class="mt-2"
+                                                                    style="border-style: solid; height: 32px; width: 100%;"
+                                                                    id="instructor_select"
+                                                                    v-model="instructorDetail.id">
+                                                                    <option v-for="facultyChoice in facultyChoices"
+                                                                        :value="facultyChoice.id">[[facultyChoice.name]]
+                                                                    </option>
 
+                                                                </select>
+                                                            </v-flex>
+                                                            <v-flex xs2>
+                                                                <!-- https://stackoverflow.com/questions/19011861/is-there-a-float-input-type-in-html5 -->
+                                                                <input class="mt-2" style="height: 32px; width: 100%;"
+                                                                    type="number" min="0" step="any"
+                                                                    v-model="instructorDetail.load_credit">
+                                                            </v-flex>
+                                                            <v-flex xs3>
+                                                                <!-- https://stackoverflow.com/questions/50506235/vuejs-click-event-from-checkbox/50506564 -->
+                                                                <v-checkbox class="mt-2"
+                                                                    @change="onIsPrimaryChanged(instructorDetail)"
+                                                                    :disabled="instructorDetail.is_primary_disabled"
+                                                                    v-model="instructorDetail.is_primary">
+                                                                </v-checkbox>
+                                                            </v-flex>
+                                                            <v-flex xs2>
+                                                                <v-checkbox class="mt-2"
+                                                                    v-model="instructorDetail.delete">
+                                                                </v-checkbox>
+                                                            </v-flex>
+                                                        </v-layout>
+                                                    </div>
+                                                    <v-layout>
+                                                        <v-flex xs12>
+                                                            <v-btn color="primary" @click="addInstructor()">Add Another
+                                                            </v-btn>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout class="mt-2" wrap>
+                                                        <v-flex xs5>
+                                                            <div class="mt-2">
+                                                                Total Number of Load Hours Available:
+                                                            </div>
+                                                        </v-flex>
+                                                        <v-flex xs2>
+                                                            <input class="mt-2" style="height: 32px; width: 100%"
+                                                                type="number" step="any" min="0"
+                                                                v-model="editLoadAvailable">
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout text-center>
+                                                        <v-flex xs12>
+                                                            <div class="red--text">
+                                                                [[instructorFormErrorMessage]]</div>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </v-container>
+
+                                            </v-card-text>
+                                            <v-divider class="ma-0"></v-divider>
+                                            <v-card-actions>
+                                                <v-spacer></v-spacer>
+                                                <v-btn color="primary" text @click="cancelInstructorsForm()">
+                                                    Cancel
+                                                </v-btn>
+                                                <v-btn color="primary" text @click="submitInstructorsForm()">
+                                                    Submit
+                                                </v-btn>
+                                            </v-card-actions>
+                                        </v-card>
+                                    </v-dialog>
+                                </div>
+                            </template>
+
+                            <template>
+                                <div class="text-center">
+                                    <v-dialog persistent v-model="dialog" width="800">
+                                        <v-card>
+                                            <v-card-title class="headline grey lighten-2" primary-title>
+                                                [[dialogTitle]]
+                                            </v-card-title>
+                                            <v-card-text class="pb-0">
+                                                <v-container grid-list-md>
+                                                    <v-layout class="mt-2" wrap>
+                                                        <v-flex xs3>
+                                                            <div class="mt-3">
+                                                                Enrollment Cap:
+                                                            </div>
+                                                        </v-flex>
+                                                        <v-flex xs1>
+                                                            <input class="mt-2" style="height: 32px; width: 100%"
+                                                                type="number" min="0" v-model="editEnrollmentCap">
+                                                        </v-flex>
+                                                        <v-flex xs3 offset-xs1>
+                                                            <div class="mt-2">
+                                                                Semester Fraction:
+                                                            </div>
+                                                        </v-flex>
+                                                        <v-flex xs3>
                                                             <select class="mt-2"
                                                                 style="border-style: solid; height: 32px;"
-                                                                id="day_select" v-model="meetingTimeDetail.day">
-                                                                <option value="0">Monday</option>
-                                                                <option value="1">Tuesday</option>
-                                                                <option value="2">Wednesday</option>
-                                                                <option value="3">Thursday</option>
-                                                                <option value="4">Friday</option>
+                                                                id="semester_fraction_select"
+                                                                v-model="editSemesterFraction">
+                                                                <option value="0">Full Semester</option>
+                                                                <option value="1">First Half Semester</option>
+                                                                <option value="2">Second Half Semester</option>
                                                             </select>
                                                         </v-flex>
-                                                        <v-flex xs3>
-                                                            <input class="mt-2" style="height: 32px; width: 140px;"
-                                                                type="text" v-model="meetingTimeDetail.begin_at">
-                                                        </v-flex>
-                                                        <v-flex xs3>
-                                                            <input class="mt-2" style="height: 32px; width: 140px;"
-                                                                type="text" v-model="meetingTimeDetail.end_at">
-                                                        </v-flex>
-                                                        <v-flex xs2>
-                                                            <v-checkbox class="mt-2" v-model="meetingTimeDetail.delete">
-                                                            </v-checkbox>
+                                                    </v-layout>
+                                                    <v-layout text-center>
+                                                        <v-flex xs12>
+                                                            <div class="red--text">
+                                                                [[enrollmentErrorMessage]]</div>
                                                         </v-flex>
                                                     </v-layout>
-                                                </div>
-                                                <v-layout>
-                                                    <v-flex xs12>
-                                                        <v-btn color="primary" @click="addMeetingTime()">Add Another
-                                                        </v-btn>
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout text-center>
-                                                    <v-flex xs12>
-                                                        <div class="red--text">
-                                                            [[meetingFormErrorMessage]]</div>
-                                                    </v-flex>
-                                                </v-layout>
-                                            </v-container>
-                                        </v-card-text>
-                                        <v-divider class="ma-0"></v-divider>
-                                        <v-card-actions>
-                                            <v-spacer></v-spacer>
-                                            <v-btn color="primary" text @click="cancelMeetingsForm()">
-                                                Cancel
-                                            </v-btn>
-                                            <v-btn color="primary" text @click="submitMeetingsForm()">
-                                                Submit
-                                            </v-btn>
-                                        </v-card-actions>
-                                    </v-card>
-                                </v-dialog>
-                            </div>
-                        </template>
-
-                        <template>
-                            <div class="text-center">
-                                <v-dialog persistent v-model="newCourseOfferingDialog" width="800">
-                                    <v-card>
-                                        <v-card-title class="headline grey lighten-2" primary-title>
-                                            Create a New Course Offering
-                                        </v-card-title>
-                                        <v-card-text class="pb-0">
-                                            <v-container grid-list-md>
-                                                <v-layout wrap>
-                                                    <v-flex xs12>
-                                                        There is not an obvious iChair match for the Registrar's
-                                                        course
-                                                        <strong>[[newCourseOfferingDialogCourseText]]</strong>.
-                                                        Please choose one of the following options.
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout wrap>
-                                                    <v-flex xs10 offset-xs1>
-                                                        <v-radio-group v-model="courseChoice">
-                                                            <v-radio v-for="choiceItem in courseChoices"
-                                                                :key="choiceItem.selectionId" :label="choiceItem.text"
-                                                                :value="choiceItem.selectionId" color="success">
-                                                            </v-radio>
-                                                        </v-radio-group>
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout text-center>
-                                                    <v-flex xs12>
-                                                        <div class="red--text">
-                                                            [[newCourseOfferingDialogErrorMessage]]</div>
-                                                    </v-flex>
-                                                </v-layout>
-                                            </v-container>
-                                        </v-card-text>
-                                        <v-divider class="ma-0"></v-divider>
-                                        <v-card-actions>
-                                            <v-spacer></v-spacer>
-                                            <v-btn color="primary" text @click="cancelCourseOfferingDialog()">
-                                                Cancel
-                                            </v-btn>
-                                            <v-btn color="primary" text @click="submitCourseChoice()">
-                                                Submit
-                                            </v-btn>
-                                        </v-card-actions>
-                                    </v-card>
-                                </v-dialog>
-                            </div>
-                        </template>
-
-                        <template>
-                            <div class="text-center">
-                                <v-dialog persistent v-model="publicCommentsDialog" width="800">
-                                    <v-card>
-                                        <v-card-title class="headline grey lighten-2" primary-title>
-                                            [[dialogTitle]]
-                                        </v-card-title>
-                                        <v-card-text class="pb-0">
-                                            <v-container grid-list-md>
-                                                <v-layout wrap>
-                                                    <v-flex xs12>
-                                                        These are comments that will be publicly available to students
-                                                        on Taylor's website.
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout wrap>
-                                                    <v-flex xs2 offset-xs10>Delete</v-flex>
-                                                </v-layout>
-                                                <div v-for="comment in editComments">
+                                                    <v-divider></v-divider>
                                                     <v-layout wrap>
-                                                        <v-flex xs9 class="text-right">
-                                                            <div>
-                                                                <input class="mt-2" style="height: 32px; width: 100%"
-                                                                    type="text" v-model="comment.text">
-                                                            </div>
-                                                            <div class="text-right"
-                                                                :class="{'red--text': comment.text.length > 60}">
-                                                                [[comment.text.length]]/60
-                                                            </div>
-                                                        </v-flex>
-                                                        <v-flex xs2 offset-xs1>
-                                                            <v-checkbox class="mt-2" v-model="comment.delete">
-                                                            </v-checkbox>
+                                                        <v-flex xs4>Day</v-flex>
+                                                        <v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
+                                                        <v-flex xs3>End Time (e.g., 13:50)</v-flex>
+                                                        <v-flex xs2>Delete</v-flex>
+                                                    </v-layout>
+                                                    <div v-for="meetingTimeDetail in editMeetings">
+                                                        <v-layout wrap>
+                                                            <v-flex xs4>
+
+                                                                <select class="mt-2"
+                                                                    style="border-style: solid; height: 32px;"
+                                                                    id="day_select" v-model="meetingTimeDetail.day">
+                                                                    <option value="0">Monday</option>
+                                                                    <option value="1">Tuesday</option>
+                                                                    <option value="2">Wednesday</option>
+                                                                    <option value="3">Thursday</option>
+                                                                    <option value="4">Friday</option>
+                                                                </select>
+                                                            </v-flex>
+                                                            <v-flex xs3>
+                                                                <input class="mt-2" style="height: 32px; width: 140px;"
+                                                                    type="text" v-model="meetingTimeDetail.begin_at">
+                                                            </v-flex>
+                                                            <v-flex xs3>
+                                                                <input class="mt-2" style="height: 32px; width: 140px;"
+                                                                    type="text" v-model="meetingTimeDetail.end_at">
+                                                            </v-flex>
+                                                            <v-flex xs2>
+                                                                <v-checkbox class="mt-2"
+                                                                    v-model="meetingTimeDetail.delete">
+                                                                </v-checkbox>
+                                                            </v-flex>
+                                                        </v-layout>
+                                                    </div>
+                                                    <v-layout>
+                                                        <v-flex xs12>
+                                                            <v-btn color="primary" @click="addMeetingTime()">Add Another
+                                                            </v-btn>
                                                         </v-flex>
                                                     </v-layout>
-                                                </div>
-                                                <v-layout>
-                                                    <v-flex xs12>
-                                                        <v-btn color="primary" @click="addComment()">Add Another</v-btn>
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout v-if="commentsTooLong()" text-center>
-                                                    <v-flex xs12>
-                                                        <div class="red--text">
-                                                            Comments are limited to 60 characters each.</div>
-                                                    </v-flex>
-                                                </v-layout>
-                                                <v-layout text-center>
-                                                    <v-flex xs12>
-                                                        <div class="red--text">
-                                                            [[commentFormErrorMessage]]</div>
-                                                    </v-flex>
-                                                </v-layout>
-                                            </v-container>
-                                        </v-card-text>
-                                        <v-divider class="ma-0"></v-divider>
-                                        <v-card-actions>
-                                            <v-spacer></v-spacer>
-                                            <v-btn color="primary" text @click="cancelCommentsForm()">
-                                                Cancel
-                                            </v-btn>
-                                            <v-btn color="primary" text @click="submitComments()"
-                                                :disabled="commentsTooLong()">
-                                                Submit
-                                            </v-btn>
-                                        </v-card-actions>
-                                    </v-card>
-                                </v-dialog>
-                            </div>
-                        </template>
+                                                    <v-layout text-center>
+                                                        <v-flex xs12>
+                                                            <div class="red--text">
+                                                                [[meetingFormErrorMessage]]</div>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </v-container>
+                                            </v-card-text>
+                                            <v-divider class="ma-0"></v-divider>
+                                            <v-card-actions>
+                                                <v-spacer></v-spacer>
+                                                <v-btn color="primary" text @click="cancelMeetingsForm()">
+                                                    Cancel
+                                                </v-btn>
+                                                <v-btn color="primary" text @click="submitMeetingsForm()">
+                                                    Submit
+                                                </v-btn>
+                                            </v-card-actions>
+                                        </v-card>
+                                    </v-dialog>
+                                </div>
+                            </template>
 
-                        <template>
-                            <div class="text-center">
-                                <v-dialog persistent v-model="commentForRegistrarDialog" width="800">
-                                    <v-card>
-                                        <v-card-title class="headline grey lighten-2" primary-title>
-                                            [[dialogTitle]]
-                                        </v-card-title>
-                                        <v-card-text class="pb-0">
-                                            <v-container grid-list-md>
-                                                <v-layout wrap>
-                                                    <v-flex xs12>
-                                                        Comments for the registrar about this course offering.
-                                                    </v-flex>
-                                                </v-layout>
+                            <template>
+                                <div class="text-center">
+                                    <v-dialog persistent v-model="newCourseOfferingDialog" width="800">
+                                        <v-card>
+                                            <v-card-title class="headline grey lighten-2" primary-title>
+                                                Create a New Course Offering
+                                            </v-card-title>
+                                            <v-card-text class="pb-0">
+                                                <v-container grid-list-md>
+                                                    <v-layout wrap>
+                                                        <v-flex xs12>
+                                                            There is not an obvious iChair match for the Registrar's
+                                                            course
+                                                            <strong>[[newCourseOfferingDialogCourseText]]</strong>.
+                                                            Please choose one of the following options.
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout wrap>
+                                                        <v-flex xs10 offset-xs1>
+                                                            <v-radio-group v-model="courseChoice">
+                                                                <v-radio v-for="choiceItem in courseChoices"
+                                                                    :key="choiceItem.selectionId"
+                                                                    :label="choiceItem.text"
+                                                                    :value="choiceItem.selectionId" color="success">
+                                                                </v-radio>
+                                                            </v-radio-group>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout text-center>
+                                                        <v-flex xs12>
+                                                            <div class="red--text">
+                                                                [[newCourseOfferingDialogErrorMessage]]</div>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </v-container>
+                                            </v-card-text>
+                                            <v-divider class="ma-0"></v-divider>
+                                            <v-card-actions>
+                                                <v-spacer></v-spacer>
+                                                <v-btn color="primary" text @click="cancelCourseOfferingDialog()">
+                                                    Cancel
+                                                </v-btn>
+                                                <v-btn color="primary" text @click="submitCourseChoice()">
+                                                    Submit
+                                                </v-btn>
+                                            </v-card-actions>
+                                        </v-card>
+                                    </v-dialog>
+                                </div>
+                            </template>
 
-                                                <v-layout>
-                                                    <v-flex xs12>
-                                                        <v-textarea v-model="commentForRegistrar"></v-textarea>
-                                                        <div class="text-right"
-                                                            :class="{'red--text': commentForRegistrar.length > 500}">
-                                                            [[commentForRegistrar.length]]/500
-                                                        </div>
-                                                    </v-flex>
-
-                                                </v-layout>
-                                            </v-container>
-                                        </v-card-text>
-                                        <v-divider class="ma-0"></v-divider>
-                                        <v-card-actions>
-                                            <v-spacer></v-spacer>
-                                            <v-btn color="primary" text @click="cancelNoteForRegistrarForm()">
-                                                Cancel
-                                            </v-btn>
-                                            <v-btn color="primary" text @click="submitNoteForRegistrar()"
-                                                :disabled="noteForRegistrarTooLong()">
-                                                Submit
-                                            </v-btn>
-
-                                        </v-card-actions>
-                                    </v-card>
-                                </v-dialog>
-                            </div>
-                        </template>
-
-                        <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
-
-                        <v-layout v-if="item.showCourseOfferingRadioSelect" row wrap>
-                            <v-flex xs10 offset-xs1 class="mt-5">
-                                This course offering exists in the Registrar's database, but it is currently
-                                not linked to one in iChair. What would you like to do?
-                                <v-radio-group v-model="item.ichairChoice"
-                                    v-on:change="onCourseOfferingOptionChosen(item)">
-                                    <v-radio v-for="choiceItem in item.ichairChoices" :key="choiceItem.selectionId"
-                                        :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
-                                    </v-radio>
-                                </v-radio-group>
-                                </iChair>
-                            </v-flex>
-                        </v-layout>
-
-                        <v-layout v-if="item.showBannerCourseOfferingRadioSelect" row wrap>
-                            <v-flex xs10 offset-xs1 class="mt-5">
-                                This course offering exists in the iChair database, but it is currently
-                                not linked to one in the Registrar's database. What would you like to do?
-                                <v-radio-group v-model="item.bannerChoice"
-                                    v-on:change="onBannerCourseOfferingOptionChosen(item)">
-                                    <v-radio v-for="choiceItem in item.bannerChoices" :key="choiceItem.selectionId"
-                                        :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
-                                    </v-radio>
-                                </v-radio-group>
-                                </iChair>
-                            </v-flex>
-                        </v-layout>
-
-                        <v-layout row wrap align-center>
-                            <v-flex xs12>
-
-                                <table style="border: 1px solid grey; margin: 10px;">
-                                    <thead>
-                                        <tr>
-                                            <th></th>
-                                            <th class="text-center">iChair</th>
-                                            <th class="text-center">Actions</th>
-                                            <th class="text-center">Registrar</th>
-                                            <th class="text-center">
-                                                <v-icon>mdi-message-text-outline</v-icon> Message(s) for Registrar
-                                            </th>
-                                            <th class="text-center">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-if="item.delta && item.delta.messages_exist">
-                                            <td>Type of Request</td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td>
-                                                <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
-                                                    <strong class="green--text">Update Existing Course
-                                                        Offering</strong><br>
-                                                    <span class="green--text">CRN: [[item.crn]] </span>
-
-                                                </span>
-                                                <span v-if="item.delta.requested_action == DELTA_ACTION_CREATE">
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top"
-                                                                    color="primary" @click="deleteDelta(item)"
-                                                                    v-on="on">
-                                                                    mdi-close-circle
-                                                                </v-icon>
-                                                            </span>
-                                                        </template>
-                                                        <span>Undo</span>
-                                                    </v-tooltip>
-                                                    <strong class="green--text">Create New Course Offering</strong>
-                                                </span>
-                                                <span v-if="item.delta.requested_action == DELTA_ACTION_DELETE">
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top"
-                                                                    color="primary" @click="deleteDelta(item)"
-                                                                    v-on="on">
-                                                                    mdi-close-circle
-                                                                </v-icon>
-                                                            </span>
-                                                        </template>
-                                                        <span>Undo</span>
-                                                    </v-tooltip>
-                                                    <strong class="green--text">Delete Existing Course
-                                                        Offering</strong><br>
-                                                    <span class="green--text">CRN: [[item.crn]] </span>
-                                                </span>
-
-                                            </td>
-                                            <td></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Meeting Times</td>
-                                            <td v-if="item.hasIChair" class="text-center">
-                                                <a @click="editMeetingTimes(item)">
-                                                    <div v-if="item.ichair.meeting_times.length > 0">
-                                                        <div v-for="meetingTime in item.ichair.meeting_times">
-                                                            [[meetingTime]]
-                                                        </div>
+                            <template>
+                                <div class="text-center">
+                                    <v-dialog persistent v-model="publicCommentsDialog" width="800">
+                                        <v-card>
+                                            <v-card-title class="headline grey lighten-2" primary-title>
+                                                [[dialogTitle]]
+                                            </v-card-title>
+                                            <v-card-text class="pb-0">
+                                                <v-container grid-list-md>
+                                                    <v-layout wrap>
+                                                        <v-flex xs12>
+                                                            These are comments that will be publicly available to
+                                                            students
+                                                            on Taylor's website.
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout wrap>
+                                                        <v-flex xs2 offset-xs10>Delete</v-flex>
+                                                    </v-layout>
+                                                    <div v-for="comment in editComments">
+                                                        <v-layout wrap>
+                                                            <v-flex xs9 class="text-right">
+                                                                <div>
+                                                                    <input class="mt-2"
+                                                                        style="height: 32px; width: 100%" type="text"
+                                                                        v-model="comment.text">
+                                                                </div>
+                                                                <div class="text-right"
+                                                                    :class="{'red--text': comment.text.length > 60}">
+                                                                    [[comment.text.length]]/60
+                                                                </div>
+                                                            </v-flex>
+                                                            <v-flex xs2 offset-xs1>
+                                                                <v-checkbox class="mt-2" v-model="comment.delete">
+                                                                </v-checkbox>
+                                                            </v-flex>
+                                                        </v-layout>
                                                     </div>
-                                                    <div v-else>
-                                                        ---
-                                                    </div>
-                                                </a>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                                <!--
-                                                <a @click="editMeetingTimes(item)">
-                                                    ---
-                                                </a>
-                                                -->
-                                            </td>
-                                            <td>
-                                                <div class="arrow-group">
-                                                    <div v-if="deactivateScheduleLeftArrow(item)" class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-left-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-left-bold-circle
-                                                                </v-icon>
+                                                    <v-layout>
+                                                        <v-flex xs12>
+                                                            <v-btn color="primary" @click="addComment()">Add Another
+                                                            </v-btn>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout v-if="commentsTooLong()" text-center>
+                                                        <v-flex xs12>
+                                                            <div class="red--text">
+                                                                Comments are limited to 60 characters each.</div>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout text-center>
+                                                        <v-flex xs12>
+                                                            <div class="red--text">
+                                                                [[commentFormErrorMessage]]</div>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </v-container>
+                                            </v-card-text>
+                                            <v-divider class="ma-0"></v-divider>
+                                            <v-card-actions>
+                                                <v-spacer></v-spacer>
+                                                <v-btn color="primary" text @click="cancelCommentsForm()">
+                                                    Cancel
+                                                </v-btn>
+                                                <v-btn color="primary" text @click="submitComments()"
+                                                    :disabled="commentsTooLong()">
+                                                    Submit
+                                                </v-btn>
+                                            </v-card-actions>
+                                        </v-card>
+                                    </v-dialog>
+                                </div>
+                            </template>
+
+                            <template>
+                                <div class="text-center">
+                                    <v-dialog persistent v-model="commentForRegistrarDialog" width="800">
+                                        <v-card>
+                                            <v-card-title class="headline grey lighten-2" primary-title>
+                                                [[dialogTitle]]
+                                            </v-card-title>
+                                            <v-card-text class="pb-0">
+                                                <v-container grid-list-md>
+                                                    <v-layout wrap>
+                                                        <v-flex xs12>
+                                                            Comments for the registrar about this course offering.
+                                                        </v-flex>
+                                                    </v-layout>
+
+                                                    <v-layout>
+                                                        <v-flex xs12>
+                                                            <v-textarea v-model="commentForRegistrar"></v-textarea>
+                                                            <div class="text-right"
+                                                                :class="{'red--text': commentForRegistrar.length > 500}">
+                                                                [[commentForRegistrar.length]]/500
                                                             </div>
-                                                        </template>
-                                                        <span>Copy the registrar's version to iChair</span>
-                                                    </v-tooltip>
-                                                    <div v-if="deactivateScheduleRightArrow(item)" class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-right-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else bottom>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_SET)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-right-bold-circle
-                                                                </v-icon>
-                                                            </div>
+                                                        </v-flex>
 
-                                                        </template>
-                                                        <span>Create a message for the registrar, requesting a
-                                                            change</span>
-                                                    </v-tooltip>
-                                                </div>
-                                            </td>
-                                            <td v-if="item.hasBanner" class="text-center">
-                                                <div v-for="meetingTime in item.banner.meeting_times">
-                                                    [[meetingTime]]
-                                                </div>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                            </td>
+                                                    </v-layout>
+                                                </v-container>
+                                            </v-card-text>
+                                            <v-divider class="ma-0"></v-divider>
+                                            <v-card-actions>
+                                                <v-spacer></v-spacer>
+                                                <v-btn color="primary" text @click="cancelNoteForRegistrarForm()">
+                                                    Cancel
+                                                </v-btn>
+                                                <v-btn color="primary" text @click="submitNoteForRegistrar()"
+                                                    :disabled="noteForRegistrarTooLong()">
+                                                    Submit
+                                                </v-btn>
 
-                                            <td
-                                                v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times">
-                                                <div>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top"
-                                                                    color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
-                                                                    mdi-close-circle
-                                                                </v-icon>
-                                                            </span>
-                                                        </template>
-                                                        <span>Undo</span>
-                                                    </v-tooltip>
-                                                    <div class="delta-detail-list"
-                                                        v-for="meetingTime in item.delta.meeting_times.was">
-                                                        [[meetingTime]]
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
-                                                        to:</strong>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
-                                                    <div class="delta-detail-list"
-                                                        v-for="meetingTime in item.delta.meeting_times.change_to">
-                                                        [[meetingTime]]
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td
-                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
-                                                <strong>Delete</strong>
-                                            </td>
-                                            <td v-else></td>
-                                            <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.schedulesMatch">mdi-check-circle
-                                                </v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
-                                            </td>
+                                            </v-card-actions>
+                                        </v-card>
+                                    </v-dialog>
+                                </div>
+                            </template>
 
-                                        </tr>
-                                        <tr>
-                                            <td>Instructor(s)</td>
-                                            <td v-if="item.hasIChair" class="text-center">
-                                                <a @click="editOfferingInstructors(item)">
-                                                    <div v-if="item.ichair.instructors.length > 0">
-                                                        <div v-for="instructor in item.ichair.instructors">
-                                                            [[instructor]]
-                                                        </div>
-                                                    </div>
-                                                    <div v-else>
-                                                        ---
-                                                    </div>
-                                                </a>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                                <!--
-                                                <a @click="editOfferingInstructors(item)">
-                                                    ---
-                                                </a>
-                                                -->
-                                            </td>
-                                            <td>
-                                                <div class="arrow-group">
-                                                    <div v-if="deactivateInstructorsLeftArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-left-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-left-bold-circle
-                                                                </v-icon>
-                                                            </div>
+                            <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
 
-                                                        </template>
-                                                        <span>Copy the registrar's version to iChair</span>
-                                                    </v-tooltip>
-                                                    <div v-if="deactivateInstructorsRightArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-right-bold-circle
-                                                        </v-icon>
+                            <v-layout v-if="item.showCourseOfferingRadioSelect" row wrap>
+                                <v-flex xs10 offset-xs1 class="mt-5">
+                                    This course offering exists in the Registrar's database, but it is currently
+                                    not linked to one in iChair. What would you like to do?
+                                    <v-radio-group v-model="item.ichairChoice"
+                                        v-on:change="onCourseOfferingOptionChosen(item)">
+                                        <v-radio v-for="choiceItem in item.ichairChoices" :key="choiceItem.selectionId"
+                                            :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
+                                        </v-radio>
+                                    </v-radio-group>
+                                    </iChair>
+                                </v-flex>
+                            </v-layout>
 
-                                                    </div>
-                                                    <v-tooltip v-else bottom>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_SET)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-right-bold-circle
-                                                                </v-icon>
-                                                            </div>
+                            <v-layout v-if="item.showBannerCourseOfferingRadioSelect" row wrap>
+                                <v-flex xs10 offset-xs1 class="mt-5">
+                                    This course offering exists in the iChair database, but it is currently
+                                    not linked to one in the Registrar's database. What would you like to do?
+                                    <v-radio-group v-model="item.bannerChoice"
+                                        v-on:change="onBannerCourseOfferingOptionChosen(item)">
+                                        <v-radio v-for="choiceItem in item.bannerChoices" :key="choiceItem.selectionId"
+                                            :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
+                                        </v-radio>
+                                    </v-radio-group>
+                                    </iChair>
+                                </v-flex>
+                            </v-layout>
 
-                                                        </template>
-                                                        <span>Create a message for the registrar, requesting a
-                                                            change</span>
-                                                    </v-tooltip>
-                                                </div>
-                                            </td>
-                                            <td v-if="item.hasBanner" class="text-center">
-                                                <div v-for="instructor in item.banner.instructors">
-                                                    [[instructor]]
-                                                </div>
+                            <v-layout row wrap align-center>
+                                <v-flex xs12>
 
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                            </td>
-                                            <td
-                                                v-if="item.delta && item.delta.request_update_instructors && item.delta.instructors">
-                                                <div>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top"
-                                                                    color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
-                                                                    mdi-close-circle
-                                                                </v-icon>
-                                                            </span>
-                                                        </template>
-                                                        <span>Undo</span>
-                                                    </v-tooltip>
-                                                    <div class="delta-detail-list"
-                                                        v-for="instructor in item.delta.instructors.was">
-                                                        [[instructor]]
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
-                                                        to:</strong>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
-                                                    <div class="delta-detail-list"
-                                                        v-for="instructor in item.delta.instructors.change_to">
-                                                        [[instructor]]
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td
-                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
-                                                <strong>Delete</strong>
-                                            </td>
-                                            <td v-else></td>
-                                            <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.instructorsMatch">
-                                                    mdi-check-circle</v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Enrollment Cap</td>
-                                            <td v-if="item.hasIChair" class="text-center">
-                                                <a @click="editMeetingTimes(item)">
-                                                    [[item.ichair.max_enrollment]]
-                                                </a>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                                <!--
-                                                <a @click="editMeetingTimes(item)">
-                                                    ---
-                                                </a>
-                                                -->
-                                            </td>
-                                            <td>
-                                                <div class="arrow-group">
-                                                    <div v-if="deactivateMaxEnrollmentLeftArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-left-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-left-bold-circle
-                                                                </v-icon>
-                                                            </div>
-
-                                                        </template>
-                                                        <span>Copy the registrar's version to iChair</span>
-                                                    </v-tooltip>
-                                                    <div v-if="deactivateMaxEnrollmentRightArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-right-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else bottom>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_SET)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-right-bold-circle
-                                                                </v-icon>
-                                                            </div>
-
-                                                        </template>
-                                                        <span>Create a message for the registrar, requesting a
-                                                            change</span>
-                                                    </v-tooltip>
-                                                </div>
-                                            </td>
-                                            <td v-if="item.hasBanner" class="text-center">
-                                                [[item.banner.max_enrollment]]
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                            </td>
-                                            <td
-                                                v-if="item.delta && item.delta.request_update_max_enrollment && item.delta.max_enrollment">
-                                                <div>
+                                    <table style="border: 1px solid grey; margin: 10px;">
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                <th class="text-center">iChair</th>
+                                                <th class="text-center">Actions</th>
+                                                <th class="text-center">Registrar</th>
+                                                <th class="text-center">
+                                                    <v-icon>mdi-message-text-outline</v-icon> Message(s) for Registrar
+                                                </th>
+                                                <th class="text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-if="item.delta && item.delta.messages_exist">
+                                                <td>Type of Request</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td>
                                                     <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
-                                                        <strong>Was:</strong> [[item.delta.max_enrollment.was]]
+                                                        <strong class="green--text">Update Existing Course
+                                                            Offering</strong><br>
+                                                        <span class="green--text">CRN: [[item.crn]] </span>
+
                                                     </span>
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top"
-                                                                    color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
-                                                                    mdi-close-circle
-                                                                </v-icon>
-                                                            </span>
-                                                        </template>
-                                                        <span>Undo</span>
-                                                    </v-tooltip>
-                                                </div>
-
-                                                <div>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
-                                                        to:</strong>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
-                                                    [[item.delta.max_enrollment.change_to]]
-                                                </div>
-                                            </td>
-                                            <td
-                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
-                                                <strong>Delete</strong>
-                                            </td>
-                                            <td v-else></td>
-                                            <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.enrollmentCapsMatch">
-                                                    mdi-check-circle</v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Semester Fraction</td>
-                                            <td v-if="item.hasIChair" class="text-center">
-                                                <a @click="editMeetingTimes(item)">
-                                                    <div v-if="item.ichair.semester_fraction == semesterFractions.full">
-                                                        Full Semester
-                                                    </div>
-                                                    <div
-                                                        v-if="item.ichair.semester_fraction == semesterFractions.first_half">
-                                                        First Half
-                                                    </div>
-                                                    <div
-                                                        v-if="item.ichair.semester_fraction == semesterFractions.second_half">
-                                                        Second Half
-                                                    </div>
-                                                </a>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                                <!--
-                                                <a @click="editMeetingTimes(item)">
-                                                    ---
-                                                </a>
-                                                -->
-                                            </td>
-                                            <td>
-                                                <div class="arrow-group">
-                                                    <div v-if="deactivateSemesterFractionLeftArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-left-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-left-bold-circle
-                                                                </v-icon>
-                                                            </div>
-                                                        </template>
-                                                        <span>Copy the registrar's version to iChair</span>
-                                                    </v-tooltip>
-                                                    <div v-if="deactivateSemesterFractionRightArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-right-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else bottom>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_SET)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-right-bold-circle
-                                                                </v-icon>
-                                                            </div>
-                                                        </template>
-                                                        <span>Create a message for the registrar, requesting a
-                                                            change</span>
-                                                    </v-tooltip>
-                                                </div>
-                                            </td>
-                                            <td v-if="item.hasBanner" class="text-center">
-                                                <div v-if="item.banner.semester_fraction == semesterFractions.full">
-                                                    Full Semester
-                                                </div>
-                                                <div
-                                                    v-if="item.banner.semester_fraction == semesterFractions.first_half">
-                                                    First Half
-                                                </div>
-                                                <div
-                                                    v-if="item.banner.semester_fraction == semesterFractions.second_half">
-                                                    Second Half
-                                                </div>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                            </td>
-                                            <td
-                                                v-if="item.delta && item.delta.request_update_semester_fraction && item.delta.semester_fraction">
-                                                <div>
-                                                    <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
-                                                        <strong>Was:</strong>
-                                                        <span
-                                                            v-if="item.delta.semester_fraction.was == semesterFractions.full">
-                                                            Full Semester
-                                                        </span>
-                                                        <span
-                                                            v-if="item.delta.semester_fraction.was == semesterFractions.first_half">
-                                                            First Half
-                                                            </<a>
-                                                            <span
-                                                                v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
-                                                                Second Half
-                                                            </span>
-                                                        </span>
-
+                                                    <span v-if="item.delta.requested_action == DELTA_ACTION_CREATE">
                                                         <v-tooltip top>
                                                             <template v-slot:activator="{ on }">
                                                                 <span class="float-right">
                                                                     <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
+                                                                        color="primary" @click="deleteDelta(item)"
                                                                         v-on="on">
                                                                         mdi-close-circle
                                                                     </v-icon>
@@ -1129,292 +658,787 @@
                                                             </template>
                                                             <span>Undo</span>
                                                         </v-tooltip>
+                                                        <strong class="green--text">Create New Course Offering</strong>
+                                                    </span>
+                                                    <span v-if="item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary" @click="deleteDelta(item)"
+                                                                        v-on="on">
+                                                                        mdi-close-circle
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                        <strong class="green--text">Delete Existing Course
+                                                            Offering</strong><br>
+                                                        <span class="green--text">CRN: [[item.crn]] </span>
+                                                    </span>
 
-                                                </div>
-                                                <div>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
-                                                        to:</strong>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
-                                                    <span
-                                                        v-if="item.delta.semester_fraction.change_to == semesterFractions.full">
-                                                        Full Semester
-                                                    </span>
-                                                    <span
-                                                        v-if="item.delta.semester_fraction.change_to == semesterFractions.first_half">
-                                                        First Half
-                                                    </span>
-                                                    <span
-                                                        v-if="item.delta.semester_fraction.change_to == semesterFractions.second_half">
-                                                        Second Half
-                                                    </span>
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td
-                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
-                                                <strong>Delete</strong>
-                                            </td>
-                                            <td v-else></td>
-                                            <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.semesterFractionsMatch">
-                                                    mdi-check-circle</v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Public Comments</td>
-                                            <td v-if="item.hasIChair" class="text-center">
-                                                <div v-if="item.ichair.comments.summary_contains_all_text">
-                                                    <a @click="editPublicComments(item)">
-                                                        <div v-if="item.ichair.comments.summary ===''">
-                                                            ---
+                                                </td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Meeting Times</td>
+                                                <td v-if="item.hasIChair" class="text-center">
+                                                    <a @click="editMeetingTimes(item)">
+                                                        <div v-if="item.ichair.meeting_times.length > 0">
+                                                            <div v-for="meetingTime in item.ichair.meeting_times">
+                                                                [[meetingTime]]
+                                                            </div>
                                                         </div>
                                                         <div v-else>
-                                                            [[item.ichair.comments.summary]]
+                                                            ---
                                                         </div>
                                                     </a>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                    <!--
+                                                <a @click="editMeetingTimes(item)">
+                                                    ---
+                                                </a>
+                                                -->
+                                                </td>
+                                                <td>
+                                                    <div class="arrow-group">
+                                                        <div v-if="deactivateScheduleLeftArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-left-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-left-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+                                                            </template>
+                                                            <span>Copy the registrar's version to iChair</span>
+                                                        </v-tooltip>
+                                                        <div v-if="deactivateScheduleRightArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-right-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else bottom>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_SET)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-right-bold-circle
+                                                                    </v-icon>
+                                                                </div>
 
-                                                </div>
-                                                <div v-else-if="item.showAllIChairComments">
-                                                    <a @click="editPublicComments(item)">
-                                                        <div v-for="comment in item.ichair.comments.comment_list"
+                                                            </template>
+                                                            <span>Create a message for the registrar, requesting a
+                                                                change</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
+                                                <td v-if="item.hasBanner" class="text-center">
+                                                    <div v-for="meetingTime in item.banner.meeting_times">
+                                                        [[meetingTime]]
+                                                    </div>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+
+                                                <td
+                                                    v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times">
+                                                    <div>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_UNSET)"
+                                                                        v-on="on">
+                                                                        mdi-close-circle
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                        <div class="delta-detail-list"
+                                                            v-for="meetingTime in item.delta.meeting_times.was">
+                                                            [[meetingTime]]
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
+                                                            to:</strong>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
+                                                        <div class="delta-detail-list"
+                                                            v-for="meetingTime in item.delta.meeting_times.change_to">
+                                                            [[meetingTime]]
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                    <strong>Delete</strong>
+                                                </td>
+                                                <td v-else></td>
+                                                <td class="text-center">
+                                                    <v-icon class="green--text" v-if="item.schedulesMatch">
+                                                        mdi-check-circle
+                                                    </v-icon>
+                                                    <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                                                </td>
+
+                                            </tr>
+                                            <tr>
+                                                <td>Instructor(s)</td>
+                                                <td v-if="item.hasIChair" class="text-center">
+                                                    <a @click="editOfferingInstructors(item)">
+                                                        <div v-if="item.ichair.instructors.length > 0">
+                                                            <div v-for="instructor in item.ichair.instructors">
+                                                                [[instructor]]
+                                                            </div>
+                                                        </div>
+                                                        <div v-else>
+                                                            ---
+                                                        </div>
+                                                    </a>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                    <!--
+                                                <a @click="editOfferingInstructors(item)">
+                                                    ---
+                                                </a>
+                                                -->
+                                                </td>
+                                                <td>
+                                                    <div class="arrow-group">
+                                                        <div v-if="deactivateInstructorsLeftArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-left-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-left-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Copy the registrar's version to iChair</span>
+                                                        </v-tooltip>
+                                                        <div v-if="deactivateInstructorsRightArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-right-bold-circle
+                                                            </v-icon>
+
+                                                        </div>
+                                                        <v-tooltip v-else bottom>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_SET)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-right-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Create a message for the registrar, requesting a
+                                                                change</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
+                                                <td v-if="item.hasBanner" class="text-center">
+                                                    <div v-for="instructor in item.banner.instructors">
+                                                        [[instructor]]
+                                                    </div>
+
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+                                                <td
+                                                    v-if="item.delta && item.delta.request_update_instructors && item.delta.instructors">
+                                                    <div>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_UNSET)"
+                                                                        v-on="on">
+                                                                        mdi-close-circle
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                        <div class="delta-detail-list"
+                                                            v-for="instructor in item.delta.instructors.was">
+                                                            [[instructor]]
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
+                                                            to:</strong>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
+                                                        <div class="delta-detail-list"
+                                                            v-for="instructor in item.delta.instructors.change_to">
+                                                            [[instructor]]
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                    <strong>Delete</strong>
+                                                </td>
+                                                <td v-else></td>
+                                                <td class="text-center">
+                                                    <v-icon class="green--text" v-if="item.instructorsMatch">
+                                                        mdi-check-circle</v-icon>
+                                                    <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Enrollment Cap</td>
+                                                <td v-if="item.hasIChair" class="text-center">
+                                                    <a @click="editMeetingTimes(item)">
+                                                        [[item.ichair.max_enrollment]]
+                                                    </a>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                    <!--
+                                                <a @click="editMeetingTimes(item)">
+                                                    ---
+                                                </a>
+                                                -->
+                                                </td>
+                                                <td>
+                                                    <div class="arrow-group">
+                                                        <div v-if="deactivateMaxEnrollmentLeftArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-left-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-left-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Copy the registrar's version to iChair</span>
+                                                        </v-tooltip>
+                                                        <div v-if="deactivateMaxEnrollmentRightArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-right-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else bottom>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_SET)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-right-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Create a message for the registrar, requesting a
+                                                                change</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
+                                                <td v-if="item.hasBanner" class="text-center">
+                                                    [[item.banner.max_enrollment]]
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+                                                <td
+                                                    v-if="item.delta && item.delta.request_update_max_enrollment && item.delta.max_enrollment">
+                                                    <div>
+                                                        <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
+                                                            <strong>Was:</strong> [[item.delta.max_enrollment.was]]
+                                                        </span>
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
+                                                                        v-on="on">
+                                                                        mdi-close-circle
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                    </div>
+
+                                                    <div>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
+                                                            to:</strong>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
+                                                        [[item.delta.max_enrollment.change_to]]
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                    <strong>Delete</strong>
+                                                </td>
+                                                <td v-else></td>
+                                                <td class="text-center">
+                                                    <v-icon class="green--text" v-if="item.enrollmentCapsMatch">
+                                                        mdi-check-circle</v-icon>
+                                                    <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Semester Fraction</td>
+                                                <td v-if="item.hasIChair" class="text-center">
+                                                    <a @click="editMeetingTimes(item)">
+                                                        <div
+                                                            v-if="item.ichair.semester_fraction == semesterFractions.full">
+                                                            Full Semester
+                                                        </div>
+                                                        <div
+                                                            v-if="item.ichair.semester_fraction == semesterFractions.first_half">
+                                                            First Half
+                                                        </div>
+                                                        <div
+                                                            v-if="item.ichair.semester_fraction == semesterFractions.second_half">
+                                                            Second Half
+                                                        </div>
+                                                    </a>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                    <!--
+                                                <a @click="editMeetingTimes(item)">
+                                                    ---
+                                                </a>
+                                                -->
+                                                </td>
+                                                <td>
+                                                    <div class="arrow-group">
+                                                        <div v-if="deactivateSemesterFractionLeftArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-left-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-left-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+                                                            </template>
+                                                            <span>Copy the registrar's version to iChair</span>
+                                                        </v-tooltip>
+                                                        <div v-if="deactivateSemesterFractionRightArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-right-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else bottom>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_SET)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-right-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+                                                            </template>
+                                                            <span>Create a message for the registrar, requesting a
+                                                                change</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
+                                                <td v-if="item.hasBanner" class="text-center">
+                                                    <div v-if="item.banner.semester_fraction == semesterFractions.full">
+                                                        Full Semester
+                                                    </div>
+                                                    <div
+                                                        v-if="item.banner.semester_fraction == semesterFractions.first_half">
+                                                        First Half
+                                                    </div>
+                                                    <div
+                                                        v-if="item.banner.semester_fraction == semesterFractions.second_half">
+                                                        Second Half
+                                                    </div>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+                                                <td
+                                                    v-if="item.delta && item.delta.request_update_semester_fraction && item.delta.semester_fraction">
+                                                    <div>
+                                                        <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
+                                                            <strong>Was:</strong>
+                                                            <span
+                                                                v-if="item.delta.semester_fraction.was == semesterFractions.full">
+                                                                Full Semester
+                                                            </span>
+                                                            <span
+                                                                v-if="item.delta.semester_fraction.was == semesterFractions.first_half">
+                                                                First Half
+                                                                </<a>
+                                                                <span
+                                                                    v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
+                                                                    Second Half
+                                                                </span>
+                                                            </span>
+
+                                                            <v-tooltip top>
+                                                                <template v-slot:activator="{ on }">
+                                                                    <span class="float-right">
+                                                                        <v-icon class="include-pointer icon-padding-top"
+                                                                            color="primary"
+                                                                            @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
+                                                                            v-on="on">
+                                                                            mdi-close-circle
+                                                                        </v-icon>
+                                                                    </span>
+                                                                </template>
+                                                                <span>Undo</span>
+                                                            </v-tooltip>
+
+                                                    </div>
+                                                    <div>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
+                                                            to:</strong>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
+                                                        <span
+                                                            v-if="item.delta.semester_fraction.change_to == semesterFractions.full">
+                                                            Full Semester
+                                                        </span>
+                                                        <span
+                                                            v-if="item.delta.semester_fraction.change_to == semesterFractions.first_half">
+                                                            First Half
+                                                        </span>
+                                                        <span
+                                                            v-if="item.delta.semester_fraction.change_to == semesterFractions.second_half">
+                                                            Second Half
+                                                        </span>
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                    <strong>Delete</strong>
+                                                </td>
+                                                <td v-else></td>
+                                                <td class="text-center">
+                                                    <v-icon class="green--text" v-if="item.semesterFractionsMatch">
+                                                        mdi-check-circle</v-icon>
+                                                    <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Public Comments</td>
+                                                <td v-if="item.hasIChair" class="text-center">
+                                                    <div v-if="item.ichair.comments.summary_contains_all_text">
+                                                        <a @click="editPublicComments(item)">
+                                                            <div v-if="item.ichair.comments.summary ===''">
+                                                                ---
+                                                            </div>
+                                                            <div v-else>
+                                                                [[item.ichair.comments.summary]]
+                                                            </div>
+                                                        </a>
+
+                                                    </div>
+                                                    <div v-else-if="item.showAllIChairComments">
+                                                        <a @click="editPublicComments(item)">
+                                                            <div v-for="comment in item.ichair.comments.comment_list"
+                                                                class="caption text-left">
+                                                                [[comment.text]]
+                                                            </div>
+                                                        </a>
+                                                        <div>
+                                                            <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                                @click="showLessOfIChairComments(item)">Show Less
+                                                            </v-btn>
+                                                        </div>
+                                                    </div>
+                                                    <div v-else>
+                                                        <div>
+                                                            <v-tooltip top>
+                                                                <template v-slot:activator="{ on }">
+                                                                    <div class="float-left include-pointer" v-on="on">
+                                                                        <a @click="editPublicComments(item)">
+                                                                            [[item.ichair.comments.summary]]
+                                                                        </a>
+                                                                    </div>
+                                                                </template>
+                                                                <div
+                                                                    v-for="comment in item.ichair.comments.comment_list">
+                                                                    [[comment.text]]
+                                                                </div>
+                                                            </v-tooltip>
+                                                        </div>
+                                                        <br>
+                                                        <div>
+                                                            <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                                @click="showMoreOfIChairComments(item)">Show More
+                                                            </v-btn>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+                                                <td>
+                                                    <div class="arrow-group">
+                                                        <div v-if="deactivatePublicCommentsLeftArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-left-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-left-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Copy the registrar's version to iChair</span>
+                                                        </v-tooltip>
+                                                        <div v-if="deactivatePublicCommentsRightArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-right-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else bottom>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_SET)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-right-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Create a message for the registrar, requesting a
+                                                                change</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
+                                                <td v-if="item.hasBanner" class="text-center">
+                                                    <div v-if="item.banner.comments.summary_contains_all_text">
+                                                        [[item.banner.comments.summary]]
+                                                    </div>
+                                                    <div v-else-if="item.showAllBannerComments">
+                                                        <div v-for="comment in item.banner.comments.comment_list"
                                                             class="caption text-left">
                                                             [[comment.text]]
                                                         </div>
-                                                    </a>
-                                                    <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
-                                                            @click="showLessOfIChairComments(item)">Show Less</v-btn>
+                                                        <div>
+                                                            <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                                @click="showLessOfBannerComments(item)">Show Less
+                                                            </v-btn>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div v-else>
+                                                    <div v-else>
+                                                        <div>
+                                                            <v-tooltip top>
+                                                                <template v-slot:activator="{ on }">
+                                                                    <div class="float-left include-pointer" v-on="on">
+                                                                        [[item.banner.comments.summary]]
+                                                                    </div>
+                                                                </template>
+                                                                <div
+                                                                    v-for="comment in item.banner.comments.comment_list">
+                                                                    [[comment.text]]
+                                                                </div>
+                                                            </v-tooltip>
+                                                        </div>
+                                                        <br>
+                                                        <div>
+                                                            <v-btn x-small color="primary" class="mb-2 mt-2"
+                                                                @click="showMoreOfBannerComments(item)">Show More
+                                                            </v-btn>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+                                                <td
+                                                    v-if="item.delta && item.delta.request_update_public_comments && item.delta.public_comments">
                                                     <div>
+                                                        <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
+                                                            <strong>Was:</strong>
+                                                            [[item.delta.public_comments_summary.was]]
+                                                        </span>
                                                         <v-tooltip top>
                                                             <template v-slot:activator="{ on }">
-                                                                <div class="float-left include-pointer" v-on="on">
-                                                                    <a @click="editPublicComments(item)">
-                                                                        [[item.ichair.comments.summary]]
-                                                                    </a>
-                                                                </div>
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_UNSET)"
+                                                                        v-on="on">
+                                                                        mdi-close-circle
+                                                                    </v-icon>
+                                                                </span>
                                                             </template>
-                                                            <div v-for="comment in item.ichair.comments.comment_list">
-                                                                [[comment.text]]
-                                                            </div>
+                                                            <span>Undo</span>
                                                         </v-tooltip>
                                                     </div>
-                                                    <br>
                                                     <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
-                                                            @click="showMoreOfIChairComments(item)">Show More</v-btn>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
+                                                            to:</strong>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
+                                                        [[item.delta.public_comments_summary.change_to]]
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                            </td>
-                                            <td>
-                                                <div class="arrow-group">
-                                                    <div v-if="deactivatePublicCommentsLeftArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-left-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-left-bold-circle
-                                                                </v-icon>
-                                                            </div>
-
-                                                        </template>
-                                                        <span>Copy the registrar's version to iChair</span>
-                                                    </v-tooltip>
-                                                    <div v-if="deactivatePublicCommentsRightArrow(item)"
-                                                        class="text-center">
-                                                        <v-icon class="grey--text text--lighten-1">
-                                                            mdi-arrow-right-bold-circle
-                                                        </v-icon>
-                                                    </div>
-                                                    <v-tooltip v-else bottom>
-                                                        <template v-slot:activator="{ on }">
-                                                            <div class="text-center">
-                                                                <v-icon class="include-pointer" color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_SET)"
-                                                                    v-on="on">
-                                                                    mdi-arrow-right-bold-circle
-                                                                </v-icon>
-                                                            </div>
-
-                                                        </template>
-                                                        <span>Create a message for the registrar, requesting a
-                                                            change</span>
-                                                    </v-tooltip>
-                                                </div>
-                                            </td>
-                                            <td v-if="item.hasBanner" class="text-center">
-                                                <div v-if="item.banner.comments.summary_contains_all_text">
-                                                    [[item.banner.comments.summary]]
-                                                </div>
-                                                <div v-else-if="item.showAllBannerComments">
-                                                    <div v-for="comment in item.banner.comments.comment_list"
-                                                        class="caption text-left">
-                                                        [[comment.text]]
-                                                    </div>
-                                                    <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
-                                                            @click="showLessOfBannerComments(item)">Show Less</v-btn>
-                                                    </div>
-                                                </div>
-                                                <div v-else>
-                                                    <div>
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <div class="float-left include-pointer" v-on="on">
-                                                                    [[item.banner.comments.summary]]
-                                                                </div>
-                                                            </template>
-                                                            <div v-for="comment in item.banner.comments.comment_list">
-                                                                [[comment.text]]
-                                                            </div>
-                                                        </v-tooltip>
-                                                    </div>
-                                                    <br>
-                                                    <div>
-                                                        <v-btn x-small color="primary" class="mb-2 mt-2"
-                                                            @click="showMoreOfBannerComments(item)">Show More</v-btn>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td v-else class="text-center">
-                                                ---
-                                            </td>
-                                            <td
-                                                v-if="item.delta && item.delta.request_update_public_comments && item.delta.public_comments">
-                                                <div>
-                                                    <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
-                                                        <strong>Was:</strong> [[item.delta.public_comments_summary.was]]
-                                                    </span>
-                                                    <v-tooltip top>
-                                                        <template v-slot:activator="{ on }">
-                                                            <span class="float-right">
-                                                                <v-icon class="include-pointer icon-padding-top"
-                                                                    color="primary"
-                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
-                                                                    mdi-close-circle
-                                                                </v-icon>
-                                                            </span>
-                                                        </template>
-                                                        <span>Undo</span>
-                                                    </v-tooltip>
-                                                </div>
-                                                <div>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
-                                                        to:</strong>
-                                                    <strong
-                                                        v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
-                                                    [[item.delta.public_comments_summary.change_to]]
-                                                </div>
-                                            </td>
-                                            <td
-                                                v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
-                                                <strong>Delete</strong>
-                                            </td>
-                                            <td v-else></td>
-                                            <td class="text-center">
-                                                <v-icon class="green--text" v-if="item.publicCommentsMatch">
-                                                    mdi-check-circle</v-icon>
-                                                <v-icon class="orange--text" v-else>mdi-alert</v-icon>
-                                            </td>
+                                                </td>
+                                                <td
+                                                    v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                    <strong>Delete</strong>
+                                                </td>
+                                                <td v-else></td>
+                                                <td class="text-center">
+                                                    <v-icon class="green--text" v-if="item.publicCommentsMatch">
+                                                        mdi-check-circle</v-icon>
+                                                    <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                                                </td>
 
 
 
-                                        </tr>
+                                            </tr>
 
 
 
-                                    </tbody>
-                                </table>
-                            </v-flex>
-                        </v-layout>
-                        <v-layout>
-                            <v-flex v-if="displayAddNoteButton(item)" xs12>
-                                <v-btn small class="ml-4" color="primary" @click="displayNoteForRegistrarDialog(item)">
-                                    Add Note for Registrar</v-btn>
-                            </v-flex>
-                        </v-layout>
-                        <v-layout v-if="displayNote(item)">
-                            <!--<v-flex xs8 offset-xs1>
+                                        </tbody>
+                                    </table>
+                                </v-flex>
+                            </v-layout>
+                            <v-layout>
+                                <v-flex v-if="displayAddNoteButton(item)" xs12>
+                                    <v-btn small class="ml-4" color="primary"
+                                        @click="displayNoteForRegistrarDialog(item)">
+                                        Add Note for Registrar</v-btn>
+                                </v-flex>
+                            </v-layout>
+                            <v-layout v-if="displayNote(item)">
+                                <!--<v-flex xs8 offset-xs1>
                                 <strong>Note for Registrar:</strong> [[item.delta.registrar_comment]]
                             <v-flex>
                             <v-flex xs3>
                                 some controls
                             </v-flex>-->
-                            <v-flex xs8 offset-xs1>
-                                <v-alert border="left" colored-border color="primary" elevation="1" class="body-2">
-                                    <strong>Note for Registrar:</strong> [[item.delta.registrar_comment]]
+                                <v-flex xs8 offset-xs1>
+                                    <v-alert border="left" colored-border color="primary" elevation="1" class="body-2">
+                                        <strong>Note for Registrar:</strong> [[item.delta.registrar_comment]]
 
-                                </v-alert>
+                                    </v-alert>
 
-                            </v-flex>
-                            <v-flex xs3 class="pl-3">
-                                <v-tooltip top>
-                                    <template v-slot:activator="{ on }">
-                                        <span class="float-left">
-                                            <v-icon class="include-pointer icon-padding-top" color="primary"
-                                                @click="deleteNoteForRegistrar(item)" v-on="on">
-                                                mdi-close-circle
-                                            </v-icon>
-                                        </span>
-                                    </template>
-                                    <span>Delete this note for the registrar.</span>
-                                </v-tooltip>
-                                <v-tooltip top>
-                                    <template v-slot:activator="{ on }">
-                                        <span class="float-left pl-3">
-                                            <v-icon class="include-pointer icon-padding-top" color="primary"
-                                                @click="displayNoteForRegistrarDialog(item)" v-on="on">
-                                                mdi-pencil
-                                            </v-icon>
-                                        </span>
-                                    </template>
-                                    <span>Edit this note for the registrar.</span>
-                                </v-tooltip>
-                            </v-flex>
-
-
-
-                        </v-layout>
-                        <v-layout>
-                            <v-flex>
-                                <div v-if="item.classroomsUnassignedWarning">
-                                    <strong class="green--text">[[item.classroomsUnassignedWarning]]</strong>
-                                </div>
-                                <div v-if="item.loadsAdjustedWarning">
-                                    <strong class="green--text">[[item.loadsAdjustedWarning]]</strong>
-                                </div>
-                                <div v-if="item.errorMessage">
-                                    <strong class="red--text">[[item.errorMessage]]</strong>
-                                </div>
-                                <div v-if="item.numberPrimaryInstructorsIncorrectMessage">
-                                    <strong class="red--text">[[item.numberPrimaryInstructorsIncorrectMessage]]</strong>
-                                </div>
-                            </v-flex>
-                        </v-layout>
+                                </v-flex>
+                                <v-flex xs3 class="pl-3">
+                                    <v-tooltip top>
+                                        <template v-slot:activator="{ on }">
+                                            <span class="float-left">
+                                                <v-icon class="include-pointer icon-padding-top" color="primary"
+                                                    @click="deleteNoteForRegistrar(item)" v-on="on">
+                                                    mdi-close-circle
+                                                </v-icon>
+                                            </span>
+                                        </template>
+                                        <span>Delete this note for the registrar.</span>
+                                    </v-tooltip>
+                                    <v-tooltip top>
+                                        <template v-slot:activator="{ on }">
+                                            <span class="float-left pl-3">
+                                                <v-icon class="include-pointer icon-padding-top" color="primary"
+                                                    @click="displayNoteForRegistrarDialog(item)" v-on="on">
+                                                    mdi-pencil
+                                                </v-icon>
+                                            </span>
+                                        </template>
+                                        <span>Edit this note for the registrar.</span>
+                                    </v-tooltip>
+                                </v-flex>
 
 
-                    </v-container>
 
-                </td>
-            </template>
-        </v-data-table>
+                            </v-layout>
+                            <v-layout>
+                                <v-flex>
+                                    <div v-if="item.classroomsUnassignedWarning">
+                                        <strong class="green--text">[[item.classroomsUnassignedWarning]]</strong>
+                                    </div>
+                                    <div v-if="item.loadsAdjustedWarning">
+                                        <strong class="green--text">[[item.loadsAdjustedWarning]]</strong>
+                                    </div>
+                                    <div v-if="item.errorMessage">
+                                        <strong class="red--text">[[item.errorMessage]]</strong>
+                                    </div>
+                                    <div v-if="item.numberPrimaryInstructorsIncorrectMessage">
+                                        <strong
+                                            class="red--text">[[item.numberPrimaryInstructorsIncorrectMessage]]</strong>
+                                    </div>
+                                </v-flex>
+                            </v-layout>
+
+
+                        </v-container>
+
+                    </td>
+                </template>
+            </v-data-table>
+        </template>
         <div class="text-center pt-2">
             <v-pagination v-model="page" :length="pageCount"></v-pagination>
             <v-btn v-if="!showAllCourses" color="primary" @click.stop="showAll()">Show All</v-btn>
