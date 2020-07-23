@@ -61,6 +61,7 @@ var app = new Vue({
       extraCourseDialogChoices: [], // used in the extra-departmental course-choosing dialog (choices in a drop-down)
       selectedExtraCoursesInDialog: [], // used in the extra-departmental course-choosing dialog (choices selected from a drop-down)
       searchOtherCoursesDialog: false, // set to true when using the dialog to choose extra-departmental courses
+      noSemestersChosenDialog: false, // set to true when displaying an error saying that no semesters have been chosen
       registrarCourseOfferingsExist: true, // set to false if there are no banner course offerings for any semester in the academic year under consideration
       chosenSemesters: [], // ids of semesters chosen to work on
       chosenExtraCourses: [], // extra-departmental courses chosen for schedule editing
@@ -383,190 +384,194 @@ var app = new Vue({
       this.courseAlignmentPhaseReady = false;
     },
     alignCourseOfferings() {
-      this.showLinearProgressBar = true;
-      this.choosingSemesters = false;
-      this.courseAlignmentPhaseReady = false;
-      this.displayCreateUpdateErrorMessage = false;
-      console.log("align course offerings!");
-      var _this = this;
+      if (this.chosenSemesters.length === 0) {
+        this.noSemestersChosenDialog = true;
+      } else {
+        this.showLinearProgressBar = true;
+        this.choosingSemesters = false;
+        this.courseAlignmentPhaseReady = false;
+        this.displayCreateUpdateErrorMessage = false;
+        console.log("align course offerings!");
+        var _this = this;
 
-      let dataForPost = {
-        departmentId: json_data.departmentId, // add the faculty id to the GET parameters
-        yearId: json_data.yearId,
-        semesterIds: this.chosenSemesters,
-        extraDepartmentalCourseIdList: this.chosenExtraCourses
-      };
+        let dataForPost = {
+          departmentId: json_data.departmentId, // add the faculty id to the GET parameters
+          yearId: json_data.yearId,
+          semesterIds: this.chosenSemesters,
+          extraDepartmentalCourseIdList: this.chosenExtraCourses
+        };
 
-      $.ajax({
-        // initialize an AJAX request
-        // seems like this should be a GET request, but I'm having trouble sending along the json data that way....
-        type: "POST",
-        url: "/planner/ajax/fetch-banner-comparison-data/", // set the url of the request
-        dataType: "json",
-        data: JSON.stringify(dataForPost),
-        success: function(incomingData) {
-          _this.showLinearProgressBar = false;
-          //_this.facultyChoices = incomingData.available_faculty;
-          //console.log('faculty choices: ', _this.facultyChoices);
-          // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
-          incomingData.course_data.forEach(course => {
-            let ichairChoices = [];
-            let showIChairRadioSelect = false;
+        $.ajax({
+          // initialize an AJAX request
+          // seems like this should be a GET request, but I'm having trouble sending along the json data that way....
+          type: "POST",
+          url: "/planner/ajax/fetch-banner-comparison-data/", // set the url of the request
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(incomingData) {
+            _this.showLinearProgressBar = false;
+            //_this.facultyChoices = incomingData.available_faculty;
+            //console.log('faculty choices: ', _this.facultyChoices);
+            // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
+            incomingData.course_data.forEach(course => {
+              let ichairChoices = [];
+              let showIChairRadioSelect = false;
 
-            if (!course.has_ichair) {
-              course.ichair_options.forEach(ichairOption => {
-                let creditText =
-                  ichairOption.credit_hours === 1
-                    ? " credit hour"
-                    : " credit hours";
-                let meetingTimes =
-                  ichairOption.meeting_times.length === 0 ? ")" : "; ";
-                ichairOption.meeting_times.forEach(mT => {
-                  meetingTimes = meetingTimes + mT + "; ";
+              if (!course.has_ichair) {
+                course.ichair_options.forEach(ichairOption => {
+                  let creditText =
+                    ichairOption.credit_hours === 1
+                      ? " credit hour"
+                      : " credit hours";
+                  let meetingTimes =
+                    ichairOption.meeting_times.length === 0 ? ")" : "; ";
+                  ichairOption.meeting_times.forEach(mT => {
+                    meetingTimes = meetingTimes + mT + "; ";
+                  });
+                  if (meetingTimes.length >= 2) {
+                    // https://tecadmin.net/remove-last-character-from-string-in-javascript/
+                    console.log("meeting times:", meetingTimes);
+                    meetingTimes = meetingTimes.substring(
+                      0,
+                      meetingTimes.length - 2
+                    ); // get rid of last trailing "; "
+                    meetingTimes = meetingTimes + ")";
+                  }
+                  ichairChoices.push({
+                    selectionId: ichairOption.course_offering_id,
+                    text:
+                      "Link with: " +
+                      ichairOption.course +
+                      ": " +
+                      ichairOption.course_title +
+                      " (" +
+                      ichairOption.credit_hours +
+                      creditText +
+                      meetingTimes +
+                      " (it can be edited afterward)"
+                  });
                 });
-                if (meetingTimes.length >= 2) {
-                  // https://tecadmin.net/remove-last-character-from-string-in-javascript/
-                  console.log("meeting times:", meetingTimes);
-                  meetingTimes = meetingTimes.substring(
-                    0,
-                    meetingTimes.length - 2
-                  ); // get rid of last trailing "; "
-                  meetingTimes = meetingTimes + ")";
-                }
                 ichairChoices.push({
-                  selectionId: ichairOption.course_offering_id,
+                  selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
                   text:
-                    "Link with: " +
-                    ichairOption.course +
-                    ": " +
-                    ichairOption.course_title +
-                    " (" +
-                    ichairOption.credit_hours +
-                    creditText +
-                    meetingTimes +
-                    " (it can be edited afterward)"
+                    "Create a new iChair course offering to match the Registrar's version"
                 });
-              });
-              ichairChoices.push({
-                selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
-                text:
-                  "Create a new iChair course offering to match the Registrar's version"
-              });
-              ichairChoices.push({
-                selectionId: DELETE_BANNER_COURSE_OFFERING,
-                text: "Request that the Registrar delete this course offering"
-              });
-
-              if (course.delta === null) {
-                showIChairRadioSelect = true;
-              } else if (
-                course.delta.requested_action === DELTA_ACTION_DELETE
-              ) {
-                showIChairRadioSelect = false;
-              } else {
-                showIChairRadioSelect = true;
-              }
-            }
-
-            let bannerChoices = [];
-            let showBannerRadioSelect = false;
-            if (!course.has_banner) {
-              course.banner_options.forEach(bannerOption => {
-                let creditText =
-                  bannerOption.credit_hours === 1
-                    ? " credit hour"
-                    : " credit hours";
-                let meetingTimes =
-                  bannerOption.meeting_times.length === 0 ? ")" : "; ";
-                bannerOption.meeting_times.forEach(mT => {
-                  meetingTimes = meetingTimes + mT + "; ";
+                ichairChoices.push({
+                  selectionId: DELETE_BANNER_COURSE_OFFERING,
+                  text: "Request that the Registrar delete this course offering"
                 });
-                if (meetingTimes.length >= 2) {
-                  // https://tecadmin.net/remove-last-character-from-string-in-javascript/
-                  console.log("meeting times:", meetingTimes);
-                  meetingTimes = meetingTimes.substring(
-                    0,
-                    meetingTimes.length - 2
-                  ); // get rid of last trailing "; "
-                  meetingTimes = meetingTimes + ")";
+
+                if (course.delta === null) {
+                  showIChairRadioSelect = true;
+                } else if (
+                  course.delta.requested_action === DELTA_ACTION_DELETE
+                ) {
+                  showIChairRadioSelect = false;
+                } else {
+                  showIChairRadioSelect = true;
                 }
-                bannerChoices.push({
-                  selectionId: bannerOption.course_offering_id,
-                  text:
-                    "Link with: " +
-                    bannerOption.course +
-                    ": " +
-                    bannerOption.course_title +
-                    " (CRN " +
-                    bannerOption.crn +
-                    "; " +
-                    bannerOption.credit_hours +
-                    creditText +
-                    meetingTimes
-                });
-              });
-              bannerChoices.push({
-                selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
-                text:
-                  "Request that the registrar create a new course offering to match this iChair course offering"
-              });
-
-              if (course.delta === null) {
-                showBannerRadioSelect = true;
-              } else if (
-                course.delta.requested_action === DELTA_ACTION_CREATE
-              ) {
-                showBannerRadioSelect = false;
-              } else {
-                showBannerRadioSelect = true;
               }
-            }
 
-            _this.courseOfferings.push({
-              semester: course.semester,
-              semesterId: course.semester_id,
-              termCode: course.term_code,
-              course: course.course,
-              creditHours: course.credit_hours,
-              name: course.course_title,
-              crn: course.crn,
-              schedulesMatch: course.schedules_match,
-              instructorsMatch: course.instructors_match,
-              semesterFractionsMatch: course.semester_fractions_match,
-              enrollmentCapsMatch: course.enrollment_caps_match,
-              publicCommentsMatch: course.public_comments_match,
-              ichairSubjectId: course.ichair_subject_id,
-              delta: course.delta,
-              ichair: course.ichair,
-              ichairOptions: course.ichair_options, //these are potential iChair matches, which might be there if hasIChair is false
-              ichairChoices: ichairChoices, // used for radio select if the user going to choose from among iChair options
-              ichairChoice: null, //used by a radio select to choose one of the ichairChoices
-              bannerOptions: course.banner_options, //these are potential iChair matches, which might be there if hasIChair is false
-              bannerChoices: bannerChoices, // used for radio select if the user going to choose from among iChair options
-              bannerChoice: null, //used by a radio select to choose one of the ichairChoices
-              showCourseOfferingRadioSelect: showIChairRadioSelect,
-              showBannerCourseOfferingRadioSelect: showBannerRadioSelect,
-              showAllIChairComments: false, //used to toggle between showing all comments and showing an abbreviation
-              showAllBannerComments: false, //used to toggle between showing all comments and showing an abbreviation
-              banner: course.banner,
-              hasIChair: course.has_ichair,
-              hasBanner: course.has_banner,
-              linked: course.linked,
-              allOK: course.all_OK,
-              index: course.index, // used as an item-key in the table
-              errorMessage: "",
-              loadsAdjustedWarning: "",
-              classroomsUnassignedWarning: "",
-              numberPrimaryInstructorsIncorrectMessage: "" // used to display a message saying that the number of primary instructors is incorrect
+              let bannerChoices = [];
+              let showBannerRadioSelect = false;
+              if (!course.has_banner) {
+                course.banner_options.forEach(bannerOption => {
+                  let creditText =
+                    bannerOption.credit_hours === 1
+                      ? " credit hour"
+                      : " credit hours";
+                  let meetingTimes =
+                    bannerOption.meeting_times.length === 0 ? ")" : "; ";
+                  bannerOption.meeting_times.forEach(mT => {
+                    meetingTimes = meetingTimes + mT + "; ";
+                  });
+                  if (meetingTimes.length >= 2) {
+                    // https://tecadmin.net/remove-last-character-from-string-in-javascript/
+                    console.log("meeting times:", meetingTimes);
+                    meetingTimes = meetingTimes.substring(
+                      0,
+                      meetingTimes.length - 2
+                    ); // get rid of last trailing "; "
+                    meetingTimes = meetingTimes + ")";
+                  }
+                  bannerChoices.push({
+                    selectionId: bannerOption.course_offering_id,
+                    text:
+                      "Link with: " +
+                      bannerOption.course +
+                      ": " +
+                      bannerOption.course_title +
+                      " (CRN " +
+                      bannerOption.crn +
+                      "; " +
+                      bannerOption.credit_hours +
+                      creditText +
+                      meetingTimes
+                  });
+                });
+                bannerChoices.push({
+                  selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
+                  text:
+                    "Request that the registrar create a new course offering to match this iChair course offering"
+                });
+
+                if (course.delta === null) {
+                  showBannerRadioSelect = true;
+                } else if (
+                  course.delta.requested_action === DELTA_ACTION_CREATE
+                ) {
+                  showBannerRadioSelect = false;
+                } else {
+                  showBannerRadioSelect = true;
+                }
+              }
+
+              _this.courseOfferings.push({
+                semester: course.semester,
+                semesterId: course.semester_id,
+                termCode: course.term_code,
+                course: course.course,
+                creditHours: course.credit_hours,
+                name: course.course_title,
+                crn: course.crn,
+                schedulesMatch: course.schedules_match,
+                instructorsMatch: course.instructors_match,
+                semesterFractionsMatch: course.semester_fractions_match,
+                enrollmentCapsMatch: course.enrollment_caps_match,
+                publicCommentsMatch: course.public_comments_match,
+                ichairSubjectId: course.ichair_subject_id,
+                delta: course.delta,
+                ichair: course.ichair,
+                ichairOptions: course.ichair_options, //these are potential iChair matches, which might be there if hasIChair is false
+                ichairChoices: ichairChoices, // used for radio select if the user going to choose from among iChair options
+                ichairChoice: null, //used by a radio select to choose one of the ichairChoices
+                bannerOptions: course.banner_options, //these are potential iChair matches, which might be there if hasIChair is false
+                bannerChoices: bannerChoices, // used for radio select if the user going to choose from among iChair options
+                bannerChoice: null, //used by a radio select to choose one of the ichairChoices
+                showCourseOfferingRadioSelect: showIChairRadioSelect,
+                showBannerCourseOfferingRadioSelect: showBannerRadioSelect,
+                showAllIChairComments: false, //used to toggle between showing all comments and showing an abbreviation
+                showAllBannerComments: false, //used to toggle between showing all comments and showing an abbreviation
+                banner: course.banner,
+                hasIChair: course.has_ichair,
+                hasBanner: course.has_banner,
+                linked: course.linked,
+                allOK: course.all_OK,
+                index: course.index, // used as an item-key in the table
+                errorMessage: "",
+                loadsAdjustedWarning: "",
+                classroomsUnassignedWarning: "",
+                numberPrimaryInstructorsIncorrectMessage: "" // used to display a message saying that the number of primary instructors is incorrect
+              });
             });
-          });
-          _this.semesterFractionsReverse =
-            incomingData.semester_fractions_reverse;
-          _this.semesterFractions = incomingData.semester_fractions;
-          _this.courseOfferingAlignmentPhaseReady = true;
-          console.log("course offering data: ", _this.courseOfferings);
-        }
-      });
+            _this.semesterFractionsReverse =
+              incomingData.semester_fractions_reverse;
+            _this.semesterFractions = incomingData.semester_fractions;
+            _this.courseOfferingAlignmentPhaseReady = true;
+            console.log("course offering data: ", _this.courseOfferings);
+          }
+        });
+      }
     },
     deactivateScheduleRightArrow(item) {
       if (item.delta !== null) {
