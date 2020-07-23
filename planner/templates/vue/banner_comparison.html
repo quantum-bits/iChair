@@ -18,7 +18,7 @@
         </v-layout>
         <v-layout row wrap class="mt-2">
             <v-flex xs10 offset-xs1 class="subtitle-1 mt-2">
-                Please choose one or more semesters to work on:
+                1. Please choose one or more semesters to work on:
             </v-flex>
             <v-flex xs10 offset-xs2 class="my-0" v-for="semester in semesterChoices">
                 <v-checkbox class="mb-0" color="success" :label="semester.semester_name" :value="semester.id"
@@ -27,7 +27,7 @@
         </v-layout>
         <v-layout row wrap class="mt-2">
             <v-flex xs9 offset-xs1 class="subtitle-1 mt-2">
-                Please select which courses from other departments you might want to edit:
+                2. Please select which courses from other departments you might want to edit:
             </v-flex>
 
             <v-flex xs10 offset-xs2 class="my-0" class="mt-n12" v-for="course in extraDepartmentalCourseChoices">
@@ -242,7 +242,7 @@
         <template>
             <v-data-table :headers="headers" :items="courseOfferings" show-expand :page.sync="page"
                 :items-per-page="itemsPerPage" hide-default-footer item-key="index" class="elevation-1"
-                @click:row="rowClicked" :expanded.sync="expanded" :single-expand="singleExpand"
+                :expanded.sync="expanded" :single-expand="singleExpand"
                 @page-count="pageCount = $event">
                 <template v-slot:item="{ item, expand, isExpanded }">
                     <tr @click="expand(!isExpanded)" class="include-pointer">

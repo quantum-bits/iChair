@@ -579,6 +579,8 @@ def banner_comparison_data(request):
     year_id = json_data['yearId']
     semester_ids = json_data['semesterIds']
 
+    extra_departmental_course_id_list = json_data['extraDepartmentalCourseIdList']
+
     day_sorter_dict = {
         'M': 0,
         'T': 1,
@@ -590,6 +592,7 @@ def banner_comparison_data(request):
     print('dept id: ', department_id)
     print('year id: ', year_id)
     print('semester ids:', semester_ids)
+    print('extra-departmental courses: ', extra_departmental_course_id_list)
 
     semester_sorter_dict = {}
     counter = 0
@@ -599,37 +602,6 @@ def banner_comparison_data(request):
 
     print('semesters')
     print(semester_sorter_dict)
-
-    """
-
-    During the semester choice phase, allow the user to also choose from courses normally taught by dept, and add in any
-    others for "trusted" subject....then pass that list in here, and be careful to add the appropriate subjects and courses
-    ===> that way a dept can edit any course offerings that make sense....
-
-
-    outside_course_list = department.outside_courses_this_year(user_preferences.academic_year_to_view)
-
-    subject_list = [subj for subj in department.subjects.all()]
-        
-    # add in subjects for outside courses
-    for course in outside_course_list:
-        if course.subject not in subject_list:
-            subject_list.append(course.subject)
-
-    ---------
-
-    subject_list = [subj for subj in department.subjects.all()]
-    outside_course_list = department.outside_courses_any_year()
-    other_subject_list = []
-    for oco in outside_course_list:
-        if oco.subject not in other_subject_list:
-            other_subject_list.append(oco.subject)
-    other_subject_list.sort(key=lambda x: x.abbrev)
-    for other_subject in other_subject_list:
-        if other_subject not in subject_list:
-            subject_list.append(other_subject)
-    """
-
 
     department = Department.objects.get(pk=department_id)
     academic_year = AcademicYear.objects.get(pk = year_id)
@@ -662,6 +634,18 @@ def banner_comparison_data(request):
     #               - if instructors agree for exactly one course offering, assign the CRN to the iChair offering
     #               - if zero or multiple course offerings agree, proceed to check semester fraction
 
+    # now we construct some objects that contain a bit of information about the iChair versions of the extra-departmental
+    # courses so that that can be used to get banner course offerings
+    extra_departmental_courses = [{
+        "credit_hours": course.credit_hours,
+        "title": course.title,
+        "subject_abbrev": course.subject.abbrev,
+        "number": course.number,
+        "banner_titles": course.banner_title_list
+        } for course in Course.objects.filter(pk__in = extra_departmental_course_id_list)]
+
+    print("extra-departmental courses: ", extra_departmental_courses)
+
     course_offering_data = []
 
     index = 0
@@ -669,20 +653,25 @@ def banner_comparison_data(request):
         semester = Semester.objects.get(pk=semester_id)
         term_code = semester.banner_code
         # eventually expand this to include extra-departmental courses taught by dept...?
-        for subject in department.subjects_including_outside_courses(semester): #department.subjects.all():
+        for subject in department.subjects_including_outside_courses(semester, extra_departmental_course_id_list): #department.subjects.all():
             # first should reset all crns of the iChair course offerings, so we start with a clean slate
             # should also reset all ichair_ids for the Banner course offerings, for the same reason (that's done below)
 
             # RESET CRNs of all corresponding iChair course offerings (i.e., start from scratch)
-            for course_offering in CourseOffering.objects.filter(
-                    Q(semester=semester) &
-                    Q(course__subject=subject)):
+            
+            is_own_subject = subject.department == department
+            
+            for course_offering in subject.restricted_course_offerings(department, semester, extra_departmental_course_id_list):
+            #CourseOffering.objects.filter(
+            #        Q(semester=semester) &
+            #        Q(course__subject=subject)):
                 course_offering.crn = None
                 course_offering.save()
 
-            banner_course_offerings = BannerCourseOffering.objects.filter(
-                Q(course__subject__abbrev=subject.abbrev) & Q(term_code=term_code))
-
+            # the following find all banner course offerings for this subject and semester if the department owns the subject;
+            # otherwise it only looks for course offerings associated with the courses in the list extra_departmental_courses
+            banner_course_offerings = BannerCourseOffering.filtered_objects(subject, term_code, is_own_subject, extra_departmental_courses)
+ 
             # the following is an initial round of attempting to link up banner courses with iChair courses
             # once this is done, we can cycle through the linked courses (which should be 1-to-1 at that point) and add them to a list
             # then we can cycle through any unlinked courses on both sides and add them to the list
@@ -936,10 +925,7 @@ def banner_comparison_data(request):
                 course_offering_data.append(course_offering_item)
 
             # and now we go through the remaining iChair course offerings (i.e., the ones that have not been linked to banner course offerings)
-            for ico in CourseOffering.objects.filter(
-                    Q(semester=semester) &
-                    Q(course__subject=subject) &
-                    Q(crn__isnull=True)):
+            for ico in subject.restricted_course_offerings_no_crn(department, semester, extra_departmental_course_id_list):
 
                 # ico_meeting_times_list, ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = False)
                 # >>> Note: if the room list is ever included (as above), will need to be more careful about the sorting

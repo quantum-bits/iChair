@@ -393,7 +393,8 @@ var app = new Vue({
       let dataForPost = {
         departmentId: json_data.departmentId, // add the faculty id to the GET parameters
         yearId: json_data.yearId,
-        semesterIds: this.chosenSemesters
+        semesterIds: this.chosenSemesters,
+        extraDepartmentalCourseIdList: this.chosenExtraCourses
       };
 
       $.ajax({

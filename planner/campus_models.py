@@ -65,15 +65,16 @@ class Department(models.Model):
         course_list.sort(key=lambda x: x.number)
         return course_list 
 
-    def subjects_including_outside_courses(self, semester_object):
-        subject_id_list = []
+    def subjects_including_outside_courses(self, semester_object, course_id_list):
+        """Returns a list of department subjects, plus subjects for outside (extra-departmental) courses that are offered this semester."""
         subject_id_list = [subj.id for subj in self.subjects.all()]
-        """
-        for fac in self.faculty.all():
-            for co in fac.course_offerings.filter((~Q(course__subject__pk__in = subject_id_list)) and Q(semester = semester_object)):
-                if co.course.subject.id not in subject_id_list:
-                    subject_id_list.append(co.course.subject.id)
-        """
+        print(semester_object)
+        for course_id in course_id_list:
+            for course_offering in CourseOffering.objects.filter((~Q(course__subject__pk__in = subject_id_list)) &
+                                                                    Q(semester__pk = semester_object.id) &
+                                                                    Q(course__pk = course_id)):
+                if (course_offering.course.subject.id not in subject_id_list):
+                    subject_id_list.append(course_offering.course.subject.id)
         # now fetch the objects themselves
         subject_list = []
         for subject_id in subject_id_list:
@@ -353,6 +354,27 @@ class Subject(StampedModel):
     class Meta:
         ordering = ['abbrev']
 
+    def restricted_course_offerings(self, department, semester, course_id_list):
+        """
+        Returns a list of course offerings for this semester for this subject.  If the subject is owned by the department,
+        it returns all course offerings.  If not, it only returns course offerings corresponding to courses in the list.
+        """
+        if self.department == department:
+            return CourseOffering.objects.filter(Q(semester=semester) & Q(course__subject=self))
+        else:
+            return CourseOffering.objects.filter(Q(semester=semester) & Q(course__subject=self) & Q(course__pk__in = course_id_list))
+
+    def restricted_course_offerings_no_crn(self, department, semester, course_id_list):
+        """
+        Returns a list of course offerings for this semester for this subject that have no CRN.  If the subject is owned by the department,
+        it returns all course offerings.  If not, it only returns course offerings corresponding to courses in the list.
+        """
+        if self.department == department:
+            #print('departments do not agree!', self, self.department, department)
+            return CourseOffering.objects.filter(Q(semester=semester) & Q(course__subject=self) & Q(crn__isnull=True))
+        else:
+            #print('departments do agree!', self, self.department, department)
+            return CourseOffering.objects.filter(Q(semester=semester) & Q(course__subject=self) & Q(course__pk__in = course_id_list) & Q(crn__isnull=True))
 
 class CourseAttribute(StampedModel):
     """Course attribute such as SP or CC."""

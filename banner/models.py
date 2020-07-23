@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 # may need to add a campus to a course offering(?)
 # what are the rules concerning primary/secondary instructors?
@@ -117,6 +118,35 @@ class CourseOffering(StampedModel):
         """True if there is a (unique) course offering in the iChair database that has been identified with the current (banner) course offering.""" 
         return self.ichair_id is not None
 
+    @classmethod
+    def filtered_objects(cls, subject, term_code, is_own_subject, extra_departmental_courses):
+        """
+        Returns a list of banner course offerings that are filtered by subject and term code.  The behaviour is as follows:
+        is_own_subject == True (i.e., the subject is owned by the department):
+            returns all banner course offerings for this subject and term_code; ignores extra_departmental_courses
+        is_own_subject == False (i.e., the subject is not owned by the department):
+            returns only banner course offerings (for this term_code) associated with the list of courses in extra_departmental_courses
+        """
+        if is_own_subject:
+            return cls.objects.filter(Q(course__subject__abbrev=subject.abbrev) & Q(term_code=term_code))
+        else:
+            course_offerings = []
+            for course in extra_departmental_courses:
+                for ii in range(1,len(course["number"])+1):
+                    # iChair course numbers might be something like '311L'; this needs to match '311' in Banner;
+                    # here I am considering the beginnings of the iChair course numbers and looking for an exact match
+                    # with Banner: '3', '31', '311' and '311L' would all be searched
+                    course_num = course["number"][:ii]
+                    print('searching course number....', course_num)
+                    for co in cls.objects.filter(
+                        Q(course__subject__abbrev=subject.abbrev) & 
+                        Q(term_code=term_code) & 
+                        Q(course__credit_hours = course["credit_hours"]) & 
+                        Q(course__number = course_num)):
+                        print('found the following: ', co)
+                        course_offerings.append(co)
+            print('>>>>>>>extra-departmental course offerings found: ', course_offerings)
+            return course_offerings
 
 class CourseOfferingComment(StampedModel):
     """A comment that can be added to the course offering for display on TU's public website."""
