@@ -663,6 +663,7 @@ class CourseOffering(StampedModel):
             "semester_fraction": self.semester_fraction,
             "load_available": self.load_available,
             "max_enrollment": self.max_enrollment,
+            "comment": self.comment,
             "scheduled_classes": [{
                     "id": sc.id,
                     "begin_at": sc.begin_at,

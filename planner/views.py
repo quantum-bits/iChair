@@ -1221,8 +1221,12 @@ def update_course_offering(request,id, daisy_chain):
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
-    
+    user_department = user_preferences.department_to_view
+
     instance = CourseOffering.objects.get(pk = id)
+    course_department = instance.course.subject.department
+    original_co_snapshot = instance.snapshot
+
     form = CourseOfferingForm(instance=instance)
     #department_abbrev = instance.course.subject.department.abbrev
     dept_id = instance.course.subject.department.id
@@ -1287,6 +1291,19 @@ def update_course_offering(request,id, daisy_chain):
 
 #            next = request.GET.get('next', 'profile')
             
+            revised_course_offering = CourseOffering.objects.get(pk = id)
+            if user_department != course_department:
+                revised_co_snapshot = revised_course_offering.snapshot
+                updated_fields = ["offering_instructors"]
+                if original_co_snapshot["load_available"] != revised_co_snapshot["load_available"]:
+                    updated_fields.append("load_available")
+                if original_co_snapshot["max_enrollment"] != revised_co_snapshot["max_enrollment"]:
+                    updated_fields.append("max_enrollment")
+                if original_co_snapshot["comment"] != revised_co_snapshot["comment"]:
+                    updated_fields.append("comment")
+                create_message_course_offering_update(user.username, user_department, course_department, year,
+                                            original_co_snapshot, revised_co_snapshot, updated_fields)
+
             if "return_to_page" in request.session:
                 next = request.session["return_to_page"]
             else:
@@ -1368,9 +1385,7 @@ def update_class_schedule(request,id, daisy_chain):
             formset.save()
             revised_course_offering = CourseOffering.objects.get(pk = id)
             if user_department != course_department:
-                print('user making change does not own the course!')
                 revised_co_snapshot = revised_course_offering.snapshot
-                print("original (again): ", original_co_snapshot)
                 create_message_course_offering_update(user.username, user_department, course_department, year,
                                             original_co_snapshot, revised_co_snapshot, ["scheduled_classes"])
 
@@ -1471,13 +1486,13 @@ def create_message_course_offering_update(username_other_department, user_depart
                                                         message = message)
         message_fragment.save()
         sequence_number += 1
-        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
-                                                        fragment = 'Deleted course offering information:',
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
+                                                        fragment = 'Details:',
                                                         sequence_number = sequence_number,
                                                         message = message)
         message_fragment.save()
         sequence_number += 1
-        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
                                                         fragment = original_co_snapshot["name"],
                                                         sequence_number = sequence_number,
                                                         message = message)
@@ -1496,14 +1511,14 @@ def create_message_course_offering_update(username_other_department, user_depart
                                                         message = message)
         message_fragment.save()
         sequence_number += 1
-        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
-                                                        fragment = 'New course offering information:',
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
+                                                        fragment = 'Details:',
                                                         sequence_number = sequence_number,
                                                         message = message)
         message_fragment.save()
         sequence_number += 1
-        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
-                                                        fragment = revised_co_snapshot["name"],
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
+                                                        fragment = revised_co_snapshot["short_name"],
                                                         sequence_number = sequence_number,
                                                         message = message)
         message_fragment.save()
@@ -1568,7 +1583,52 @@ def create_message_fragments_from_snapshot(message, sequence_number, snapshot, u
                                                             message = message)
             message_fragment.save()
             sequence_number += 1
-            
+        elif key == "offering_instructors":
+            if len(snapshot["offering_instructors"]) > 0:
+                for instructor in snapshot["offering_instructors"]:
+                    if (len(snapshot["offering_instructors"]) == 1) or (not instructor["is_primary"]):
+                        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                                fragment = "{0} [{1}/{2}]".format(instructor["instructor"]["name"], load_hour_rounder(instructor["load_credit"]), load_hour_rounder(snapshot["load_available"])),
+                                                                sequence_number = sequence_number,
+                                                                message = message)
+                        message_fragment.save()
+                        sequence_number += 1
+                    else:
+                        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                            fragment = "{0} [{1}/{2}] (primary)".format(instructor["instructor"]["name"], load_hour_rounder(instructor["load_credit"]), load_hour_rounder(snapshot["load_available"])),
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+                        message_fragment.save()
+                        sequence_number += 1
+            else:
+                message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                                fragment = 'no instructors',
+                                                                sequence_number = sequence_number,
+                                                                message = message)
+                message_fragment.save()
+                sequence_number += 1
+        elif key == "load_available":
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                            fragment = "Load available: {0}".format(load_hour_rounder(snapshot["load_available"])),
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()
+            sequence_number += 1
+        elif key == "max_enrollment":
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                            fragment = "Max enrollment: {0}".format(snapshot["max_enrollment"]),
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()
+            sequence_number += 1
+        elif key == "comment":
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                            fragment = "Comment: {0}".format(snapshot["comment"]),
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()
+            sequence_number += 1
+
     return sequence_number
 
 @login_required
@@ -2716,12 +2776,19 @@ def new_class_schedule(request,id, daisy_chain):
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
+
     if int(daisy_chain):
         daisy_chaining = True
     else:
         daisy_chaining = False
 
     course_offering = CourseOffering.objects.get(pk=id)
+    course_department = course_offering.course.subject.department
+    original_co_snapshot = course_offering.snapshot
+    year = course_offering.semester.year
 
     if request.method == 'POST':
         form = EasyDaySchedulerForm(request.POST)
@@ -2757,6 +2824,11 @@ def new_class_schedule(request,id, daisy_chain):
                 new_class.room = room
                 # if the db hangs, try new_class.room_id = room.id
                 new_class.save()
+
+            if user_department != course_department:
+                revised_co_snapshot = course_offering.snapshot
+                create_message_course_offering_update(user.username, user_department, course_department, year,
+                                            original_co_snapshot, revised_co_snapshot, ["scheduled_classes"])
 
             if not int(daisy_chain):
                 if "return_to_page" in request.session:
@@ -2900,6 +2972,10 @@ def add_course_offering(request, course_id, daisy_chain):
     academic_year_id = user_preferences.academic_year_to_view.id
     course = Course.objects.get(pk = course_id)
 
+    user_department = user_preferences.department_to_view
+    course_department = course.subject.department
+    year = user_preferences.academic_year_to_view
+
     if request.method == 'POST':
         form = CourseOfferingRestrictedByYearForm(academic_year_id, request.POST)
         if form.is_valid():
@@ -2916,6 +2992,15 @@ def add_course_offering(request, course_id, daisy_chain):
                                                  max_enrollment = max_enrollment,
                                                  comment = comment)
             new_course_offering.save()
+
+            if user_department != course_department:
+                revised_co_snapshot = new_course_offering.snapshot
+                updated_fields = ["semester", "semester_fraction", "load_available", "max_enrollment"]
+                if comment != '':
+                    updated_fields.append("comment")
+                create_message_course_offering_update(user.username, user_department, course_department, year,
+                                            None, revised_co_snapshot, updated_fields)
+
             if not int(daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
@@ -3006,14 +3091,29 @@ def update_course_original(request, id):
 @login_required
 def delete_course_offering(request, id):
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
+
     if "return_to_page" in request.session:
         sending_page = request.session["return_to_page"]
     else:
         sending_page = "home"
 
     instance = CourseOffering.objects.get(pk = id)
+    course_department = instance.course.subject.department
+    original_co_snapshot = instance.snapshot
+    year = instance.semester.year
+
     if request.method == 'POST':
         instance.delete()
+        if user_department != course_department:
+            updated_fields = ["semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment"]
+            if original_co_snapshot["comment"] != None:
+                updated_fields.append("comment")
+            create_message_course_offering_update(user.username, user_department, course_department, year,
+                                        original_co_snapshot, None, updated_fields)
+
         next = request.GET.get('next', 'department_load_summary')
         return redirect(next)
     else:

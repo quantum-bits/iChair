@@ -51,7 +51,7 @@ def class_time_and_room_summary_from_dictionary(scheduled_class_dictionaries, in
     for sc in scheduled_class_dictionaries:
         time_string=start_end_time_string(sc["begin_at"].hour, sc["begin_at"].minute, sc["end_at"].hour, sc["end_at"].minute)
         if include_rooms:
-            if sc["room"] != None:
+            if sc["room"] != '':
                 room = sc["room"]
             else:
                 room = '---'
