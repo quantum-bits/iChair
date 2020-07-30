@@ -184,6 +184,27 @@ def fetch_courses_to_be_aligned(request):
     }
     return JsonResponse(data)
 
+@login_required
+@csrf_exempt
+def dismiss_message(request):
+    json_data = json.loads(request.body)
+    print(json_data)
+    message_id = json_data['messageId']
+
+    message_dismissed = True
+    try:
+        message = Message.objects.get(pk=message_id)
+        message.dismissed = True
+        message.save()
+    except Message.DoesNotExist:
+        message_dismissed = False
+
+
+    data = {
+        'message_dismissed': message_dismissed
+    }
+    return JsonResponse(data)
+
 
 @login_required
 @csrf_exempt

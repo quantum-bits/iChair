@@ -174,6 +174,16 @@ class UserPreferencesAdmin(admin.ModelAdmin):
     list_display = ('user','department_to_view','academic_year_to_view','permission_level',)
     filter_horizontal = ('rooms_to_view','faculty_to_view','other_load_types_to_view',)
 
+class MessageFragmentAdmin(admin.ModelAdmin):
+    list_display = ('sequence_number','indentation_level','message','fragment',)
+    
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ('message_type','department','year','dismissed')
+
+    # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
+    search_fields = ('department','year',)
+    
+
 admin.site.register(AcademicYear)
 admin.site.register(AdvisingNote)
 admin.site.register(Note, NoteAdmin)
@@ -213,5 +223,7 @@ admin.site.register(BannerCourseOffering, BannerCourseOfferingAdmin)
 admin.site.register(BannerScheduledClass, BannerScheduledClassAdmin)
 admin.site.register(BannerSemesterCodeToImport)
 admin.site.register(BannerSubjectToImport)
+admin.site.register(MessageFragment, MessageFragmentAdmin)
+admin.site.register(Message, MessageAdmin)
 
 

@@ -677,6 +677,8 @@ def collect_data_for_summary(request):
 
     # https://vsupalov.com/vue-js-in-django-template/
 
+
+
     context={'course_data_list':data_list,
              'instructor_list':instructor_name_list,
              'faculty_load_summary':faculty_summary_load_list,
@@ -693,7 +695,8 @@ def collect_data_for_summary(request):
              'unassigned_overassigned_data_list':unassigned_overassigned_data_list,
              'unassigned_admin_data_list':unassigned_admin_data_list,
              'faculty_with_loads_are_being_viewed': faculty_with_loads_are_being_viewed,
-             'faculty_not_being_viewed': faculty_not_being_viewed
+             'faculty_not_being_viewed': faculty_not_being_viewed,
+             'messages': department.messages_this_year(academic_year_object)
              }
 
     return context

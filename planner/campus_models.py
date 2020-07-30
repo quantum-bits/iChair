@@ -110,6 +110,26 @@ class Department(models.Model):
 
         return instructors_available_to_teach
 
+    def messages_this_year(self, academic_year, non_dismissed_only = True):
+        message_list = []
+        for message in self.messages.all().filter(year = academic_year):
+            if (non_dismissed_only and not message.dismissed) or (not non_dismissed_only):
+                fragments = []
+                for fragment in message.fragments.all():
+                    fragments.append({
+                        'indentation_level': fragment.indentation_level,
+                        'text': fragment.fragment,
+                        'sequence_number': fragment.sequence_number
+                    })
+                message_list.append({
+                    'message_type': message.message_type,
+                    'dismissed': message.dismissed,
+                    'fragments': fragments,
+                    'id': message.id
+                })
+        print('messages: ', message_list)
+        return message_list
+
     def __str__(self):
         return self.name
 
@@ -928,5 +948,47 @@ class Note(StampedModel):
         return "{0} on {1}".format(self.department, self.updated_at)
 
 
+class Message(StampedModel):
 
+    WARNING = 0
+    INFORMATION = 1
+    ERROR = 3
 
+    MESSAGE_TYPE_CHOICES = (
+        (WARNING, 'Warning'),
+        (INFORMATION, 'Information'),
+        (ERROR, 'Error'),
+    )
+
+# in the view, should be able to use ...filter(message_type = Message.WARNING), etc.
+    message_type = models.IntegerField(choices = MESSAGE_TYPE_CHOICES, default = WARNING)
+
+    department = models.ForeignKey(Department, related_name='messages', on_delete=models.CASCADE)
+
+    year = models.ForeignKey(AcademicYear, related_name='messages', on_delete=models.CASCADE)
+    dismissed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return "{0} on {1}".format(self.department, self.updated_at)
+
+class MessageFragment(StampedModel):
+
+    TAB_ZERO = 0
+    TAB_ONE = 1
+    TAB_TWO = 2
+    INDENTATION_CHOICES = (
+        (TAB_ZERO, 'Top-level'),
+        (TAB_ONE, 'Single-tabbed'),
+        (TAB_TWO, 'Double-tabbed'),
+    )
+
+    indentation_level = models.IntegerField(choices = INDENTATION_CHOICES, default = TAB_ZERO)
+    fragment = models.TextField()
+    sequence_number = models.IntegerField()
+    message = models.ForeignKey(Message, related_name='fragments', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return "{0}. {1}".format(self.sequence_number, self.fragment)
+
+    class Meta:
+        ordering = ['sequence_number']
