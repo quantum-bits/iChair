@@ -44,35 +44,7 @@
 		padding: 15px;
 		font-weight: normal;
 	}
-	.message-container {
-		width: 500px;
-		margin-left: auto;
-		margin-right: auto;
-		margin-bottom: 10px;
-		border-style: solid;
-		border-width: 2px;
-		color: #3a87ad;
-		background-color: #d9edf7;
-		border-color: #C0E7FA;
-		border-radius: 4px;
-		padding: 15px;
-		font-weight: normal;
-		text-align: left;
-	}
-	.tab-zero {
-		padding-right: 20px;
-	}
-	.tab-one {
-		padding-left: 30px;
-		padding-right: 20px;
-	}
-	.tab-two {
-		padding-left: 60px;
-		padding-right: 20px;
-	}
-	.zero-min-height {
-		min-height: 0px!important;
-	}
+	
 </style>
 
 
@@ -103,14 +75,11 @@
 	</div>
 	{% else %}<br>
 	{% endif %}
-</div>
 
-{% if messages|length > 0 %}
-	<div class="row">
-		<div class="span12 zero-min-height">
+	{% if messages|length > 0 %}
 			{% for message in messages %}
 				<div id="messageBox" class="message-container">
-					<a style="color:#b94a48" class="close" data-dismiss="alert" onclick="dismissMessage({{ message.id }})">×</a>
+					<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="dismissMessage({{ message.id }})">×</a>
 					{% for fragment in message.fragments %}
 						{% if fragment.indentation_level == 0 %}
 							<div class="tab-zero">
@@ -130,9 +99,9 @@
 					{% endfor %}
 				</div>
 			{% endfor %}
-		</div>
-	</div>
 {% endif %}
+
+</div>
 
 <div class="row">
 	<div class="span12">

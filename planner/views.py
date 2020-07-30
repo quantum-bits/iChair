@@ -3197,6 +3197,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
     year_to_view = user_preferences.academic_year_to_view.begin_on.year
 
     academic_year_string = str(year_to_view)+'-'+str(year_to_view + 1)
+    academic_year_object = user_preferences.academic_year_to_view
 
     can_edit = False
     if user_preferences.permission_level == 1:
@@ -3423,7 +3424,8 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
              'room_conflicts': room_conflicts,
              'overbooked_rooms': overbooked_rooms,
              'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id,
-             'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large
+             'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large,
+             'messages': department.messages_this_year(academic_year_object)
     }
 
     if printer_friendly:

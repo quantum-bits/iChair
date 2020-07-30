@@ -32,7 +32,13 @@
 	width: 100%!important;
 }
 
+.loader-container {
+	width: 100%;
+	display: none;
+}
 .loader {
+	margin-left: auto;
+	margin-right: auto;
 	border: 8px solid #f3f3f3; /* Light grey */
 	border-top: 8px solid #3498db; /* Blue */
 	border-radius: 50%;
@@ -121,30 +127,58 @@
 		</div>
 	{% else %}<br>
 	{% endif %}
-</div>
 
-{% if not check_conflicts %}
+	{% if not check_conflicts %}
 	
-	<div id="message-about-errors" class="span4 offset1">
-		<div class="alert alert-student-info">  
-			<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessage()">×</a>  
-			<p class="content-center"><strong>Check for Conflicts...? </strong></p>
-			<p>Click <strong><a href="{% url 'registrar_schedule' 0 1 %}" onclick="launchSpinner()">here</a></strong> to
-			check for conflicts within this department. 
-			</p>
-			<p>
-			Go to <strong><a href="{% url 'weekly_schedule' %}">faculty schedules</a></strong>
-			or <strong><a href="{% url 'room_schedule' %}">room schedules</a></strong>
-			to find other possible conflicts.
-			</p>  
+		<div id="message-about-errors">
+			<div class="message-container">  
+				<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessage()">×</a>  
+				<p class="content-center"><strong>Check for Conflicts...? </strong></p>
+				<p>Click <strong><a href="{% url 'registrar_schedule' 0 1 %}" onclick="launchSpinner()">here</a></strong> to
+				check for conflicts within this department. 
+				</p>
+				<p>
+				Go to <strong><a href="{% url 'weekly_schedule' %}">faculty schedules</a></strong>
+				or <strong><a href="{% url 'room_schedule' %}">room schedules</a></strong>
+				to find other possible conflicts.
+				</p>  
 
-		</div>   
-	</div>
-	<div id="spinner" style="display: none;" class="span4 offset2">
-		<div class="loader"></div>
-	</div>
+			</div>   
+		</div>
+		<div id ="spinner" class="loader-container">
+			
+				<div class="loader"></div>
+			
+		</div>
+		
 
-{% endif %}
+	{% endif %}
+	{% if messages|length > 0 %}
+		{% for message in messages %}
+			<div id="messageBox" class="message-container zero-min-height">
+				<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="dismissMessage({{ message.id }})">×</a>
+				{% for fragment in message.fragments %}
+					{% if fragment.indentation_level == 0 %}
+						<div class="tab-zero">
+							{{fragment.text}}
+						</div>
+					{% endif %}
+					{% if fragment.indentation_level == 1 %}
+						<div class="tab-one">
+							{{fragment.text}}
+						</div>
+					{% endif %}
+					{% if fragment.indentation_level == 2 %}
+						<div class="tab-two">
+							{{fragment.text}}
+						</div>
+					{% endif %}
+				{% endfor %}
+			</div>
+		{% endfor %}
+	{% endif %}
+
+</div>
 
 {% if check_conflicts %}
 	{% if faculty_time_conflicts or room_conflicts or overbooked_rooms %}
@@ -376,6 +410,26 @@ function launchSpinner() {
 }
 
 	
+</script>
+
+<script>
+	function dismissMessage(id) {
+		console.log('dismissing message', id, typeof id);
+		let dataForPost = {
+			messageId: id
+		};
+		$.ajax({
+          // initialize an AJAX request
+          // seems like this should be a GET request, but I'm having trouble sending along the json data that way....
+          type: "POST",
+          url: "/planner/ajax/dismiss-message/", // set the url of the request
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(incomingData) {
+			  console.log(incomingData);
+		  }
+		});
+	}
 </script>
 
 

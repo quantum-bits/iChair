@@ -2417,8 +2417,10 @@ def update_public_comments_api(request):
 @csrf_exempt
 def update_class_schedule_api(request):
     """Update the class schedule for a course offering.  Can do any combination of delete, create and update."""
-    # user = request.user
-    # user_preferences = user.user_preferences.all()[0]
+    
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
 
     json_data = json.loads(request.body)
 
@@ -2446,6 +2448,11 @@ def update_class_schedule_api(request):
 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
+        course_department = course_offering.course.subject.department
+        original_co_snapshot = course_offering.snapshot
+        year = course_offering.semester.year
+        print(original_co_snapshot)
+
     except:
         course_offering = None
         print('could not find the course offering....')
@@ -2522,6 +2529,14 @@ def update_class_schedule_api(request):
         meeting_times_detail = construct_meeting_times_detail(course_offering)
         max_enrollment = course_offering.max_enrollment
         semester_fraction = course_offering.semester_fraction
+
+        #revised_course_offering = CourseOffering.objects.get(pk = id)
+        if user_department != course_department:
+            revised_co_snapshot = course_offering.snapshot
+            #create_message_course_offering_update(user.username, user_department, course_department, year,
+            #                            original_co_snapshot, revised_co_snapshot, ["scheduled_classes"])
+
+
     else:
         meeting_times_list = []
         meeting_times_detail = []

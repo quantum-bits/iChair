@@ -20,7 +20,7 @@
             <v-flex xs10 offset-xs1 class="subtitle-1 mt-2">
                 1. Please choose one or more semesters to work on:
             </v-flex>
-            <v-flex xs10 offset-xs2 class="my-0" v-for="semester in semesterChoices">
+            <v-flex xs10 offset-xs2 class="my-0" v-for="semester in semesterChoices" :key="semester.id">
                 <v-checkbox class="mb-0" color="success" :label="semester.semester_name" :value="semester.id"
                     v-model="chosenSemesters" hide-details></v-checkbox>
             </v-flex>
@@ -30,7 +30,7 @@
                 2. Please select which courses from other departments you might want to edit:
             </v-flex>
 
-            <v-flex xs10 offset-xs2 class="my-0" class="mt-n12" v-for="course in extraDepartmentalCourseChoices">
+            <v-flex xs10 offset-xs2 class="my-0" class="mt-n12" v-for="course in extraDepartmentalCourseChoices" :key="course.id">
                 <v-checkbox class="mb-0" color="success" :label="course.name" :value="course.id"
                     v-model="chosenExtraCourses" hide-details></v-checkbox>
             </v-flex>
@@ -92,7 +92,7 @@
                                 <v-flex xs12 class="pa-0">
                                     Choice(s):
                                 </v-flex>
-                                <v-flex xs12 v-for="course in selectedExtraCoursesInDialog">
+                                <v-flex xs12 v-for="course in selectedExtraCoursesInDialog" :key="course.id">
                                     <v-icon class="include-pointer" color="primary"
                                         @click="clearFromExtraCourseList(course.id)">
                                         mdi-close-circle
