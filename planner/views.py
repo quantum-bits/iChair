@@ -1326,12 +1326,21 @@ def update_class_schedule(request,id, daisy_chain):
 # daisy_chain is "0" (False) or "1" (True) and says whether the page should advance to set up professors next, or just
 # return to the "return_to_page".
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
+
     if int(daisy_chain):
         daisy_chaining = True
     else:
         daisy_chaining = False
 
     instance = CourseOffering.objects.get(pk = id)
+    course_department = instance.course.subject.department
+    original_co_snapshot = instance.snapshot
+    year = instance.semester.year
+
+    print("original: ", original_co_snapshot)
 
 #    form = CourseOfferingForm(instance=instance)
 # create the formset class
@@ -1357,6 +1366,14 @@ def update_class_schedule(request,id, daisy_chain):
         if formset.is_valid() and not formset_error:
 #            form.save()
             formset.save()
+            revised_course_offering = CourseOffering.objects.get(pk = id)
+            if user_department != course_department:
+                print('user making change does not own the course!')
+                revised_co_snapshot = revised_course_offering.snapshot
+                print("original (again): ", original_co_snapshot)
+                create_message_course_offering_update(user.username, user_department, course_department, year,
+                                            original_co_snapshot, revised_co_snapshot, ["scheduled_classes"])
+
             if not int(daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
@@ -1380,6 +1397,179 @@ def update_class_schedule(request,id, daisy_chain):
         # User is not submitting the form; show them the blank add create your own course form
         return render(request, 'update_class_schedule.html', dict)
 
+def create_message_course_offering_update(username_other_department, user_department, course_department, year,
+                                            original_co_snapshot, revised_co_snapshot, updated_fields):
+    """
+    Create a message informing a department that a user from a different department has updated a course offering.
+        - original_co_snapshot: a course_offering.snapshot dictionary or None (if None, then the user created a new course offering)
+        - revised_co_snapshot: a course_offering.snapshot dictionary or None (if None, then the user deleted a course offering)
+        - updated_fields: an array of snapshot dictionary keys that may have been updated ([] if one of the snapshots is None)
+    """
+    message = Message.objects.create(message_type = Message.WARNING,
+                                    department = course_department,
+                                    year = year,
+                                    dismissed = False)
+    message.save()
+    # https://www.programiz.com/python-programming/datetime/current-datetime
+    # https://pythontic.com/datetime/date/weekday
+    
+    weekdays = ("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday")
+    now = datetime.datetime.now()
+    datetime_string = "{0}, {1}".format(weekdays[now.weekday()], now.strftime("%B %d, %Y at %H:%M"))
+
+    sequence_number = 0
+    if (original_co_snapshot != None) and (revised_co_snapshot != None):
+        # a course offering was updated
+        
+        fragment_text = "The user '{0}' from the {1} department made a change to a course offering in your department on {2}.".format(
+                                                username_other_department, 
+                                                user_department.abbrev,
+                                                datetime_string)
+        print(fragment_text)
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
+                                                        fragment = fragment_text,
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()
+        sequence_number += 1
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
+                                                        fragment = 'Details:',
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()                                   
+        sequence_number += 1
+        if "semester" in updated_fields:
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
+                                                            fragment = original_co_snapshot["short_name"],
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()                                   
+            sequence_number += 1
+        else:
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
+                                                            fragment = original_co_snapshot["name"],
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()                                   
+            sequence_number += 1
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
+                                                        fragment = 'Changed from:',
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()                                   
+        sequence_number += 1
+    elif (original_co_snapshot != None) and (revised_co_snapshot == None):
+        # deleted a course offering
+        fragment_text = "The user '{0}' from the {1} department deleted a course offering from your department on {2}.".format(
+                                                username_other_department, 
+                                                user_department.abbrev, 
+                                                datetime_string)
+        print(fragment_text)
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
+                                                        fragment = fragment_text,
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()
+        sequence_number += 1
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
+                                                        fragment = 'Deleted course offering information:',
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()
+        sequence_number += 1
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                        fragment = original_co_snapshot["name"],
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()
+        sequence_number += 1
+    elif (original_co_snapshot == None) and (revised_co_snapshot != None):
+        # created a new course offering
+        fragment_text = "The user '{0}' from the {1} department created a new course offering for your department on {2}.".format(
+                                                username_other_department, 
+                                                user_department.abbrev,
+                                                datetime_string)
+        print(fragment_text)
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
+                                                        fragment = fragment_text,
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()
+        sequence_number += 1
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
+                                                        fragment = 'New course offering information:',
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()
+        sequence_number += 1
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                        fragment = revised_co_snapshot["name"],
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        message_fragment.save()
+        sequence_number += 1
+    
+    if original_co_snapshot != None:
+        updated_sequence_number = create_message_fragments_from_snapshot(message, sequence_number, original_co_snapshot, updated_fields)
+        sequence_number = updated_sequence_number
+    
+    if (original_co_snapshot != None) and (revised_co_snapshot != None):
+        # a course offering was updated
+        message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ONE,
+                                                        fragment = 'Changed to:',
+                                                        sequence_number = sequence_number,
+                                                        message = message)
+        sequence_number += 1
+    
+    if revised_co_snapshot != None:
+        updated_sequence_number = create_message_fragments_from_snapshot(message, sequence_number, revised_co_snapshot, updated_fields)
+        sequence_number = updated_sequence_number
+
+
+def create_message_fragments_from_snapshot(message, sequence_number, snapshot, updated_fields):
+    """
+    Create a series of message fragments for the updated_fields in a course offering snapshot dictionary.
+    - sequence_number is the sequence_number for the first message fragment to be written
+    - updated_fields is a set of course_offering.snapshot dictionary keys for which fragments are supposed to be written
+    - returns an updated sequence number, ready to use for the next message fragment 
+    """
+    for key in updated_fields:
+        if key == "scheduled_classes":
+            #sc_id_list = [sc["id"] for sc in snapshot["scheduled_classes"]]
+            #sc_list = [sc for sc in ScheduledClass.objects.filter(id__in = sc_id_list)]
+
+            if len(snapshot["scheduled_classes"]) > 0:
+                meeting_times, rooms = class_time_and_room_summary_from_dictionary(snapshot["scheduled_classes"], True)
+                for ii in range(len(meeting_times)):
+                    message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                                fragment = "{0} ({1})".format(meeting_times[ii], rooms[ii]),
+                                                                sequence_number = sequence_number,
+                                                                message = message)
+                    message_fragment.save()
+                    sequence_number += 1
+            else:
+                message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                                fragment = 'no scheduled meetings',
+                                                                sequence_number = sequence_number,
+                                                                message = message)
+                message_fragment.save()
+                sequence_number += 1
+        elif key == "semester":
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                            fragment = snapshot["semester"],
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()
+            sequence_number += 1
+        elif key == "semester_fraction":
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                            fragment = CourseOffering.semester_frac_text(snapshot["semester_fraction"]),
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()
+            sequence_number += 1
+            
+    return sequence_number
 
 @login_required
 def weekly_schedule(request):
@@ -4741,12 +4931,22 @@ def update_semester_for_course_offering(request, id):
     year = user_preferences.academic_year_to_view
 
     instance = CourseOffering.objects.get(pk = id)
+    course_department = instance.course.subject.department
+    original_co_snapshot = instance.snapshot
 #    print instance
 
     if request.method == 'POST':
         form = SemesterSelectForm(year, request.POST, instance=instance)
         if form.is_valid():
             form.save()
+
+            revised_course_offering = CourseOffering.objects.get(pk = id)
+            if department != course_department:
+                print('user making change does not own the course!')
+                revised_co_snapshot = revised_course_offering.snapshot
+                create_message_course_offering_update(user.username, department, course_department, year,
+                                            original_co_snapshot, revised_co_snapshot, ["semester", "semester_fraction"])
+
             next = request.GET.get('next', 'home')
             return redirect(next)
         else:

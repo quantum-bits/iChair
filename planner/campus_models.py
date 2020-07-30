@@ -343,6 +343,10 @@ class Room(StampedModel):
     def __str__(self):
         return '{0} {1}'.format(self.building, self.number)
 
+    @property
+    def short_name(self):
+        return '{0} {1}'.format(self.building.abbrev, self.number)
+
     def classes_scheduled(self, academic_year_object, department_object):
         """True if classes scheduled for this room by this dept during this academic year"""
 
@@ -644,9 +648,42 @@ class CourseOffering(StampedModel):
     comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.CharField(max_length=5, blank=True, null=True)
 
-
     def __str__(self):
         return "{0} ({1})".format(self.course, self.semester)
+
+    @property
+    def snapshot(self):
+        """Returns a snapshot, in the form of a dictionary, of all/most relevant properties associated with this course offering."""
+        # https://stackoverflow.com/questions/11880430/how-to-write-inline-if-statement-for-print
+        course_offering_information = {
+            "name": "{0} {1} ({2})".format(self.course.subject, self.course.number, self.semester),
+            "short_name": "{0} {1}".format(self.course.subject, self.course.number),
+            "semester": "{0}".format(self.semester),
+            "semester_id": self.semester.id,
+            "semester_fraction": self.semester_fraction,
+            "load_available": self.load_available,
+            "max_enrollment": self.max_enrollment,
+            "scheduled_classes": [{
+                    "id": sc.id,
+                    "begin_at": sc.begin_at,
+                    "end_at": sc.end_at,
+                    "day": sc.day,
+                    "room_id": sc.room.id if sc.room != None else None,
+                    "room": sc.room.short_name if sc.room != None else "",
+                } for sc in self.scheduled_classes.all()],
+            "offering_instructors": [{
+                    "id": oi.id,
+                    "instructor": {
+                        "id": oi.instructor.id,
+                        "name": "{0} {1}".format(oi.instructor.first_name[:1], oi.instructor.last_name)
+                    },
+                    "load_credit": oi.load_credit,
+                    "is_primary": oi.is_primary
+                } for oi in self.offering_instructors.all()]
+
+        }
+        print(course_offering_information)
+        return course_offering_information
 
     def department(self):
         return self.course.department
@@ -668,6 +705,15 @@ class CourseOffering(StampedModel):
         if (self.semester_fraction == self.FULL_SEMESTER):
             return 'Full Sem'
         elif (self.semester_fraction == self.FIRST_HALF_SEMESTER):
+            return '1st Half'
+        else:
+            return '2nd Half'
+
+    @classmethod
+    def semester_frac_text(cls, semester_fraction):
+        if (semester_fraction == cls.FULL_SEMESTER):
+            return 'Full Sem'
+        elif (semester_fraction == cls.FIRST_HALF_SEMESTER):
             return '1st Half'
         else:
             return '2nd Half'

@@ -39,6 +39,46 @@ def class_time_and_room_summary(scheduled_classes, include_rooms = True):
     else:
         return class_times_list
 
+def class_time_and_room_summary_from_dictionary(scheduled_class_dictionaries, include_rooms = True):
+# Returns a class time summary list and an accompanying room list, such as ['MWF 9-9:50','T 10-10:50'] and ['NS 210', 'ESC 141']
+# scheduled_class_dictionaries is assumed to be a list of the form course_offering.snaphot["scheduled_classes"] with at least one element
+
+    day_list = ['M','T','W','R','F']
+    time_dict = dict()
+    room_dict = dict()
+    day_dict = dict()
+    schedule_list = []
+    for sc in scheduled_class_dictionaries:
+        time_string=start_end_time_string(sc["begin_at"].hour, sc["begin_at"].minute, sc["end_at"].hour, sc["end_at"].minute)
+        if include_rooms:
+            if sc["room"] != None:
+                room = sc["room"]
+            else:
+                room = '---'
+        else:
+            room = '---'
+        schedule_list.append([sc["day"], time_string, room])
+        day_dict[time_string+room]=''
+        room_dict[time_string+room] = room
+        time_dict[time_string+room] = time_string
+
+    schedule_sorted = sorted(schedule_list, key=lambda row: (row[0], row[1]))
+
+    for item in schedule_sorted:
+        day_dict[item[1]+item[2]]=day_dict[item[1]+item[2]]+day_list[item[0]]
+
+    class_times_list = []
+    room_list = []
+    for key in list(day_dict.keys()):
+        class_times_list.append(day_dict[key]+' '+time_dict[key])
+        room_list.append(room_dict[key])
+
+    if include_rooms:
+        return class_times_list, room_list
+    else:
+        return class_times_list
+
+
 
 
 def start_end_time_string(start_hour,start_minute,end_hour,end_minute):
