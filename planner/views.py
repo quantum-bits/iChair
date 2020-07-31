@@ -3872,15 +3872,18 @@ def search_form(request):
     
     request.session["return_to_page"] = "/planner/search-form/"
 
+    all_years_in_db = [academic_year.begin_on.year for academic_year in AcademicYear.objects.all()]
+
     current_year = academic_year.begin_on.year
     academic_year_list = []
-    for ii in range(4):
-        ay = current_year-2+ii
-        year_name = str(ay)+'-'+str(ay+1)
-        academic_year_list.append({'year_name':year_name,
-                                   'id': ii,
-                                   'begin_on':ay})
-    
+    for ii in range(5):
+        ay = current_year-3+ii
+        if ay in all_years_in_db:
+            year_name = str(ay)+'-'+str(ay+1)
+            academic_year_list.append({'year_name':year_name,
+                                    'id': ii,
+                                    'begin_on':ay})
+
     if request.method == 'POST':
         search_term = request.POST.getlist('course_search')[0]
         year_begin_on_list= request.POST.getlist('years_for_search')

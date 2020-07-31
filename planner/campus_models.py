@@ -1,4 +1,7 @@
 from .common_models import *
+
+from banner.models import CourseOffering as BannerCourseOffering
+
 from django.db import models
 from itertools import chain
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -75,6 +78,34 @@ class Department(models.Model):
                                                                     Q(course__pk = course_id)):
                 if (course_offering.course.subject.id not in subject_id_list):
                     subject_id_list.append(course_offering.course.subject.id)
+        # now check if there are offerings of these courses in Banner for this semester (but only if the subject is not already in the list)
+        # https://www.pythonforbeginners.com/basics/list-comprehensions-in-python
+        extra_departmental_courses = [{
+            "credit_hours": course.credit_hours,
+            "title": course.title,
+            "subject_abbrev": course.subject.abbrev,
+            "number": course.number,
+            "banner_titles": course.banner_title_list
+            } for course in Course.objects.filter(pk__in = course_id_list) if course.subject.id not in subject_id_list]
+
+        subject_abbrev_list = [subject.abbrev for subject in Subject.objects.filter(pk__in = subject_id_list)]
+        unused_subjects = [course.subject for course in Course.objects.filter(pk__in = course_id_list) if course.subject.id not in subject_id_list]
+        print('here are the courses whose subjects are not yet in the subject list: ', extra_departmental_courses)
+        print('here are the unused subjects: ', unused_subjects)
+        print('subject abbrev list (before getting Banner ones): ', subject_abbrev_list)
+        print('subject id list (before looking in banner): ', subject_id_list)
+        
+        # the following is a bit tricky...the subjects are iChair subjects, but we now need to see if there are Banner offerings
+        # during this semester, and if so, add the corresponding iChair version of the subject
+        term_code = semester_object.banner_code
+        for subject in unused_subjects: #these are iChair subjects
+            for bco in BannerCourseOffering.filtered_objects(subject, term_code, False, extra_departmental_courses):
+                if (bco.course.subject.abbrev not in subject_abbrev_list):
+                    subject_id_list.append(subject.id)
+                    subject_abbrev_list.append(bco.course.subject.abbrev)
+        
+        print('subject abbrev list (after getting the Banner ones): ', subject_abbrev_list)
+        print('subject id list (after looking in banner): ', subject_id_list)
         # now fetch the objects themselves
         subject_list = []
         for subject_id in subject_id_list:

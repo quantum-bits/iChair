@@ -98,94 +98,6 @@ def fetch_semesters_and_extra_departmental_courses(request):
     }
     return JsonResponse(data)
 
-
-"""
-@login_required
-def fetch_courses_to_be_aligned(request):
-    department_id = request.GET.get('departmentId')
-    year_id = request.GET.get('yearId')
-    academic_year = AcademicYear.objects.get(pk=year_id)
-    department = Department.objects.get(pk=department_id)
-
-    unmatched_courses = []
-    for subject in department.subjects.all():
-        #print(subject, subject.abbrev)
-        # print(BannerCourse.objects.all
-        for banner_course in BannerCourse.objects.filter(subject__abbrev=subject.abbrev):
-            ichair_courses = Course.objects.filter(
-                Q(subject__abbrev=banner_course.subject.abbrev) &
-                Q(number__startswith=banner_course.number) &
-                Q(credit_hours=banner_course.credit_hours))
-
-            # could potentially have one Banner course that matches multiple copies of the course in iChair...that's OK; then the user
-            # will just need to sort things out when they do schedule edits.
-            match_found = False
-            #multiple_potential_matches = False
-            ichair_courses_to_list = []
-            already_matched_courses = []
-
-            for ichair_course in ichair_courses:
-                if (banner_course.title == ichair_course.title) or (banner_course.title in ichair_course.banner_title_list):
-                    # this iChair course is either an exact match, or it has already been assoicated with this banner course;
-                    # in either case, there is nothing left to do
-                    match_found = True
-                    already_matched_courses.append(ichair_course)
-                    print('match found! banner: ', banner_course.title, '; iChair: ', ichair_course.title)
-                    print('iChair banner titles: ', ichair_course.banner_title_list)
-                else:
-                    print('>> this iChair course not yet matched...banner: ', banner_course.title, '; iChair: ', ichair_course.title)
-                    print('iChair banner titles: ', ichair_course.banner_title_list)
-                    # this iChair course is a candidate for matching up with the banner course
-                    ichair_courses_to_list.append(ichair_course)
-
-            # if match_found is True, and there are not courses in ichair_courses_to_list, then there is nothing to do
-            # if there is a unique match, then there is nothing left to do; otherwise, add the banner course to the list of 
-            # unmatched courses....
-
-            already_matched_course_data = [  # all the candidate iChair courses
-                    {
-                        "subject": c.subject.abbrev,
-                        "number": c.number,
-                        "credit_hours": c.credit_hours,
-                        "title": c.title,
-                        "id": c.id,
-                        "banner_titles": c.banner_title_list,
-                        "number_offerings_this_year": c.number_offerings_this_year(academic_year)
-                    } for c in already_matched_courses]
-            
-            if not(match_found and (len(ichair_courses_to_list) == 0)):
-                ichair_course_data = [  # all the candidate iChair courses
-                    {
-                        "subject": c.subject.abbrev,
-                        "number": c.number,
-                        "credit_hours": c.credit_hours,
-                        "title": c.title,
-                        "id": c.id,
-                        "banner_titles": c.banner_title_list,
-                        "number_offerings_this_year": c.number_offerings_this_year(academic_year)
-                    } for c in ichair_courses_to_list]
-                unmatched_courses.append({
-                    "ichair_subject_id": subject.id,
-                    "banner_course": {
-                        "id": banner_course.id,
-                        "subject": banner_course.subject.abbrev,
-                        "number": banner_course.number,
-                        "credit_hours": banner_course.credit_hours,
-                        "title": banner_course.title
-                    },
-                    "ichair_courses": ichair_course_data,
-                    "already_matched_ichair_courses": already_matched_course_data
-                })
-
-    #for bc in unmatched_courses:
-    #    print(bc)
-
-    data = {
-        "unmatched_courses": unmatched_courses
-    }
-    return JsonResponse(data)
-"""
-
 @login_required
 @csrf_exempt
 def dismiss_message(request):
@@ -451,6 +363,10 @@ def create_course_offering(request):
 
     print('comments: ', comments)
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
+    faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
 
     day_sorter_dict = {
         'M': 0,
@@ -460,14 +376,14 @@ def create_course_offering(request):
         'F': 4
     }
 
-    print(course_id)
-    print(semester_fraction)
-    print(max_enrollment)
-    print(crn)
-    print(semester_id)
-    print(load_available)
-    print(meetings)
-    print(instructor_details)
+    #print(course_id)
+    #print(semester_fraction)
+    #print(max_enrollment)
+    #print(crn)
+    #print(semester_id)
+    #print(load_available)
+    #print(meetings)
+    #print(instructor_details)
 
     # first get the course and semester objects
     course = Course.objects.get(pk=course_id)
@@ -557,6 +473,8 @@ def create_course_offering(request):
     
     delta_response = delta_update_status(bco, course_offering, delta_object)
 
+    available_instructors = user_department.available_instructors(semester.year, course_offering, faculty_to_view_ids)
+
     ichair_course_offering_data = {
         "course_offering_id": course_offering.id,
         "course_id": course_offering.course.id,
@@ -565,6 +483,7 @@ def create_course_offering(request):
         # "rooms": ico_room_list,
         "instructors": ico_instructors,
         "instructors_detail": ico_instructors_detail,
+        "available_instructors": available_instructors,
         "load_available": course_offering.load_available,
         "semester": course_offering.semester.name.name,
         "semester_fraction": int(course_offering.semester_fraction),
@@ -616,10 +535,10 @@ def banner_comparison_data(request):
         'F': 4
     }
 
-    print('dept id: ', department_id)
-    print('year id: ', year_id)
-    print('semester ids:', semester_ids)
-    print('extra-departmental courses: ', extra_departmental_course_id_list)
+    #print('dept id: ', department_id)
+    #print('year id: ', year_id)
+    #print('semester ids:', semester_ids)
+    #print('extra-departmental courses: ', extra_departmental_course_id_list)
 
     semester_sorter_dict = {}
     counter = 0
@@ -627,8 +546,8 @@ def banner_comparison_data(request):
         semester_sorter_dict[semester_id] = counter
         counter = counter+1
 
-    print('semesters')
-    print(semester_sorter_dict)
+    #print('semesters')
+    #print(semester_sorter_dict)
 
     department = Department.objects.get(pk=department_id)
     academic_year = AcademicYear.objects.get(pk = year_id)
@@ -680,7 +599,7 @@ def banner_comparison_data(request):
         semester = Semester.objects.get(pk=semester_id)
         term_code = semester.banner_code
         # eventually expand this to include extra-departmental courses taught by dept...?
-        for subject in department.subjects_including_outside_courses(semester, extra_departmental_course_id_list): #department.subjects.all():
+        for subject in department.subjects_including_outside_courses(semester, extra_departmental_course_id_list):
             # first should reset all crns of the iChair course offerings, so we start with a clean slate
             # should also reset all ichair_ids for the Banner course offerings, for the same reason (that's done below)
 
@@ -729,6 +648,7 @@ def banner_comparison_data(request):
                     "semester": semester.name.name,
                     "term_code": term_code,
                     "semester_id": semester.id,
+                    "course_owned_by_user": department == subject.department,
                     "course": bco.course.subject.abbrev+' '+bco.course.number,
                     "credit_hours": bco.course.credit_hours,
                     "course_title": bco.course.title,
@@ -1042,6 +962,7 @@ def banner_comparison_data(request):
                     "index": index,
                     "semester": semester.name.name,
                     "semester_id": semester.id,
+                    "course_owned_by_user": department == subject.department,
                     "term_code": term_code,
                     "course": ico.course.subject.abbrev+' '+ico.course.number,
                     "credit_hours": ico.course.credit_hours,
@@ -1437,6 +1358,11 @@ def generate_pdf(request):
             y -= 2*layout["dy"]
             imgDoc.setFont('Vera', 9)
             imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
+            if not item["courseOwnedByUser"]:
+                imgDoc.setFont('VeraBd', 9)
+                imgDoc.drawString(layout["tabs"]["tab0"], y, "Note: The department requesting this action does not own this course.")
+                imgDoc.setFont('Vera', 9)
+                y -= layout["dy"]
             imgDoc.setFont('VeraBd', 9)
             imgDoc.drawString(layout["tabs"]["tab0"], y, "Update:")
             imgDoc.setFont('Vera', 9)
@@ -1472,6 +1398,11 @@ def generate_pdf(request):
             y -= 2*layout["dy"]
             imgDoc.setFont('Vera', 9)
             imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
+            if not item["courseOwnedByUser"]:
+                imgDoc.setFont('VeraBd', 9)
+                imgDoc.drawString(layout["tabs"]["tab0"], y, "Note: The department requesting this action does not own this course.")
+                imgDoc.setFont('Vera', 9)
+                y -= layout["dy"]
             imgDoc.setFont('VeraBd', 9)
             imgDoc.drawString(layout["tabs"]["tab0"], y, "Delete:")
             imgDoc.setFont('Vera', 9)
@@ -1495,6 +1426,11 @@ def generate_pdf(request):
             y -= 2*layout["dy"]
             imgDoc.setFont('Vera', 9)
             imgDoc.drawString(layout["left_margin"], y, str(edit_number)+'.')
+            if not item["courseOwnedByUser"]:
+                imgDoc.setFont('VeraBd', 9)
+                imgDoc.drawString(layout["tabs"]["tab0"], y, "Note: The department requesting this action does not own this course.")
+                imgDoc.setFont('Vera', 9)
+                y -= layout["dy"]
             imgDoc.setFont('VeraBd', 9)
             imgDoc.drawString(layout["tabs"]["tab0"], y, "Create:")
             imgDoc.setFont('Vera', 9)
@@ -1553,6 +1489,8 @@ def require_page_break(y, layout, item):
     num_chars = layout["registrar_comments_num_chars"]
 
     delta_y = 3*dy # magnitude of the vertical space required, in px; first increment is for the extra vertical space, title and term code ....
+    if not item["courseOwnedByUser"]:
+        delta_y += dy # an extra row because of the warning that gets added in this case
     if item["delta"]["requested_action"] == 'update':
         if item["delta"]["instructors"] is not None:
             # https://www.programiz.com/python-programming/methods/built-in/min
@@ -2113,6 +2051,8 @@ def generate_update_delta(request):
                     else:
                         update_instructors = False
                         number_ichair_primary_instructors_OK = False
+                else: #...for example, if requested_action == delta_course_offering_actions["delete"]
+                    update_instructors = delta_mods['instructors']
             else:
                 update_instructors = False
 

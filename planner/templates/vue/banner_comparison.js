@@ -65,9 +65,6 @@ var app = new Vue({
       registrarCourseOfferingsExist: true, // set to false if there are no banner course offerings for any semester in the academic year under consideration
       chosenSemesters: [], // ids of semesters chosen to work on
       chosenExtraCourses: [], // extra-departmental courses chosen for schedule editing
-      //aligningCourses: false, // set to true once we start aligning courses (if necessary)
-      //courseAlignmentPhaseReady: false,
-      //courseAlignmentChoices: [], // used to populate radio select elements in the table used for aligning courses
       unmatchedCourses: [], // filled in via an ajax request after one or more semesters are chosen; also used to populate radio select elements in the table used for aligning courses
       displayCreateUpdateErrorMessage: false,
       expanded: [],
@@ -215,175 +212,6 @@ var app = new Vue({
       this.selectedExtraCoursesInDialog =[];
       this.searchOtherCoursesDialog = false;
     },
-    /*
-    alignCourses() {
-      // second step of the process...so we turn off the 'select semesters' template
-      console.log("inside align courses");
-      var _this = this;
-      this.choosingSemesters = false;
-      $.ajax({
-        // initialize an AJAX request
-        type: "GET",
-        url: "/planner/ajax/fetch-courses-to-be-aligned/", // set the url of the request
-        dataType: "json",
-        data: {
-          departmentId: json_data.departmentId, // add the department id to the GET parameters
-          yearId: json_data.yearId
-        },
-        success: function(incomingData) {
-          console.log(incomingData);
-          //this.unmatchedCourses = incomingData.unmatched_courses;
-          console.log(incomingData.unmatched_courses);
-          _this.unmatchedCourses = [];
-          let unmatchedCourse = null;
-          let choices = null;
-          let num_offerings = "";
-          let max_num_offerings = 0;
-          let credit_text = "";
-          /**
-           * course.choice = -1 ==> do nothing
-           * course.choice = -2 ==> create new course
-           * course.choice = iChair course id ==> add banner_title to iChair list of banner titles for this course
-           
-          if (incomingData.unmatched_courses.length === 0) {
-            // no courses to align, so skip the course alignment phase; move on to fetching course offerings
-            _this.alignCourseOfferings();
-          } else {
-            incomingData.unmatched_courses.forEach(course => {
-              unmatchedCourse = course;
-              choices = [];
-              if (course.ichair_courses.length === 0) {
-                unmatchedCourse.choice = CREATE_NEW_COURSE; // default is to create a new course
-                choices.push({
-                  bannerCourseId: course.banner_course.id,
-                  selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
-                  text:
-                    "Create a new matching course (recommended, since there is currently no matching course in iChair)"
-                });
-              } else {
-                max_num_offerings = 0;
-                unmatchedCourse.choice = DO_NOTHING; // default starts as "do nothing"
-                course.ichair_courses.forEach(item => {
-                  if (item.number_offerings_this_year > max_num_offerings) {
-                    max_num_offerings = item.number_offerings_this_year;
-                    unmatchedCourse.choice = item.id; // default becomes to choose the course with the greatest # of course offerings
-                  }
-                  if (item.credit_hours == 1) {
-                    credit_text = " credit hour; ";
-                  } else {
-                    credit_text = " credit hours; ";
-                  }
-                  item.number_offerings_this_year == 1
-                    ? (num_offerings = " offering ")
-                    : (num_offerings = " offerings ");
-                  choices.push({
-                    bannerCourseId: course.banner_course.id,
-                    selectionId: item.id, //assuming actual db ids will never be negative
-                    text:
-                      item.subject +
-                      " " +
-                      item.number +
-                      ": " +
-                      item.title +
-                      " (" +
-                      item.credit_hours +
-                      credit_text +
-                      item.number_offerings_this_year +
-                      num_offerings +
-                      "this year)"
-                  });
-                });
-                choices.push({
-                  bannerCourseId: course.banner_course.id,
-                  selectionId: CREATE_NEW_COURSE, //assuming actual db ids will never be negative
-                  text:
-                    "Create a new matching course (not recommended in this case)"
-                });
-              }
-              choices.push({
-                bannerCourseId: course.banner_course.id,
-                selectionId: DO_NOTHING, //assuming actual db ids will never be negative
-                text: "Do nothing for now...."
-              });
-              unmatchedCourse.choices = choices;
-              _this.unmatchedCourses.push(unmatchedCourse);
-            });
-          //_this.unmatchedCourses = cAC;
-
-          // WORKING HERE: if incomingData.unmatched_courses.length ===0, we should skip the course alignment phase
-          // QUESTION: why are we getting doubles of all of the course offerings; are we making two trips to the db?!?
-
-            console.log(_this.unmatchedCourses);
-            _this.courseAlignmentPhaseReady = true;
-            console.log(_this.courseAlignmentPhaseReady);
-          }
-        }
-      });
-    },
-    */
-   /*
-    skipCourseAlignment() {
-      this.alignCourseOfferings();
-    },
-    */
-   /*
-    performCourseAlignment() {
-      console.log(this.unmatchedCourses);
-      var _this = this;
-      let dataForPost = {
-        create: [],
-        update: []
-      };
-      this.unmatchedCourses.forEach(course => {
-        if (course.choice == CREATE_NEW_COURSE) {
-          dataForPost.create.push({
-            title: course.banner_course.title,
-            credit_hours: course.banner_course.credit_hours,
-            number: course.banner_course.number,
-            subject_id: course.ichair_subject_id
-          });
-        } else if (course.choice == DO_NOTHING) {
-          console.log("do nothing: ", course.banner_course.title);
-        } else {
-          dataForPost.update.push({
-            ichair_course_id: course.choice,
-            banner_title: course.banner_course.title
-          });
-        }
-      });
-      if (dataForPost.create.length == 0 && dataForPost.update.length == 0) {
-        //nothing to do; move on to the next step....
-        this.alignCourseOfferings();
-      } else {
-        $.ajax({
-          // initialize an AJAX request
-          type: "POST",
-          url: "/planner/ajax/create-update-courses/",
-          dataType: "json",
-          data: JSON.stringify(dataForPost),
-          success: function(jsonResponse) {
-            console.log("response: ", jsonResponse);
-            if (
-              !(
-                jsonResponse.updates_successful && jsonResponse.creates_successful
-              )
-            ) {
-              _this.showCreateUpdateErrorMessage();
-            } else {
-              _this.alignCourseOfferings();
-            }
-          },
-          error: function(jqXHR, exception) {
-            // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
-            console.log(jqXHR);
-            _this.showCreateUpdateErrorMessage();
-            //_this.meetingFormErrorMessage =
-            //  "Sorry, there appears to have been an error.";
-          }
-        });
-      }
-    },
-    */
     showCreateUpdateErrorMessage() {
       this.displayCreateUpdateErrorMessage = true;
       this.courseAlignmentPhaseReady = false;
@@ -534,6 +362,7 @@ var app = new Vue({
               _this.courseOfferings.push({
                 semester: course.semester,
                 semesterId: course.semester_id,
+                courseOwnedByUser: course.course_owned_by_user,
                 termCode: course.term_code,
                 course: course.course,
                 creditHours: course.credit_hours,
@@ -2228,7 +2057,7 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(jsonResponse) {
-          console.log("response: ", jsonResponse);
+          console.log("response!!!: ", jsonResponse);
           item.delta = jsonResponse.delta_response;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match; // don't need to check item.delta.request_update_max_enrollment, since this was already sorted out by the server-side code....
@@ -2572,7 +2401,8 @@ var app = new Vue({
               crn: item.crn,
               banner: item.banner,
               ichair: item.ichair,
-              delta: item.delta
+              delta: item.delta,
+              courseOwnedByUser: item.courseOwnedByUser
             })
           }
         }
