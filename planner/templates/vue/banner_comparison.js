@@ -66,7 +66,7 @@ var app = new Vue({
       chosenSemesters: [], // ids of semesters chosen to work on
       chosenExtraCourses: [], // extra-departmental courses chosen for schedule editing
       //aligningCourses: false, // set to true once we start aligning courses (if necessary)
-      courseAlignmentPhaseReady: false,
+      //courseAlignmentPhaseReady: false,
       //courseAlignmentChoices: [], // used to populate radio select elements in the table used for aligning courses
       unmatchedCourses: [], // filled in via an ajax request after one or more semesters are chosen; also used to populate radio select elements in the table used for aligning courses
       displayCreateUpdateErrorMessage: false,
@@ -215,7 +215,7 @@ var app = new Vue({
       this.selectedExtraCoursesInDialog =[];
       this.searchOtherCoursesDialog = false;
     },
-    
+    /*
     alignCourses() {
       // second step of the process...so we turn off the 'select semesters' template
       console.log("inside align courses");
@@ -244,7 +244,7 @@ var app = new Vue({
            * course.choice = -1 ==> do nothing
            * course.choice = -2 ==> create new course
            * course.choice = iChair course id ==> add banner_title to iChair list of banner titles for this course
-           */
+           
           if (incomingData.unmatched_courses.length === 0) {
             // no courses to align, so skip the course alignment phase; move on to fetching course offerings
             _this.alignCourseOfferings();
@@ -320,9 +320,13 @@ var app = new Vue({
         }
       });
     },
+    */
+   /*
     skipCourseAlignment() {
       this.alignCourseOfferings();
     },
+    */
+   /*
     performCourseAlignment() {
       console.log(this.unmatchedCourses);
       var _this = this;
@@ -379,6 +383,7 @@ var app = new Vue({
         });
       }
     },
+    */
     showCreateUpdateErrorMessage() {
       this.displayCreateUpdateErrorMessage = true;
       this.courseAlignmentPhaseReady = false;

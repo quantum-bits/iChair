@@ -99,6 +99,7 @@ def fetch_semesters_and_extra_departmental_courses(request):
     return JsonResponse(data)
 
 
+"""
 @login_required
 def fetch_courses_to_be_aligned(request):
     department_id = request.GET.get('departmentId')
@@ -183,6 +184,7 @@ def fetch_courses_to_be_aligned(request):
         "unmatched_courses": unmatched_courses
     }
     return JsonResponse(data)
+"""
 
 @login_required
 @csrf_exempt
