@@ -319,18 +319,12 @@ def update_instructors_for_course_offering(request):
     Update the instructors for an iChair course offering (including load hours).
     Possibly also change the total number of load hours available for the course offering.
     """
-    json_data = json.loads(request.body)
-    """
-    courseOfferingId: this.editCourseOfferingData.courseOfferingId,
-          hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
-          bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
-          hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
-          delta: this.editCourseOfferingData.delta,
-          instructorList: instructorList,
-          loadAvailable: loadAvailable,
-          loadAvailableRequiresUpdate: !(loadAvailable === this.initialLoadAvailableData),
-    """
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
 
+    json_data = json.loads(request.body)
+    
     ichair_course_offering_id = json_data['courseOfferingId']
     
     load_available = json_data['loadAvailable']
@@ -353,7 +347,9 @@ def update_instructors_for_course_offering(request):
     updates_completed = True
 
     ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-    print(ico)
+    course_department = ico.course.subject.department
+    original_co_snapshot = ico.snapshot
+    year = ico.semester.year
 
     all_instructors_exist = True
     for instructor_data in instructor_list:
@@ -393,6 +389,14 @@ def update_instructors_for_course_offering(request):
     #enrollment_caps_match = False
     #sem_fractions_match = False
     
+    if user_department != course_department:
+        revised_co_snapshot = ico.snapshot
+        updated_fields = ["offering_instructors"]
+        if original_co_snapshot["load_available"] != revised_co_snapshot["load_available"]:
+            updated_fields.append("load_available")
+        create_message_course_offering_update(user.username, user_department, course_department, year,
+                                    original_co_snapshot, revised_co_snapshot, updated_fields)
+
     delta_response = None
     inst_match = False
 
@@ -2530,12 +2534,16 @@ def update_class_schedule_api(request):
         max_enrollment = course_offering.max_enrollment
         semester_fraction = course_offering.semester_fraction
 
-        #revised_course_offering = CourseOffering.objects.get(pk = id)
         if user_department != course_department:
             revised_co_snapshot = course_offering.snapshot
-            #create_message_course_offering_update(user.username, user_department, course_department, year,
-            #                            original_co_snapshot, revised_co_snapshot, ["scheduled_classes"])
-
+            updated_fields = []
+            if original_co_snapshot["semester_fraction"] != revised_co_snapshot["semester_fraction"]:
+                updated_fields.append("semester_fraction")
+            updated_fields.append("scheduled_classes")
+            if original_co_snapshot["max_enrollment"] != revised_co_snapshot["max_enrollment"]:
+                updated_fields.append("max_enrollment")
+            create_message_course_offering_update(user.username, user_department, course_department, year,
+                                        original_co_snapshot, revised_co_snapshot, updated_fields)
 
     else:
         meeting_times_list = []
@@ -2595,6 +2603,7 @@ def copy_registrar_course_offering_data_to_ichair(request):
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
 
     faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
 
@@ -2649,6 +2658,9 @@ def copy_registrar_course_offering_data_to_ichair(request):
         # try:
         ico = CourseOffering.objects.get(
             pk=ichair_course_offering_id)  # iChair course offering
+        course_department = ico.course.subject.department
+        original_co_snapshot = ico.snapshot
+    
         bco = BannerCourseOffering.objects.get(
             pk=banner_course_offering_id)
         print('ichair course offering: ', ico)
@@ -2852,9 +2864,21 @@ def copy_registrar_course_offering_data_to_ichair(request):
             "max_enrollment": int(ico.max_enrollment),
             "comments": ico.comment_list()}
 
-        # except:
-        #    ico = None
-        #    print('could not find the course offering....')
+        if user_department != course_department:
+            revised_co_snapshot = ico.snapshot
+            updated_fields = []
+            if original_co_snapshot["semester_fraction"] != revised_co_snapshot["semester_fraction"]:
+                updated_fields.append("semester_fraction")
+            if 'meeting_times' in properties_to_update:
+                updated_fields.append("scheduled_classes")
+            if 'instructors' in properties_to_update:
+                updated_fields.append("offering_instructors")
+            if original_co_snapshot["load_available"] != revised_co_snapshot["load_available"]:
+                updated_fields.append("load_available")
+            if original_co_snapshot["max_enrollment"] != revised_co_snapshot["max_enrollment"]:
+                updated_fields.append("max_enrollment")
+            create_message_course_offering_update(user.username, user_department, course_department, academic_year,
+                                                original_co_snapshot, revised_co_snapshot, updated_fields)
 
     data = {
         'delta_response': delta_response,
