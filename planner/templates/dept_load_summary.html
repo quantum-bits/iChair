@@ -3,9 +3,6 @@
 {% endblock %}
 {% block content %}
 {% load static %}
-<style>
-* {outline}
-</style>
 
 <style type="text/css">
 	div.f1 {
@@ -439,162 +436,6 @@ class="btn btn-warning"
 	}
 </script>
 
-<!--
-<div id="myDiv"><h2>Let AJAX change this text</h2></div>
--->
-<!--<button type="button" onclick="divRegister()">Change Content</button>-->
-
-<!--
-<button type="button" onclick="divRegister({{close_all_divs}})">Toggle</button>
--->
-
-<script>
-    $(window).load(function(){
-    var windowWidth = window.innerWidth;
-    var windowHeight = window.innerHeight;
-//    if (windowWidth < 1230 || windowHeight < 800) {
-//     var smallFontMessage = document.getElementById("position-holder-small-font-message");
-//     smallFontMessage.innerHTML = "For better viewing of tables on this page, you may wish to increase the size of your browser window and/or decrease the font size (using 'control -' on a PC or 'command -' on a Mac; to increase the font size later on, use 'control =' on a PC or 'command =' on a Mac).";
-//     smallFontMessage.style.color = "orange";
-//     smallFontMessage.style.weight = "bold";
-//    }		      
-
-    var id_list = {{open_div_id_list|safe}};
-    for (var n=0; n < id_list.length; n++) {
-      $('#'+id_list[n]).collapse("show");
-    }		      
-    });
-</script>
-
-<script>
-function sizeTables(){
-  numInstructors = {{num_faculty|safe}};
-  var windowWidth = window.innerWidth;
-  var windowHeight = window.innerHeight;
-  if (windowHeight > 900) {
-     heightInput = 400
-  } else {
-     heightInput = 300
-  }
-  if (windowWidth > 1340) { 
-     colModalInput = [
-	   { width: 70, align: 'left' },
-	   { width: 220, align: 'left' },
-	   { width: 50, align: 'center'},
-	   { width: 100, align: 'center' },
-	   { width: 70, align: 'center' },
-           {% if can_edit %}
-              { width: 120, align: 'center' },
-		      {% endif %}
-		      { width: 40, align: 'center' },
-		      { width: 40, align: 'center' },
-		      { width: 150, align: 'center' }];
-  colModalInput.push({width: 150, align: 'center'});
-  } else {
-     colModalInput = [
-	   { width: 60, align: 'left' },
-	   { width: 220, align: 'left' },
-	   { width: 50, align: 'center'},
-	   { width: 100, align: 'center' },
-	   { width: 60, align: 'center' },
-           {% if can_edit %}
-              { width: 100, align: 'center' },
-           {% endif %}
-	   { width: 40, align: 'center' },
-	   { width: 40, align: 'center' },
-		      { width: 150, align: 'center' }];
-  colModalInput.push({width: 150, align: 'center'});
-  }
-
-  $('#fixed_hdr1').fxdHdrCol({
-        {% if can_edit %}
-           fixedCols: 0,
-        {% else %}
-           fixedCols: 0,
-        {% endif %}
-	width:     "100%",
-	height: heightInput,
-	colModal: colModalInput	
-  });
-  $('#fixed_hdr2').fxdHdrCol({
-        {% if can_edit %}
-           fixedCols: 0,
-        {% else %}
-           fixedCols: 0,
-        {% endif %}
-	width:     "100%",
-	height: heightInput,
-	colModal: colModalInput	
-  });
-}
-
-</script>
-
-<script>
-  function sizeTables(){
-  numInstructors = {{num_faculty|safe}};
-  var windowWidth = window.innerWidth;
-  var windowHeight = window.innerHeight;
-  if (windowHeight > 900) {
-     heightInput = 400
-  } else {
-     heightInput = 300
-  }
-  if (windowWidth > 1340) { 
-     colModalInput = [
-		      { width: 70, align: 'left' },
-		      { width: 220, align: 'left' },
-		      { width: 50, align: 'center'},
-		      { width: 100, align: 'center' },
-		      { width: 70, align: 'center' },
-		      {% if can_edit %}
-		      { width: 120, align: 'center' },
-		      {% endif %}
-		      { width: 40, align: 'center' },
-		      { width: 40, align: 'center' },
-		      { width: 150, align: 'center' }];
-
-  colModalInput.push({width: 150, align: 'center'});
-  } else {
-     colModalInput = [
-	   { width: 60, align: 'left' },
-	   { width: 220, align: 'left' },
-	   { width: 50, align: 'center'},
-	   { width: 100, align: 'center' },
-	   { width: 60, align: 'center' },
-           {% if can_edit %}
-              { width: 100, align: 'center' },
-           {% endif %}
-	   { width: 40, align: 'center' },
-		      { width: 40, align: 'center' },
-		      { width: 150, align: 'center' }];
-       colModalInput.push({width: 150, align: 'center'});
-  }
-
-  $('#fixed_hdr1').fxdHdrCol({
-        {% if can_edit %}
-           fixedCols: 0,
-        {% else %}
-           fixedCols: 0,
-        {% endif %}
-	width:     "100%",
-	height: heightInput,
-	colModal: colModalInput	
-  });
-  $('#fixed_hdr2').fxdHdrCol({
-        {% if can_edit %}
-           fixedCols: 0,
-        {% else %}
-           fixedCols: 0,
-        {% endif %}
-	width:     "100%",
-	height: heightInput,
-	colModal: colModalInput	
-  });
-}
-
-</script>
-
 <script>
 function alertMessage() {
   var warningMessage = document.getElementById("position-holder-message1");
@@ -640,7 +481,6 @@ function alertMessage() {
   <script>    
     //window.addEventListener("resize",function(){alertMessage();},true);
     $(window).load(function(){
-    sizeTables();
     $("#nav-deptloadsummary").addClass("current");
     $('.page-name').find('h1').replaceWith('<h1>Faculty Load Summary</h1><h2>{{department}}, {{academic_year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
