@@ -2317,6 +2317,10 @@ def create_update_delete_note_for_registrar_api(request):
 def update_public_comments_api(request):
     """Update the public comments for a course offering.  Can do any combination of delete, create and update."""
 
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    user_department = user_preferences.department_to_view
+
     json_data = json.loads(request.body)
     print('data: ', json_data)
 
@@ -2334,6 +2338,12 @@ def update_public_comments_api(request):
 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
+        course_department = course_offering.course.subject.department
+        print('course dept: ', course_department)
+        original_co_snapshot = course_offering.snapshot
+        print('original snapshot: ', original_co_snapshot)
+        year = course_offering.semester.year
+        print("year: ", year)
     except:
         course_offering = None
         print('could not find the course offering....')
@@ -2403,6 +2413,12 @@ def update_public_comments_api(request):
             else:
                 delta_response = delta_create_status(course_offering, dco)
                 pc_match = delta_response["request_update_public_comments"]
+
+    if course_offering:
+        if user_department != course_department:
+            revised_co_snapshot = course_offering.snapshot
+            create_message_course_offering_update(user.username, user_department, course_department, year,
+                                        original_co_snapshot, revised_co_snapshot, ["public_comments"])
 
     data = {
         'updates_successful': updates_successful,
@@ -2877,6 +2893,8 @@ def copy_registrar_course_offering_data_to_ichair(request):
                 updated_fields.append("load_available")
             if original_co_snapshot["max_enrollment"] != revised_co_snapshot["max_enrollment"]:
                 updated_fields.append("max_enrollment")
+            if 'comments' in properties_to_update:
+                updated_fields.append("public_comments")
             create_message_course_offering_update(user.username, user_department, course_department, academic_year,
                                                 original_co_snapshot, revised_co_snapshot, updated_fields)
 

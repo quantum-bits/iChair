@@ -40,6 +40,9 @@ div.page-name h1 {
   margin-bottom: 0px !important;
 }
 
+.extra-bottom-margin {
+  margin-bottom: 15px;
+}
 .message-container {
 		margin-bottom: 10px;
 		border-style: solid;
@@ -61,6 +64,10 @@ div.page-name h1 {
 	}
 	.tab-two {
 		padding-left: 60px;
+		padding-right: 40px;
+	}
+  .tab-three {
+		padding-left: 90px;
 		padding-right: 40px;
 	}
 	.zero-min-height {
@@ -98,6 +105,7 @@ div.page-name h1 {
 <div class="short-nav">
     <a href="{% url 'profile' %}">profile</a> | 
     <a href="{% url 'display_notes' %}">notes</a> |
+    <a href="{% url 'display_messages' %}">messages</a> |
     <a href="{% url 'getting_started' %}">help</a> | 
     {% if user.is_authenticated %}
     <a href="{% url 'logout' %}?next={% url 'login' %}">logout</a>

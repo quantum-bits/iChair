@@ -113,7 +113,9 @@ class Department(models.Model):
     def messages_this_year(self, academic_year, non_dismissed_only = True):
         message_list = []
         for message in self.messages.all().filter(year = academic_year):
+            print('got a message!')
             if (non_dismissed_only and not message.dismissed) or (not non_dismissed_only):
+                print('inside if!')
                 fragments = []
                 for fragment in message.fragments.all():
                     fragments.append({
@@ -124,6 +126,7 @@ class Department(models.Model):
                 message_list.append({
                     'message_type': message.message_type,
                     'dismissed': message.dismissed,
+                    'updated_at': message.updated_at,
                     'fragments': fragments,
                     'id': message.id
                 })
@@ -664,6 +667,11 @@ class CourseOffering(StampedModel):
             "load_available": self.load_available,
             "max_enrollment": self.max_enrollment,
             "comment": self.comment,
+            "public_comments": [{
+                    "id": pc.id,
+                    "text": pc.text,
+                    "sequence_number": pc.sequence_number
+                } for pc in self.offering_comments.all()],
             "scheduled_classes": [{
                     "id": sc.id,
                     "begin_at": sc.begin_at,
@@ -1023,10 +1031,12 @@ class MessageFragment(StampedModel):
     TAB_ZERO = 0
     TAB_ONE = 1
     TAB_TWO = 2
+    TAB_THREE = 3
     INDENTATION_CHOICES = (
         (TAB_ZERO, 'Top-level'),
         (TAB_ONE, 'Single-tabbed'),
         (TAB_TWO, 'Double-tabbed'),
+        (TAB_THREE, 'Triple-tabbed'),
     )
 
     indentation_level = models.IntegerField(choices = INDENTATION_CHOICES, default = TAB_ZERO)

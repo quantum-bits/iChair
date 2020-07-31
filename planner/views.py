@@ -251,6 +251,38 @@ def display_notes(request):
         }
     return render(request, 'notes.html', context)
 
+@login_required
+def display_messages(request):
+    close_all_divs(request)
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+
+    department = user_preferences.department_to_view
+    academic_year = user_preferences.academic_year_to_view.begin_on.year
+    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    academic_year_object = user_preferences.academic_year_to_view
+
+    messages = department.messages_this_year(academic_year_object, False)
+    
+    can_edit = False
+    if user_preferences.permission_level == 1:
+        can_edit = True
+
+    context = {
+        'department': department,
+        'messages': messages,
+        'can_edit': can_edit,
+        'year': academic_year_string,
+        'id': user_preferences.id,
+        }
+    return render(request, 'messages.html', context)
+
+@login_required
+def delete_message(request, id):
+    instance = Message.objects.get(pk = id)
+
+    instance.delete()
+    return redirect('display_messages')
 
 @login_required
 def add_new_note(request):

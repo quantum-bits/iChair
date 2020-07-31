@@ -68,6 +68,8 @@ urlpatterns = [
     url(r'^generatepdf/$', myapp_views.generate_pdf, name='generate_pdf'),
     
     url(r'^notes/', myapp_views.display_notes, name='display_notes'),
+    url(r'^messages/', myapp_views.display_messages, name='display_messages'),
+    url(r'^deleteMessage/(\d+)/$', myapp_views.delete_message, name='delete_message'),
     url(r'^addnote/', myapp_views.add_new_note, name='add_new_note'),
     url(r'^updateNote/(\d+)/$', myapp_views.update_note, name='update_note'),
     url(r'^deleteNote/(\d+)/$', myapp_views.delete_note, name='delete_note'),

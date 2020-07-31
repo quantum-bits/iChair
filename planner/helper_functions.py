@@ -321,5 +321,26 @@ def create_message_fragments_from_snapshot(message, sequence_number, snapshot, u
                                                             message = message)
             message_fragment.save()
             sequence_number += 1
+        elif key == "public_comments":
+            message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_TWO,
+                                                            fragment = "Public comment(s):",
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+            message_fragment.save()
+            sequence_number += 1
+            if len(snapshot["public_comments"]) == 0:
+                message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_THREE,
+                                                            fragment = "None",
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+                message_fragment.save()
+                sequence_number += 1
+            for public_comment in snapshot["public_comments"]:
+                message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_THREE,
+                                                            fragment = public_comment["text"],
+                                                            sequence_number = sequence_number,
+                                                            message = message)
+                message_fragment.save()
+                sequence_number += 1
 
     return sequence_number

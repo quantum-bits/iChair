@@ -178,7 +178,7 @@ class MessageFragmentAdmin(admin.ModelAdmin):
     list_display = ('sequence_number','indentation_level','message','fragment',)
     
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('message_type','department','year','dismissed')
+    list_display = ('message_type','updated_at','department','year','dismissed')
 
     # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
     search_fields = ('department','year',)

@@ -131,7 +131,7 @@
 	{% if not check_conflicts %}
 	
 		<div id="message-about-errors">
-			<div class="message-container">  
+			<div class="message-container">
 				<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="hideMessage()">×</a>  
 				<p class="content-center"><strong>Check for Conflicts...? </strong></p>
 				<p>Click <strong><a href="{% url 'registrar_schedule' 0 1 %}" onclick="launchSpinner()">here</a></strong> to
@@ -153,7 +153,7 @@
 		
 
 	{% endif %}
-	{% if messages|length > 0 %}
+	{% if messages|length > 0 and can_edit %}
 		{% for message in messages %}
 			<div id="messageBox" class="message-container zero-min-height">
 				<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="dismissMessage({{ message.id }})">×</a>
@@ -170,6 +170,11 @@
 					{% endif %}
 					{% if fragment.indentation_level == 2 %}
 						<div class="tab-two">
+							{{fragment.text}}
+						</div>
+					{% endif %}
+					{% if fragment.indentation_level == 3 %}
+						<div class="tab-three">
 							{{fragment.text}}
 						</div>
 					{% endif %}

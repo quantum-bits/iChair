@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+	select {
+		margin-bottom: 0px;
+	}
+</style>
+
 <div class="content-center">
     <form action="" method="post">
       {% csrf_token %}
@@ -64,7 +71,7 @@
 	</tr>
       </tbody>
     </table>
-    <p><strong>*Search will return courses that overlap with the requested time block on the requested day(s).</strong></p>
+    <p style="margin: 10px 0px 0px;"><strong>*Search will return courses that overlap with the requested time block on the requested day(s).</strong></p>
    </div>
 </p>
 

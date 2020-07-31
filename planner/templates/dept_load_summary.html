@@ -76,7 +76,7 @@
 	{% else %}<br>
 	{% endif %}
 
-	{% if messages|length > 0 %}
+	{% if messages|length > 0 and can_edit %}
 			{% for message in messages %}
 				<div id="messageBox" class="message-container">
 					<a style="padding-right: 10px;" class="close" data-dismiss="alert" onclick="dismissMessage({{ message.id }})">×</a>
@@ -93,6 +93,11 @@
 						{% endif %}
 						{% if fragment.indentation_level == 2 %}
 							<div class="tab-two">
+								{{fragment.text}}
+							</div>
+						{% endif %}
+						{% if fragment.indentation_level == 3 %}
+							<div class="tab-three">
 								{{fragment.text}}
 							</div>
 						{% endif %}
@@ -379,7 +384,7 @@ class="btn btn-warning"
 
 						</table>
 
-
+						<div class="extra-bottom-margin"></div>
 
 						<p> <strong>Note:</strong> Any Summer loads are included with Fall. </p>
 
@@ -396,7 +401,7 @@ class="btn btn-warning"
 
 {% if not faculty_with_loads_are_being_viewed %}
 <div id="warningBox" class="warning-container">
-	<a style="color:#b94a48" class="close" data-dismiss="alert">×</a>
+	<a style="color:#b94a48; padding-right: 10px;" class="close" data-dismiss="alert">×</a>
 	<strong>Note: </strong>The following faculty members
 	have load assigned but are not being displayed:
 	<ul style="padding-top: 20px">
