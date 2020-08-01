@@ -119,6 +119,16 @@ def dismiss_message(request):
     }
     return JsonResponse(data)
 
+@login_required
+@csrf_exempt
+def set_semester_to_view(request):
+    json_data = json.loads(request.body)
+    print(json_data)
+    request.session["semester_to_view"] = int(json_data['semesterNameId'])
+    data = {
+        'semester_set': True
+    }
+    return JsonResponse(data)
 
 @login_required
 @csrf_exempt

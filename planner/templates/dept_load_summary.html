@@ -437,6 +437,15 @@ class="btn btn-warning"
 </script>
 
 <script>
+    $(window).load(function(){
+    var id_list = {{open_div_id_list|safe}};
+    for (var n=0; n < id_list.length; n++) {
+      $('#'+id_list[n]).collapse("show");
+    }		      
+    });
+</script>
+
+<script>
 function alertMessage() {
   var warningMessage = document.getElementById("position-holder-message1");
   warningMessage.innerHTML = "It is recommended that you reload this page after resizing <br>the window so that the tables display properly: ";

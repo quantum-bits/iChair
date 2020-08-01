@@ -39,6 +39,8 @@ from functools import wraps
 
 import math
 
+ALL_SEMESTERS_ID = -1
+
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
 def render_to_pdf(template_src, context_dict={}):
     template = get_template(template_src)
@@ -117,8 +119,8 @@ def render_to_pdf(template_src, context_dict={}):
 
 # NOTE: changed .page-name in bootstrap.css to have width: 51% (instead of 61%)...might want to change that back
 
-ALL_FACULTY_DIV_ID = 100001
-UNDERASSIGNED_LOAD_DIV_ID = 100002
+#ALL_FACULTY_DIV_ID = 100001
+#UNDERASSIGNED_LOAD_DIV_ID = 100002
 
 
 @login_required
@@ -350,11 +352,11 @@ def department_load_summary(request):
     user_preferences = user.user_preferences.all()[0]
 
     context = collect_data_for_summary(request)
-    context['all_faculty_div_id']=ALL_FACULTY_DIV_ID
-    context['underassigned_load_div_id']=UNDERASSIGNED_LOAD_DIV_ID
+    #context['all_faculty_div_id']=ALL_FACULTY_DIV_ID
+    #context['underassigned_load_div_id']=UNDERASSIGNED_LOAD_DIV_ID
     json_open_div_id_list = construct_json_open_div_id_list(request)
     context['open_div_id_list']=json_open_div_id_list
-    context['num_faculty']=simplejson.dumps(len(user_preferences.faculty_to_view.all()))
+    #context['num_faculty']=simplejson.dumps(len(user_preferences.faculty_to_view.all()))
     return render(request, 'dept_load_summary.html', context)
 
 def collect_data_for_summary(request):
@@ -3009,7 +3011,37 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
     room_conflicts = []
     overbooked_rooms = []
 
-    for semester in SemesterName.objects.all():
+    semester_options = [{
+            "id": semester.id,
+            "name": semester.name
+        } for semester in SemesterName.objects.all()]
+    
+    # https://infoheap.com/python-list-append-or-prepend/
+    # should be safe to assign "-1" as the id for the "all" case....
+    semester_options.insert(0, {
+        "id": ALL_SEMESTERS_ID,
+        "name": "All Semesters"
+        })
+
+    if "semester_to_view" not in request.session:
+        print("semester_to_view not in keys....")
+        request.session["semester_to_view"] = ALL_SEMESTERS_ID
+    
+    semester_found = False
+    for semester_name in SemesterName.objects.all():
+        if semester_name.id == request.session["semester_to_view"]:
+            semester_names = [semester_name]
+            semester_found = True
+            chosen_semester_id = semester_name.id
+    
+    if not semester_found:
+        request.session["semester_to_view"] = ALL_SEMESTERS_ID
+        semester_names = SemesterName.objects.all()
+        chosen_semester_id = ALL_SEMESTERS_ID
+
+    #print(semester_options)
+    
+    for semester in semester_names: #SemesterName.objects.all()
         # check for conflicts....
         #for partial_semester in partial_semesters:
 
@@ -3226,7 +3258,9 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
              'overbooked_rooms': overbooked_rooms,
              'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id,
              'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large,
-             'messages': department.messages_this_year(academic_year_object)
+             'messages': department.messages_this_year(academic_year_object),
+             'semester_options': semester_options,
+             'chosen_semester_id': chosen_semester_id
     }
 
     if printer_friendly:
@@ -4867,10 +4901,10 @@ def close_all_divs(request):
     """
     user = request.user
     user_preferences = user.user_preferences.all()[0]
-    key = "dept_load_summary-"+str(ALL_FACULTY_DIV_ID)
-    request.session[key] = 'closed'
-    key = "dept_load_summary-"+str(UNDERASSIGNED_LOAD_DIV_ID)
-    request.session[key] = 'closed'
+    #key = "dept_load_summary-"+str(ALL_FACULTY_DIV_ID)
+    #request.session[key] = 'closed'
+    #key = "dept_load_summary-"+str(UNDERASSIGNED_LOAD_DIV_ID)
+    #request.session[key] = 'closed'
     for faculty in user_preferences.faculty_to_view.all():
         key = "dept_load_summary-"+str(faculty.id)
         request.session[key] = 'closed'
@@ -4878,15 +4912,15 @@ def close_all_divs(request):
 
 @login_required
 def open_close_div_tracker(request,id):
+
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
 # if the id is for one of the profs, first close divs for all faculty except the incoming one
-    if ((int(id) != ALL_FACULTY_DIV_ID) and (int(id) != UNDERASSIGNED_LOAD_DIV_ID)):
-        for faculty in user_preferences.faculty_to_view.all():
-            if faculty.id != int(id):
-                key = "dept_load_summary-"+str(faculty.id)
-                request.session[key] = 'closed'
+    for faculty in user_preferences.faculty_to_view.all():
+        if faculty.id != int(id):
+            key = "dept_load_summary-"+str(faculty.id)
+            request.session[key] = 'closed'
 # now deal with the one that came in        
     key = "dept_load_summary-"+id
     if key in request.session:
@@ -4930,15 +4964,15 @@ def construct_json_open_div_id_list(request):
             key = "dept_load_summary-"+str(faculty.id)
             request.session[key]='closed'
 
-    key = "dept_load_summary-"+str(ALL_FACULTY_DIV_ID)
-    if key in request.session:
-        if request.session[key]=='open':
-            open_div_list.append(ALL_FACULTY_DIV_ID)
+    #key = "dept_load_summary-"+str(ALL_FACULTY_DIV_ID)
+    #if key in request.session:
+    #    if request.session[key]=='open':
+    #        open_div_list.append(ALL_FACULTY_DIV_ID)
 
-    key = "dept_load_summary-"+str(UNDERASSIGNED_LOAD_DIV_ID)
-    if key in request.session:
-        if request.session[key]=='open':
-            open_div_list.append(UNDERASSIGNED_LOAD_DIV_ID)
+    #key = "dept_load_summary-"+str(UNDERASSIGNED_LOAD_DIV_ID)
+    #if key in request.session:
+    #    if request.session[key]=='open':
+    #        open_div_list.append(UNDERASSIGNED_LOAD_DIV_ID)
 
     json_open_div_id_list = simplejson.dumps(open_div_list)
 
