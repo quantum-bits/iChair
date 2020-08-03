@@ -250,6 +250,7 @@ def update_instructors_for_course_offering(request):
     json_data = json.loads(request.body)
     
     ichair_course_offering_id = json_data['courseOfferingId']
+    snapshot = json_data['snapshot']
     
     load_available = json_data['loadAvailable']
     load_available_requires_update = json_data['loadAvailableRequiresUpdate']
@@ -340,8 +341,12 @@ def update_instructors_for_course_offering(request):
             else:
                 delta_response = delta_create_status(ico, dco)
                 inst_match = delta_response["request_update_instructors"]
-      
+    
+    snapshot["load_available"] = original_co_snapshot["load_available"]
+    snapshot["offering_instructors"] = original_co_snapshot["offering_instructors"]
+
     data = {
+        'snapshot': snapshot,
         'instructors_detail': ico_instructors_detail,
         'instructors': ico_instructors,
         "load_available": updated_load_available,
@@ -495,7 +500,6 @@ def create_course_offering(request):
         "instructors_detail": ico_instructors_detail,
         "available_instructors": available_instructors,
         "snapshot": course_offering.snapshot,
-        "snapshot_available": False,
         "change_can_be_undone": {
             "max_enrollment": False,
             "comments": False,
@@ -791,7 +795,6 @@ def banner_comparison_data(request):
                             "instructors_detail": ico_instructors_detail,
                             "available_instructors": available_instructors,
                             "snapshot": ico.snapshot,
-                            "snapshot_available": False,
                             "change_can_be_undone": {
                                 "max_enrollment": False,
                                 "comments": False,
@@ -860,7 +863,6 @@ def banner_comparison_data(request):
                             "instructors_detail": ico_instructors_detail,
                             "available_instructors": available_instructors,
                             "snapshot": unlinked_ico.snapshot,
-                            "snapshot_available": False,
                             "change_can_be_undone": {
                                 "max_enrollment": False,
                                 "comments": False,
@@ -1021,7 +1023,6 @@ def banner_comparison_data(request):
                         "instructors_detail": ico_instructors_detail,
                         "available_instructors": available_instructors,
                         "snapshot": ico.snapshot,
-                        "snapshot_available": False,
                         "change_can_be_undone": {
                             "max_enrollment": False,
                             "comments": False,
@@ -2313,6 +2314,7 @@ def update_public_comments_api(request):
     print('data: ', json_data)
 
     course_offering_id = json_data['courseOfferingId']
+    snapshot = json_data['snapshot']
     delete_ids = json_data['delete']
     update_dict = json_data['update']
     create_dict = json_data['create']
@@ -2407,8 +2409,10 @@ def update_public_comments_api(request):
             revised_co_snapshot = course_offering.snapshot
             create_message_course_offering_update(user.username, user_department, course_department, year,
                                         original_co_snapshot, revised_co_snapshot, ["public_comments"])
-
+        if (len(delete_ids) > 0) or (len(update_dict) > 0) or (len(create_dict) > 0):
+            snapshot["public_comments"] = original_co_snapshot["public_comments"]
     data = {
+        'snapshot': snapshot,
         'updates_successful': updates_successful,
         'creates_successful': creates_successful,
         'deletes_successful': deletes_successful,
@@ -2433,6 +2437,7 @@ def update_class_schedule_api(request):
     json_data = json.loads(request.body)
 
     course_offering_id = json_data['courseOfferingId']
+    snapshot = json_data['snapshot']
     delete_ids = json_data['delete']
     update_dict = json_data['update']
     create_dict = json_data['create']
@@ -2453,6 +2458,10 @@ def update_class_schedule_api(request):
     print('semester fraction ', semester_fraction)
     print('enrollment_cap ', enrollment_cap)
     print('has banner?', has_banner)
+
+    print('delete ids: ', delete_ids)
+    print('update_dict: ', update_dict)
+    print('create_dict: ', create_dict)
 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
@@ -2580,7 +2589,15 @@ def update_class_schedule_api(request):
                 sem_fractions_match = delta_response["request_update_semester_fraction"]
                 enrollment_caps_match = delta_response["request_update_max_enrollment"]
                 
+    if update_semester_fraction:
+        snapshot["semester_fraction"] = original_co_snapshot["semester_fraction"]
+    if update_enrollment_cap:
+        snapshot["max_enrollment"] = original_co_snapshot["max_enrollment"]
+    if (len(delete_ids) > 0) or (len(update_dict) > 0) or (len(create_dict) > 0):
+        snapshot["scheduled_classes"] = original_co_snapshot["scheduled_classes"]
+
     data = {
+        'snapshot': snapshot,
         'updates_successful': updates_successful,
         'creates_successful': creates_successful,
         'deletes_successful': deletes_successful,
@@ -2665,10 +2682,12 @@ def copy_course_offering_data_to_ichair(request):
         course_department = ico.course.subject.department
         snapshot_from_db = ico.snapshot
     
-        bco = BannerCourseOffering.objects.get(
-            pk=banner_course_offering_id)
+        if has_banner:
+            bco = BannerCourseOffering.objects.get(
+                pk=banner_course_offering_id)
+            print('banner course offering: ', bco)
         print('ichair course offering: ', ico)
-        print('banner course offering: ', bco)
+        
         if 'max_enrollment' in properties_to_update:
             if copy_from_banner:
                 ico.max_enrollment = bco.max_enrollment
@@ -2793,6 +2812,8 @@ def copy_course_offering_data_to_ichair(request):
                             load_manipulation_performed = True
                 snapshot["offering_instructors"] = snapshot_from_db["offering_instructors"]
             else:
+                ico.load_available = snapshot["load_available"]
+                ico.save()
                 for ichair_oi in ichair_offering_instructors:
                     ichair_oi.delete()
                 for oi in snapshot["offering_instructors"]:
@@ -2871,35 +2892,36 @@ def copy_course_offering_data_to_ichair(request):
 
         meeting_times_detail = construct_meeting_times_detail(ico)
 
-        if delta_id is not None:
-            dco = DeltaCourseOffering.objects.get(pk=delta_id)
-            print('delta course offering: ', dco)
-            delta_response = delta_update_status(bco, ico, dco)
+        if has_banner:
+            if delta_id is not None:
+                dco = DeltaCourseOffering.objects.get(pk=delta_id)
+                print('delta course offering: ', dco)
+                delta_response = delta_update_status(bco, ico, dco)
 
-            schedules_match = scheduled_classes_match(
-                bco, ico) or delta_response["request_update_meeting_times"]
-            inst_match = instructors_match(
-                bco, ico) or delta_response["request_update_instructors"]
-            sem_fractions_match = semester_fractions_match(
-                bco, ico) or delta_response["request_update_semester_fraction"]
-            enrollment_caps_match = max_enrollments_match(
-                bco, ico) or delta_response["request_update_max_enrollment"]
-            comments_match = public_comments_match(
-                bco, ico) or delta_response["request_update_public_comments"]
-        else:
-            schedules_match = scheduled_classes_match(bco, ico)
-            inst_match = instructors_match(bco, ico)
-            sem_fractions_match = semester_fractions_match(
-                bco, ico)
-            enrollment_caps_match = max_enrollments_match(bco, ico)
+                schedules_match = scheduled_classes_match(
+                    bco, ico) or delta_response["request_update_meeting_times"]
+                inst_match = instructors_match(
+                    bco, ico) or delta_response["request_update_instructors"]
+                sem_fractions_match = semester_fractions_match(
+                    bco, ico) or delta_response["request_update_semester_fraction"]
+                enrollment_caps_match = max_enrollments_match(
+                    bco, ico) or delta_response["request_update_max_enrollment"]
+                comments_match = public_comments_match(
+                    bco, ico) or delta_response["request_update_public_comments"]
+            else:
+                schedules_match = scheduled_classes_match(bco, ico)
+                inst_match = instructors_match(bco, ico)
+                sem_fractions_match = semester_fractions_match(
+                    bco, ico)
+                enrollment_caps_match = max_enrollments_match(bco, ico)
             comments_match = public_comments_match(bco, ico)
 
         agreement_update = {
-            "instructors_match": inst_match,
-            "meeting_times_match": schedules_match,
-            "max_enrollments_match": enrollment_caps_match,
-            "semester_fractions_match": sem_fractions_match,
-            "public_comments_match": comments_match
+            "instructors_match": inst_match if has_banner else False,
+            "meeting_times_match": schedules_match if has_banner else False,
+            "max_enrollments_match": enrollment_caps_match if has_banner else False,
+            "semester_fractions_match": sem_fractions_match if has_banner else False,
+            "public_comments_match": comments_match if has_banner else False
         }
 
         # "change_can_be_undone" here is just looking locally at what has been done; the client can make a better judgement
@@ -2907,7 +2929,7 @@ def copy_course_offering_data_to_ichair(request):
         if copy_from_banner:
             change_can_be_undone = {
                 "max_enrollment": 'max_enrollment' in properties_to_update,
-                "comments": 'comments' in properties_to_update,
+                "public_comments": 'comments' in properties_to_update,
                 "semester_fraction": 'semester_fraction' in properties_to_update,
                 "instructors": 'instructors' in properties_to_update,
                 "meeting_times": 'meeting_times' in properties_to_update,
@@ -2931,7 +2953,6 @@ def copy_course_offering_data_to_ichair(request):
             "instructors_detail": ico_instructors_detail,
             "available_instructors": available_instructors,
             "snapshot": snapshot,
-            "snapshot_available": True,
             "change_can_be_undone": change_can_be_undone,
             "load_available": ico.load_available,
             "semester": ico.semester.name.name,

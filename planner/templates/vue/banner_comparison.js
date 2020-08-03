@@ -1351,6 +1351,7 @@ var app = new Vue({
 
         let dataForPost = {
           courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          snapshot: this.editCourseOfferingData.ichairObject.snapshot,
           hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
           bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
           hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
@@ -1376,8 +1377,9 @@ var app = new Vue({
                 } else {
                   courseOfferingItem.delta = null;
                 }
-
-                courseOfferingItem.load_available = jsonResponse.load_available;
+                courseOfferingItem.ichair.snapshot = jsonResponse.snapshot;
+                courseOfferingItem.ichair.change_can_be_undone.instructors = true;
+                courseOfferingItem.ichair.load_available = jsonResponse.load_available;
                 courseOfferingItem.ichair.instructors = jsonResponse.instructors;
                 courseOfferingItem.ichair.instructors_detail = jsonResponse.instructors_detail;
                 if (jsonResponse.has_delta) {
@@ -1720,6 +1722,7 @@ var app = new Vue({
         var _this = this;
         let dataForPost = {
           courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          snapshot: this.editCourseOfferingData.ichairObject.snapshot,
           hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
           bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
           hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
@@ -1744,6 +1747,9 @@ var app = new Vue({
                   courseOfferingItem.delta = null;
                 }
 
+                courseOfferingItem.ichair.snapshot = jsonResponse.snapshot;
+                courseOfferingItem.ichair.change_can_be_undone.public_comments = true;
+              
                 courseOfferingItem.ichair.comments = jsonResponse.comments;
                 if (jsonResponse.has_delta) {
                   courseOfferingItem.publicCommentsMatch = jsonResponse.public_comments_match || jsonResponse.delta.request_update_public_comments;
@@ -2289,6 +2295,7 @@ var app = new Vue({
         var _this = this;
         let data_for_post = {
           courseOfferingId: this.editCourseOfferingData.courseOfferingId,
+          snapshot: this.editCourseOfferingData.ichairObject.snapshot,
           hasBanner: this.editCourseOfferingData.bannerId !== null,// safer to interpret the null here than in the python code, where it will probably be converted to None(?)
           bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
           hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
@@ -2318,7 +2325,19 @@ var app = new Vue({
                 } else {
                   courseOfferingItem.delta = null;
                 }
-               
+                
+                courseOfferingItem.ichair.snapshot = jsonResponse.snapshot;
+                if (updateEnrollmentCap) {
+                  courseOfferingItem.ichair.change_can_be_undone.max_enrollment = true;
+                }
+                if (updateSemesterFraction) {
+                  courseOfferingItem.ichair.change_can_be_undone.semester_fraction = true;
+                }
+                if ((meetingsToDelete.length > 0) || (meetingsToUpdate.length > 0) || (meetingsToCreate.length > 0)) {
+                  console.log('meetings have been updated....');
+                  courseOfferingItem.ichair.change_can_be_undone.meeting_times = true;
+                }
+                  
                 courseOfferingItem.ichair.meeting_times_detail = jsonResponse.meeting_times_detail;
                 courseOfferingItem.ichair.meeting_times = jsonResponse.meeting_times;
                 courseOfferingItem.ichair.max_enrollment = jsonResponse.max_enrollment;
