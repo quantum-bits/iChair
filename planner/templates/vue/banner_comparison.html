@@ -662,13 +662,14 @@
                                                 <th class="text-center">
                                                     <v-icon>mdi-message-text-outline</v-icon> Message(s) for Registrar
                                                 </th>
+                                                <th class="undo-icon-container"></th>
                                                 <th class="text-center">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr v-if="item.delta && item.delta.messages_exist">
                                                 <td>Type of Request</td>
-                                                <td></td>
+                                                <td class="undo-icon-container"></td>
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
@@ -713,6 +714,7 @@
                                                     </span>
 
                                                 </td>
+                                                <td class="undo-icon-container"></td>
                                                 <td></td>
                                             </tr>
                                             <tr>
@@ -737,23 +739,22 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td class="undo-icon-container">
-                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.meeting_times">
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES, false)"
-                                                                        v-on="on">
-                                                                        mdi-undo
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
-                                                    </div>
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.meeting_times" class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES, false)"
+                                                                    v-on="on">
+                                                                    mdi-undo
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
                                                 </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateScheduleLeftArrow(item)"
@@ -810,19 +811,6 @@
                                                     <div>
                                                         <strong
                                                             v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_UNSET)"
-                                                                        v-on="on">
-                                                                        mdi-close-circle
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
                                                         <div class="delta-detail-list"
                                                             v-for="meetingTime in item.delta.meeting_times.was">
                                                             [[meetingTime]]
@@ -845,6 +833,23 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
+                                                <td v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times" 
+                                                    class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td class="text-center">
                                                     <v-icon class="green--text" v-if="item.schedulesMatch">
                                                         mdi-check-circle
@@ -875,23 +880,22 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td class="undo-icon-container">
-                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.instructors">
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS, false)"
-                                                                        v-on="on">
-                                                                        mdi-undo
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
-                                                    </div>
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.instructors" class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS, false)"
+                                                                    v-on="on">
+                                                                    mdi-undo
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
                                                 </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateInstructorsLeftArrow(item)"
@@ -950,19 +954,6 @@
                                                     <div>
                                                         <strong
                                                             v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_UNSET)"
-                                                                        v-on="on">
-                                                                        mdi-close-circle
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
                                                         <div class="delta-detail-list"
                                                             v-for="instructor in item.delta.instructors.was">
                                                             [[instructor]]
@@ -985,6 +976,22 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
+                                                <td v-if="item.delta && item.delta.request_update_instructors && item.delta.instructors" class="undo-icon-container" >
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td class="text-center">
                                                     <v-icon class="green--text" v-if="item.instructorsMatch">
                                                         mdi-check-circle</v-icon>
@@ -1006,23 +1013,22 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td class="undo-icon-container">
-                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.max_enrollment">
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT, false)"
-                                                                        v-on="on">
-                                                                        mdi-undo
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
-                                                    </div>
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.max_enrollment" class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT, false)"
+                                                                    v-on="on">
+                                                                    mdi-undo
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
                                                 </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateMaxEnrollmentLeftArrow(item)"
@@ -1078,19 +1084,6 @@
                                                         <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
                                                             <strong>Was:</strong> [[item.delta.max_enrollment.was]]
                                                         </span>
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
-                                                                        v-on="on">
-                                                                        mdi-close-circle
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
                                                     </div>
 
                                                     <div>
@@ -1107,6 +1100,22 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
+                                                <td v-if="item.delta && item.delta.request_update_max_enrollment && item.delta.max_enrollment" class="undo-icon-container" >
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container" ></td>
                                                 <td class="text-center">
                                                     <v-icon class="green--text" v-if="item.enrollmentCapsMatch">
                                                         mdi-check-circle</v-icon>
@@ -1139,23 +1148,22 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td class="undo-icon-container">
-                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.semester_fraction">
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION, false)"
-                                                                        v-on="on">
-                                                                        mdi-undo
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
-                                                    </div>
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.semester_fraction" class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION, false)"
+                                                                    v-on="on">
+                                                                    mdi-undo
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
                                                 </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateSemesterFractionLeftArrow(item)"
@@ -1232,20 +1240,6 @@
                                                                 </span>
                                                             </span>
 
-                                                            <v-tooltip top>
-                                                                <template v-slot:activator="{ on }">
-                                                                    <span class="float-right">
-                                                                        <v-icon class="include-pointer icon-padding-top"
-                                                                            color="primary"
-                                                                            @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
-                                                                            v-on="on">
-                                                                            mdi-close-circle
-                                                                        </v-icon>
-                                                                    </span>
-                                                                </template>
-                                                                <span>Undo</span>
-                                                            </v-tooltip>
-
                                                     </div>
                                                     <div>
                                                         <strong
@@ -1273,6 +1267,22 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
+                                                <td v-if="item.delta && item.delta.request_update_semester_fraction && item.delta.semester_fraction" class="undo-icon-container" >
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td class="text-center">
                                                     <v-icon class="green--text" v-if="item.semesterFractionsMatch">
                                                         mdi-check-circle</v-icon>
@@ -1333,23 +1343,22 @@
                                                 <td v-else class="text-center">
                                                     ---
                                                 </td>
-                                                <td class="undo-icon-container">
-                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.public_comments">
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS, false)"
-                                                                        v-on="on">
-                                                                        mdi-undo
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
-                                                    </div>
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.public_comments" class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS, false)"
+                                                                    v-on="on">
+                                                                    mdi-undo
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
                                                 </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivatePublicCommentsLeftArrow(item)"
@@ -1440,19 +1449,7 @@
                                                             <strong>Was:</strong>
                                                             [[item.delta.public_comments_summary.was]]
                                                         </span>
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary"
-                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_UNSET)"
-                                                                        v-on="on">
-                                                                        mdi-close-circle
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
+                                                        
                                                     </div>
                                                     <div>
                                                         <strong
@@ -1468,6 +1465,22 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
+                                                <td v-if="item.delta && item.delta.request_update_public_comments && item.delta.public_comments" class="undo-icon-container" >
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td class="text-center">
                                                     <v-icon class="green--text" v-if="item.publicCommentsMatch">
                                                         mdi-check-circle</v-icon>
