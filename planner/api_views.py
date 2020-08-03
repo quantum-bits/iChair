@@ -494,6 +494,15 @@ def create_course_offering(request):
         "instructors": ico_instructors,
         "instructors_detail": ico_instructors_detail,
         "available_instructors": available_instructors,
+        "snapshot": course_offering.snapshot,
+        "snapshot_available": False,
+        "change_can_be_undone": {
+            "max_enrollment": False,
+            "comments": False,
+            "semester_fraction": False,
+            "instructors": False,
+            "meeting_times": False,
+        },
         "load_available": course_offering.load_available,
         "semester": course_offering.semester.name.name,
         "semester_fraction": int(course_offering.semester_fraction),
@@ -781,6 +790,15 @@ def banner_comparison_data(request):
                             "instructors": ico_instructors,
                             "instructors_detail": ico_instructors_detail,
                             "available_instructors": available_instructors,
+                            "snapshot": ico.snapshot,
+                            "snapshot_available": False,
+                            "change_can_be_undone": {
+                                "max_enrollment": False,
+                                "comments": False,
+                                "semester_fraction": False,
+                                "instructors": False,
+                                "meeting_times": False,
+                            },
                             "load_available": ico.load_available,
                             "semester": ico.semester.name.name,
                             "semester_fraction": int(ico.semester_fraction),
@@ -841,6 +859,15 @@ def banner_comparison_data(request):
                             "instructors": ico_instructors,
                             "instructors_detail": ico_instructors_detail,
                             "available_instructors": available_instructors,
+                            "snapshot": unlinked_ico.snapshot,
+                            "snapshot_available": False,
+                            "change_can_be_undone": {
+                                "max_enrollment": False,
+                                "comments": False,
+                                "semester_fraction": False,
+                                "instructors": False,
+                                "meeting_times": False,
+                            },
                             "load_available": unlinked_ico.load_available,
                             "semester": unlinked_ico.semester.name.name,
                             "semester_fraction": int(unlinked_ico.semester_fraction),
@@ -993,6 +1020,15 @@ def banner_comparison_data(request):
                         "instructors": ico_instructors,
                         "instructors_detail": ico_instructors_detail,
                         "available_instructors": available_instructors,
+                        "snapshot": ico.snapshot,
+                        "snapshot_available": False,
+                        "change_can_be_undone": {
+                            "max_enrollment": False,
+                            "comments": False,
+                            "semester_fraction": False,
+                            "instructors": False,
+                            "meeting_times": False,
+                        },
                         "load_available": ico.load_available,
                         "semester": ico.semester.name.name,
                         "semester_fraction": int(ico.semester_fraction),
@@ -2564,8 +2600,11 @@ def update_class_schedule_api(request):
 
 @login_required
 @csrf_exempt
-def copy_registrar_course_offering_data_to_ichair(request):
-    """Create a new course offering or update properties of an existing course offering by copying data from a banner course offering."""
+def copy_course_offering_data_to_ichair(request):
+    """
+    Update properties of an existing course offering either by copying data from a banner course offering 
+    or by copying it from a "snapshot" object.  The "copyFromBanner" boolean dictates which action is being done.
+    """
     # user = request.user
     # user_preferences = user.user_preferences.all()[0]
 
@@ -2586,18 +2625,15 @@ def copy_registrar_course_offering_data_to_ichair(request):
     json_data = json.loads(request.body)
 
     action = json_data['action']
-    # if action == 'create', we are creating a new course offering, in which case all of the properties must be present in course_offering_properties:
-    #   - course_id
-    #   - semester_id
-    #   - ...what to do about instructors?
-    #   - load_available
-    #   - max_enrollment
-    #   - crn (possibly?!?)
-    #   - course_offering_id will be None in this case
     # if action == 'update', we are updating an existing course offering, in which case only the 'update' properties will be present in course_offering_properties
 
     ichair_course_offering_id = json_data['iChairCourseOfferingId']
     banner_course_offering_id = json_data['bannerCourseOfferingId']
+
+    has_banner = json_data['hasBanner']
+    copy_from_banner = json_data['copyFromBanner'] # if False, will use the data in the snapshot object; if True, will get the data from the Banner version of the course offering
+    
+    snapshot = json_data['snapshot']
     properties_to_update = json_data["propertiesToUpdate"]
 
     department_id = json_data['departmentId']
@@ -2627,15 +2663,20 @@ def copy_registrar_course_offering_data_to_ichair(request):
         ico = CourseOffering.objects.get(
             pk=ichair_course_offering_id)  # iChair course offering
         course_department = ico.course.subject.department
-        original_co_snapshot = ico.snapshot
+        snapshot_from_db = ico.snapshot
     
         bco = BannerCourseOffering.objects.get(
             pk=banner_course_offering_id)
         print('ichair course offering: ', ico)
         print('banner course offering: ', bco)
         if 'max_enrollment' in properties_to_update:
-            ico.max_enrollment = bco.max_enrollment
-            ico.save()
+            if copy_from_banner:
+                ico.max_enrollment = bco.max_enrollment
+                ico.save()
+                snapshot["max_enrollment"] = snapshot_from_db["max_enrollment"]
+            else:
+                ico.max_enrollment = snapshot["max_enrollment"]
+                ico.save()
         if 'comments' in properties_to_update:
             # first delete any existing iChair comments
             existing_iChair_comments = ico.comment_list()
@@ -2643,137 +2684,181 @@ def copy_registrar_course_offering_data_to_ichair(request):
                 ico_comment = CourseOfferingPublicComment.objects.get(pk=ico_comment_data["id"])
                 deleted_comment = ico_comment.delete()
                 print('iChair comment was deleted: ', deleted_comment)
-            # now copy over the banner comments
-            banner_comments = bco.comment_list()
-            for comment in banner_comments["comment_list"]:
-                new_comment = CourseOfferingPublicComment.objects.create(
-                    course_offering = ico,
-                    text = comment["text"],
-                    sequence_number = comment["sequence_number"])
-                new_comment.save()
+            if copy_from_banner:
+                # now copy over the banner comments
+                banner_comments = bco.comment_list()
+                for comment in banner_comments["comment_list"]:
+                    new_comment = CourseOfferingPublicComment.objects.create(
+                        course_offering = ico,
+                        text = comment["text"],
+                        sequence_number = comment["sequence_number"])
+                    new_comment.save()
+                snapshot["public_comments"] = snapshot_from_db["public_comments"]
+            else:
+                for comment in snapshot["public_comments"]:
+                    new_comment = CourseOfferingPublicComment.objects.create(
+                        course_offering = ico,
+                        text = comment["text"],
+                        sequence_number = comment["sequence_number"])
+                    new_comment.save()
         if 'semester_fraction' in properties_to_update:
-            ico.semester_fraction = bco.semester_fraction
-            ico.save()
+            if copy_from_banner:
+                ico.semester_fraction = bco.semester_fraction
+                ico.save()
+                snapshot["semester_fraction"] = snapshot_from_db["semester_fraction"]
+            else:
+                ico.semester_fraction = snapshot["semester_fraction"]
+                ico.save()
         if 'instructors' in properties_to_update:
-            # we take a conservative approach here:
-            # - if any of the ichair offering instructors does not have a pidm, leave things alone for that instructor
             ichair_offering_instructors = ico.offering_instructors.all()
-            banner_offering_instructors = bco.offering_instructors.all()
-            banner_instructor_pidms = [
-                boi.instructor.pidm for boi in banner_offering_instructors]
+            if copy_from_banner:
+                # we take a conservative approach here:
+                # - if any of the ichair offering instructors does not have a pidm, leave things alone for that instructor
+                banner_offering_instructors = bco.offering_instructors.all()
+                banner_instructor_pidms = [
+                    boi.instructor.pidm for boi in banner_offering_instructors]
 
-            for ichair_oi in ichair_offering_instructors:
-                if (ichair_oi.instructor.pidm is None) or (ichair_oi.instructor.pidm == ''):
-                    print(
-                        'one of the iChair instructors does not have a pidm...bailing!')
-                    offering_instructors_copied_successfully = False
-                    #break
-                elif ichair_oi.instructor.pidm not in banner_instructor_pidms:
-                    print('the following iChair instructor is not in the banner list: ',
-                          ichair_oi.instructor.first_name, ichair_oi.instructor.last_name)
-                    print('...this instructor will be deleted')
-                    # the object may be deleted inside the loop: https://stackoverflow.com/questions/16466945/iterating-over-a-django-queryset-while-deleting-objects-in-the-same-queryset
-                    ichair_oi.delete()
-                else:
-                    # the current iChair instructor is in the banner list, so pop the person out of the banner list so we don't create them later
-                    # first, though, set the is_primary flag to the correct value
-                    matching_boi = None
-                    for boi in banner_offering_instructors:
-                        if boi.instructor.pidm == ichair_oi.instructor.pidm:
-                            matching_boi = boi
-                    if matching_boi is not None:
-                        # align the is_primary flag....
-                        ichair_oi.is_primary = matching_boi.is_primary
-                        ichair_oi.save()
-                        print('now pop out of the banner pidm list....')
-                        print('before: ', banner_instructor_pidms)
-                        # now pop the matching banner instructor out of the pidm list (https://stackoverflow.com/questions/4915920/how-to-delete-an-item-in-a-list-if-it-exists)
-                        while ichair_oi.instructor.pidm in banner_instructor_pidms:
-                            banner_instructor_pidms.remove(
-                                ichair_oi.instructor.pidm)
-                        print('after: ', banner_instructor_pidms)
-                    else:
-                        # something has gone wrong
-                        offering_instructors_copied_successfully = False
-                        break
-
-            # now that the ichair offering_instructor list has been culled, go through and add in any other instructors from the banner list
-            for boi in banner_offering_instructors:
-                if boi.instructor.pidm in banner_instructor_pidms:
-                    ichair_instructors = FacultyMember.objects.filter(
-                        pidm=boi.instructor.pidm)
-                    if len(ichair_instructors) != 1:
-                        offering_instructors_copied_successfully = False
+                for ichair_oi in ichair_offering_instructors:
+                    if (ichair_oi.instructor.pidm is None) or (ichair_oi.instructor.pidm == ''):
                         print(
-                            'there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
+                            'one of the iChair instructors does not have a pidm...bailing!')
+                        offering_instructors_copied_successfully = False
+                        #break
+                    elif ichair_oi.instructor.pidm not in banner_instructor_pidms:
+                        print('the following iChair instructor is not in the banner list: ',
+                            ichair_oi.instructor.first_name, ichair_oi.instructor.last_name)
+                        print('...this instructor will be deleted')
+                        # the object may be deleted inside the loop: https://stackoverflow.com/questions/16466945/iterating-over-a-django-queryset-while-deleting-objects-in-the-same-queryset
+                        ichair_oi.delete()
                     else:
-                        instructor = ichair_instructors[0]
-                        offering_instructor = OfferingInstructor.objects.create(
-                            course_offering=ico,
-                            instructor=instructor,
-                            load_credit=0,
-                            is_primary=boi.is_primary)
-                        offering_instructor.save()
+                        # the current iChair instructor is in the banner list, so pop the person out of the banner list so we don't create them later
+                        # first, though, set the is_primary flag to the correct value
+                        matching_boi = None
+                        for boi in banner_offering_instructors:
+                            if boi.instructor.pidm == ichair_oi.instructor.pidm:
+                                matching_boi = boi
+                        if matching_boi is not None:
+                            # align the is_primary flag....
+                            ichair_oi.is_primary = matching_boi.is_primary
+                            ichair_oi.save()
+                            print('now pop out of the banner pidm list....')
+                            print('before: ', banner_instructor_pidms)
+                            # now pop the matching banner instructor out of the pidm list (https://stackoverflow.com/questions/4915920/how-to-delete-an-item-in-a-list-if-it-exists)
+                            while ichair_oi.instructor.pidm in banner_instructor_pidms:
+                                banner_instructor_pidms.remove(
+                                    ichair_oi.instructor.pidm)
+                            print('after: ', banner_instructor_pidms)
+                        else:
+                            # something has gone wrong
+                            offering_instructors_copied_successfully = False
+                            break
 
-            # now go through the list of offering instructors again and adjust loads....
-            # trying to be careful about rounding and floats....
-            if ico.load_difference() > 0.001:
-                print('load difference is: ', ico.load_difference())
-                ichair_offering_instructors = ico.offering_instructors.all()
-                for offering_instructor in ichair_offering_instructors:
-                    if len(ichair_offering_instructors) == 1:
-                        # give this person all of the load credit
-                        offering_instructor.load_credit = ico.load_available
-                        offering_instructor.save()
-                        load_manipulation_performed = True
-                    # trying to be careful about rounding and floats....
-                    elif (offering_instructor.load_credit < 0.001) and (ico.load_difference() > 0):
-                        # if there is more than one instructor, the first one in the list who doesn't have load gets the remaining load....
-                        # ...at least this way the loads add up to the correct total
-                        offering_instructor.load_credit = ico.load_difference()
-                        offering_instructor.save()
-                        print('and now load difference is: ',
-                              ico.load_difference())
-                        load_manipulation_performed = True
+                # now that the ichair offering_instructor list has been culled, go through and add in any other instructors from the banner list
+                for boi in banner_offering_instructors:
+                    if boi.instructor.pidm in banner_instructor_pidms:
+                        ichair_instructors = FacultyMember.objects.filter(
+                            pidm=boi.instructor.pidm)
+                        if len(ichair_instructors) != 1:
+                            offering_instructors_copied_successfully = False
+                            print(
+                                'there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
+                        else:
+                            instructor = ichair_instructors[0]
+                            offering_instructor = OfferingInstructor.objects.create(
+                                course_offering=ico,
+                                instructor=instructor,
+                                load_credit=0,
+                                is_primary=boi.is_primary)
+                            offering_instructor.save()
+
+                # now go through the list of offering instructors again and adjust loads....
+                # trying to be careful about rounding and floats....
+                if ico.load_difference() > 0.001:
+                    print('load difference is: ', ico.load_difference())
+                    ichair_offering_instructors = ico.offering_instructors.all()
+                    for offering_instructor in ichair_offering_instructors:
+                        if len(ichair_offering_instructors) == 1:
+                            # give this person all of the load credit
+                            offering_instructor.load_credit = ico.load_available
+                            offering_instructor.save()
+                            load_manipulation_performed = True
+                        # trying to be careful about rounding and floats....
+                        elif (offering_instructor.load_credit < 0.001) and (ico.load_difference() > 0):
+                            # if there is more than one instructor, the first one in the list who doesn't have load gets the remaining load....
+                            # ...at least this way the loads add up to the correct total
+                            offering_instructor.load_credit = ico.load_difference()
+                            offering_instructor.save()
+                            print('and now load difference is: ',
+                                ico.load_difference())
+                            load_manipulation_performed = True
+                snapshot["offering_instructors"] = snapshot_from_db["offering_instructors"]
+            else:
+                for ichair_oi in ichair_offering_instructors:
+                    ichair_oi.delete()
+                for oi in snapshot["offering_instructors"]:
+                    instructor = FacultyMember.objects.get(pk=oi["instructor"]["id"])
+                    offering_instructor = OfferingInstructor.objects.create(
+                        course_offering=ico,
+                        instructor=instructor,
+                        load_credit=oi["load_credit"],
+                        is_primary=oi["is_primary"])
+                    offering_instructor.save()
 
         if 'meeting_times' in properties_to_update:
-            # we don't want to unintentionally lose room information, so we can't just delete all existing meeting times and start over....
-            banner_scheduled_classes = bco.scheduled_classes.all()
+            if copy_from_banner:
+                # we don't want to unintentionally lose room information, so we can't just delete all existing meeting times and start over....
+                banner_scheduled_classes = bco.scheduled_classes.all()
 
-            for ichair_sc in ico.scheduled_classes.all():
-                # first, check to see if there is a similar object in the banner list....
-                #  - if not, delete the scheduled class from iChair
-                #  - if it is found in the banner list, pop the corresponding item out of the banner list
-                banner_match = None
-                print('ichair meeting time: ', ichair_sc)
+                for ichair_sc in ico.scheduled_classes.all():
+                    # first, check to see if there is a similar object in the banner list....
+                    #  - if not, delete the scheduled class from iChair
+                    #  - if it is found in the banner list, pop the corresponding item out of the banner list
+                    banner_match = None
+                    print('ichair meeting time: ', ichair_sc)
+                    for banner_sc in banner_scheduled_classes:
+                        if (ichair_sc.day == banner_sc.day) and (ichair_sc.begin_at == banner_sc.begin_at) and (ichair_sc.end_at == banner_sc.end_at):
+                            banner_match = banner_sc
+                            print('found a banner match!', banner_match)
+                    if banner_match is None:
+                        print(
+                            'no corresponding banner match; deleting iChair meeting time....')
+                        # apparently this is OK to do while iterating through the queryset....
+                        ichair_sc.delete()
+                    else:
+                        print('popping the banner match out of the list')
+                        print('before: ', banner_scheduled_classes)
+                        # https://stackoverflow.com/questions/1207406/how-to-remove-items-from-a-list-while-iterating
+                        banner_scheduled_classes = [
+                            bsc for bsc in banner_scheduled_classes if not banner_match.id == bsc.id]
+                        print('after: ', banner_scheduled_classes)
+
+                # now we go through the remaining banner meeting times and copy them over to iChair
                 for banner_sc in banner_scheduled_classes:
-                    if (ichair_sc.day == banner_sc.day) and (ichair_sc.begin_at == banner_sc.begin_at) and (ichair_sc.end_at == banner_sc.end_at):
-                        banner_match = banner_sc
-                        print('found a banner match!', banner_match)
-                if banner_match is None:
-                    print(
-                        'no corresponding banner match; deleting iChair meeting time....')
-                    # apparently this is OK to do while iterating through the queryset....
+                    classrooms_unassigned = True
+                    isc = ScheduledClass.objects.create(
+                        day=banner_sc.day,
+                        begin_at=banner_sc.begin_at,
+                        end_at=banner_sc.end_at,
+                        course_offering=ico
+                    )
+                    isc.save()
+                snapshot["scheduled_classes"] = snapshot_from_db["scheduled_classes"]
+            else:
+                for ichair_sc in ico.scheduled_classes.all():
                     ichair_sc.delete()
-                else:
-                    print('popping the banner match out of the list')
-                    print('before: ', banner_scheduled_classes)
-                    # https://stackoverflow.com/questions/1207406/how-to-remove-items-from-a-list-while-iterating
-                    banner_scheduled_classes = [
-                        bsc for bsc in banner_scheduled_classes if not banner_match.id == bsc.id]
-                    print('after: ', banner_scheduled_classes)
-
-            # now we go through the remaining banner meeting times and copy them over to iChair
-            for banner_sc in banner_scheduled_classes:
-                classrooms_unassigned = True
-                isc = ScheduledClass.objects.create(
-                    day=banner_sc.day,
-                    begin_at=banner_sc.begin_at,
-                    end_at=banner_sc.end_at,
-                    course_offering=ico
-                )
-                isc.save()
-
+                for sc in snapshot["scheduled_classes"]:
+                    isc = ScheduledClass.objects.create(
+                            day=sc["day"],
+                            begin_at=sc["begin_at"],
+                            end_at=sc["end_at"],
+                            course_offering=ico
+                        )
+                    isc.save()
+                    if sc["room_id"]:
+                        room = Room.objects.get(pk=sc["room_id"])
+                        isc.room = room
+                        isc.save()
+                    
         # the following code is copied from above...if we need it again somewhere, should
         # consider putting this all in a function
         presorted_ico_meeting_times_list = class_time_and_room_summary(
@@ -2817,6 +2902,25 @@ def copy_registrar_course_offering_data_to_ichair(request):
             "public_comments_match": comments_match
         }
 
+        # "change_can_be_undone" here is just looking locally at what has been done; the client can make a better judgement
+        # about this than the server can, so some of these settings might be overruled by the client-side code....
+        if copy_from_banner:
+            change_can_be_undone = {
+                "max_enrollment": 'max_enrollment' in properties_to_update,
+                "comments": 'comments' in properties_to_update,
+                "semester_fraction": 'semester_fraction' in properties_to_update,
+                "instructors": 'instructors' in properties_to_update,
+                "meeting_times": 'meeting_times' in properties_to_update,
+            }
+        else:
+            change_can_be_undone = {
+                "max_enrollment": False,
+                "comments": False,
+                "semester_fraction": False,
+                "instructors": False,
+                "meeting_times": False,
+            }
+
         course_offering_update = {
             "course_offering_id": ico.id,
             "course_id": ico.course.id,
@@ -2826,6 +2930,9 @@ def copy_registrar_course_offering_data_to_ichair(request):
             "instructors": ico_instructors,
             "instructors_detail": ico_instructors_detail,
             "available_instructors": available_instructors,
+            "snapshot": snapshot,
+            "snapshot_available": True,
+            "change_can_be_undone": change_can_be_undone,
             "load_available": ico.load_available,
             "semester": ico.semester.name.name,
             "semester_fraction": int(ico.semester_fraction),
@@ -2835,20 +2942,20 @@ def copy_registrar_course_offering_data_to_ichair(request):
         if user_department != course_department:
             revised_co_snapshot = ico.snapshot
             updated_fields = []
-            if original_co_snapshot["semester_fraction"] != revised_co_snapshot["semester_fraction"]:
+            if snapshot_from_db["semester_fraction"] != revised_co_snapshot["semester_fraction"]:
                 updated_fields.append("semester_fraction")
             if 'meeting_times' in properties_to_update:
                 updated_fields.append("scheduled_classes")
             if 'instructors' in properties_to_update:
                 updated_fields.append("offering_instructors")
-            if original_co_snapshot["load_available"] != revised_co_snapshot["load_available"]:
+            if snapshot_from_db["load_available"] != revised_co_snapshot["load_available"]:
                 updated_fields.append("load_available")
-            if original_co_snapshot["max_enrollment"] != revised_co_snapshot["max_enrollment"]:
+            if snapshot_from_db["max_enrollment"] != revised_co_snapshot["max_enrollment"]:
                 updated_fields.append("max_enrollment")
             if 'comments' in properties_to_update:
                 updated_fields.append("public_comments")
             create_message_course_offering_update(user.username, user_department, course_department, academic_year,
-                                                original_co_snapshot, revised_co_snapshot, updated_fields)
+                                                snapshot_from_db, revised_co_snapshot, updated_fields)
 
     data = {
         'delta_response': delta_response,

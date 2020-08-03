@@ -2011,12 +2011,15 @@ var app = new Vue({
         }
       });
     },
-    copyRegistrarDataToiChair(item, dataToUpdate) {
-      // assume for now that an iChair course offering object exists already (I believe that the actual creation of a an
-      // iChair course offering -- i.e., copying it from Banner -- already happens in another method);
-      // also assume that a banner course offering exists, or else we have nothing to copy from....
+
+    copyDataToiChair(item, dataToUpdate, copyFromBanner) {
+      // assume that an iChair course offering object exists already (the actual creation of a an
+      // iChair course offering -- i.e., copying the entire course offering from Banner -- already 
+      // happens in another method); if copyFromBanner === true, then a banner course offering should exist, 
+      // or else we have nothing to copy from....
       console.log("item: ", item);
       console.log("data to update: ", dataToUpdate);
+      console.log("copy from Banner? ", copyFromBanner, typeof copyFromBanner);
       let dataForPost = {};
       let deltaId = null;
       if (item.delta !== null) {
@@ -2028,7 +2031,10 @@ var app = new Vue({
         // if 'update', then an ichair course offering id must be provided
         // if 'create', then the ichair course offering id should be set to null
         iChairCourseOfferingId: item.ichair.course_offering_id,
-        bannerCourseOfferingId: item.banner.course_offering_id,
+        bannerCourseOfferingId: item.hasBanner ? item.banner.course_offering_id : null,
+        hasBanner: item.hasBanner,
+        copyFromBanner: copyFromBanner,// true if we are to copy the data from Banner to iChair; false if we are to use the "snapshot" object to perform an "undo" operation
+        snapshot: item.ichair.snapshot,
         deltaId: deltaId,
         propertiesToUpdate: [],
         departmentId: json_data.departmentId, // add the faculty id to the GET parameters
@@ -2039,25 +2045,33 @@ var app = new Vue({
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION) {
         dataForPost.propertiesToUpdate.push("semester_fraction");
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS) {
-        console.log("aligning instructors!");
         dataForPost.propertiesToUpdate.push("instructors");
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES) {
-        console.log("aligning instructors!");
         dataForPost.propertiesToUpdate.push("meeting_times");
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_COMMENTS) {
         dataForPost.propertiesToUpdate.push("comments");
-        // WORKING HERE -- next need to probably go into the api endpoint...?!?
-        // ...also, need to do something similar in the opposite case -- requesting create/update for "public comments"
       }
-      // COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT
       $.ajax({
         // initialize an AJAX request
         type: "POST",
-        url: "/planner/ajax/copy-registrar-course-offering-data-to-ichair/",
+        url: "/planner/ajax/copy-course-offering-data-to-ichair/",
         dataType: "json",
         data: JSON.stringify(dataForPost),
         success: function(jsonResponse) {
           console.log("response!!!: ", jsonResponse);
+          let commentsChangeCanBeUndone = false;
+          let instructorsChangeCanBeUndone = false;
+          let maxEnrollmentChangeCanBeUndone = false;
+          let meetingTimesChangeCanBeUndone = false;
+          let semesterFractionChangeCanBeUndone = false;
+          if (item.hasIChair) {
+            // get the "change_can_be_undone" settings before making the updates....
+            commentsChangeCanBeUndone = item.ichair.change_can_be_undone.comments;
+            instructorsChangeCanBeUndone = item.ichair.change_can_be_undone.instructors;
+            maxEnrollmentChangeCanBeUndone = item.ichair.change_can_be_undone.max_enrollment;
+            meetingTimesChangeCanBeUndone = item.ichair.change_can_be_undone.meeting_times;
+            semesterFractionChangeCanBeUndone = item.ichair.change_can_be_undone.semester_fraction;
+          }
           item.delta = jsonResponse.delta_response;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match; // don't need to check item.delta.request_update_max_enrollment, since this was already sorted out by the server-side code....
@@ -2076,6 +2090,28 @@ var app = new Vue({
             item.semesterFractionsMatch &&
             item.publicCommentsMatch;
           item.ichair = jsonResponse.course_offering_update;
+          // if changes could previously be undone for some category, add that possibility here...otherwise this gets forgotten for other categories 
+          // than the one(s) that were just edited; the following gives the default behaviour....
+          item.ichair.change_can_be_undone.comments = item.ichair.change_can_be_undone.comments || commentsChangeCanBeUndone;
+          item.ichair.change_can_be_undone.instructors = item.ichair.change_can_be_undone.instructors || instructorsChangeCanBeUndone;
+          item.ichair.change_can_be_undone.max_enrollment = item.ichair.change_can_be_undone.max_enrollment || maxEnrollmentChangeCanBeUndone;
+          item.ichair.change_can_be_undone.meeting_times = item.ichair.change_can_be_undone.meeting_times || meetingTimesChangeCanBeUndone;
+          item.ichair.change_can_be_undone.semester_fraction = item.ichair.change_can_be_undone.semester_fraction || semesterFractionChangeCanBeUndone;
+
+          // if we are undoing a previous change, then should set the undo flag back to false....
+          if (!copyFromBanner) {
+            if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT) {
+              item.ichair.change_can_be_undone.max_enrollment = false;
+            } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION) {
+              item.ichair.change_can_be_undone.semester_fraction = false;
+            } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS) {
+              item.ichair.change_can_be_undone.instructors = false;
+            } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES) {
+              item.ichair.change_can_be_undone.meeting_times = false;
+            } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_COMMENTS) {
+              item.ichair.change_can_be_undone.comments = false;
+            }
+          }
 
           if (jsonResponse.offering_instructors_copied_successfully === false) {
             console.log("error copying instructors!");
@@ -2092,6 +2128,8 @@ var app = new Vue({
             item.classroomsUnassignedWarning =
               "One or more meeting times were scheduled within iChair, but without rooms being assigned.  If you know the appropriate room(s), you may wish to correct this.";
           }
+          console.log('item after update: ', item);
+
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function

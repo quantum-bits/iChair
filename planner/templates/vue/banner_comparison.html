@@ -656,6 +656,7 @@
                                             <tr>
                                                 <th></th>
                                                 <th class="text-center">iChair</th>
+                                                <th class="undo-icon-container"></th>
                                                 <th class="text-center">Actions</th>
                                                 <th class="text-center">Registrar</th>
                                                 <th class="text-center">
@@ -667,6 +668,7 @@
                                         <tbody>
                                             <tr v-if="item.delta && item.delta.messages_exist">
                                                 <td>Type of Request</td>
+                                                <td></td>
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
@@ -735,6 +737,23 @@
                                                 </a>
                                                 -->
                                                 </td>
+                                                <td class="undo-icon-container">
+                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.meeting_times">
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES, false)"
+                                                                        v-on="on">
+                                                                        mdi-undo
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateScheduleLeftArrow(item)"
@@ -747,7 +766,7 @@
                                                             <template v-slot:activator="{ on }">
                                                                 <div class="text-center">
                                                                     <v-icon class="include-pointer" color="primary"
-                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES)"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES, true)"
                                                                         v-on="on">
                                                                         mdi-arrow-left-bold-circle
                                                                     </v-icon>
@@ -856,6 +875,23 @@
                                                 </a>
                                                 -->
                                                 </td>
+                                                <td class="undo-icon-container">
+                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.instructors">
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS, false)"
+                                                                        v-on="on">
+                                                                        mdi-undo
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateInstructorsLeftArrow(item)"
@@ -868,7 +904,7 @@
                                                             <template v-slot:activator="{ on }">
                                                                 <div class="text-center">
                                                                     <v-icon class="include-pointer" color="primary"
-                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS)"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS, true)"
                                                                         v-on="on">
                                                                         mdi-arrow-left-bold-circle
                                                                     </v-icon>
@@ -970,6 +1006,23 @@
                                                 </a>
                                                 -->
                                                 </td>
+                                                <td class="undo-icon-container">
+                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.max_enrollment">
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT, false)"
+                                                                        v-on="on">
+                                                                        mdi-undo
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateMaxEnrollmentLeftArrow(item)"
@@ -982,7 +1035,7 @@
                                                             <template v-slot:activator="{ on }">
                                                                 <div class="text-center">
                                                                     <v-icon class="include-pointer" color="primary"
-                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT)"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT, true)"
                                                                         v-on="on">
                                                                         mdi-arrow-left-bold-circle
                                                                     </v-icon>
@@ -1086,6 +1139,23 @@
                                                 </a>
                                                 -->
                                                 </td>
+                                                <td class="undo-icon-container">
+                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.semester_fraction">
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION, false)"
+                                                                        v-on="on">
+                                                                        mdi-undo
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivateSemesterFractionLeftArrow(item)"
@@ -1098,7 +1168,7 @@
                                                             <template v-slot:activator="{ on }">
                                                                 <div class="text-center">
                                                                     <v-icon class="include-pointer" color="primary"
-                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION)"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION, true)"
                                                                         v-on="on">
                                                                         mdi-arrow-left-bold-circle
                                                                     </v-icon>
@@ -1263,6 +1333,23 @@
                                                 <td v-else class="text-center">
                                                     ---
                                                 </td>
+                                                <td class="undo-icon-container">
+                                                    <div v-if="item.hasIChair && item.ichair.change_can_be_undone.comments">
+                                                        <v-tooltip top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <span class="float-right">
+                                                                    <v-icon class="include-pointer icon-padding-top"
+                                                                        color="primary"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS, false)"
+                                                                        v-on="on">
+                                                                        mdi-undo
+                                                                    </v-icon>
+                                                                </span>
+                                                            </template>
+                                                            <span>Undo</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
                                                 <td>
                                                     <div class="arrow-group">
                                                         <div v-if="deactivatePublicCommentsLeftArrow(item)"
@@ -1275,7 +1362,7 @@
                                                             <template v-slot:activator="{ on }">
                                                                 <div class="text-center">
                                                                     <v-icon class="include-pointer" color="primary"
-                                                                        @click="copyRegistrarDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS)"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS, true)"
                                                                         v-on="on">
                                                                         mdi-arrow-left-bold-circle
                                                                     </v-icon>
