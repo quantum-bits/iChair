@@ -203,12 +203,16 @@ font-weight: normal;
   $(function() {
 	  var facultyWithLoads = {{json_faculty_with_loads|safe}};
 	  for (var n=0; n < facultyWithLoads.length; n++) {
+		  //console.log('option'+facultyWithLoads[n]);
 		  var checkbox = document.getElementById('option'+facultyWithLoads[n]);
+		  //console.log(checkbox);
 		  var load = document.getElementById('load'+facultyWithLoads[n]);
 		  var cBox = document.getElementById('cboxtd'+facultyWithLoads[n]);
-		  if (!checkbox.checked) {
+		  if (checkbox !== null) {// shouldn't be null, but just in case....
+			if (!checkbox.checked) {
 			  load.style.color = '#b94a48';
 			  cBox.style.backgroundColor = '#f2dede';
+		  	}
 		  }
 	  }
   })
@@ -290,13 +294,14 @@ function unPopFacultyWithLoads() {
 		cBox = document.getElementById('cboxtd'+facultyWithLoads[n]);
 		checkbox = document.getElementById('option'+facultyWithLoads[n]);
 		load = document.getElementById('load'+facultyWithLoads[n]);
-		if (!checkbox.checked) {
-			load.style.color = '#b94a48';
-			cBox.style.backgroundColor = '#f2dede';
-		} else {
-			cBox.style.backgroundColor = document.getElementById('row'+facultyWithLoads[n]).style.backgroundColor;
+		if (checkbox !== null) {
+			if (!checkbox.checked) {
+				load.style.color = '#b94a48';
+				cBox.style.backgroundColor = '#f2dede';
+			} else {
+				cBox.style.backgroundColor = document.getElementById('row'+facultyWithLoads[n]).style.backgroundColor;
+			}
 		}
-		
 	};
 };
 

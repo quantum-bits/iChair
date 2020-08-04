@@ -3489,6 +3489,11 @@ def update_faculty_to_view(request):
         for fm_id in faculty_to_view_ids:
             if fm_id not in all_faculty_ids:
                 all_faculty_ids.append(fm_id)
+        # now add in faculty from other departments who are currently teaching in this department and are not yet in the list....
+        for fm in department.outside_faculty_this_year(year):
+            if fm.id not in all_faculty_ids:
+                all_faculty_ids.append(fm.id)
+
         faculty_info = []
         inactive_faculty_info = []
         faculty_with_loads = []
@@ -3498,6 +3503,7 @@ def update_faculty_to_view(request):
             total_load = load_hour_rounder(faculty.load_in_dept(department, year))
             if total_load > 0:
                 has_load = True
+                #print('faculty with load: ', faculty.id, faculty)
                 faculty_with_loads.append(faculty.id)
             else:
                 has_load = False

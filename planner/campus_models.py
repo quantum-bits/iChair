@@ -48,6 +48,23 @@ class Department(models.Model):
     class Meta:
         ordering = ['name']
 
+    def outside_faculty_this_year(self, academic_year_object):
+        """Returns a list of faculty members not in the department who are teaching something in the department this year."""
+
+        instructor_id_list = []
+        instructor_list = []
+        for instructor in [oi.instructor for oi in OfferingInstructor.objects.filter(
+            Q(course_offering__course__subject__department = self) & 
+            Q(course_offering__semester__year = academic_year_object) & 
+            ~Q(instructor__department = self))]:
+            print('instructor: ', instructor)
+            if instructor.id not in instructor_id_list:
+                print('not in list!')
+                instructor_id_list.append(instructor.id)
+                instructor_list.append(instructor)
+        print('final instructor list: ', instructor_list)
+        return instructor_list
+
     def outside_courses_this_year(self, academic_year_object):
         course_list = []
         for fac in self.faculty.all():
