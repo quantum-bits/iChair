@@ -166,6 +166,40 @@ var app = new Vue({
       this.refreshExtraCourseDialogChoices();
     },
 
+    noPidmsMessage(courseOfferingItem) {
+      //console.log('inside no pidms message!', courseOfferingItem);
+      if (!courseOfferingItem.hasIChair) {
+        return '';
+      } else {
+        let instructorsNoPidm = [];
+        courseOfferingItem.ichair.instructors_detail.forEach( instructor => {
+          if ((instructor.pidm === null) || (instructor.pidm === '')) {
+            instructorsNoPidm.push(instructor);
+          }
+        });
+        //console.log(instructorsNoPidm);
+        if (instructorsNoPidm.length === 0) {
+          return '';
+        } else {
+          let instructorNames = '';
+          instructorsNoPidm.forEach( instructor => {
+            if (instructorsNoPidm.length === 1) {
+              instructorNames = instructor.name;
+            } else if (instructorNames !== '') {
+              instructorNames += ', ' + instructor.name;
+            } else {
+              instructorNames = instructor.name;
+            }
+          });
+          if (instructorsNoPidm.length === 1) {
+            return "The following instructor is not in the registrar's database: " + instructorNames + ". If this seems incorrect, please get in touch with the iChair administrator.";
+          } else {
+            return "The following instructors are not in the registrar's database: " + instructorNames + ". If this seems incorrect, please get in touch with the iChair administrator.";
+          }
+        }
+      }
+    },
+
     refreshExtraCourseDialogChoices() {
       // used to refresh a course drop-down list in the extra course choice dialog
       let alreadySelectedCourseIds = [];
@@ -978,7 +1012,7 @@ var app = new Vue({
               if (jsonResponse.instructors_created_successfully === false) {
                 console.log("error copying instructors!");
                 courseOfferingItem.errorMessage =
-                  "There was an error trying to copy the instructor data from the registrar's database.  It may be that one or more of the instructors does not yet exist in the iChair database.  If this seems incorrect, please contact the iChair administrator.";
+                  "An error occurred while trying to copy the instructor data from the registrar's database.  This may just have been because one or more of the iChair instructors does not exist in the Registrar's database.";
               }
               if (jsonResponse.load_manipulation_performed === true) {
                 console.log("loads were adjusted!");
@@ -2196,7 +2230,7 @@ var app = new Vue({
           if (jsonResponse.offering_instructors_copied_successfully === false) {
             console.log("error copying instructors!");
             item.errorMessage =
-              "There was an error trying to copy the instructor data from the registrar's database.  It may be that one or more of the iChair instructors does not exist in the Registrar's database.  If this seems incorrect, please contact the iChair administrator.";
+              "An error occurred while trying to copy the instructor data from the registrar's database.  This may just have been because one or more of the iChair instructors does not exist in the Registrar's database.";
           }
           if (jsonResponse.load_manipulation_performed === true) {
             console.log("loads were adjusted!");

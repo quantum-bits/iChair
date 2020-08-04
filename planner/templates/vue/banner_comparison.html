@@ -1567,11 +1567,15 @@
                                         <strong class="green--text">[[item.loadsAdjustedWarning]]</strong>
                                     </div>
                                     <div v-if="item.errorMessage">
-                                        <strong class="red--text">[[item.errorMessage]]</strong>
+                                        <strong class="orange--text">[[item.errorMessage]]</strong>
                                     </div>
                                     <div v-if="item.numberPrimaryInstructorsIncorrectMessage">
                                         <strong
                                             class="red--text">[[item.numberPrimaryInstructorsIncorrectMessage]]</strong>
+                                    </div>
+                                    <div v-if="noPidmsMessage(item)">
+                                        <strong
+                                            class="orange--text">[[noPidmsMessage(item)]]</strong>
                                     </div>
                                 </v-flex>
                             </v-layout>
