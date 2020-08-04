@@ -24,6 +24,8 @@ const COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES = "meetingTimes";
 const COPY_REGISTRAR_TO_ICHAIR_COMMENTS = "publicComments";
 const COPY_REGISTRAR_TO_ICHAIR_ALL = "all";
 
+const NO_ROOM_SELECTED_ID = Number.NEGATIVE_INFINITY;
+
 var app = new Vue({
   delimiters: ["[[", "]]"],
   el: "#app",
@@ -52,6 +54,7 @@ var app = new Vue({
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
       facultyChoices: [], // faculty available to teach courses
+      roomChoices: [], // rooms available for course offerings
       extraDepartmentalCourseChoices: [], // courses to possible include in schedule editing
       extraDepartmentalSubjectAndCourseChoices: [], // subjects and courses from which to choose for schedule editing
       extraDepartmentalSubjectChoices: [], // subjects from which to choose for schedule editing
@@ -246,6 +249,14 @@ var app = new Vue({
             //_this.facultyChoices = incomingData.available_faculty;
             //console.log('faculty choices: ', _this.facultyChoices);
             // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
+            // the noRoom choice is equivalent to a room not being selected
+            let noRoom = {
+                id: NO_ROOM_SELECTED_ID,
+                short_name: "-----",
+                capacity: -1
+              };
+            _this.roomChoices = incomingData.available_rooms;
+            _this.roomChoices.unshift(noRoom);
             incomingData.course_data.forEach(course => {
               let ichairChoices = [];
               let showIChairRadioSelect = false;
@@ -358,7 +369,28 @@ var app = new Vue({
                   showBannerRadioSelect = true;
                 }
               }
-
+              if (course.has_ichair) {
+                course.ichair.meeting_times_detail.forEach( mtd => {
+                  if (mtd.room === null) {
+                    mtd.room = {
+                      id: NO_ROOM_SELECTED_ID,
+                      short_name: "-----",
+                      capacity: -1
+                    };
+                  }
+                });
+              }
+              if (course.has_banner) {
+                course.banner.meeting_times_detail.forEach( mtd => {
+                  if (mtd.room === null) {
+                    mtd.room = {
+                      id: NO_ROOM_SELECTED_ID,
+                      short_name: "-----",
+                      capacity: -1
+                    };
+                  }
+                });
+              }
               _this.courseOfferings.push({
                 semester: course.semester,
                 semesterId: course.semester_id,
@@ -529,6 +561,15 @@ var app = new Vue({
         item.ichairOptions.forEach(iChairOption => {
           if (iChairOption.course_offering_id === item.ichairChoice) {
             item.ichair = iChairOption; //this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
+            item.ichair.meeting_times_detail.forEach( mtd => {
+              if (mtd.room === null) {
+                mtd.room = {
+                  id: NO_ROOM_SELECTED_ID,
+                  short_name: "-----",
+                  capacity: -1
+                };
+              }
+            });
           }
         });
         // add the banner title to the iChair version of the course;
@@ -753,6 +794,10 @@ var app = new Vue({
       });
     },
 
+    roomListItem(roomList, index) {
+      return roomList[index];
+    },
+
     submitCourseChoice() {
       // stored the courseOfferings 'item' in this.newCourseOfferingDialogItem; 
       // trick to copy the item....
@@ -907,6 +952,15 @@ var app = new Vue({
               // found the one we're working on
               courseOfferingItem.delta = jsonResponse.delta;
               courseOfferingItem.ichair = jsonResponse.ichair_course_offering_data;
+              courseOfferingItem.ichair.meeting_times_detail.forEach( mtd => {
+                if (mtd.room === null) {
+                  mtd.room = {
+                    id: NO_ROOM_SELECTED_ID,
+                    short_name: "-----",
+                    capacity: -1
+                  };
+                }
+              });
               courseOfferingItem.enrollmentCapsMatch = jsonResponse.agreement_update.max_enrollments_match;
               courseOfferingItem.publicCommentsMatch = jsonResponse.agreement_update.public_comments_match;
               courseOfferingItem.instructorsMatch = jsonResponse.agreement_update.instructors_match;
@@ -1189,7 +1243,14 @@ var app = new Vue({
       this.editMeetings = JSON.parse(JSON.stringify(meetingDetails));
       this.editMeetings.forEach(meeting => {
         meeting.delete = false;
+        // looks like the trick of using JSON.parse(JSON.stringify(...)) to clone an object has a problem when
+        // a number is Number.NEGATIVE_INFINITY...it appears to turn it into null, so we need to replace the null by 
+        // Number.NEGATIVE_INFINITY again.
+        if (meeting.room.id === null) {
+          meeting.room.id = NO_ROOM_SELECTED_ID;
+        }
       });
+      console.log('edit meetings: ', this.editMeetings);
       this.editEnrollmentCap = courseInfo.ichair.max_enrollment;
       this.editSemesterFraction = courseInfo.ichair.semester_fraction;
       this.initialMeetingData = meetingDetails;
@@ -1314,6 +1375,7 @@ var app = new Vue({
             this.instructorFormErrorMessage = "The number of load hours must be a number.";
             errorInForm = true;
           }
+          console.log('got here!');
           if ((!errorInForm) && (!this.instructorToBeDeleted(instructor))) {
             if (instructor.id === null) {
               errorInForm = true;
@@ -1394,9 +1456,11 @@ var app = new Vue({
                   courseOfferingItem.semesterFractionsMatch &&
                   courseOfferingItem.publicCommentsMatch;
                 courseOfferingItem.numberPrimaryInstructorsIncorrectMessage = "";
+                courseOfferingItem.loadsAdjustedWarning = "";
                 courseOfferingItem.errorMessage = ""; // clear out any error that may have been there, since things are probably OK now....and if not, the user will see an error in the dialog
               }
             });
+
             if (!jsonResponse.updates_completed) {
               _this.instructorFormErrorMessage = "Sorry, there appears to have been a problem with performing the requested update(s).";
             } else {
@@ -2096,6 +2160,16 @@ var app = new Vue({
             item.semesterFractionsMatch &&
             item.publicCommentsMatch;
           item.ichair = jsonResponse.course_offering_update;
+          item.ichair.meeting_times_detail.forEach( mtd => {
+            if (mtd.room === null) {
+              mtd.room = {
+                id: NO_ROOM_SELECTED_ID,
+                short_name: "-----",
+                capacity: -1
+              };
+            }
+          });
+
           // if changes could previously be undone for some category, add that possibility here...otherwise this gets forgotten for other categories 
           // than the one(s) that were just edited; the following gives the default behaviour....
           item.ichair.change_can_be_undone.comments = item.ichair.change_can_be_undone.comments || commentsChangeCanBeUndone;
@@ -2158,7 +2232,12 @@ var app = new Vue({
         day: 0,
         begin_at: "",
         end_at: "",
-        id: null
+        id: null,
+        room: {
+          id: NO_ROOM_SELECTED_ID,
+          short_name: "-----",
+          capacity: -1
+        }
       });
     },
     cancelMeetingsForm() {
@@ -2217,7 +2296,8 @@ var app = new Vue({
                 meetingsToCreate.push({
                   day: parseInt(meeting.day),
                   begin_at: meeting.begin_at,
-                  end_at: meeting.end_at
+                  end_at: meeting.end_at,
+                  roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id
                 });
               } else {
                 this.meetingFormErrorMessage = checkTime.errorMessage;
@@ -2242,29 +2322,35 @@ var app = new Vue({
                   }
                 });
                 if (foundMeeting) {
+                  console.log(matchingMeeting.room.id, typeof matchingMeeting.room.id);
+                  console.log(meeting.room.id, typeof meeting.room.id, typeof +meeting.room.id);
                   // meeting.day could come from the form, so it might be a string....
-                  timesIdentical =
+                  timesAndRoomsIdentical =
                     matchingMeeting.day === parseInt(meeting.day) &&
                     matchingMeeting.begin_at === meeting.begin_at &&
-                    matchingMeeting.end_at === meeting.end_at;
+                    matchingMeeting.end_at === meeting.end_at && 
+                    matchingMeeting.room.id === +meeting.room.id;
+                  console.log('times and rooms identical? ', timesAndRoomsIdentical);
                 } else {
                   console.log(
                     "something is wrong! cannot find the id for the update...."
                   );
                 }
-                if (!timesIdentical) {
+                if (!timesAndRoomsIdentical) {
                   meetingsToUpdate.push({
                     id: meeting.id,
                     day: parseInt(meeting.day),
                     begin_at: meeting.begin_at,
-                    end_at: meeting.end_at
+                    end_at: meeting.end_at,
+                    roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id
                   });
                 } else {
                   meetingsToLeave.push({
                     id: meeting.id,
                     day: parseInt(meeting.day),
                     begin_at: meeting.begin_at,
-                    end_at: meeting.end_at
+                    end_at: meeting.end_at,
+                    roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id
                   });
                 }
               }
@@ -2339,7 +2425,18 @@ var app = new Vue({
                 }
                   
                 courseOfferingItem.ichair.meeting_times_detail = jsonResponse.meeting_times_detail;
+                courseOfferingItem.ichair.meeting_times_detail.forEach( mtd => {
+                  if (mtd.room === null) {
+                    mtd.room = {
+                      id: NO_ROOM_SELECTED_ID,
+                      short_name: "-----",
+                      capacity: -1
+                    };
+                  }
+                });
+
                 courseOfferingItem.ichair.meeting_times = jsonResponse.meeting_times;
+                courseOfferingItem.ichair.rooms = jsonResponse.rooms;
                 courseOfferingItem.ichair.max_enrollment = jsonResponse.max_enrollment;
                 courseOfferingItem.ichair.semester_fraction = jsonResponse.semester_fraction;
 
@@ -2358,6 +2455,7 @@ var app = new Vue({
                   courseOfferingItem.schedulesMatch &&
                   courseOfferingItem.semesterFractionsMatch &&
                   courseOfferingItem.publicCommentsMatch;
+                courseOfferingItem.classroomsUnassignedWarning = "";
               }
             });
             _this.cancelMeetingsForm();

@@ -386,17 +386,17 @@
                                                     </v-layout>
                                                     <v-divider></v-divider>
                                                     <v-layout wrap>
-                                                        <v-flex xs4>Day</v-flex>
+                                                        <v-flex xs3>Day</v-flex>
                                                         <v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
                                                         <v-flex xs3>End Time (e.g., 13:50)</v-flex>
-                                                        <v-flex xs2>Delete</v-flex>
+                                                        <v-flex xs2>Room</v-flex>
+                                                        <v-flex xs1>Delete</v-flex>
                                                     </v-layout>
                                                     <div v-for="meetingTimeDetail in editMeetings">
                                                         <v-layout wrap>
-                                                            <v-flex xs4>
-
+                                                            <v-flex xs3>
                                                                 <select class="mt-2"
-                                                                    style="border-style: solid; height: 32px;"
+                                                                    style="border-style: solid; height: 32px; width: 150px;"
                                                                     id="day_select" v-model="meetingTimeDetail.day">
                                                                     <option value="0">Monday</option>
                                                                     <option value="1">Tuesday</option>
@@ -406,14 +406,23 @@
                                                                 </select>
                                                             </v-flex>
                                                             <v-flex xs3>
-                                                                <input class="mt-2" style="height: 32px; width: 140px;"
+                                                                <input class="mt-2" style="height: 32px; width: 150px;"
                                                                     type="text" v-model="meetingTimeDetail.begin_at">
                                                             </v-flex>
                                                             <v-flex xs3>
-                                                                <input class="mt-2" style="height: 32px; width: 140px;"
+                                                                <input class="mt-2" style="height: 32px; width: 150px;"
                                                                     type="text" v-model="meetingTimeDetail.end_at">
                                                             </v-flex>
                                                             <v-flex xs2>
+                                                                <select class="mt-2"
+                                                                    style="border-style: solid; height: 32px; width: 100%;"
+                                                                    id="room_select" v-model="meetingTimeDetail.room.id">
+                                                                    <option v-for="roomChoice in roomChoices"
+                                                                        :value="roomChoice.id">[[roomChoice.short_name]]
+                                                                    </option>
+                                                                </select>
+                                                            </v-flex>
+                                                            <v-flex xs1>
                                                                 <v-checkbox class="mt-2"
                                                                     v-model="meetingTimeDetail.delete">
                                                                 </v-checkbox>
@@ -678,43 +687,46 @@
                                                         <strong class="green--text">Update Existing Course
                                                             Offering</strong><br>
                                                         <span class="green--text">CRN: [[item.crn]] </span>
-
                                                     </span>
                                                     <span v-if="item.delta.requested_action == DELTA_ACTION_CREATE">
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary" @click="deleteDelta(item)"
-                                                                        v-on="on">
-                                                                        mdi-close-circle
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
                                                         <strong class="green--text">Create New Course Offering</strong>
                                                     </span>
                                                     <span v-if="item.delta.requested_action == DELTA_ACTION_DELETE">
-                                                        <v-tooltip top>
-                                                            <template v-slot:activator="{ on }">
-                                                                <span class="float-right">
-                                                                    <v-icon class="include-pointer icon-padding-top"
-                                                                        color="primary" @click="deleteDelta(item)"
-                                                                        v-on="on">
-                                                                        mdi-close-circle
-                                                                    </v-icon>
-                                                                </span>
-                                                            </template>
-                                                            <span>Undo</span>
-                                                        </v-tooltip>
                                                         <strong class="green--text">Delete Existing Course
                                                             Offering</strong><br>
                                                         <span class="green--text">CRN: [[item.crn]] </span>
                                                     </span>
 
                                                 </td>
-                                                <td class="undo-icon-container"></td>
+                                                <td v-if="item.delta.requested_action == DELTA_ACTION_CREATE" class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary" @click="deleteDelta(item)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Don't request this change</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else-if="item.delta.requested_action == DELTA_ACTION_DELETE" class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer"
+                                                                    color="primary" @click="deleteDelta(item)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Don't request this change</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td></td>
                                             </tr>
                                             <tr>
@@ -722,8 +734,8 @@
                                                 <td v-if="item.hasIChair" class="text-center">
                                                     <a @click="editMeetingTimes(item)">
                                                         <div v-if="item.ichair.meeting_times.length > 0">
-                                                            <div v-for="meetingTime in item.ichair.meeting_times">
-                                                                [[meetingTime]]
+                                                            <div v-for="(meetingTime, index) in item.ichair.meeting_times">
+                                                                [[meetingTime]] / [[roomListItem(item.ichair.rooms, index)]]
                                                             </div>
                                                         </div>
                                                         <div v-else>
@@ -751,7 +763,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Undo recent action</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -846,7 +858,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Don't request this change</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -892,7 +904,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Undo recent action</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -988,7 +1000,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Don't request this change</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -1025,7 +1037,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Undo recent action</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -1112,7 +1124,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Don't request this change</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container" ></td>
@@ -1160,7 +1172,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Undo recent action</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -1279,7 +1291,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Don't request this change</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -1355,7 +1367,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Undo recent action</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
@@ -1477,7 +1489,7 @@
                                                                 </v-icon>
                                                             </span>
                                                         </template>
-                                                        <span>Undo</span>
+                                                        <span>Don't request this change</span>
                                                     </v-tooltip>
                                                 </td>
                                                 <td v-else class="undo-icon-container"></td>
