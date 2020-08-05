@@ -799,7 +799,14 @@ def export_data(request):
             for semester in academic_year.semesters.all():
 # summer is still included...drop it?!?  Maybe just put a note in RED at the bottom of the spreadsheet if there is
 # any summer load in the database, which didn't make it into the Excel spreadsheet.
-                offering_instructors = faculty.offering_instructors.filter(course_offering__semester=semester)
+                if faculty.department == department:
+                    if not faculty.is_adjunct():
+                        offering_instructors = faculty.offering_instructors.filter(course_offering__semester=semester)
+                    else:
+                        offering_instructors = faculty.offering_instructors.filter(Q(course_offering__semester=semester) & Q(course_offering__course__subject__department = department))
+                else:
+                    offering_instructors = faculty.offering_instructors.filter(Q(course_offering__semester=semester) & Q(course_offering__course__subject__department = department))
+                
                 for oi in offering_instructors:
                     course_id = oi.course_offering.course.id
                     if course_id not in course_load_dict:
@@ -815,8 +822,10 @@ def export_data(request):
 
                     course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] = course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] + oi.load_credit
 
-
-                other_loads = faculty.other_loads.filter(semester=semester)
+                if faculty.department == department:
+                    other_loads = faculty.other_loads.filter(semester=semester)
+                else:
+                    other_loads = []
                 for ol in other_loads:
                     other_load_id = ol.load_type.id
                     if other_load_id not in other_load_dict:
@@ -842,67 +851,33 @@ def export_data(request):
                                       'other_load_name_dict':other_load_name_dict,
                                       'other_load_comment_dict':other_load_comment_dict,
                                       'is_adjunct': faculty.is_adjunct(),
+                                      'is_in_this_dept': faculty.department == department,
                                       'id': faculty.id})
         # now go through the list and group the adjuncts together, deleting their separate entries...not the prettiest approach, but OK....
         adjunct_data = [data_row for data_row in faculty_data_list
                             if data_row['is_adjunct']==True]
-        non_adjunct_data = [data_row for data_row in faculty_data_list
-                            if not data_row['is_adjunct']==True]
-        combined_adjunct_dict = {'last_name': 'Adjunct(s)',
-                                 'first_name': '',
-                                 'is_adjunct': True}
-        course_load_dict = dict()
-        course_name_dict = dict()
-        course_number_dict = dict()
-        course_comment_dict = dict()
-        other_load_dict = dict()
-        other_load_name_dict = dict()
-        other_load_comment_dict = dict()
-        actual_name_dict = dict()
-        other_load_adj_name_dict = dict()
+        dept_non_adjunct_data = [data_row for data_row in faculty_data_list
+                            if ((not data_row['is_adjunct']) and data_row["is_in_this_dept"])]
         
-        for adjunct in adjunct_data:
-            # want to put together all of the adjunct data, but need to disambiguate the keys;
-            # the keys have been course ids, now we stringify them and make them course ids
-            # and then underscore and faculty id; this will then be unique
-            for key in adjunct['course_load_dict']:
-                new_key = str(key)+'_'+str(adjunct['id'])
-                course_load_dict[new_key]=adjunct['course_load_dict'][key]
-                course_name_dict[new_key]=adjunct['course_name_dict'][key]
-                course_number_dict[new_key]=adjunct['course_number_dict'][key]
-                old_comment = adjunct['course_comment_dict'][key]
-                comment = adjunct['first_name']+' '+adjunct['last_name']
-                # https://stackoverflow.com/questions/23086383/how-to-test-nonetype-in-python/23086405
-                if (old_comment != '') and (old_comment is not None):
-                    comment = comment+'; '+old_comment                    
-                course_comment_dict[new_key]=comment
-                actual_name_dict[new_key] = adjunct['last_name']
-            for key in adjunct['other_load_dict']:
-                new_key = str(key)+'_'+str(adjunct['id'])
-                other_load_dict[new_key]=adjunct['other_load_dict'][key]
-                other_load_name_dict[new_key]=adjunct['other_load_name_dict'][key]
-                old_comment = adjunct['other_load_comment_dict'][key]
-                comment = adjunct['first_name']+' '+adjunct['last_name']
-                if (old_comment != '') and (old_comment is not None):
-                    comment = comment+'; '+old_comment                    
-                other_load_comment_dict[new_key]=comment
-                other_load_adj_name_dict[new_key]=adjunct['last_name']
-        combined_adjunct_dict['course_load_dict'] = course_load_dict
-        combined_adjunct_dict['course_name_dict'] = course_name_dict
-        combined_adjunct_dict['course_number_dict'] = course_number_dict
-        combined_adjunct_dict['course_comment_dict'] = course_comment_dict
-        combined_adjunct_dict['other_load_dict'] = other_load_dict
-        combined_adjunct_dict['other_load_name_dict'] = other_load_name_dict
-        combined_adjunct_dict['other_load_comment_dict'] = other_load_comment_dict
-        combined_adjunct_dict['actual_name_dict'] = actual_name_dict
-        combined_adjunct_dict['other_load_adj_name_dict'] = other_load_adj_name_dict
+        combined_adjunct_dict = combine_data_diff_faculty(adjunct_data, 'Adjunct(s)', True, True) # the latter "True" here might not technically be ture of everyone who ends up on this page, but OK....
+        
+        non_dept_non_adjunct_data = [data_row for data_row in faculty_data_list
+                                    if ((not data_row['is_adjunct']) and (not data_row["is_in_this_dept"]))]
+
         # and now...recombine....
-        faculty_data_list = non_adjunct_data
-        faculty_data_list.append(combined_adjunct_dict)
+        final_faculty_data_list = dept_non_adjunct_data
+        final_faculty_data_list.append(combined_adjunct_dict)
+
+        # ...and add in non-departmental, non-adjunct faculty if there are any....
+        
+        print(non_dept_non_adjunct_data)
+        if len(non_dept_non_adjunct_data) > 0:
+            print('there should be a non-dept page....')
+            combined_non_dept_non_adjunct_dict = combine_data_diff_faculty(non_dept_non_adjunct_data, 'Other Depts', False, False)
+            final_faculty_data_list.append(combined_non_dept_non_adjunct_dict)
         
         # the following list is used later on to check if there are two people with the same last name
-        faculty_last_names = [faculty_data['last_name'] for faculty_data in faculty_data_list]
-
+        faculty_last_names = [faculty_data['last_name'] for faculty_data in final_faculty_data_list]
             
         data_dict ={'school':department.school.name, 
                     'load_sheet_type': load_sheet_type, 
@@ -915,7 +890,7 @@ def export_data(request):
                     'two_digit_year_spring': str(extract_two_digits(academic_year.begin_on.year+1)),
                     'faculty_last_names':faculty_last_names
                     }
-        book = prepare_excel_workbook(faculty_data_list,data_dict)
+        book = prepare_excel_workbook(final_faculty_data_list,data_dict)
 #        next = request.GET.get('next', 'profile')
         response = HttpResponse(content_type="application/ms-excel")
 #        response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
@@ -979,6 +954,62 @@ def export_data(request):
         context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit}
         return render(request, 'export_data.html', context)
 
+def combine_data_diff_faculty(faculty_data, tab_name, is_adjunct, is_in_this_dept):
+    """
+    Combines data from various faculty in such a way that it can be conveniently put in one tab of an Excel spreadsheet.
+    """
+    combined_faculty_dict = {
+        'last_name': tab_name,
+        'first_name': '',
+        'is_adjunct': is_adjunct,
+        'is_in_this_dept': is_in_this_dept}
+    course_load_dict = dict()
+    course_name_dict = dict()
+    course_number_dict = dict()
+    course_comment_dict = dict()
+    other_load_dict = dict()
+    other_load_name_dict = dict()
+    other_load_comment_dict = dict()
+    actual_name_dict = dict()
+    other_load_fac_name_dict = dict()
+    for faculty in faculty_data:
+        # want to put together all of the faculty data, but need to disambiguate the keys;
+        # the keys have been course ids, now we stringify them and make them course ids
+        # and then underscore and faculty id; this will then be unique
+        for key in faculty['course_load_dict']:
+            new_key = str(key)+'_'+str(faculty['id'])
+            course_load_dict[new_key]=faculty['course_load_dict'][key]
+            course_name_dict[new_key]=faculty['course_name_dict'][key]
+            course_number_dict[new_key]=faculty['course_number_dict'][key]
+            old_comment = faculty['course_comment_dict'][key]
+            comment = faculty['first_name']+' '+faculty['last_name']
+            # https://stackoverflow.com/questions/23086383/how-to-test-nonetype-in-python/23086405
+            if (old_comment != '') and (old_comment is not None):
+                comment = comment+'; '+old_comment                    
+            course_comment_dict[new_key]=comment
+            actual_name_dict[new_key] = faculty['last_name']
+        for key in faculty['other_load_dict']:
+            new_key = str(key)+'_'+str(faculty['id'])
+            other_load_dict[new_key]=faculty['other_load_dict'][key]
+            other_load_name_dict[new_key]=faculty['other_load_name_dict'][key]
+            old_comment = faculty['other_load_comment_dict'][key]
+            comment = faculty['first_name']+' '+faculty['last_name']
+            if (old_comment != '') and (old_comment is not None):
+                comment = comment+'; '+old_comment                    
+            other_load_comment_dict[new_key]=comment
+            other_load_fac_name_dict[new_key]=faculty['last_name']
+    combined_faculty_dict['course_load_dict'] = course_load_dict
+    combined_faculty_dict['course_name_dict'] = course_name_dict
+    combined_faculty_dict['course_number_dict'] = course_number_dict
+    combined_faculty_dict['course_comment_dict'] = course_comment_dict
+    combined_faculty_dict['other_load_dict'] = other_load_dict
+    combined_faculty_dict['other_load_name_dict'] = other_load_name_dict
+    combined_faculty_dict['other_load_comment_dict'] = other_load_comment_dict
+    combined_faculty_dict['actual_name_dict'] = actual_name_dict
+    combined_faculty_dict['other_load_fac_name_dict'] = other_load_fac_name_dict
+
+    return combined_faculty_dict
+
 def extract_two_digits(year):
     """
     Extracts the last two digits from a year; e.g., 2014 -> 14.  year is an
@@ -1012,6 +1043,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
         calibri_centered = 'font: height 220, color black, name Calibri; alignment:horizontal center;',
         bold_title = 'alignment:horizontal center; font: height 240, color black, name Calibri, bold 1;',
         bold_title_red = 'alignment:horizontal center; font: height 240, color red, name Calibri, bold 1;',
+        bold_title_green = 'alignment:horizontal center; font: height 240, color green, name Calibri, bold 1;',
         )
 
     column_widths = [int(1.41*one_inch),
@@ -1056,7 +1088,12 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
             col = col+1
         
         sheet.write_merge(0,0,0,7,global_data['school'],xlwt.easyxf(styles['bold_title']))
-        sheet.write_merge(1,1,0,7,type_text,xlwt.easyxf(styles['bold_title_red']))
+        
+        if (not faculty["is_in_this_dept"]) and (not faculty["is_adjunct"]):
+            sheet.write_merge(1,1,0,7,'This sheet summarizes load taught in this department by non-adjunct faculty from other departments.  This is included purely',xlwt.easyxf(styles['bold_title_green']))
+            sheet.write_merge(2,2,0,7,'for informational purposes (since complete loads for these faculty members are submitted separately by their own department(s)).',xlwt.easyxf(styles['bold_title_green']))
+        else:
+            sheet.write_merge(1,1,0,7,type_text,xlwt.easyxf(styles['bold_title_red']))
         sheet.write_merge(3,3,0,7,'Department: '+global_data['department'],style_calibri_centered)
         sheet.write_merge(5,5,0,7,'Prepared by (Dept Chair): '+global_data['prepared_by']+
                           '                           Date: '+global_data['date'],style_calibri_centered)
@@ -1119,7 +1156,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
                         'other_load_comment': faculty['other_load_comment_dict'][key]
             }
             if faculty['is_adjunct']:
-                new_dict['actual_name'] = faculty['other_load_adj_name_dict'][key]
+                new_dict['actual_name'] = faculty['other_load_fac_name_dict'][key]
                 
             data_array.append(new_dict)
 
