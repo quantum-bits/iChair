@@ -928,29 +928,53 @@ def export_data(request):
     
     else:
         faculty_list = []
+        # get ids for all active faculty members in this department
         active_fm_ids = [fm.id
                          for fm in department.faculty.all().order_by('last_name')
                          if fm.is_active(academic_year)]
+        # add ids for all faculty members who have load in this department this year
+        for faculty in department.outside_faculty_this_year(academic_year):
+            # in this case we include the faculty member even if they are not active...this should never happen, but it probably doesn't hurt....
+            if faculty.id not in active_fm_ids:
+                active_fm_ids.append(faculty.id)
+
         fm_objects = FacultyMember.objects.filter(id__in=active_fm_ids)
         for faculty in fm_objects:
-            load = 0
-            for semester in academic_year.semesters.all():
-                offering_instructors = faculty.offering_instructors.filter(course_offering__semester=semester)
-                for oi in offering_instructors:
-                    load = load+oi.load_credit
-                other_loads = faculty.other_loads.filter(semester=semester)
-                for ol in other_loads:
-                    load = load + ol.load_credit
-
-            total_load = load_hour_rounder(load)
-            if total_load > 0:
-                has_load = True
+            comment = ''
+            if faculty.department == department:
+                # in this case, want the total load in this department as well as the total load in other departments
+                load_this_dept = load_hour_rounder(faculty.load_in_dept(department, academic_year))
+                load_other_depts = load_hour_rounder(faculty.load(academic_year) - faculty.load_in_dept(department, academic_year))
+                load_this_dept_string = str(load_this_dept) + (' hr' if load_this_dept == 1 else ' hrs')
+                load_other_depts_string = str(load_other_depts) + (' hr' if load_other_depts == 1 else ' hrs')
+                include_checkbox = True
+                set_checkbox = (load_this_dept + load_other_depts > 0)
+                if faculty.is_adjunct() and (load_this_dept == 0):
+                    comment = 'Is adjunct with no load in this dept'
+                    include_checkbox = False
+                    set_checkbox = False
             else:
-                has_load = False
-            faculty_list.append({'name':faculty.first_name+' '+faculty.last_name,
-                                 'id':faculty.id,
-                                 'hrs': str(total_load)+' hrs',
-                                 'has_load': has_load
+                # in this case, we only care about the load in our department
+                load_this_dept = load_hour_rounder(faculty.load_in_dept(department, academic_year))
+                load_this_dept_string = str(load_this_dept) + (' hr' if load_this_dept == 1 else ' hrs')
+                load_other_depts_string = '---'
+                include_checkbox = True
+                # if the person is from another dept, we normally wouldn't report their load in our department...unless they are an adjunct;
+                # we give the option to report the person's load anyway, but if the person is not an adjunct, it will be on its own separate
+                # tab in the spreadsheet
+                set_checkbox = faculty.is_adjunct()
+                if not faculty.is_adjunct():
+                    comment = 'Load to be reported in home dept'
+
+            faculty_list.append({'name': faculty.first_name+' '+faculty.last_name,
+                                 'id': faculty.id,
+                                 'dept': faculty.department.abbrev,
+                                 'load_this_dept': load_this_dept_string,
+                                 'load_other_depts': load_other_depts_string,
+                                 'include_checkbox': include_checkbox,
+                                 'set_checkbox': set_checkbox,
+                                 'is_adjunct': faculty.is_adjunct(),
+                                 'comment': comment
                                  })
         context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit}
         return render(request, 'export_data.html', context)

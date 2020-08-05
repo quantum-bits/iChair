@@ -213,8 +213,9 @@ class AcademicYear(models.Model):
  
     
 class FacultyMember(Person):
+    ADJUNCT_RANK = 'Adj'
     RANK_CHOICES = (('Inst', 'Instructor'),
-                    ('Adj', 'Adjunct Professor'),
+                    (ADJUNCT_RANK, 'Adjunct Professor'),
                     ('Asst', 'Assistant Professor'),
                     ('Assoc', 'Associate Professor'),
                     ('Full', 'Professor'))
@@ -278,10 +279,7 @@ class FacultyMember(Person):
         
     def is_adjunct(self):
         """Returns True if the person is an adjunct."""
-        if self.rank == 'Adj':
-            return True
-        else:
-            return False
+        return self.rank == self.ADJUNCT_RANK
     
     def outside_course_offerings(self, semester_object):
         """

@@ -6,6 +6,9 @@
 	select {
 		margin-bottom: 0px;
 	}
+	.faculty-table {
+		width: 800px !important;
+	}
 </style>
 
 {% if can_edit %}
@@ -36,22 +39,59 @@
 	<h2> Faculty Members to Include</h2>
 	</p>
 	<p>
-	<div class="alert alert-student-info">
+	<div class="alert alert-student-info faculty-table">
 		<table class="table table-striped table-bordered table-hover">
 			<tbody>
+				<tr>
+					<th>
+						Name
+					</th>
+					<th style="text-align: center;">
+						Department
+					</th>
+					<th style="text-align: center;">
+						Adjunct?
+					</th>
+					<th style="text-align: center;">
+						Load This Dept
+					</th>
+					<th style="text-align: center;">
+						Load Other Dept(s)
+					</th>
+					<th style="text-align: center;">
+						Include
+					</th>
+					<th>
+						Comments
+					</th>
+				</tr>
 				{% for faculty in faculty_list %}
 				<tr>
 					<th>
-						<div>
-							{{faculty.name}}
-						</div>
+						{{faculty.name}}
 					</th>
-					<td>
-						<div align="center">{{faculty.hrs}}</div>
+					<td style="text-align: center;">
+						{{faculty.dept}}
+					</td>
+					<td style="text-align: center;">
+						{% if faculty.is_adjunct %} 
+							yes 
+						{% endif %}
+					</td>
+					<td style="text-align: center;">
+						{{faculty.load_this_dept}}
+					</td>
+					<td style="text-align: center;">
+						{{faculty.load_other_depts}}
+					</td>
+					<td style="text-align: center;">
+						{% if faculty.include_checkbox %}
+							<input type="checkbox" {% if faculty.set_checkbox %} checked="yes" {% endif %}
+								name="faculty_for_export" id="option{{faculty.id}}" value={{faculty.id}} />
+						{% endif %}
 					</td>
 					<td>
-						<input type="checkbox" {% if faculty.has_load %} checked="yes" {% endif %}
-							name="faculty_for_export" id="option{{faculty.id}}" value={{faculty.id}} />
+						{{ faculty.comment }}
 					</td>
 				</tr>
 				{% endfor %}
