@@ -57,12 +57,12 @@ class Department(models.Model):
             Q(course_offering__course__subject__department = self) & 
             Q(course_offering__semester__year = academic_year_object) & 
             ~Q(instructor__department = self))]:
-            print('instructor: ', instructor)
+            #print('instructor: ', instructor)
             if instructor.id not in instructor_id_list:
-                print('not in list!')
+                #print('not in list!')
                 instructor_id_list.append(instructor.id)
                 instructor_list.append(instructor)
-        print('final instructor list: ', instructor_list)
+        #print('final instructor list: ', instructor_list)
         return instructor_list
 
     def outside_courses_this_year(self, academic_year_object):
@@ -88,7 +88,7 @@ class Department(models.Model):
     def subjects_including_outside_courses(self, semester_object, course_id_list):
         """Returns a list of department subjects, plus subjects for outside (extra-departmental) courses that are offered this semester."""
         subject_id_list = [subj.id for subj in self.subjects.all()]
-        print(semester_object)
+        #print(semester_object)
         for course_id in course_id_list:
             for course_offering in CourseOffering.objects.filter((~Q(course__subject__pk__in = subject_id_list)) &
                                                                     Q(semester__pk = semester_object.id) &
@@ -107,10 +107,10 @@ class Department(models.Model):
 
         subject_abbrev_list = [subject.abbrev for subject in Subject.objects.filter(pk__in = subject_id_list)]
         unused_subjects = [course.subject for course in Course.objects.filter(pk__in = course_id_list) if course.subject.id not in subject_id_list]
-        print('here are the courses whose subjects are not yet in the subject list: ', extra_departmental_courses)
-        print('here are the unused subjects: ', unused_subjects)
-        print('subject abbrev list (before getting Banner ones): ', subject_abbrev_list)
-        print('subject id list (before looking in banner): ', subject_id_list)
+        #print('here are the courses whose subjects are not yet in the subject list: ', extra_departmental_courses)
+        #print('here are the unused subjects: ', unused_subjects)
+        #print('subject abbrev list (before getting Banner ones): ', subject_abbrev_list)
+        #print('subject id list (before looking in banner): ', subject_id_list)
         
         # the following is a bit tricky...the subjects are iChair subjects, but we now need to see if there are Banner offerings
         # during this semester, and if so, add the corresponding iChair version of the subject
@@ -121,8 +121,8 @@ class Department(models.Model):
                     subject_id_list.append(subject.id)
                     subject_abbrev_list.append(bco.course.subject.abbrev)
         
-        print('subject abbrev list (after getting the Banner ones): ', subject_abbrev_list)
-        print('subject id list (after looking in banner): ', subject_id_list)
+        #print('subject abbrev list (after getting the Banner ones): ', subject_abbrev_list)
+        #print('subject id list (after looking in banner): ', subject_id_list)
         # now fetch the objects themselves
         subject_list = []
         for subject_id in subject_id_list:
@@ -161,7 +161,7 @@ class Department(models.Model):
     def messages_this_year(self, academic_year, non_dismissed_only = True):
         message_list = []
         for message in self.messages.all().filter(year = academic_year):
-            print('got a message!')
+            #print('got a message!')
             if (non_dismissed_only and not message.dismissed) or (not non_dismissed_only):
                 print('inside if!')
                 fragments = []
@@ -178,7 +178,7 @@ class Department(models.Model):
                     'fragments': fragments,
                     'id': message.id
                 })
-        print('messages: ', message_list)
+        #print('messages: ', message_list)
         return message_list
 
     def __str__(self):
@@ -739,7 +739,7 @@ class CourseOffering(StampedModel):
                 } for oi in self.offering_instructors.all()]
 
         }
-        print(course_offering_information)
+        #print(course_offering_information)
         return course_offering_information
 
     def department(self):

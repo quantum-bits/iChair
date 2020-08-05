@@ -102,7 +102,7 @@ def fetch_semesters_and_extra_departmental_courses(request):
 @csrf_exempt
 def dismiss_message(request):
     json_data = json.loads(request.body)
-    print(json_data)
+    #print(json_data)
     message_id = json_data['messageId']
 
     message_dismissed = True
@@ -123,7 +123,7 @@ def dismiss_message(request):
 @csrf_exempt
 def set_semester_to_view(request):
     json_data = json.loads(request.body)
-    print(json_data)
+    #print(json_data)
     request.session["semester_to_view"] = int(json_data['semesterNameId'])
     data = {
         'semester_set': True
@@ -138,41 +138,41 @@ def create_update_courses(request):
     update_dict = json_data['update']
     create_dict = json_data['create']
 
-    print('update: ', update_dict)
-    print('create: ', create_dict)
+    #print('update: ', update_dict)
+    #print('create: ', create_dict)
 
     creates_successful = True
     updates_successful = True
-    print('updating....')
+    #print('updating....')
     for update_item in update_dict:
-        print(' ')
+        #print(' ')
         #print(update_item)
         # course = Course.objects.get(pk = update_item.ichair_course_id)
         try:
             course = Course.objects.get(pk=update_item["ichair_course_id"])
-            print(course)
+            #print(course)
             # check to see if the banner title already exists; if not, add it as a new one
-            print('existing banner titles: ', course.banner_title_list)
+            #print('existing banner titles: ', course.banner_title_list)
             if update_item["banner_title"] not in course.banner_title_list:
                 banner_title = BannerTitle.objects.create(
                     course = course,
                     title = update_item["banner_title"]
                 )
                 banner_title.save()
-                print('>>>>>> new banner title created!', banner_title)
+                #print('>>>>>> new banner title created!', banner_title)
             #course.banner_title = update_item["banner_title"]
             #course.save()
         except:
             updates_successful = False
-        print('updates successful: ', updates_successful)
+        #print('updates successful: ', updates_successful)
 
-    print('creating...')
+    #print('creating...')
     created_course_ids = []
     for create_item in create_dict:
-        print(create_item)
+        #print(create_item)
         try:
             subject = Subject.objects.get(pk=create_item["subject_id"])
-            print(subject)
+            #print(subject)
             course = Course.objects.create(
                 title=create_item["title"],
                 credit_hours=create_item["credit_hours"],
@@ -180,7 +180,7 @@ def create_update_courses(request):
                 number=create_item["number"])
             course.save()
             created_course_ids.append(course.id)
-            print(course)
+            #print(course)
         except:
             creates_successful = False
 
@@ -204,10 +204,10 @@ def get_courses(request):
     credit_hours = json_data['creditHours']
     semester_id = json_data['semesterId']
 
-    print('number: ', number)
-    print('subject  id: ', ichair_subject_id)
-    print('title: ', title)
-    print('credit hours: ', credit_hours)
+    #print('number: ', number)
+    #print('subject  id: ', ichair_subject_id)
+    #print('title: ', title)
+    #print('credit hours: ', credit_hours)
 
     subject = Subject.objects.get(pk=ichair_subject_id)
     semester = Semester.objects.get(pk=semester_id)
@@ -263,11 +263,11 @@ def update_instructors_for_course_offering(request):
     # delta course offering actions from the model itself:
     delta_course_offering_actions = DeltaCourseOffering.actions()
 
-    print(ichair_course_offering_id)
-    print(load_available)
-    print(load_available_requires_update)
-    print(instructor_list)
-    print(banner_course_offering_id)
+    #print(ichair_course_offering_id)
+    #print(load_available)
+    #print(load_available_requires_update)
+    #print(instructor_list)
+    #print(banner_course_offering_id)
 
     updates_completed = True
 
@@ -280,7 +280,7 @@ def update_instructors_for_course_offering(request):
     for instructor_data in instructor_list:
         try:
             instructor = FacultyMember.objects.get(pk=instructor_data["id"])
-            print(instructor)
+            #print(instructor)
         except FacultyMember.DoesNotExist:
             print("oops! faculty member does not exist")
             all_instructors_exist = False
@@ -376,7 +376,7 @@ def create_course_offering(request):
     banner_course_offering_id = json_data['bannerCourseOfferingId']
     comments = json_data['comments']
 
-    print('comments: ', comments)
+    #print('comments: ', comments)
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
@@ -448,7 +448,7 @@ def create_course_offering(request):
                 offering_instructor.save()
                 load_manipulation_performed = True
             else:
-                print('instructor is no longer active in iChair')
+                #print('instructor is no longer active in iChair')
                 instructors_created_successfully = False
         else:
             instructors_created_successfully = False
@@ -621,7 +621,7 @@ def banner_comparison_data(request):
         "banner_titles": course.banner_title_list
         } for course in Course.objects.filter(pk__in = extra_departmental_course_id_list)]
 
-    print("extra-departmental courses: ", extra_departmental_courses)
+    #print("extra-departmental courses: ", extra_departmental_courses)
 
     course_offering_data = []
 
@@ -655,7 +655,7 @@ def banner_comparison_data(request):
             # then we should sort the list so the order doesn't seem crazy
 
             for bco in banner_course_offerings:
-                print(bco)
+                #print(bco)
                 # attempt to assign an iChair course offering to the banner one
                 find_ichair_course_offering(bco, semester, subject)
 
@@ -751,14 +751,14 @@ def banner_comparison_data(request):
                         delta_exists = False
                         if len(delta_objects) > 0:
                             delta_exists = True
-                            print('delta object(s) found for', bco)
+                            #print('delta object(s) found for', bco)
                             recent_delta_object = delta_objects[0]
                             for delta_object in delta_objects:
-                                print(delta_object, delta_object.updated_at)
+                                #print(delta_object, delta_object.updated_at)
                                 if delta_object.updated_at > recent_delta_object.updated_at:
                                     recent_delta_object = delta_object
-                                    print('found more recent!',
-                                          recent_delta_object.updated_at)
+                                    #print('found more recent!',
+                                    #      recent_delta_object.updated_at)
 
                             delta_response = delta_update_status(
                                 bco, ico, recent_delta_object)
@@ -832,10 +832,10 @@ def banner_comparison_data(request):
                     # look for possible ichair course offering matches for this unlinked banner course offering
                     unlinked_ichair_course_offerings = find_unlinked_ichair_course_offerings(
                         bco, semester, subject)
-                    print('bco...', bco)
-                    print('some iChair options:')
+                    #print('bco...', bco)
+                    #print('some iChair options:')
                     for unlinked_ico in unlinked_ichair_course_offerings:
-                        print(unlinked_ico)
+                        #print(unlinked_ico)
                         presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(
                             unlinked_ico.scheduled_classes.all())
                         # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
@@ -886,15 +886,15 @@ def banner_comparison_data(request):
                     delta_exists = False
                     if len(delta_objects) > 0:
                         delta_exists = True
-                        print(
-                            '>>>>>>>>>>>>>>>>>>>>>>delete-type delta object(s) found for', bco)
+                        #print(
+                        #    '>>>>>>>>>>>>>>>>>>>>>>delete-type delta object(s) found for', bco)
                         recent_delta_object = delta_objects[0]
                         for delta_object in delta_objects:
-                            print(delta_object, delta_object.updated_at)
+                            #print(delta_object, delta_object.updated_at)
                             if delta_object.updated_at > recent_delta_object.updated_at:
                                 recent_delta_object = delta_object
-                                print('found more recent!',
-                                      recent_delta_object.updated_at)
+                                #print('found more recent!',
+                                #      recent_delta_object.updated_at)
 
                     if delta_exists:
                         delta_response = delta_delete_status(
@@ -934,7 +934,7 @@ def banner_comparison_data(request):
 
                 banner_options = []
                 for unlinked_bco in unlinked_banner_course_offerings:
-                    print(unlinked_bco)
+                    #print(unlinked_bco)
                     presorted_bco_meeting_times_list = class_time_and_room_summary(
                         unlinked_bco.scheduled_classes.all(), include_rooms=False)
                     # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
@@ -974,14 +974,14 @@ def banner_comparison_data(request):
                 delta_exists = False
                 if len(delta_objects) > 0:
                     delta_exists = True
-                    print('delta object(s) found for', ico)
+                    #print('delta object(s) found for', ico)
                     recent_delta_object = delta_objects[0]
                     for delta_object in delta_objects:
-                        print(delta_object, delta_object.updated_at)
+                        #print(delta_object, delta_object.updated_at)
                         if delta_object.updated_at > recent_delta_object.updated_at:
                             recent_delta_object = delta_object
-                            print('found more recent!',
-                                  recent_delta_object.updated_at)
+                            #print('found more recent!',
+                            #      recent_delta_object.updated_at)
 
                 if delta_exists:
                     delta_response = delta_create_status(
@@ -1319,8 +1319,8 @@ def generate_pdf(request):
     json_data = json.loads(request.body)
     course_data = json_data['courseData']
 
-    for cd in course_data:
-        print(cd)
+    #for cd in course_data:
+    #    print(cd)
 
     """
     deltas format:
@@ -1621,7 +1621,7 @@ def render_registrar_comment(imgDoc, y, layout, registrar_comment_string_array):
     return y, imgDoc
 
 def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_is_sem_fraction = False, data_is_registrar_comments = False):
-    print(item_dict)
+    #print(item_dict)
 
     # https://stackoverflow.com/questions/3593193/add-page-break-to-reportlab-canvas-object
 
@@ -1643,7 +1643,7 @@ def render_updates(imgDoc, y, layout, item_title, item_dict, data_in_list, data_
         imgDoc.drawString(tabs["tab2"], y, "Change to:")
         counter = 0
         for future_item in item_dict["change_to"]:
-            print('change to: ', future_item)
+            #print('change to: ', future_item)
             if counter > 0:
                 y -= dy
             imgDoc.drawString(tabs["tab3"], y, future_item)
@@ -1747,7 +1747,7 @@ def find_unlinked_banner_course_offerings(ico, term_code, subject):
         # https://www.pythoncentral.io/cutting-and-slicing-strings-in-python/
         banner_options = [bco for bco in candidate_banner_course_offerings if bco.course.number ==
                           ico.course.number[:len(bco.course.number)]]
-        print(banner_options)
+        #print(banner_options)
     return banner_options
 
 
@@ -1767,13 +1767,13 @@ def find_ichair_course_offering(bco, semester, subject):
         Q(course__credit_hours=bco.course.credit_hours) &
         Q(crn__isnull=True))
     # https://stackoverflow.com/questions/15474933/list-comprehension-with-if-statement/15474969
-    print('      ')
-    print('len(candidate matches) = ', len(candidate_ichair_matches))
+    #print('      ')
+    #print('len(candidate matches) = ', len(candidate_ichair_matches))
     candidate_ichair_matches = [course_offering for course_offering in candidate_ichair_matches if course_offering.course.title == bco.course.title or (bco.course.title in course_offering.course.banner_title_list)]
         # &
         #(Q(course__title=bco.course.title) | Q(course__banner_title=bco.course.title)))
-    print('      ')
-    print('len(candidate matches) = ', len(candidate_ichair_matches))
+    #print('      ')
+    #print('len(candidate matches) = ', len(candidate_ichair_matches))
 
     if len(candidate_ichair_matches) == 1:
         ichair_course_offering = candidate_ichair_matches[0]
@@ -2009,19 +2009,19 @@ def public_comments_match(banner_course_offering, ichair_course_offering):
     bco_comments = banner_course_offering.comment_list()
     ico_comments = ichair_course_offering.comment_list()
 
-    if len(ico_comments["comment_list"])>0:
-        print('bco comments:', bco_comments)
-        print('ico comments:', ico_comments)
+    #if len(ico_comments["comment_list"])>0:
+    #    print('bco comments:', bco_comments)
+    #    print('ico comments:', ico_comments)
 
     if len(bco_comments["comment_list"]) != len(ico_comments["comment_list"]):
         return False
     else:
         comments_agree = True
         for ii in range(len(bco_comments["comment_list"])):
-            print(ii)
-            print(bco_comments["comment_list"][ii]["text"])
-            print(ico_comments["comment_list"][ii]["text"])
-            print('agree: ', bco_comments["comment_list"][ii]["text"] != ico_comments["comment_list"][ii]["text"])
+            #print(ii)
+            #print(bco_comments["comment_list"][ii]["text"])
+            #print(ico_comments["comment_list"][ii]["text"])
+            #print('agree: ', bco_comments["comment_list"][ii]["text"] != ico_comments["comment_list"][ii]["text"])
 
             if bco_comments["comment_list"][ii]["text"] != ico_comments["comment_list"][ii]["text"]:
                 comments_agree = False
@@ -2081,20 +2081,20 @@ def generate_update_delta(request):
     # None if null in the UI code (i.e., if creating a new delta)
     delta_id = json_data['deltaId']
 
-    print(delta_mods)
+    #print(delta_mods)
 
-    print('action: ', action)
-    print('crn: ', crn)
-    print('ichair id: ', ichair_course_offering_id)
-    print('banner id: ', banner_course_offering_id)
-    print('semester_id: ', semester_id)
-    print('delta id: ', delta_id)
+    #print('action: ', action)
+    #print('crn: ', crn)
+    #print('ichair id: ', ichair_course_offering_id)
+    #print('banner id: ', banner_course_offering_id)
+    #print('semester_id: ', semester_id)
+    #print('delta id: ', delta_id)
 
     delta_generation_successful = True
     number_ichair_primary_instructors_OK = True
 
     if delta_id is None:
-        print('creating a new delta!')
+        #print('creating a new delta!')
         if action == 'delete':
             # in this case, there is no iChair course offering, so we simply set ico to None (which is the appropriate value to send along when creating the object in the database)
             ico = None
@@ -2124,7 +2124,7 @@ def generate_update_delta(request):
         else:
             delta_generation_successful = False
 
-        print(delta_course_offering_actions)
+        #print(delta_course_offering_actions)
 
         if delta_generation_successful:
             # https://www.geeksforgeeks.org/python-check-whether-given-key-already-exists-in-a-dictionary/
@@ -2176,8 +2176,8 @@ def generate_update_delta(request):
 
     else:
         dco = DeltaCourseOffering.objects.get(pk=delta_id)
-        print('got delta object!')
-        print(dco)
+        #print('got delta object!')
+        #print(dco)
         if 'meetingTimes' in delta_mods.keys():
             dco.update_meeting_times = delta_mods['meetingTimes']
 
@@ -2275,7 +2275,7 @@ def create_update_delete_note_for_registrar_api(request):
         - 'delete' means delete a note on an existing delta object (but leave the rest of the delta object as is)
     """
     json_data = json.loads(request.body)
-    print('data: ', json_data)
+    #print('data: ', json_data)
     ichair_id = json_data["iChairId"]
     banner_id = json_data["bannerId"]
     text = json_data["text"]
@@ -2355,7 +2355,7 @@ def update_public_comments_api(request):
     user_department = user_preferences.department_to_view
 
     json_data = json.loads(request.body)
-    print('data: ', json_data)
+    #print('data: ', json_data)
 
     course_offering_id = json_data['courseOfferingId']
     snapshot = json_data['snapshot']
@@ -2373,11 +2373,11 @@ def update_public_comments_api(request):
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
         course_department = course_offering.course.subject.department
-        print('course dept: ', course_department)
+        #print('course dept: ', course_department)
         original_co_snapshot = course_offering.snapshot
-        print('original snapshot: ', original_co_snapshot)
+        #print('original snapshot: ', original_co_snapshot)
         year = course_offering.semester.year
-        print("year: ", year)
+        #print("year: ", year)
     except:
         course_offering = None
         print('could not find the course offering....')
@@ -2433,7 +2433,7 @@ def update_public_comments_api(request):
     if has_banner and course_offering:
         bco = BannerCourseOffering.objects.get(pk=banner_id)
         pc_match = public_comments_match(bco, course_offering)
-        print('public comments match? ', pc_match)
+        #print('public comments match? ', pc_match)
         if has_delta:
             # if has_banner and has_delta, then we are talking about a delta requested action of "update"
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
@@ -2497,29 +2497,29 @@ def update_class_schedule_api(request):
     # delta course offering actions from the model itself:
     delta_course_offering_actions = DeltaCourseOffering.actions()
 
-    print('sem fraction update? ', update_semester_fraction)
-    print('enrollment cap update? ', update_enrollment_cap)
-    print('semester fraction ', semester_fraction)
-    print('enrollment_cap ', enrollment_cap)
-    print('has banner?', has_banner)
+    #print('sem fraction update? ', update_semester_fraction)
+    #print('enrollment cap update? ', update_enrollment_cap)
+    #print('semester fraction ', semester_fraction)
+    #print('enrollment_cap ', enrollment_cap)
+    #print('has banner?', has_banner)
 
-    print('delete ids: ', delete_ids)
-    print('update_dict: ', update_dict)
-    print('create_dict: ', create_dict)
+    #print('delete ids: ', delete_ids)
+    #print('update_dict: ', update_dict)
+    #print('create_dict: ', create_dict)
 
     try:
         course_offering = CourseOffering.objects.get(pk=course_offering_id)
         course_department = course_offering.course.subject.department
         original_co_snapshot = course_offering.snapshot
         year = course_offering.semester.year
-        print(original_co_snapshot)
+        #print(original_co_snapshot)
 
     except:
         course_offering = None
         print('could not find the course offering....')
 
     if course_offering:
-        print('found the course offering')
+        #print('found the course offering')
         if update_semester_fraction:
             course_offering.semester_fraction = semester_fraction
             course_offering.save()
@@ -2626,7 +2626,7 @@ def update_class_schedule_api(request):
     if has_banner and course_offering:
         bco = BannerCourseOffering.objects.get(pk=banner_id)
         schedules_match = scheduled_classes_match(bco, course_offering)
-        print('schedules match? ', schedules_match)
+        #print('schedules match? ', schedules_match)
         enrollment_caps_match = max_enrollments_match(bco, course_offering)
         sem_fractions_match = semester_fractions_match(bco, course_offering)
         if has_delta:
@@ -2720,9 +2720,9 @@ def copy_course_offering_data_to_ichair(request):
     # if delta is None (i.e., null in the the javascript code), then there is no known delta object for this iChair course offering;
     # if there is a delta object, then we will search for it and be sure to update it as appropriate after making the iChair changes....
 
-    print('banner course offering id: ', banner_course_offering_id)
-    print('delta id: ', delta_id)
-    print('properties_to_update', properties_to_update)
+    #print('banner course offering id: ', banner_course_offering_id)
+    #print('delta id: ', delta_id)
+    #print('properties_to_update', properties_to_update)
 
     delta_response = None
     agreement_update = None
@@ -2741,8 +2741,8 @@ def copy_course_offering_data_to_ichair(request):
         if has_banner:
             bco = BannerCourseOffering.objects.get(
                 pk=banner_course_offering_id)
-            print('banner course offering: ', bco)
-        print('ichair course offering: ', ico)
+            #print('banner course offering: ', bco)
+        #print('ichair course offering: ', ico)
         
         if 'max_enrollment' in properties_to_update:
             if copy_from_banner:
@@ -2758,7 +2758,7 @@ def copy_course_offering_data_to_ichair(request):
             for ico_comment_data in existing_iChair_comments["comment_list"]:
                 ico_comment = CourseOfferingPublicComment.objects.get(pk=ico_comment_data["id"])
                 deleted_comment = ico_comment.delete()
-                print('iChair comment was deleted: ', deleted_comment)
+                #print('iChair comment was deleted: ', deleted_comment)
             if copy_from_banner:
                 # now copy over the banner comments
                 banner_comments = bco.comment_list()
@@ -2800,9 +2800,9 @@ def copy_course_offering_data_to_ichair(request):
                         offering_instructors_copied_successfully = False
                         #break
                     elif ichair_oi.instructor.pidm not in banner_instructor_pidms:
-                        print('the following iChair instructor is not in the banner list: ',
-                            ichair_oi.instructor.first_name, ichair_oi.instructor.last_name)
-                        print('...this instructor will be deleted')
+                        #print('the following iChair instructor is not in the banner list: ',
+                        #    ichair_oi.instructor.first_name, ichair_oi.instructor.last_name)
+                        #print('...this instructor will be deleted')
                         # the object may be deleted inside the loop: https://stackoverflow.com/questions/16466945/iterating-over-a-django-queryset-while-deleting-objects-in-the-same-queryset
                         ichair_oi.delete()
                     else:
@@ -2816,13 +2816,13 @@ def copy_course_offering_data_to_ichair(request):
                             # align the is_primary flag....
                             ichair_oi.is_primary = matching_boi.is_primary
                             ichair_oi.save()
-                            print('now pop out of the banner pidm list....')
-                            print('before: ', banner_instructor_pidms)
+                            #print('now pop out of the banner pidm list....')
+                            #print('before: ', banner_instructor_pidms)
                             # now pop the matching banner instructor out of the pidm list (https://stackoverflow.com/questions/4915920/how-to-delete-an-item-in-a-list-if-it-exists)
                             while ichair_oi.instructor.pidm in banner_instructor_pidms:
                                 banner_instructor_pidms.remove(
                                     ichair_oi.instructor.pidm)
-                            print('after: ', banner_instructor_pidms)
+                            #print('after: ', banner_instructor_pidms)
                         else:
                             # something has gone wrong
                             offering_instructors_copied_successfully = False
@@ -2847,13 +2847,13 @@ def copy_course_offering_data_to_ichair(request):
                                     is_primary=boi.is_primary)
                                 offering_instructor.save()
                             else:
-                                print('this instructor is not active, so not copying data over....')
+                                #print('this instructor is not active, so not copying data over....')
                                 offering_instructors_copied_successfully = False
 
                 # now go through the list of offering instructors again and adjust loads....
                 # trying to be careful about rounding and floats....
                 if ico.load_difference() > 0.001:
-                    print('load difference is: ', ico.load_difference())
+                    #print('load difference is: ', ico.load_difference())
                     ichair_offering_instructors = ico.offering_instructors.all()
                     for offering_instructor in ichair_offering_instructors:
                         if len(ichair_offering_instructors) == 1:
@@ -2867,8 +2867,8 @@ def copy_course_offering_data_to_ichair(request):
                             # ...at least this way the loads add up to the correct total
                             offering_instructor.load_credit = ico.load_difference()
                             offering_instructor.save()
-                            print('and now load difference is: ',
-                                ico.load_difference())
+                            #print('and now load difference is: ',
+                            #    ico.load_difference())
                             load_manipulation_performed = True
                 snapshot["offering_instructors"] = snapshot_from_db["offering_instructors"]
             else:
@@ -2886,7 +2886,7 @@ def copy_course_offering_data_to_ichair(request):
                             is_primary=oi["is_primary"])
                         offering_instructor.save()
                     else:
-                        print('this instructor is not active, so not copying data over....')
+                        #print('this instructor is not active, so not copying data over....')
                         offering_instructors_copied_successfully = False
 
         if 'meeting_times' in properties_to_update:
@@ -2899,23 +2899,23 @@ def copy_course_offering_data_to_ichair(request):
                     #  - if not, delete the scheduled class from iChair
                     #  - if it is found in the banner list, pop the corresponding item out of the banner list
                     banner_match = None
-                    print('ichair meeting time: ', ichair_sc)
+                    #print('ichair meeting time: ', ichair_sc)
                     for banner_sc in banner_scheduled_classes:
                         if (ichair_sc.day == banner_sc.day) and (ichair_sc.begin_at == banner_sc.begin_at) and (ichair_sc.end_at == banner_sc.end_at):
                             banner_match = banner_sc
                             print('found a banner match!', banner_match)
                     if banner_match is None:
-                        print(
-                            'no corresponding banner match; deleting iChair meeting time....')
+                        #print(
+                        #    'no corresponding banner match; deleting iChair meeting time....')
                         # apparently this is OK to do while iterating through the queryset....
                         ichair_sc.delete()
                     else:
-                        print('popping the banner match out of the list')
-                        print('before: ', banner_scheduled_classes)
+                        #print('popping the banner match out of the list')
+                        #print('before: ', banner_scheduled_classes)
                         # https://stackoverflow.com/questions/1207406/how-to-remove-items-from-a-list-while-iterating
                         banner_scheduled_classes = [
                             bsc for bsc in banner_scheduled_classes if not banner_match.id == bsc.id]
-                        print('after: ', banner_scheduled_classes)
+                        #print('after: ', banner_scheduled_classes)
 
                 # now we go through the remaining banner meeting times and copy them over to iChair
                 for banner_sc in banner_scheduled_classes:
@@ -2961,7 +2961,7 @@ def copy_course_offering_data_to_ichair(request):
         if has_banner:
             if delta_id is not None:
                 dco = DeltaCourseOffering.objects.get(pk=delta_id)
-                print('delta course offering: ', dco)
+                #print('delta course offering: ', dco)
                 delta_response = delta_update_status(bco, ico, dco)
 
                 schedules_match = scheduled_classes_match(

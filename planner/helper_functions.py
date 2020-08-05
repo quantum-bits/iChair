@@ -134,7 +134,7 @@ def create_message_course_offering_update(username_other_department, user_depart
                                                 username_other_department, 
                                                 user_department.abbrev,
                                                 datetime_string)
-        print(fragment_text)
+        #print(fragment_text)
         message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
                                                         fragment = fragment_text,
                                                         sequence_number = sequence_number,
@@ -173,7 +173,7 @@ def create_message_course_offering_update(username_other_department, user_depart
                                                 username_other_department, 
                                                 user_department.abbrev, 
                                                 datetime_string)
-        print(fragment_text)
+        #print(fragment_text)
         message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
                                                         fragment = fragment_text,
                                                         sequence_number = sequence_number,
@@ -198,7 +198,7 @@ def create_message_course_offering_update(username_other_department, user_depart
                                                 username_other_department, 
                                                 user_department.abbrev,
                                                 datetime_string)
-        print(fragment_text)
+        #print(fragment_text)
         message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
                                                         fragment = fragment_text,
                                                         sequence_number = sequence_number,
