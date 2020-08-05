@@ -1012,17 +1012,23 @@ var app = new Vue({
               if (jsonResponse.instructors_created_successfully === false) {
                 console.log("error copying instructors!");
                 courseOfferingItem.errorMessage =
-                  "An error occurred while trying to copy the instructor data from the registrar's database.  This may just have been because one or more of the iChair instructors does not exist in the Registrar's database.";
+                  "An error occurred while trying to copy instructor data from the registrar's database.  This can happen if one of the iChair instructors does not exist in the Registrar's database or is no longer 'active' in iChair.";
+              } else {
+                courseOfferingItem.errorMessage = '';
               }
               if (jsonResponse.load_manipulation_performed === true) {
                 console.log("loads were adjusted!");
                 courseOfferingItem.loadsAdjustedWarning =
                   "One or more loads were adjusted automatically in the process of copying instructors from the registrar's database.  You may wish to check that this was done correctly.";
+              } else {
+                courseOfferingItem.loadsAdjustedWarning = '';
               }
               if (jsonResponse.classrooms_unassigned === true) {
                 console.log("schedules assigned without classrooms!");
                 courseOfferingItem.classroomsUnassignedWarning =
                   "One or more meeting times were scheduled within iChair, but without rooms being assigned.  If you know the appropriate room(s), you may wish to correct this.";
+              } else {
+                courseOfferingItem.classroomsUnassignedWarning = '';
               }
               // now add the banner title to the course, in case that banner title is not yet associated with that course
               _this.addBannerTitle(courseOfferingItem.ichair.course_id, courseOfferingItem.banner.course_title);
@@ -2229,18 +2235,29 @@ var app = new Vue({
 
           if (jsonResponse.offering_instructors_copied_successfully === false) {
             console.log("error copying instructors!");
-            item.errorMessage =
-              "An error occurred while trying to copy the instructor data from the registrar's database.  This may just have been because one or more of the iChair instructors does not exist in the Registrar's database.";
+            if (copyFromBanner) {
+              item.errorMessage =
+                "An error occurred while trying to copy instructor data from the registrar's database.  This can happen if one of the iChair instructors does not exist in the Registrar's database or is no longer 'active' in iChair.";
+            } else {
+              item.errorMessage =
+                "An error occurred while trying to edit instructor data.  This can happen if one of the instructors is no longer 'active' in iChair.";
+            }
+          } else {
+            item.errorMessage = '';
           }
           if (jsonResponse.load_manipulation_performed === true) {
             console.log("loads were adjusted!");
             item.loadsAdjustedWarning =
               "One or more loads were adjusted automatically in the process of copying instructors from the registrar's database.  You may wish to check that this was done correctly.";
+          } else {
+            item.loadsAdjustedWarning = '';
           }
           if (jsonResponse.classrooms_unassigned === true) {
             console.log("schedules assigned without classrooms!");
             item.classroomsUnassignedWarning =
               "One or more meeting times were scheduled within iChair, but without rooms being assigned.  If you know the appropriate room(s), you may wish to correct this.";
+          } else {
+            item.classroomsUnassignedWarning = '';
           }
           console.log('item after update: ', item);
 

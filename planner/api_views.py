@@ -435,17 +435,21 @@ def create_course_offering(request):
         if len(candidate_instructors) == 1:
             # found exactly one match
             instructor = candidate_instructors[0]
-            if instructor_item["isPrimary"]:
-                load_credit = course.credit_hours
+            if instructor.is_active(semester.year):
+                if instructor_item["isPrimary"]:
+                    load_credit = course.credit_hours
+                else:
+                    load_credit = 0
+                offering_instructor = OfferingInstructor.objects.create(
+                    course_offering=course_offering,
+                    instructor=instructor,
+                    load_credit = load_credit,
+                    is_primary= instructor_item["isPrimary"])
+                offering_instructor.save()
+                load_manipulation_performed = True
             else:
-                load_credit = 0
-            offering_instructor = OfferingInstructor.objects.create(
-                course_offering=course_offering,
-                instructor=instructor,
-                load_credit = load_credit,
-                is_primary= instructor_item["isPrimary"])
-            offering_instructor.save()
-            load_manipulation_performed = True
+                print('instructor is no longer active in iChair')
+                instructors_created_successfully = False
         else:
             instructors_created_successfully = False
 
@@ -2835,12 +2839,16 @@ def copy_course_offering_data_to_ichair(request):
                                 'there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
                         else:
                             instructor = ichair_instructors[0]
-                            offering_instructor = OfferingInstructor.objects.create(
-                                course_offering=ico,
-                                instructor=instructor,
-                                load_credit=0,
-                                is_primary=boi.is_primary)
-                            offering_instructor.save()
+                            if instructor.is_active(academic_year):
+                                offering_instructor = OfferingInstructor.objects.create(
+                                    course_offering=ico,
+                                    instructor=instructor,
+                                    load_credit=0,
+                                    is_primary=boi.is_primary)
+                                offering_instructor.save()
+                            else:
+                                print('this instructor is not active, so not copying data over....')
+                                offering_instructors_copied_successfully = False
 
                 # now go through the list of offering instructors again and adjust loads....
                 # trying to be careful about rounding and floats....
@@ -2870,12 +2878,16 @@ def copy_course_offering_data_to_ichair(request):
                     ichair_oi.delete()
                 for oi in snapshot["offering_instructors"]:
                     instructor = FacultyMember.objects.get(pk=oi["instructor"]["id"])
-                    offering_instructor = OfferingInstructor.objects.create(
-                        course_offering=ico,
-                        instructor=instructor,
-                        load_credit=oi["load_credit"],
-                        is_primary=oi["is_primary"])
-                    offering_instructor.save()
+                    if instructor.is_active(academic_year):
+                        offering_instructor = OfferingInstructor.objects.create(
+                            course_offering=ico,
+                            instructor=instructor,
+                            load_credit=oi["load_credit"],
+                            is_primary=oi["is_primary"])
+                        offering_instructor.save()
+                    else:
+                        print('this instructor is not active, so not copying data over....')
+                        offering_instructors_copied_successfully = False
 
         if 'meeting_times' in properties_to_update:
             if copy_from_banner:
