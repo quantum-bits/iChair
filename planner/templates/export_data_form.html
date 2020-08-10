@@ -13,11 +13,19 @@
 
 {% if can_edit %}
 	{% if ready_to_download_data %}
-		<div class="span12">
-			<div style="margin-top: 20px">
-				Your data is ready to be downloaded.  Click <a href="{% url 'export_data' %}" download>here</a> to start the download.
+		{% if num_faculty_to_export > 0 %}
+			<div class="span12">
+				<div style="margin-top: 20px">
+					Your data is ready to be downloaded.  Click <a href="{% url 'export_data' %}" download>here</a> to start the download.
+				</div>
 			</div>
-		</div>
+		{% else %}
+			<div class="span12">
+				<div style="margin-top: 20px">
+					No faculty members were selected.  Click <a href="{% url 'export_data_form' %}">here</a> to select faculty.
+				</div>
+			</div>
+		{% endif %}
 	{% else %}
 		<form action="" method="post">
 			{% csrf_token %}

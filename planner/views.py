@@ -748,13 +748,8 @@ def export_data(request):
     academic_year = user_preferences.academic_year_to_view
     #faculty_to_view = user_preferences.faculty_to_view.all()
 
-    home = expanduser("~")
     today = date.today()
     date_string = str(today.month)+'/'+str(today.day)+'/'+str(today.year)
-
-    can_edit = False
-    if user_preferences.permission_level == 1:
-        can_edit = True
 
 # the following assumes that semesters are returned in the order Summer, Fall, J-term, Spring, so that
 # Fall ends up being 0, J-term is 1 and Spring is 2.
@@ -776,7 +771,6 @@ def export_data(request):
         context = {'file_name': '', 'success': False}
         return render(request, 'export_complete.html', context)
 
-
     year_string = str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1))
     if load_sheet_type == 'actual':
         due_date = 'March 12, '+str(academic_year.begin_on.year+1)
@@ -785,7 +779,6 @@ def export_data(request):
         due_date = 'February 26, '+str(academic_year.begin_on.year)
         file_name = 'ProjectedLoads_'+year_string+'.xls'
 
-        
     faculty_data_list = []
     for faculty_id in faculty_export_list:
         faculty = FacultyMember.objects.get(pk = faculty_id)
@@ -900,7 +893,6 @@ def export_data(request):
     return response
 
 
-
 @login_required
 def export_data_form(request):
     """
@@ -916,169 +908,22 @@ def export_data_form(request):
     faculty_to_view = user_preferences.faculty_to_view.all()
 
     home = expanduser("~")
-    today = date.today()
-    date_string = str(today.month)+'/'+str(today.day)+'/'+str(today.year)
+    #today = date.today()
+    #date_string = str(today.month)+'/'+str(today.day)+'/'+str(today.year)
 
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
 
-# the following assumes that semesters are returned in the order Summer, Fall, J-term, Spring, so that
-# Fall ends up being 0, J-term is 1 and Spring is 2.
-    ii = -1
-    semesterdict=dict()
-    for semester in SemesterName.objects.all():
-        semesterdict[semester.name] = ii
-        ii=ii+1
-
-#
-# load for summer is added to the fall....
-#
-    semesterdict['Summer']=0
-
     if request.method == 'POST':
+        # save data to the session and then display a link to start the download....
         faculty_export_list = request.POST.getlist('faculty_for_export')
         request.session['faculty_export_list'] = faculty_export_list
         doc_type = request.POST.getlist('doc_type')[0]
         request.session['load_sheet_type'] = doc_type
         name_preparer = request.POST.getlist('name_preparer')[0]
         request.session['name_preparer']=name_preparer
-
-        """
-        if len(faculty_export_list)==0:
-            context = {'file_name': '', 'success': False}
-            return render(request, 'export_complete.html', context)
-        """
-        
-        """
-        faculty_data_list = []
-        for faculty_id in faculty_export_list:
-            faculty = FacultyMember.objects.get(pk = faculty_id)
-            course_load_dict=dict()
-            course_name_dict=dict()
-            course_number_dict=dict()
-            course_comment_dict=dict()
-            other_load_dict=dict()
-            other_load_name_dict=dict()
-            other_load_comment_dict=dict()
-            for semester in academic_year.semesters.all():
-# summer is still included...drop it?!?  Maybe just put a note in RED at the bottom of the spreadsheet if there is
-# any summer load in the database, which didn't make it into the Excel spreadsheet.
-                if faculty.department == department:
-                    if not faculty.is_adjunct():
-                        offering_instructors = faculty.offering_instructors.filter(course_offering__semester=semester)
-                    else:
-                        offering_instructors = faculty.offering_instructors.filter(Q(course_offering__semester=semester) & Q(course_offering__course__subject__department = department))
-                else:
-                    offering_instructors = faculty.offering_instructors.filter(Q(course_offering__semester=semester) & Q(course_offering__course__subject__department = department))
-                
-                for oi in offering_instructors:
-                    course_id = oi.course_offering.course.id
-                    if course_id not in course_load_dict:
-                        course_load_dict[course_id]=[0,0,0]
-                        course_name_dict[course_id]=oi.course_offering.course.title
-                        course_number_dict[course_id]=oi.course_offering.course.subject.abbrev+oi.course_offering.course.number
-                        course_comment_dict[course_id]=oi.course_offering.comment
-                    else: 
-                        if (course_comment_dict[course_id]=='') or (course_comment_dict[course_id] is None):
-                            course_comment_dict[course_id]=oi.course_offering.comment
-                        elif (oi.course_offering.comment !='') and (oi.course_offering.comment is not None):
-                            course_comment_dict[course_id]=course_comment_dict[course_id]+'; '+oi.course_offering.comment
-
-                    course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] = course_load_dict[course_id][semesterdict[oi.course_offering.semester.name.name]] + oi.load_credit
-
-                if faculty.department == department:
-                    other_loads = faculty.other_loads.filter(semester=semester)
-                else:
-                    other_loads = []
-                for ol in other_loads:
-                    other_load_id = ol.load_type.id
-                    if other_load_id not in other_load_dict:
-                        other_load_dict[other_load_id]=[0,0,0]
-                        other_load_name_dict[other_load_id]=ol.load_type.load_type
-                        other_load_comment_dict[other_load_id]=ol.comments
-                    else: 
-                        if (other_load_comment_dict[other_load_id]=='') or (other_load_comment_dict[other_load_id] is None):
-                            other_load_comment_dict[other_load_id]=ol.comments
-                        elif (ol.comments != '') and (ol.comments is not None):
-                            other_load_comment_dict[other_load_id]=other_load_comment_dict[other_load_id]+'; '+ol.comments
-                        
-                    other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] = other_load_dict[other_load_id][semesterdict[ol.semester.name.name]] + ol.load_credit
-
-
-            faculty_data_list.append({'last_name':faculty.last_name, 
-                                      'first_name':faculty.first_name, 
-                                      'course_load_dict':course_load_dict,
-                                      'course_name_dict':course_name_dict,
-                                      'course_number_dict':course_number_dict,
-                                      'course_comment_dict':course_comment_dict,
-                                      'other_load_dict':other_load_dict,
-                                      'other_load_name_dict':other_load_name_dict,
-                                      'other_load_comment_dict':other_load_comment_dict,
-                                      'is_adjunct': faculty.is_adjunct(),
-                                      'is_in_this_dept': faculty.department == department,
-                                      'id': faculty.id})
-        # now go through the list and group the adjuncts together, deleting their separate entries...not the prettiest approach, but OK....
-        adjunct_data = [data_row for data_row in faculty_data_list
-                            if data_row['is_adjunct']==True]
-        dept_non_adjunct_data = [data_row for data_row in faculty_data_list
-                            if ((not data_row['is_adjunct']) and data_row["is_in_this_dept"])]
-        
-        combined_adjunct_dict = combine_data_diff_faculty(adjunct_data, 'Adjunct(s)', True, True) # the latter "True" here might not technically be ture of everyone who ends up on this page, but OK....
-        
-        non_dept_non_adjunct_data = [data_row for data_row in faculty_data_list
-                                    if ((not data_row['is_adjunct']) and (not data_row["is_in_this_dept"]))]
-
-        # and now...recombine....
-        final_faculty_data_list = dept_non_adjunct_data
-        final_faculty_data_list.append(combined_adjunct_dict)
-
-        # ...and add in non-departmental, non-adjunct faculty if there are any....
-        
-        print(non_dept_non_adjunct_data)
-        if len(non_dept_non_adjunct_data) > 0:
-            print('there should be a non-dept page....')
-            combined_non_dept_non_adjunct_dict = combine_data_diff_faculty(non_dept_non_adjunct_data, 'Other Depts', False, False)
-            final_faculty_data_list.append(combined_non_dept_non_adjunct_dict)
-        
-        # the following list is used later on to check if there are two people with the same last name
-        faculty_last_names = [faculty_data['last_name'] for faculty_data in final_faculty_data_list]
-            
-        data_dict ={'school':department.school.name, 
-                    'load_sheet_type': load_sheet_type, 
-                    'department': department.name,
-                    'prepared_by': name_preparer,
-                    'date': date_string,
-                    'academic_year': str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1)),
-                    'due_date': due_date,
-                    'two_digit_year_fall': str(extract_two_digits(academic_year.begin_on.year)),
-                    'two_digit_year_spring': str(extract_two_digits(academic_year.begin_on.year+1)),
-                    'faculty_last_names':faculty_last_names
-                    }
-        book = prepare_excel_workbook(final_faculty_data_list,data_dict)
-        #next = request.GET.get('next', 'profile')
-        response = HttpResponse(content_type="application/ms-excel")
-        #response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
-        response['Content-Disposition'] = 'attachment; filename=%s' % file_name
-        book.save(response)
-
-        # THIS MIGHT HELP!!!!
-        # https://www.reddit.com/r/learnjavascript/comments/ckqo4n/can_we_fix_resource_interpreted_as_document_but/evpq4s3/
-        # https://jsfiddle.net/kLd28h5e/
-        # putting download in the anchor tag here (https://studygyaan.com/django/how-to-export-excel-file-with-django#comment-580) worked
-
-
-        #return redirect(next)
-        # https://studygyaan.com/django/how-to-export-excel-file-with-django#comment-580
-        
-
-        WORKING HERE: could put the data into the session
-        ...and then redirect to a new page and say "click here to download your file"
-        ...putting download in the anchor tag might do the trick....
-
-        
-    """
-        context = {'faculty_list': [], 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': True}
+        context = {'faculty_list': [], 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': True, 'num_faculty_to_export': len(faculty_export_list)}
         return render(request, 'export_data_form.html', context)
 
 
@@ -1132,7 +977,7 @@ def export_data_form(request):
                                  'is_adjunct': faculty.is_adjunct(),
                                  'comment': comment
                                  })
-        context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': False}
+        context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': False, 'num_faculty_to_export': 0}
         return render(request, 'export_data_form.html', context)
 
 
