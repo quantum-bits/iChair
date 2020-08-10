@@ -39,6 +39,9 @@ from functools import wraps
 
 import math
 
+from django.core.files.base import ContentFile
+import io
+
 ALL_SEMESTERS_ID = -1
 
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
@@ -891,14 +894,26 @@ def export_data(request):
                     'faculty_last_names':faculty_last_names
                     }
         book = prepare_excel_workbook(final_faculty_data_list,data_dict)
-#        next = request.GET.get('next', 'profile')
+        #next = request.GET.get('next', 'profile')
         response = HttpResponse(content_type="application/ms-excel")
-#        response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
+        #response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
         response['Content-Disposition'] = 'attachment; filename=%s' % file_name
         book.save(response)
 
-#        return redirect(next)
+        # THIS MIGHT HELP!!!!
+        # https://www.reddit.com/r/learnjavascript/comments/ckqo4n/can_we_fix_resource_interpreted_as_document_but/evpq4s3/
+        # https://jsfiddle.net/kLd28h5e/
+        # putting download in the anchor tag here (https://studygyaan.com/django/how-to-export-excel-file-with-django#comment-580) worked
+
+
+        #return redirect(next)
+        # https://studygyaan.com/django/how-to-export-excel-file-with-django#comment-580
         
+
+        WORKING HERE: could put the data into the session
+        ...and then redirect to a new page and say "click here to download your file"
+        ...putting download in the anchor tag might do the trick....
+
         return response
     
     else:
@@ -953,6 +968,54 @@ def export_data(request):
                                  })
         context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit}
         return render(request, 'export_data.html', context)
+
+
+def excel_dump(request):
+    # https://studygyaan.com/django/how-to-export-excel-file-with-django#comment-580
+    
+    output = io.StringIO()
+    wb = xlwt.Workbook(output)
+    ws = wb.add_sheet('Users Data') # this will make a sheet named Users Data
+
+    # Sheet header, first row
+    row_num = 0
+
+    font_style = xlwt.XFStyle()
+    font_style.font.bold = True
+
+    columns = ['Username', 'First Name', 'Last Name', 'Email Address', ]
+
+    for col_num in range(len(columns)):
+        ws.write(row_num, col_num, columns[col_num], font_style) # at 0 row 0 column 
+
+    # Sheet body, remaining rows
+    font_style = xlwt.XFStyle()
+
+    rows = User.objects.all().values_list('username', 'first_name', 'last_name', 'email')
+    for row in rows:
+        row_num += 1
+        for col_num in range(len(row)):
+            ws.write(row_num, col_num, row[col_num], font_style)
+
+    response = HttpResponse(output.getvalue(), content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="users.xls"'
+    wb.save(response)
+
+    #http_response = export(request, app_name='ingredients', model_name='ingredient')
+    #file_ = ContentFile(response.content)
+    #file_.name = response['Content-Disposition'].split('=')[-1] 
+    #print(file_)
+    #print(file_.name)
+    #file_.save()
+
+    #new_export = IngredientExportItem(file_name="x", slug="x", file=file_)
+    #new_export.save()
+    #return HttpResponseRedirect('/')
+
+    #data = {}
+    #return render(request, "temp.html", data)
+    return response
+
 
 def combine_data_diff_faculty(faculty_data, tab_name, is_adjunct, is_in_this_dept):
     """
@@ -4196,9 +4259,10 @@ def export_summary_data(request):
     file_name = 'DepartmentLoadSummary.xls'
 
     book = prepare_excel_summary(context)
-    response = HttpResponse(content_type="application/ms-excel")
+    response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = 'attachment; filename=%s' % file_name
     book.save(response)
+    #response.write()
     return response
 
 def prepare_excel_summary(context):

@@ -75,6 +75,7 @@ urlpatterns = [
     url(r'^updateNote/(\d+)/$', myapp_views.update_note, name='update_note'),
     url(r'^deleteNote/(\d+)/$', myapp_views.delete_note, name='delete_note'),
     url(r'^exportdata/$', myapp_views.export_data, name='export_data'),
+    url(r'^exceldump/$', myapp_views.excel_dump, name='excel_dump'),
     url(r'^exportsummarydata/$', myapp_views.export_summary_data, name='export_summary_data'),
 #    url(r'^exportcomplete/$', 'export_complete', name='export_complete')
     url(r'^search-form/$', myapp_views.search_form, name='search_form'),
