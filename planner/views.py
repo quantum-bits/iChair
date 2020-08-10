@@ -905,12 +905,7 @@ def export_data_form(request):
     user_preferences = user.user_preferences.all()[0]
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view
-    faculty_to_view = user_preferences.faculty_to_view.all()
-
-    home = expanduser("~")
-    #today = date.today()
-    #date_string = str(today.month)+'/'+str(today.day)+'/'+str(today.year)
-
+    
     can_edit = False
     if user_preferences.permission_level == 1:
         can_edit = True
@@ -918,14 +913,13 @@ def export_data_form(request):
     if request.method == 'POST':
         # save data to the session and then display a link to start the download....
         faculty_export_list = request.POST.getlist('faculty_for_export')
-        request.session['faculty_export_list'] = faculty_export_list
         doc_type = request.POST.getlist('doc_type')[0]
-        request.session['load_sheet_type'] = doc_type
         name_preparer = request.POST.getlist('name_preparer')[0]
+        request.session['faculty_export_list'] = faculty_export_list
+        request.session['load_sheet_type'] = doc_type
         request.session['name_preparer']=name_preparer
         context = {'faculty_list': [], 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': True, 'num_faculty_to_export': len(faculty_export_list)}
         return render(request, 'export_data_form.html', context)
-
 
     else:
         faculty_list = []
@@ -979,54 +973,6 @@ def export_data_form(request):
                                  })
         context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': False, 'num_faculty_to_export': 0}
         return render(request, 'export_data_form.html', context)
-
-
-def excel_dump(request):
-    # https://studygyaan.com/django/how-to-export-excel-file-with-django#comment-580
-    
-    output = io.StringIO()
-    wb = xlwt.Workbook(output)
-    ws = wb.add_sheet('Users Data') # this will make a sheet named Users Data
-
-    # Sheet header, first row
-    row_num = 0
-
-    font_style = xlwt.XFStyle()
-    font_style.font.bold = True
-
-    columns = ['Username', 'First Name', 'Last Name', 'Email Address', ]
-
-    for col_num in range(len(columns)):
-        ws.write(row_num, col_num, columns[col_num], font_style) # at 0 row 0 column 
-
-    # Sheet body, remaining rows
-    font_style = xlwt.XFStyle()
-
-    rows = User.objects.all().values_list('username', 'first_name', 'last_name', 'email')
-    for row in rows:
-        row_num += 1
-        for col_num in range(len(row)):
-            ws.write(row_num, col_num, row[col_num], font_style)
-
-    response = HttpResponse(output.getvalue(), content_type='application/vnd.ms-excel')
-    response['Content-Disposition'] = 'attachment; filename="users.xls"'
-    wb.save(response)
-
-    #http_response = export(request, app_name='ingredients', model_name='ingredient')
-    #file_ = ContentFile(response.content)
-    #file_.name = response['Content-Disposition'].split('=')[-1] 
-    #print(file_)
-    #print(file_.name)
-    #file_.save()
-
-    #new_export = IngredientExportItem(file_name="x", slug="x", file=file_)
-    #new_export.save()
-    #return HttpResponseRedirect('/')
-
-    #data = {}
-    #return render(request, "temp.html", data)
-    return response
-
 
 def combine_data_diff_faculty(faculty_data, tab_name, is_adjunct, is_in_this_dept):
     """
