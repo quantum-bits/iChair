@@ -233,7 +233,7 @@ def display_notes(request):
     temp_data = Note.objects.all().filter(Q(department__abbrev=department.abbrev)&Q(year__begin_on__year=academic_year))
 
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
         
 
@@ -270,7 +270,7 @@ def display_messages(request):
     messages = department.messages_this_year(academic_year_object, False)
     
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     context = {
@@ -376,7 +376,7 @@ def collect_data_for_summary(request):
     faculty_with_loads_are_being_viewed = True
     faculty_not_being_viewed = []
 
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
 #
@@ -885,7 +885,7 @@ def export_data(request):
                 }
     book = prepare_excel_workbook(final_faculty_data_list,data_dict)
     #next = request.GET.get('next', 'profile')
-    response = HttpResponse(content_type="application/ms-excel")
+    response = HttpResponse(content_type="application/vnd.ms-excel")
     #response = HttpResponseRedirect('/planner/deptloadsummary', mimetype="application/ms-excel")
     response['Content-Disposition'] = 'attachment; filename=%s' % file_name
     book.save(response)
@@ -907,7 +907,7 @@ def export_data_form(request):
     academic_year = user_preferences.academic_year_to_view
     
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     if request.method == 'POST':
@@ -1537,7 +1537,7 @@ def weekly_schedule(request):
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
 #    department = Department.objects.filter(abbrev=u'PEN')[0]
@@ -1679,7 +1679,7 @@ def daily_schedule(request):
     full_semester = CourseOffering.full_semester()
 
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     department = user_preferences.department_to_view
@@ -1934,7 +1934,7 @@ def room_schedule(request):
     full_semester = CourseOffering.full_semester()
 
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     department = user_preferences.department_to_view
@@ -2078,7 +2078,7 @@ def course_schedule(request):
     full_semester = CourseOffering.full_semester()
 
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     department = user_preferences.department_to_view
@@ -2487,7 +2487,7 @@ def course_summary(request, allow_delete, show_all_years='0'):
     faculty_in_dept_id_list = [fac.id for fac in department.faculty.all()]
 
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     courses_from_other_departments = False
@@ -3084,7 +3084,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
     academic_year_object = user_preferences.academic_year_to_view
 
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     registrar_data_list = []
@@ -3361,7 +3361,7 @@ def compare_with_banner(request):
     user_preferences = user.user_preferences.all()[0]
 
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     department = user_preferences.department_to_view
@@ -3552,7 +3552,7 @@ def update_faculty_to_view(request):
     year = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all().order_by('department', 'last_name')
     can_edit = False
-    if user_preferences.permission_level == 1:
+    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
         can_edit = True
 
     if request.method == 'POST':
@@ -3644,7 +3644,7 @@ def update_department_to_view(request):
     instance = user_preferences
 
 # only a superuser can change his/her department to view.
-    if user_preferences.permission_level != 2:
+    if user_preferences.permission_level != UserPreferences.SUPER:
         return redirect('home')
 
     if request.method == 'POST':
@@ -4047,9 +4047,9 @@ def search_form(request):
                 for course_offering in course.offerings.all():
                     if course_offering.semester.year.begin_on.year == year:
                         can_edit = False
-                        if user_preferences.permission_level == 1 and year == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
+                        if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER and year == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
                             can_edit = True
-                        elif user_preferences.permission_level == 2 and year == current_year:
+                        elif user_preferences.permission_level == UserPreferences.SUPER and year == current_year:
                             can_edit = True
 
                         scheduled_classes = course_offering.scheduled_classes.all()
@@ -4150,9 +4150,9 @@ def search_form_time(request):
             for course in course_list:
                 for course_offering in course.offerings.filter(semester__id = semester_id):
                     can_edit = False
-                    if user_preferences.permission_level == 1 and year_for_search == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
+                    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER and year_for_search == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
                         can_edit = True
-                    elif user_preferences.permission_level == 2 and year_for_search == current_year:
+                    elif user_preferences.permission_level == UserPreferences.SUPER and year_for_search == current_year:
                         can_edit = True
 
                     scheduled_classes = course_offering.scheduled_classes.all()

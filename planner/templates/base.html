@@ -103,9 +103,11 @@ div.page-name h1 {
 
 
 <div class="short-nav">
-    <a href="{% url 'profile' %}">profile</a> | 
-    <a href="{% url 'display_notes' %}">notes</a> |
-    <a href="{% url 'display_messages' %}">messages</a> |
+	<a href="{% url 'profile' %}">profile</a> | 
+	{% if user_is_dept_scheduler %}
+		<a href="{% url 'display_notes' %}">notes</a> |
+		<a href="{% url 'display_messages' %}">messages</a> |
+	{% endif %}
     <a href="{% url 'getting_started' %}">help</a> | 
     {% if user.is_authenticated %}
     <a href="{% url 'logout' %}?next={% url 'login' %}">logout</a>
@@ -132,7 +134,9 @@ div.page-name h1 {
 		<b class="caret"></b>
 	      </a>
 	      <ul class="dropdown-menu">
+		{% if user_is_dept_scheduler %}
 		<li><a href="{% url 'export_data_form' %}">Export Faculty Loads</a></li>
+		{% endif %}
 		<li><a href="{% url 'export_summary_data' %}" download>Export Summary Data</a></li>
 		<li><a href="{% url 'search_form' %}">Search by Course Name</a></li>
 		<li><a href="{% url 'search_form_time' %}">Search by Course Time</a></li>
@@ -152,16 +156,15 @@ div.page-name h1 {
 		<li><a href="{% url 'weekly_course_schedule_entire_dept' %}">Summary</a></li>
 	      </ul>
 	    </li>
-      <li title="View the course schedule in the Registrar's format" id="nav-registrarsummary"><a href="{% url 'registrar_schedule' 0 %}">Master Schedule</a><i></i></li>
-      <li title="Compare to Banner data and communicate with the Registrar" id="nav-bannercomparison"><a href="{% url 'compare_with_banner' %}">Schedule Edits</a><i></i></li>
-	    <li title = "Edit course properties; view an overall summary of courses offered during different years" id="nav-coursesummary"><a href="{% url 'course_summary' 0 %}">Course Summary</a><i></i></li>
+      	<li title="View the course schedule in the Registrar's format" id="nav-registrarsummary"><a href="{% url 'registrar_schedule' 0 %}">Master Schedule</a><i></i></li>
+	  	{% if user_is_dept_scheduler %}
+		  <li title="Compare to Banner data and communicate with the Registrar" id="nav-bannercomparison"><a href="{% url 'compare_with_banner' %}">Schedule Edits</a><i></i></li>
+		{% endif %}
+		<li title = "Edit course properties; view an overall summary of courses offered during different years" id="nav-coursesummary"><a href="{% url 'course_summary' 0 %}">Course Summary</a><i></i></li>
 
 	  </ul>
 	</div> {# navbar-inner #}
       </div> {# navbar #}
-
-
-
 
       <div class="row-fluid">
 	<div class="span3">

@@ -101,6 +101,9 @@ class Command(BaseCommand):
         print(rows[0][0])
 
         number_errors = 0
+        number_meetings = 0
+        repeated_meetings_list = []
+        class_meeting_dict = {}
         error_list = []
 
         # start by clearing the banner database!
@@ -109,23 +112,23 @@ class Command(BaseCommand):
         for banner_subject in banner_subjects:
             # this clears all subjects, courses, course offerings and scheduled classes (cascade delete!)
             deleted_subjects = banner_subject.delete()
-            print('the following were deleted: ')
-            print(deleted_subjects)
+            #print('the following were deleted: ')
+            #print(deleted_subjects)
 
         for co in course_offerings:
-            print('%s %s %s %s %s %s %s %s %s' % (co.campus, co.term, co.part_of_term, co.course_reference_number,
-                                                  co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
+            #print('%s %s %s %s %s %s %s %s %s' % (co.campus, co.term, co.part_of_term, co.course_reference_number,
+            #                                      co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
             #print('type of credit hours: ', type(co.section_credit_hours))
             # print(int(co.section_credit_hours))
 
             subjects = BannerSubject.objects.filter(abbrev=co.subject_code)
             if len(subjects) == 0:
                 # create new subject
-                print('creating new subject!')
+                #print('creating new subject!')
                 subject = BannerSubject.objects.create(abbrev=co.subject_code)
                 subject.save()
             elif len(subjects) == 1:
-                print('there is already exactly one copy of '+co.subject_code)
+                #print('there is already exactly one copy of '+co.subject_code)
                 subject = subjects[0]
             else:
                 # this exits the course_offerings loop....
@@ -139,7 +142,7 @@ class Command(BaseCommand):
             # print(courses)
             if len(courses) == 0:
                 # create new course
-                print('creating new course!')
+                #print('creating new course!')
                 course = BannerCourse.objects.create(
                     subject=subject,
                     number=co.course_number,
@@ -147,7 +150,7 @@ class Command(BaseCommand):
                     credit_hours=int(co.section_credit_hours))
                 course.save()
             elif len(courses) == 1:
-                print('there is already exactly one copy of '+co.course+' with the appropriate properties....')
+                #print('there is already exactly one copy of '+co.course+' with the appropriate properties....')
                 course = courses[0]
             else:
                 # this exits the course_offerings loop....
@@ -161,7 +164,7 @@ class Command(BaseCommand):
 
             if len(banner_course_offerings) == 0:
                 # create new course offering
-                print('creating new course offering!')
+                #print('creating new course offering!')
                 if co.part_of_term == '1':
                     semester_fraction = BannerCourseOffering.FULL_SEMESTER
                 elif (co.part_of_term == 'H1') or (co.part_of_term == '2'): # '2' is used for the May session if the semester is 'Summer'
@@ -184,7 +187,7 @@ class Command(BaseCommand):
                 course_offering.save()
             elif len(banner_course_offerings) == 1:
                 # assume that all other course offering properties are consistent, since the CRN+term are supposed to be a unique identifier
-                print('there is already one copy of the course offering with CRN '+co.course_reference_number+' for the semester '+co.term)
+                #print('there is already one copy of the course offering with CRN '+co.course_reference_number+' for the semester '+co.term)
                 course_offering = banner_course_offerings[0] # I don't think that this actually gets used....
             else:
                 # this exits the course_offerings loop....
@@ -200,25 +203,24 @@ class Command(BaseCommand):
             if co_meeting.faculty_course_meeting_key is None:
                 # there is nothing to do, since the course offering has already been created...should be good to go
                 num_no_mtgs_sched = num_no_mtgs_sched + 1
-                print('%s %s %s %s -- no meeting times or anything scheduled!!!' %
-                      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE))
+                #print('%s %s %s %s -- no meeting times or anything scheduled!!!' %
+                #      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE))
             elif (co_meeting.DAY == None) or (co_meeting.STARTTIME == None) or (co_meeting.ENDTIME == None):
                 # iChair needs all of these in order to have a ScheduledClass object, so if any are missing, we need to skip it (at least for now)
                 # if all of these are missing, there's nothing to worry about.  If only some are missing, then we may need to think a bit more....
                 num_no_mtgs_sched = num_no_mtgs_sched + 1
-                print('%s %s %s %s %s %s %s %s -- have partial meeting time information!!!' %
-                      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.MEETINGTIMEKEY))
+                #print('%s %s %s %s %s %s %s %s -- have partial meeting time information!!!' %
+                #      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.MEETINGTIMEKEY))
                 if not ((co_meeting.DAY == None) and (co_meeting.STARTTIME == None) and (co_meeting.ENDTIME == None)):
                     # at least one of these is not None....
                     classes_missing_scheduled_meeting_info.append(co_meeting)
                     print('%s %s %s %s %s %s %s -- have partial meeting time information!!!' %
                       (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
             else:
-                print('%s %s %s %s %s %s %s %s %s %s %s ' % (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.CREDHRS,
-                                                         co_meeting.ENRLCAP, co_meeting.term, co_meeting.part_of_term, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
+                #print('%s %s %s %s %s %s %s %s %s %s %s ' % (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.CREDHRS,
+                #                                         co_meeting.ENRLCAP, co_meeting.term, co_meeting.part_of_term, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
                 try:
                     course_offering = BannerCourseOffering.objects.get(Q(crn = co_meeting.CRN)&Q(term_code = co_meeting.term))
-                    print("Found: ", course_offering)
                 except BannerCourseOffering.DoesNotExist:
                     number_errors = number_errors +1
                     error_string = 'CRN '+co_meeting.CRN+' for semester '+co_meeting.term+' does not exist.'
@@ -267,31 +269,72 @@ class Command(BaseCommand):
                     error_list.append(error_string)
                     raise CommandError(error_string)
                 
-                print('start: '+start_time+'; end: '+end_time)
+                class_meeting_repeated = False
+                co_key = str(course_offering.id)
+                # https://stackoverflow.com/questions/1323410/should-i-use-has-key-or-in-on-python-dicts
+                if co_key in class_meeting_dict:
+                    for mtg in class_meeting_dict[co_key]['scheduled_meetings']:
+                        if (mtg['day'] == day_of_week) and (mtg['begin_at'] == start_time) and (mtg['end_at'] == end_time):
+                            # We have a repeat; this can occur if a course offering is offered in two different rooms at the same
+                            # time and day, which is allowed in Banner; this may be associated with a trick in Banner; not sure.
+                            # Since we are not concerned with rooms during schedule editing time, we merge these multiple-meetings 
+                            # into one.
+                            print('A meeting time is being repeated!!!', co_meeting.CRN, co_meeting.term)
+                            print(day_of_week, ' ', start_time, ' ', end_time)
+                            print(class_meeting_dict[co_key])
+                            repeated_meetings_list.append({
+                                'CRN': co_meeting.CRN,
+                                'course': co_meeting.COURSE,
+                                'term_code': co_meeting.term,
+                                'day': day_of_week,
+                                'begin_at': start_time,
+                                'end_at': end_time
+                            })
+                            class_meeting_repeated = True
+                    if not class_meeting_repeated:
+                        class_meeting_dict[co_key]['scheduled_meetings'].append({
+                            'day': day_of_week,
+                            'begin_at': start_time,
+                            'end_at': end_time
+                        })
+                else:
+                    class_meeting_dict[co_key] = {
+                        'CRN': co_meeting.CRN,
+                        'term_code': co_meeting.term,
+                        'scheduled_meetings': []
+                    }
+                    class_meeting_dict[co_key]['scheduled_meetings'].append({
+                        'day': day_of_week,
+                        'begin_at': start_time,
+                        'end_at': end_time
+                    })
 
-                scheduled_class = BannerScheduledClass.objects.create(
-                    day = day_of_week,
-                    begin_at = start_time,
-                    end_at = end_time,
-                    course_offering = course_offering
-                )
-                scheduled_class.save()
+                if not class_meeting_repeated:
+                    scheduled_class = BannerScheduledClass.objects.create(
+                        day = day_of_week,
+                        begin_at = start_time,
+                        end_at = end_time,
+                        course_offering = course_offering
+                    )
+                    scheduled_class.save()
+                    number_meetings += 1
 
+        print(' ')
         print('Number of course offerings without scheduled classes: ', num_no_mtgs_sched)
 
-        print('Assigning instructors....')
+        #print('Assigning instructors....')
         for co_instructor in course_instructors:
-            if co_instructor.faculty_key is None:
+            if co_instructor.faculty_key is not None:
                 # nothing more to do in this case....
-                print('%s %s -- NO INSTRUCTOR!!!' %
-                      (co_instructor.term, co_instructor.course))
-            else:
-                print('%s %s %s %s %s %s %s %s %s ' % (co_instructor.course_section_key, co_instructor.term, co_instructor.course, co_instructor.faculty_key,
-                                                       co_instructor.primary_instructor, co_instructor.secondary_instructor, co_instructor.pidm, co_instructor.last_name, co_instructor.first_name))
+                #print('%s %s -- NO INSTRUCTOR!!!' %
+                #      (co_instructor.term, co_instructor.course))
+            #else:
+                #print('%s %s %s %s %s %s %s %s %s ' % (co_instructor.course_section_key, co_instructor.term, co_instructor.course, co_instructor.faculty_key,
+                #                                       co_instructor.primary_instructor, co_instructor.secondary_instructor, co_instructor.pidm, co_instructor.last_name, co_instructor.first_name))
                 
                 try:
                     course_offering = BannerCourseOffering.objects.get(Q(crn = co_instructor.course_reference_number)&Q(term_code = co_instructor.term))
-                    print("Found: ", course_offering)
+                    #print("Found: ", course_offering)
                 except BannerCourseOffering.DoesNotExist:
                     number_errors = number_errors +1
                     error_string = 'CRN '+co_instructor.course_reference_number+' for semester '+co_instructor.term+' does not exist.'
@@ -305,7 +348,7 @@ class Command(BaseCommand):
                 
                 try:
                     instructor = BannerFacultyMember.objects.get(pidm=co_instructor.pidm)
-                    print('instructor already exists....')
+                    #print('instructor already exists....')
                     #raise CommandError(instructor_first_name+' '+instructor_last_name+' already exists in the database.')
                 except BannerFacultyMember.DoesNotExist:
                     instructor = BannerFacultyMember.objects.create(
@@ -315,7 +358,7 @@ class Command(BaseCommand):
                         middle_name = co_instructor.middle_name,
                         pidm = co_instructor.pidm)
                     instructor.save()
-                    print('created instructor.... ')
+                    #print('created instructor.... ')
                 
                 is_primary = co_instructor.primary_instructor == 1
 
@@ -330,17 +373,17 @@ class Command(BaseCommand):
                     is_primary = is_primary)
                 offering_instructor.save()
                 
-        print('Add comments to course offerings....')
+        #print('Add comments to course offerings....')
         for co_comment in course_offering_comments:
-            print(co_comment.COMMENTTERM, ' ', co_comment.term, ' ', co_comment.COMMENTCRN, ' ',co_comment.CRN, ' ',co_comment.SEQNO, ' ', co_comment.COMMENTTEXT)
-            if co_comment.COMMENTTERM is None:
+            #print(co_comment.COMMENTTERM, ' ', co_comment.term, ' ', co_comment.COMMENTCRN, ' ',co_comment.CRN, ' ',co_comment.SEQNO, ' ', co_comment.COMMENTTEXT)
+            if co_comment.COMMENTTERM is not None:
                 # nothing more to do in this case; the course offering has no comments....
-                print('%s %s -- NO COMMENT!!!' %
-                      (co_comment.term, co_comment.CRN))
-            else:
+                #print('%s %s -- NO COMMENT!!!' %
+                #      (co_comment.term, co_comment.CRN))
+            #else:
                 try:
                     course_offering = BannerCourseOffering.objects.get(Q(crn = co_comment.CRN)&Q(term_code = co_comment.term))
-                    print("Found: ", course_offering)
+                    #print("Found: ", course_offering)
                 except BannerCourseOffering.DoesNotExist:
                     number_errors = number_errors +1
                     error_string = 'CRN '+co_comment.CRN+' for semester '+co_comment.term+' does not exist.'
@@ -359,6 +402,25 @@ class Command(BaseCommand):
                 course_offering_comment.save()
 
         print(' ')
+        print('number of class meetings scheduled: ', number_meetings)
+
+        print(' ')
+        print('number of repeated meetings: ', len(repeated_meetings_list))
+        if len(repeated_meetings_list) > 0:
+            print(' ')
+            print('Repeated meetings can occur if there are two or more rooms booked for a ')
+            print('course for the exact same time slot.  At this point we are not allowing')
+            print('this in iChair (and in any case, we are not concerned with rooms during the')
+            print('schedule editing process), so we coalesce these multiple meetings into one.')
+            print('If we incorporate rooms into the schedule editing process in the future we')
+            print('may need to start being more careful about this...!')
+
+        print(' ')
+        print('repeated meetings (only scheduled once each): ')
+        for mtg in repeated_meetings_list:
+            print(mtg)
+
+        print(' ')
         print('classes with partial meeting info: ')
         print(' ')
         for pmi_course in classes_missing_scheduled_meeting_info:
@@ -371,6 +433,7 @@ class Command(BaseCommand):
         
         print(' ')
         print('total number of errors encountered: ', number_errors)
+
         if len(error_list) > 0:
             for error in error_list:
                 print(error)
