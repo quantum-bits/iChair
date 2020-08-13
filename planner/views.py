@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from django import forms
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.forms.models import inlineformset_factory
@@ -232,11 +232,6 @@ def display_notes(request):
 
     temp_data = Note.objects.all().filter(Q(department__abbrev=department.abbrev)&Q(year__begin_on__year=academic_year))
 
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
-        
-
 #    print temp_data
 
     datablock = []
@@ -250,7 +245,6 @@ def display_notes(request):
     context = {
         'department': department,
         'datablock': datablock,
-        'can_edit': can_edit,
         'year': academic_year_string,
         'id': user_preferences.id,
         }
@@ -269,14 +263,9 @@ def display_messages(request):
 
     messages = department.messages_this_year(academic_year_object, False)
     
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
-
     context = {
         'department': department,
         'messages': messages,
-        'can_edit': can_edit,
         'year': academic_year_string,
         'id': user_preferences.id,
         }
@@ -284,6 +273,11 @@ def display_messages(request):
 
 @login_required
 def delete_message(request, id):
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
     instance = Message.objects.get(pk = id)
 
     instance.delete()
@@ -296,7 +290,9 @@ def add_new_note(request):
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
-
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+    
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view
 
@@ -320,6 +316,11 @@ def add_new_note(request):
 
 @login_required
 def update_note(request, id):
+
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
 
     instance = Note.objects.get(pk = id)
 #    print instance.note
@@ -371,13 +372,9 @@ def collect_data_for_summary(request):
     academic_year_object = user_preferences.academic_year_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
-    can_edit = False
 
     faculty_with_loads_are_being_viewed = True
     faculty_not_being_viewed = []
-
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
 #
 # NOTE:
@@ -727,7 +724,6 @@ def collect_data_for_summary(request):
              'instructorlist':instructor_id_list,
              'instructor_integer_list':instructor_integer_list,
              'data_list_by_instructor':data_list_by_instructor,
-             'can_edit': can_edit,
              'id': user_preferences.id,
              'unassigned_overassigned_data_list':unassigned_overassigned_data_list,
              'unassigned_admin_data_list':unassigned_admin_data_list,
@@ -903,12 +899,11 @@ def export_data_form(request):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+    
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view
-    
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
     if request.method == 'POST':
         # save data to the session and then display a link to start the download....
@@ -918,7 +913,7 @@ def export_data_form(request):
         request.session['faculty_export_list'] = faculty_export_list
         request.session['load_sheet_type'] = doc_type
         request.session['name_preparer']=name_preparer
-        context = {'faculty_list': [], 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': True, 'num_faculty_to_export': len(faculty_export_list)}
+        context = {'faculty_list': [], 'academic_year': academic_year,'ready_to_download_data': True, 'num_faculty_to_export': len(faculty_export_list)}
         return render(request, 'export_data_form.html', context)
 
     else:
@@ -971,7 +966,7 @@ def export_data_form(request):
                                  'is_adjunct': faculty.is_adjunct(),
                                  'comment': comment
                                  })
-        context = {'faculty_list': faculty_list, 'academic_year': academic_year,'can_edit': can_edit,'ready_to_download_data': False, 'num_faculty_to_export': 0}
+        context = {'faculty_list': faculty_list, 'academic_year': academic_year, 'ready_to_download_data': False, 'num_faculty_to_export': 0}
         return render(request, 'export_data_form.html', context)
 
 def combine_data_diff_faculty(faculty_data, tab_name, is_adjunct, is_in_this_dept):
@@ -1324,6 +1319,9 @@ def update_course_offering(request,id, daisy_chain):
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
     user_department = user_preferences.department_to_view
 
     instance = CourseOffering.objects.get(pk = id)
@@ -1395,7 +1393,7 @@ def update_course_offering(request,id, daisy_chain):
 #            next = request.GET.get('next', 'profile')
             
             revised_course_offering = CourseOffering.objects.get(pk = id)
-            if user_department != course_department:
+            if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
                 revised_co_snapshot = revised_course_offering.snapshot
                 updated_fields = ["offering_instructors"]
                 if original_co_snapshot["load_available"] != revised_co_snapshot["load_available"]:
@@ -1404,7 +1402,11 @@ def update_course_offering(request,id, daisy_chain):
                     updated_fields.append("max_enrollment")
                 if original_co_snapshot["comment"] != revised_co_snapshot["comment"]:
                     updated_fields.append("comment")
-                create_message_course_offering_update(user.username, user_department, course_department, year,
+                if user_preferences.permission_level == UserPreferences.SUPER:
+                    user_department_param = None
+                else:
+                    user_department_param = user_department
+                create_message_course_offering_update(user.username, user_department_param, course_department, year,
                                             original_co_snapshot, revised_co_snapshot, updated_fields)
 
             if "return_to_page" in request.session:
@@ -1450,6 +1452,9 @@ def update_class_schedule(request,id, daisy_chain):
     user_preferences = user.user_preferences.all()[0]
     user_department = user_preferences.department_to_view
 
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
     if int(daisy_chain):
         daisy_chaining = True
     else:
@@ -1460,7 +1465,7 @@ def update_class_schedule(request,id, daisy_chain):
     original_co_snapshot = instance.snapshot
     year = instance.semester.year
 
-    print("original: ", original_co_snapshot)
+    #print("original: ", original_co_snapshot)
 
 #    form = CourseOfferingForm(instance=instance)
 # create the formset class
@@ -1483,13 +1488,17 @@ def update_class_schedule(request,id, daisy_chain):
         formset.is_valid()
         formset_error=formset.non_form_errors()
 
-        if formset.is_valid() and not formset_error:
+        if formset.is_valid() and (not formset_error):
 #            form.save()
             formset.save()
             revised_course_offering = CourseOffering.objects.get(pk = id)
-            if user_department != course_department:
+            if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
                 revised_co_snapshot = revised_course_offering.snapshot
-                create_message_course_offering_update(user.username, user_department, course_department, year,
+                if user_preferences.permission_level == UserPreferences.SUPER:
+                    user_department_param = None
+                else:
+                    user_department_param = user_department
+                create_message_course_offering_update(user.username, user_department_param, course_department, year,
                                             original_co_snapshot, revised_co_snapshot, ["scheduled_classes"])
 
             if not int(daisy_chain):
@@ -1536,9 +1545,6 @@ def weekly_schedule(request):
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
     academic_year_string = str(academic_year)+'-'+str(academic_year+1)
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
 #    department = Department.objects.filter(abbrev=u'PEN')[0]
 #    academic_year = 2013
@@ -1664,7 +1670,7 @@ def weekly_schedule(request):
                                             'offerings': offering_list})
         data_list.append(data_this_professor)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'weekly_schedule.html', context)
 
 @login_required
@@ -1677,10 +1683,6 @@ def daily_schedule(request):
 
     partial_semesters = CourseOffering.partial_semesters()
     full_semester = CourseOffering.full_semester()
-
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -1879,7 +1881,7 @@ def daily_schedule(request):
                                     'offerings': offering_list})
         data_list.append(data_this_day)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'daily_schedule.html', context)
 
 def construct_dropdown_list(offering_dict):
@@ -1932,10 +1934,6 @@ def room_schedule(request):
 
     partial_semesters = CourseOffering.partial_semesters()
     full_semester = CourseOffering.full_semester()
-
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -2063,7 +2061,7 @@ def room_schedule(request):
                                     'offerings': offering_list})
         data_list.append(data_this_room)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'room_schedule.html', context)
 
 @login_required
@@ -2076,10 +2074,6 @@ def course_schedule(request):
 
     partial_semesters = CourseOffering.partial_semesters()
     full_semester = CourseOffering.full_semester()
-
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view.begin_on.year
@@ -2237,7 +2231,7 @@ def course_schedule(request):
                                             'offerings': []})
                 data_list.append(data_this_course)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view,'can_edit': can_edit}
+    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'course_schedule.html', context)
 
 def check_for_conflicts(conflict_dict):
@@ -2486,10 +2480,6 @@ def course_summary(request, allow_delete, show_all_years='0'):
 
     faculty_in_dept_id_list = [fac.id for fac in department.faculty.all()]
 
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
-
     courses_from_other_departments = False
 
     ii = 0
@@ -2581,7 +2571,6 @@ def course_summary(request, allow_delete, show_all_years='0'):
     context={'course_data_list':data_list, 'year_list':year_list, 
              'courses_from_other_departments': courses_from_other_departments,
              'number_semesters': number_semesters,
-             'can_edit': can_edit,
              'year':academic_year_string, 
              'id': user_preferences.id, 
              'department': user_preferences.department_to_view,
@@ -2663,6 +2652,8 @@ def new_class_schedule(request,id, daisy_chain):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     user_department = user_preferences.department_to_view
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
 
     if int(daisy_chain):
         daisy_chaining = True
@@ -2736,6 +2727,9 @@ def add_faculty(request):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
     department = user_preferences.department_to_view
     university = department.school.university
 
@@ -2778,6 +2772,8 @@ def select_course(request):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
     department = user_preferences.department_to_view
     # https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
     if request.method == 'POST':
@@ -2812,6 +2808,9 @@ def add_course(request, daisy_chain):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
     department_id = user_preferences.department_to_view.id
     
     course_list=[]
@@ -2852,6 +2851,9 @@ def add_course_offering(request, course_id, daisy_chain):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
 #    department_id = user_preferences.department_to_view.id
     academic_year_id = user_preferences.academic_year_to_view.id
     course = Course.objects.get(pk = course_id)
@@ -2911,6 +2913,9 @@ def update_course(request, id):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
     department_id = user_preferences.department_to_view.id
 
     print('inside update course!')
@@ -2953,6 +2958,8 @@ def update_course_original(request, id):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
     department_id = user_preferences.department_to_view.id
 
     instance = Course.objects.get(pk = id)
@@ -2977,6 +2984,8 @@ def delete_course_offering(request, id):
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
     user_department = user_preferences.department_to_view
 
     if "return_to_page" in request.session:
@@ -3082,10 +3091,6 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
 
     academic_year_string = str(year_to_view)+'-'+str(year_to_view + 1)
     academic_year_object = user_preferences.academic_year_to_view
-
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
     registrar_data_list = []
     faculty_time_conflicts = []
@@ -3337,7 +3342,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
              'faculty_time_conflicts': faculty_time_conflicts,
              'room_conflicts': room_conflicts,
              'overbooked_rooms': overbooked_rooms,
-             'academic_year': academic_year_string, 'can_edit': can_edit, 'id': user_preferences.id,
+             'academic_year': academic_year_string, 'id': user_preferences.id,
              'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large,
              'messages': department.messages_this_year(academic_year_object),
              'semester_options': semester_options,
@@ -3359,10 +3364,8 @@ def compare_with_banner(request):
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
-
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
+    if (user_preferences.permission_level == UserPreferences.VIEW_ONLY) or (user_preferences.permission_level == UserPreferences.SUPER):
+        return redirect("home")
 
     department = user_preferences.department_to_view
     year_to_view = user_preferences.academic_year_to_view.begin_on.year
@@ -3378,7 +3381,6 @@ def compare_with_banner(request):
     context = {
         'json_data': json_data,
         'academic_year_string': academic_year_string, 
-        'can_edit': can_edit,
         'year': user_preferences.academic_year_to_view,
         'department': department
         }
@@ -3393,6 +3395,8 @@ def update_other_load(request, id):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
     instance = OtherLoadType.objects.get(pk = id)
 #    print instance
 
@@ -3551,9 +3555,6 @@ def update_faculty_to_view(request):
     department = user_preferences.department_to_view
     year = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all().order_by('department', 'last_name')
-    can_edit = False
-    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER:
-        can_edit = True
 
     if request.method == 'POST':
         faculty_to_display_id_list = request.POST.getlist('faculty_to_display')
@@ -3625,8 +3626,7 @@ def update_faculty_to_view(request):
                    'json_faculty_with_loads': json_faculty_with_loads,
                    'json_faculty_without_loads': json_faculty_without_loads,
                    'department': department,
-                   'academic_year': year,
-                   'can_edit': can_edit
+                   'academic_year': year
         }
         return render(request, 'update_faculty_to_view.html', context)
 
@@ -3677,6 +3677,8 @@ def update_faculty_member(request, id):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
 
     instance = FacultyMember.objects.get(pk = id)
     # if the faculty member's pidm is None, his or her data has not yet been aligned with Banner, so allow for name editing
@@ -3806,6 +3808,9 @@ def copy_courses(request, id, check_all_flag):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
     department = user_preferences.department_to_view
 
     academic_year_copy_from = AcademicYear.objects.get(pk = id)
@@ -4929,6 +4934,8 @@ def add_course_confirmation(request, daisy_chaining):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
     department = user_preferences.department_to_view
 
     if request.method == 'POST':
@@ -4954,6 +4961,8 @@ def update_semester_for_course_offering(request, id):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
     department = user_preferences.department_to_view
     year_to_view = user_preferences.academic_year_to_view.begin_on.year
     year = user_preferences.academic_year_to_view

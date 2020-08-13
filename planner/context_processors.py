@@ -19,5 +19,5 @@ def add_variable_to_context(request):
         user_is_dept_scheduler = user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER
 
     return {
-        'user_is_dept_scheduler': user_is_dept_scheduler
+        'can_edit': user_is_dept_scheduler
     }

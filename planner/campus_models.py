@@ -1009,6 +1009,13 @@ class ScheduledClass(StampedModel):
         return '{0} ({1} {2})'.format(self.course_offering, self.day, self.begin_at)
 
 class UserPreferences(models.Model):
+    # at some point might want to make this a one-to-one field; see here for a useful tutorial:
+    # https://simpleisbetterthancomplex.com/tutorial/2016/07/22/how-to-extend-django-user-model.html#onetoone
+    # if do this, might be able to write a decorator that redirects away from a form (for example) if the user
+    # doesn't have sufficient permission:
+    # https://medium.com/@MicroPyramid/custom-decorators-to-check-user-roles-and-permissions-in-django-ece6b8a98d9d
+    # might want to do this using two decorators (i.e., keeping @login_required); in that case:
+    # https://blog.tecladocode.com/python-how-to-use-multiple-decorators-on-one-function/
 
     VIEW_ONLY = 0
     DEPT_SCHEDULER = 1

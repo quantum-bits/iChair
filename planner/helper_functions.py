@@ -110,6 +110,10 @@ def create_message_course_offering_update(username_other_department, user_depart
                                             original_co_snapshot, revised_co_snapshot, updated_fields):
     """
     Create a message informing a department that a user from a different department has updated a course offering.
+        - user_department can be a Department object or None (if the user has permission level of SUPER); the reason for doing this
+        (i.e., allowing None as an option) is that it looks a bit strange to get a message saying that the user 'registrar' from the 
+        department CSE has made a change, or something.  It's true that SUPER users are associated with one department (at a time),
+        but really they are department-less....
         - original_co_snapshot: a course_offering.snapshot dictionary or None (if None, then the user created a new course offering)
         - revised_co_snapshot: a course_offering.snapshot dictionary or None (if None, then the user deleted a course offering)
         - updated_fields: an array of snapshot dictionary keys that may have been updated
@@ -130,9 +134,14 @@ def create_message_course_offering_update(username_other_department, user_depart
     if (original_co_snapshot != None) and (revised_co_snapshot != None):
         # a course offering was updated
         
-        fragment_text = "The user '{0}' from the {1} department made a change to a course offering in your department on {2}.".format(
+        if user_department != None:
+            fragment_text = "The user '{0}' from the {1} department made a change to a course offering in your department on {2}.".format(
                                                 username_other_department, 
                                                 user_department.abbrev,
+                                                datetime_string)
+        else:
+            fragment_text = "The user '{0}' made a change to a course offering in your department on {1}.".format(
+                                                username_other_department,
                                                 datetime_string)
         #print(fragment_text)
         message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
@@ -169,9 +178,14 @@ def create_message_course_offering_update(username_other_department, user_depart
         sequence_number += 1
     elif (original_co_snapshot != None) and (revised_co_snapshot == None):
         # deleted a course offering
-        fragment_text = "The user '{0}' from the {1} department deleted a course offering from your department on {2}.".format(
+        if user_department != None:
+            fragment_text = "The user '{0}' from the {1} department deleted a course offering from your department on {2}.".format(
                                                 username_other_department, 
                                                 user_department.abbrev, 
+                                                datetime_string)
+        else:
+            fragment_text = "The user '{0}' deleted a course offering from your department on {1}.".format(
+                                                username_other_department,
                                                 datetime_string)
         #print(fragment_text)
         message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
@@ -194,9 +208,14 @@ def create_message_course_offering_update(username_other_department, user_depart
         sequence_number += 1
     elif (original_co_snapshot == None) and (revised_co_snapshot != None):
         # created a new course offering
-        fragment_text = "The user '{0}' from the {1} department created a new course offering for your department on {2}.".format(
+        if user_department != None:
+            fragment_text = "The user '{0}' from the {1} department created a new course offering for your department on {2}.".format(
                                                 username_other_department, 
                                                 user_department.abbrev,
+                                                datetime_string)
+        else:
+            fragment_text = "The user '{0}' created a new course offering for your department on {1}.".format(
+                                                username_other_department,
                                                 datetime_string)
         #print(fragment_text)
         message_fragment = MessageFragment.objects.create(indentation_level = MessageFragment.TAB_ZERO,
