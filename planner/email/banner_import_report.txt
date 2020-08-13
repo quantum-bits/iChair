@@ -1,0 +1,22 @@
+The nightly Data Warehouse import has been completed.  The following is a summary.
+
+Number of meetings scheduled: {{number_meetings}}
+
+Number of course offerings without scheduled classes: {{num_no_mtgs_sched}}
+
+Number of repeated meetings (only one copy of each was made): {{repeated_meetings_list|length}}
+{% if repeated_meetings_list|length > 0 %}
+Repeated class meetings...details:
+{% for mtg in repeated_meetings_list %}
+    {{mtg.course}} (CRN: {{mtg.CRN}}; {{mtg.term_code}}): {{mtg.begin_at}} - {{mtg.end_at}} (day: {{mtg.day}})
+{% endfor %}
+Repeated meetings can occur if there are two or more rooms booked for a course for the exact same time slot.  At this point we are not allowing this in iChair (and in any case, we are not concerned with rooms during the schedule editing process), so we coalesce these multiple meetings into one.  If we incorporate rooms into the schedule editing process in the future we may need to start being more careful about this...!
+{% endif %}
+Number of classes with partial meeting info: {{classes_missing_scheduled_meeting_info|length}}
+{% if classes_missing_scheduled_meeting_info|length > 0 %}
+Classes with partial meetings...details:
+{% for pmc in classes_missing_scheduled_meeting_info %}
+    {{pmc.CMP}} {{pmc.CRN}} {{pmc.COURSE}} ({{pmc.TITLE}}); {{pmc.STARTTIME}} - {{pmc.ENDTIME}} (day: {{pmc.DAY}}); mtg time key: {{pmc.MEETINGTIMEKEY}}
+{% endfor %}
+{% endif %}
+Number of errors: {{number_errors}}

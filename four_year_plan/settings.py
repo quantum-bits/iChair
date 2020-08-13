@@ -151,7 +151,7 @@ WSGI_APPLICATION = 'four_year_plan.wsgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [run_mode.path_to('shared/templates'),],
+        'DIRS': [run_mode.path_to('shared/templates'), 'planner/email/'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -188,8 +188,11 @@ CRONJOBS = [
     ('0 4 * * *', 'django.core.management.call_command', ['warehouse'], {}, '>> warehouse.log')
 ]
 
-# email:
+# email...
+# use this for production:
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# use this for development:
+#EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 if run_mode.debug_toolbar:
     INSTALLED_APPS += ('debug_toolbar',)
