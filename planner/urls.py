@@ -64,6 +64,7 @@ urlpatterns = [
     url(r'^scheduleeditspdf/(\d+)/$', myapp_views.view_pdf, name='view_pdf'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
+    url(r'^copycourseoffering/(\d+)/$', myapp_views.copy_course_offering, name='copy_course_offering'),
     url(r'^chooseyearforcoursecopy/$', myapp_views.choose_year_course_copy, name='choose_year_course_copy'),
 
     url(r'^generatepdf/$', myapp_views.generate_pdf, name='generate_pdf'),

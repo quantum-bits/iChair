@@ -395,7 +395,10 @@
 
       {% if not printer_friendly %}
       {% if can_edit %}
-      <td title = "Delete this course offering" style="text-align: center;"> <a href="{% url 'delete_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Delete</a>  </td>
+      <td style="text-align: center;"> 
+	  	<a title = "Delete this course offering" href="{% url 'delete_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Delete</a> |
+		<a title = "Make a copy of this course offering" href="{% url 'copy_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Copy</a>  
+	  </td>
       {% endif %}
       {% endif %}
     </tr>

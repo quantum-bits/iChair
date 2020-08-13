@@ -15,8 +15,11 @@ def add_variable_to_context(request):
         # in this case, the user is AnonymousUser (i.e., not logged in)
         user_is_dept_scheduler = False
     else:
-        user_preferences = user.user_preferences.all()[0]
-        user_is_dept_scheduler = user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER
+        if len(user.user_preferences.all()) == 1: # have to be careful here, or can crash the admin site...!
+            user_preferences = user.user_preferences.all()[0]
+            user_is_dept_scheduler = user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER
+        else:
+            user_is_dept_scheduler = False
 
     return {
         'can_edit': user_is_dept_scheduler

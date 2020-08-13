@@ -3796,6 +3796,111 @@ def update_loads_to_view_old(request, id):
         context = {'form': form}
         return render(request, 'update_loads_to_view.html', context)
     
+@login_required
+def copy_course_offering(request, id):
+    """
+    Creates a copy of a single course offering (in the same semester, with the same instructors, etc.)  This offering can then be edited if the user wishes.
+    """
+    
+    if "return_to_page" in request.session:
+        sending_page = request.session["return_to_page"]
+    else:
+        sending_page = "home"
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    year = user_preferences.academic_year_to_view
+
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
+    co = CourseOffering.objects.get(pk = id)
+    course_department = co.course.subject.department
+
+    if request.method == 'POST':
+        new_co = CourseOffering.objects.create(course = co.course,
+                                                semester = co.semester,
+                                                semester_fraction = co.semester_fraction,
+                                                load_available = co.load_available,
+                                                max_enrollment = co.max_enrollment,
+                                                comment = co.comment
+                                                )
+        new_co.save()
+
+        id_max_load = None
+        max_load = -1
+        # try to make reasonable assignments on the is_primary property
+        num_eligible_instructors = len(co.offering_instructors.all())
+        num_primaries = 0
+        for instructor in co.offering_instructors.all():
+            if instructor.load_credit > max_load:
+                max_load = instructor.load_credit
+                id_max_load = instructor.instructor.id
+            if instructor.is_primary:
+                num_primaries += 1
+
+        for instructor in co.offering_instructors.all():        
+            if num_primaries == 1:
+                is_primary = instructor.is_primary
+            elif (num_eligible_instructors == 1) or ((num_eligible_instructors > 1) and (instructor.instructor.id == id_max_load)):
+                is_primary = True
+            else:
+                is_primary = False
+            new_offering_instructor = OfferingInstructor.objects.create(course_offering = new_co,
+                                                                        instructor = instructor.instructor,
+                                                                        load_credit = instructor.load_credit,
+                                                                        is_primary = is_primary
+                                                                        )
+            new_offering_instructor.save()
+
+        for sc in co.scheduled_classes.all():
+            schedule_addition = ScheduledClass.objects.create(course_offering = new_co,
+                                                                day = sc.day,
+                                                                begin_at = sc.begin_at,
+                                                                end_at = sc.end_at,
+                                                                room = sc.room,
+                                                                comment = sc.comment
+                                                                )
+            schedule_addition.save()
+        
+        for pc in co.offering_comments.all():
+            new_public_comment = CourseOfferingPublicComment.objects.create(course_offering = new_co,
+                                                                            text = pc.text,
+                                                                            sequence_number = pc.sequence_number
+                                                                            )
+            new_public_comment.save()
+
+
+        if department != course_department:
+            print('user making change does not own the course!')
+            revised_co_snapshot = new_co.snapshot
+            create_message_course_offering_update(user.username, department, course_department, year,
+                                        None, revised_co_snapshot, 
+                                        ["semester", "semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "comment", "public_comments"])
+
+        return redirect(sending_page)
+
+    else:
+        scheduled_classes = co.scheduled_classes.all()
+        if len(scheduled_classes)==0:
+            meetings_scheduled = False
+            meeting_times_list = ["---"]
+            room_list = ["---"]
+        else:
+            meetings_scheduled = True
+            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+        counter = 0
+        meeting_info = []
+        for meeting_time in meeting_times_list:
+            meeting_info.append({'times': meeting_times_list[counter], 'room': room_list[counter]})
+            counter = counter+1
+
+        context = {'title': 'Copy Course Offering', 'course_offering': co, 
+                   'meeting_info': meeting_info,'sending_page': sending_page}
+        return render(request, 'copy_course_offering_confirmation.html', context)
+
 
 @login_required
 def copy_courses(request, id, check_all_flag):
@@ -3843,12 +3948,33 @@ def copy_courses(request, id, check_all_flag):
                                                    )
             new_co.save()
 
+            id_max_load = None
+            max_load = -1
+            # try to make reasonable assignments on the is_primary property
+            num_eligible_instructors = 0
+            num_primaries = 0
+            for instructor in co.offering_instructors.all():
+                if instructor.instructor in faculty_to_view:
+                    num_eligible_instructors += 1
+                    if instructor.load_credit > max_load:
+                        max_load = instructor.load_credit
+                        id_max_load = instructor.instructor.id
+                    if instructor.is_primary:
+                        num_primaries += 1
+
             for instructor in co.offering_instructors.all():
                 # NOTE: instructors are only assigned to courses if they are currently listed as being "viewable"
                 if instructor.instructor in faculty_to_view:
+                    if num_primaries == 1:
+                        is_primary = instructor.is_primary
+                    elif (num_eligible_instructors == 1) or ((num_eligible_instructors > 1) and (instructor.instructor.id == id_max_load)):
+                        is_primary = True
+                    else:
+                        is_primary = False
                     new_offering_instructor = OfferingInstructor.objects.create(course_offering = new_co,
                                                                                 instructor = instructor.instructor,
-                                                                                load_credit = instructor.load_credit
+                                                                                load_credit = instructor.load_credit,
+                                                                                is_primary = is_primary
                                                                                 )
                     new_offering_instructor.save()
 
@@ -3861,6 +3987,13 @@ def copy_courses(request, id, check_all_flag):
                                                                   comment = sc.comment
                                                                   )
                 schedule_addition.save()
+            
+            for pc in co.offering_comments.all():
+                new_public_comment = CourseOfferingPublicComment.objects.create(course_offering = new_co,
+                                                                                text = pc.text,
+                                                                                sequence_number = pc.sequence_number
+                                                                                )
+                new_public_comment.save()
 
 #        next = request.GET.get('next', 'profile')
         return redirect(next)

@@ -1,26 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <style>
   .alert.alert-student-info {
     width: 400px!important;
   }
 </style>
+
 <form action="" method="post">
       {% csrf_token %}
 
 <div class="content-center">
-<h2> Are you sure? </h2>
-<p>
-<div class="alert alert-student-info">  
-  <div>  
-    Are you sure that you want to <b> delete </b> 
-    the following course offering, including associated information about days, times, rooms and professors?<br> <br>
-    <b>This action is not reversible.</b>
-  </div> 
-</div>
-</p>
+<h2> Make a copy of this course offering? </h2>
 
 <p>
 <div class="alert alert-student-info">  
@@ -43,15 +34,17 @@
 
 <p></p>
 
-<p> <a class="btn btn-success" href="{{sending_page}}">No! It's all been a terrible mistake!</a></p>
-
-<p><input class="btn btn-warning" type="submit" value="Delete"></p>
+<p> 
+  <a class="btn btn-success" href="{{sending_page}}">Cancel</a>
+  <input class="btn btn-success" type="submit" value="Let's do it!">
+</p>
 </form>
+
 
    <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Delete {{course_offering.course.subject.abbrev}} {{course_offering.course.number}} ({{course_offering.semester}})</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Copy {{course_offering.course.subject.abbrev}} {{course_offering.course.number}} ({{course_offering.semester}})</h1>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 
