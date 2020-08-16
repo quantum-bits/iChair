@@ -25,11 +25,23 @@ class Command(BaseCommand):
     help = "Manage data warehouse information"
 
     def handle(self, *args, **options):
-        try:
+        #try:
             connection = pyodbc.connect(
                 f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
             cursor = connection.cursor()
             rows = cursor.execute("select @@VERSION").fetchall()
+
+            msg = EmailMultiAlternatives(
+                # title:
+                ("Banner progress...."),
+                # message:
+                "Got here 1",
+                # from:
+                "noreply@taylor.edu",
+                # to:
+                ["knkiers@taylor.edu"]
+            )
+            msg.send()
 
             term_group = ""
             for semester in BannerSemesterCodeToImport.objects.all():
@@ -102,6 +114,18 @@ class Command(BaseCommand):
 
             print(rows[0][0])
 
+            msg = EmailMultiAlternatives(
+                # title:
+                ("Banner progress...."),
+                # message:
+                "Got here 2",
+                # from:
+                "noreply@taylor.edu",
+                # to:
+                ["knkiers@taylor.edu"]
+            )
+            msg.send()
+            
             number_errors = 0
             number_meetings = 0
             repeated_meetings_list = []
@@ -198,6 +222,18 @@ class Command(BaseCommand):
                     error_list.append(error_string)
                     raise CommandError(error_string)
 
+
+            msg = EmailMultiAlternatives(
+                # title:
+                ("Banner progress...."),
+                # message:
+                "Got here 3",
+                # from:
+                "noreply@taylor.edu",
+                # to:
+                ["knkiers@taylor.edu"]
+            )
+            msg.send()
 
             num_no_mtgs_sched = 0
             classes_missing_scheduled_meeting_info = []
@@ -324,6 +360,18 @@ class Command(BaseCommand):
             print(' ')
             print('Number of course offerings without scheduled classes: ', num_no_mtgs_sched)
 
+            msg = EmailMultiAlternatives(
+                # title:
+                ("Banner progress...."),
+                # message:
+                "Got here 4",
+                # from:
+                "noreply@taylor.edu",
+                # to:
+                ["knkiers@taylor.edu"]
+            )
+            msg.send()
+
             #print('Assigning instructors....')
             for co_instructor in course_instructors:
                 if co_instructor.faculty_key is not None:
@@ -374,7 +422,19 @@ class Command(BaseCommand):
                         instructor = instructor,
                         is_primary = is_primary)
                     offering_instructor.save()
-                    
+
+            msg = EmailMultiAlternatives(
+                # title:
+                ("Banner progress...."),
+                # message:
+                "Got here 5",
+                # from:
+                "noreply@taylor.edu",
+                # to:
+                ["knkiers@taylor.edu"]
+            )
+            msg.send()
+
             #print('Add comments to course offerings....')
             for co_comment in course_offering_comments:
                 #print(co_comment.COMMENTTERM, ' ', co_comment.term, ' ', co_comment.COMMENTCRN, ' ',co_comment.CRN, ' ',co_comment.SEQNO, ' ', co_comment.COMMENTTEXT)
@@ -402,6 +462,18 @@ class Command(BaseCommand):
                         text = co_comment.COMMENTTEXT,
                         sequence_number = co_comment.SEQNO)
                     course_offering_comment.save()
+
+            msg = EmailMultiAlternatives(
+                # title:
+                ("Banner progress...."),
+                # message:
+                "Got here 6",
+                # from:
+                "noreply@taylor.edu",
+                # to:
+                ["knkiers@taylor.edu"]
+            )
+            msg.send()
 
             print(' ')
             print('number of class meetings scheduled: ', number_meetings)
@@ -467,6 +539,7 @@ class Command(BaseCommand):
                 ["knkiers@taylor.edu"]
             )
             msg.send()
+            """
         except:
             msg = EmailMultiAlternatives(
                 # title:
@@ -479,3 +552,4 @@ class Command(BaseCommand):
                 ["knkiers@taylor.edu"]
             )
             msg.send()
+            """
