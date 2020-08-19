@@ -204,6 +204,7 @@ class Command(BaseCommand):
                 if co_meeting.faculty_course_meeting_key is None:
                     # there is nothing to do, since the course offering has already been created...should be good to go
                     num_no_mtgs_sched = num_no_mtgs_sched + 1
+
                     #print('%s %s %s %s -- no meeting times or anything scheduled!!!' %
                     #      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE))
                 elif (co_meeting.DAY == None) or (co_meeting.STARTTIME == None) or (co_meeting.ENDTIME == None):
@@ -216,7 +217,7 @@ class Command(BaseCommand):
                         # at least one of these is not None....
                         classes_missing_scheduled_meeting_info.append(co_meeting)
                         print('%s %s %s %s %s %s %s -- have partial meeting time information!!!' %
-                        (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
+                            (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
                 else:
                     #print('%s %s %s %s %s %s %s %s %s %s %s ' % (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.CREDHRS,
                     #                                         co_meeting.ENRLCAP, co_meeting.term, co_meeting.part_of_term, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME))
@@ -451,9 +452,10 @@ class Command(BaseCommand):
             # command line, but if I'm running it as a cron job, it apparently doesn't know where the template lives (that is set in 
             # settings.py).  For this reason, I'm explicitly giving the relative path to the file here.
             # https://unix.stackexchange.com/questions/38951/what-is-the-working-directory-when-cron-executes-a-job
-            email_plaintext_message = render_to_string('../../planner/email/banner_import_report.txt', context)
+            #email_plaintext_message = render_to_string('../../planner/email/banner_import_report.txt', context)
+            email_plaintext_message = banner_updated_message(context)
 
-            print(email_plaintext_message)
+            #print(email_plaintext_message)
 
             msg = EmailMultiAlternatives(
                 # title:
@@ -479,3 +481,48 @@ class Command(BaseCommand):
                 ["knkiers@taylor.edu"]
             )
             msg.send()
+
+def banner_updated_message(context):
+    #print(context)
+    num_repeated_mtgs = len(context["repeated_meetings_list"])
+    num_incomplete_schedule_info = len(context["classes_missing_scheduled_meeting_info"])
+    plaintext_message = """
+The nightly Data Warehouse import has been completed.  The following is a summary.
+
+Number of meetings scheduled: {0}
+
+Number of course offerings without scheduled classes: {1}
+
+Number of repeated meetings (only one copy of each was made): {2}
+        """.format(context["number_meetings"], context["num_no_mtgs_sched"], str(num_repeated_mtgs))
+    if num_repeated_mtgs > 0:
+        plaintext_message += """
+    Repeated class meetings...details:
+            """
+        for mtg in context["repeated_meetings_list"]:
+            plaintext_message += """
+        {0} (CRN: {1}; {2}): {3} - {4} (day: {5})
+                """.format(mtg["course"], mtg["CRN"], mtg["term_code"], mtg["begin_at"], mtg["end_at"], mtg["day"])
+        plaintext_message += """
+Repeated meetings can occur if there are two or more rooms booked for a course for 
+the exact same time slot.  At this point we are not allowing this in iChair (and in 
+any case, we are not concerned with rooms during the schedule editing process), so 
+we coalesce these multiple meetings into one.  If we incorporate rooms into the 
+schedule editing process in the future we may need to start being more careful about 
+this...!
+            """
+    plaintext_message += """
+Number of classes with partial meeting info: {0}
+        """.format(str(num_incomplete_schedule_info))
+    if num_incomplete_schedule_info > 0:
+        plaintext_message += """
+    Classes with partial meetings...details:
+            """
+        for pmc in context["classes_missing_scheduled_meeting_info"]:
+            plaintext_message += """
+        {0} {1} {2} ({3}); {4} - {5} (day: {6}); mtg time key: {7}
+                """.format(pmc.CMP, pmc.CRN, pmc.COURSE, pmc.TITLE, pmc.STARTTIME, pmc.ENDTIME, pmc.DAY, pmc.MEETINGTIMEKEY)
+    plaintext_message += """
+Number of errors: {0}
+        """.format(context["number_errors"])
+    return plaintext_message
