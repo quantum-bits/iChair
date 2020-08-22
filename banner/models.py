@@ -12,6 +12,32 @@ class StampedModel(models.Model):
     class Meta:
         abstract = True
 
+
+class Building(StampedModel):
+    """Campus building."""
+    abbrev = models.CharField(max_length=20)
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ['abbrev']
+        
+    def __str__(self):
+        return self.name
+
+
+class Room(StampedModel):
+    """Room within a building."""
+    number = models.CharField(max_length=20)
+    building = models.ForeignKey(Building, related_name='rooms', on_delete=models.CASCADE)
+    capacity = models.PositiveIntegerField(default=20)
+
+    class Meta:
+        ordering = ['building__name','number']
+
+    def __str__(self):
+        return '{0} {1}'.format(self.building, self.number)
+
+
 class Subject(StampedModel):
     """Subject areas such as COS, PHY, SYS, etc. Note that subject and department are not the
     same thing. A department usually offers courses in multiple subjects.
@@ -203,7 +229,7 @@ class ScheduledClass(StampedModel):
     end_at = models.TimeField()
     course_offering = models.ForeignKey(CourseOffering, related_name='scheduled_classes', on_delete=models.CASCADE)
     # leave out the room for now....
-    #room = models.ForeignKey(Room, related_name='scheduled_classes', blank=True, null=True, on_delete=models.SET_NULL)
+    room = models.ForeignKey(Room, related_name='scheduled_classes', blank=True, null=True, on_delete=models.SET_NULL)
 #    instructor = models.ForeignKey(FacultyMember, blank=True, null=True)
 # at this point let the instructor(s) be determined by CourseOffering...  Eventually
 # it might be good to be able to have one instructor on one day and another on another
@@ -233,6 +259,7 @@ class SemesterCodeToImport(StampedModel):
     from time to time, but this allows us the ability to import old data (when setting up a new department, for example).
     """
     term_code = models.CharField(max_length=6)
+    allow_room_copy = models.BooleanField(default=True) # this is used in the UI; if True, then we allow the copying of room information from Banner to iChair
 
     def __str__(self):
         return self.term_code

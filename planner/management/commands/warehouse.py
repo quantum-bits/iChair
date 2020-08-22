@@ -11,6 +11,8 @@ from banner.models import FacultyMember as BannerFacultyMember
 from banner.models import OfferingInstructor as BannerOfferingInstructor
 from banner.models import CourseOfferingComment as BannerCourseOfferingComment
 from banner.models import SemesterCodeToImport as BannerSemesterCodeToImport
+from banner.models import Room as BannerRoom
+from banner.models import Building as BannerBuilding
 from banner.models import SubjectToImport as BannerSubjectToImport
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
@@ -58,7 +60,7 @@ class Command(BaseCommand):
                     """.format(term_group, subject_group)).fetchall()
         
             course_offering_meetings = cursor.execute("""
-                SELECT campus AS CMP
+                SELECT dcs.campus AS CMP
                     , subject_course AS COURSE
                     , course_reference_number AS CRN
                     , course AS TITLE
@@ -72,11 +74,16 @@ class Command(BaseCommand):
                     , dmt.meeting_time_key AS MEETINGTIMEKEY
                     , term
                     , part_of_term
+                    , dr.building_code as building_code
+                    , dr.room_number as room_number
+                    , dr.room_capacity as room_capacity
+                    , dr.building_name as building_name
                 FROM dw.dim_course_section dcs -- Use the course section dimension as base.
                     -- Meeting times
                     LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                     LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
-                WHERE (({0}) AND ({1}) AND campus = 'U')
+                    LEFT OUTER JOIN dw.dim_room dr ON (fcm.room_key = dr.room_key)
+                WHERE (({0}) AND ({1}) AND dcs.campus = 'U')
                     """.format(term_group, subject_group)).fetchall()
 
             course_instructors = cursor.execute("""
@@ -107,6 +114,9 @@ class Command(BaseCommand):
             repeated_meetings_list = []
             class_meeting_dict = {}
             error_list = []
+            rooms_created = []
+            buildings_created = []
+            building_room_errors = 0
 
             # start by clearing the banner database!
             # https://stackoverflow.com/questions/3805958/how-to-delete-a-record-in-django-models
@@ -310,13 +320,62 @@ class Command(BaseCommand):
                             'begin_at': start_time,
                             'end_at': end_time
                         })
+                    
+                    room = None
+                    if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
+                        rooms = BannerRoom.objects.filter(Q(building__abbrev = co_meeting.building_code) & Q(number = co_meeting.room_number))
+                        if len(rooms) > 1:
+                            print('ERROR!!!  There seem to be more than one copy of this room: ', co_meeting.building_code, co_meeting.room_number)
+                            building_room_errors += 1
+                        elif len(rooms) == 0:
+                            print('room does not exist: ', co_meeting.building_code, co_meeting.room_number)
+                            # room does not yet exist; check if building exists....
+                            buildings = BannerBuilding.objects.filter(abbrev = co_meeting.building_code)
+                            can_create_room = True
+                            if len(buildings) > 1:
+                                print('ERROR!!!  There seem to be more than one copy of this building: ', co_meeting.building_code)
+                                building_room_errors += 1
+                                can_create_room = False
+                            elif len(buildings) == 0:
+                                # building does not yet exist; create it....
+                                print('creating building: ', co_meeting.building_code, co_meeting.building_name)
+                                building = BannerBuilding.objects.create(
+                                    abbrev = co_meeting.building_code,
+                                    name = co_meeting.building_name
+                                )
+                                buildings_created.append({
+                                    'abbrev': building.abbrev,
+                                    'name': building.name
+                                })
+                            else:
+                                building = buildings[0]
+                            if co_meeting.room_number == None or co_meeting.room_number == '':
+                                can_create_room = False
+                                print('Room has no number!')
+                            if can_create_room:
+                                print('creating room: ', building, co_meeting.room_number, co_meeting.room_capacity)
+                                room = BannerRoom.objects.create(
+                                    number = co_meeting.room_number,
+                                    building = building,
+                                    capacity = co_meeting.room_capacity if co_meeting.room_capacity != None else 0
+                                )
+                                rooms_created.append({
+                                    'number': room.number,
+                                    'building_abbrev': room.building.abbrev,
+                                    'capacity': room.capacity
+                                })
+                        else:
+                            room = rooms[0]
+                    #else:
+                    #    print('room not completely specified: ', co_meeting.COURSE, co_meeting.CRN, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.building_code, co_meeting.room_number)
 
                     if not class_meeting_repeated:
                         scheduled_class = BannerScheduledClass.objects.create(
                             day = day_of_week,
                             begin_at = start_time,
                             end_at = end_time,
-                            course_offering = course_offering
+                            course_offering = course_offering,
+                            room = room
                         )
                         scheduled_class.save()
                         number_meetings += 1
@@ -445,7 +504,10 @@ class Command(BaseCommand):
                 'repeated_meetings_list': repeated_meetings_list,
                 'classes_missing_scheduled_meeting_info': classes_missing_scheduled_meeting_info,
                 'number_errors': number_errors,
-                'num_no_mtgs_sched': num_no_mtgs_sched
+                'num_no_mtgs_sched': num_no_mtgs_sched,
+                'rooms_created': rooms_created,
+                'buildings_created': buildings_created,
+                'building_room_errors': building_room_errors
                 }
 
             # In the following I can use just "banner_import_report.txt" (without the path) if I'm running the warehouse command at the 
@@ -495,6 +557,7 @@ Number of course offerings without scheduled classes: {1}
 
 Number of repeated meetings (only one copy of each was made): {2}
         """.format(context["number_meetings"], context["num_no_mtgs_sched"], str(num_repeated_mtgs))
+
     if num_repeated_mtgs > 0:
         plaintext_message += """
     Repeated class meetings...details:
@@ -522,7 +585,30 @@ Number of classes with partial meeting info: {0}
             plaintext_message += """
         {0} {1} {2} ({3}); {4} - {5} (day: {6}); mtg time key: {7}
                 """.format(pmc.CMP, pmc.CRN, pmc.COURSE, pmc.TITLE, pmc.STARTTIME, pmc.ENDTIME, pmc.DAY, pmc.MEETINGTIMEKEY)
+    
+    plaintext_message += """
+Number of building or room errors (due to existence of multiple versions): {0}
+    """.format(context["building_room_errors"])
+    if len(context["buildings_created"]) > 0:
+        plaintext_message += """
+Buildings created:
+        """
+        for bldg in context["buildings_created"]:
+            plaintext_message += """
+    {0}: {1}
+            """.format(bldg["abbrev"], bldg["name"])
+    if len(context["rooms_created"]) > 0:
+        plaintext_message += """
+Rooms created:
+        """
+        for room in context["rooms_created"]:
+            plaintext_message += """
+    {0} {1} (capacity: {2})
+            """.format(room["building_abbrev"], room["number"], room["capacity"])
+    
     plaintext_message += """
 Number of errors: {0}
         """.format(context["number_errors"])
     return plaintext_message
+
+

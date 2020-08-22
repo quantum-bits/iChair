@@ -12,6 +12,8 @@ from banner.models import ScheduledClass as BannerScheduledClass
 from banner.models import CourseOfferingComment as BannerCourseOfferingComment
 from banner.models import SemesterCodeToImport as BannerSemesterCodeToImport
 from banner.models import SubjectToImport as BannerSubjectToImport
+from banner.models import Building as BannerBuilding
+from banner.models import Room as BannerRoom
 
 class MultiDBModelAdmin(admin.ModelAdmin):
     # https://docs.djangoproject.com/en/2.2/topics/db/multi-db/
@@ -67,6 +69,17 @@ class BannerCourseAdmin(MultiDBModelAdmin):
     search_fields = ('subject', 'number', 'title',)
     list_display = ('subject', 'number', 'title', 'credit_hours',)
 
+class BannerBuildingAdmin(MultiDBModelAdmin):
+    search_fields = ('abbrev',)
+    list_display = ('abbrev', 'name',)
+
+class BannerRoomAdmin(MultiDBModelAdmin):
+    search_fields = ('number', 'building',)
+    list_display = ('building', 'number', 'capacity',)
+
+class BannerSemesterCodeToImportAdmin(MultiDBModelAdmin):
+    list_display = ('term_code', 'allow_room_copy',)
+
 class BannerFacultyMemberAdmin(MultiDBModelAdmin):
     search_fields = ('pidm', 'first_name', 'last_name', 'formal_first_name', 'middle_name',)
     list_display = ('pidm', 'first_name', 'last_name', 'formal_first_name', 'middle_name',)
@@ -85,7 +98,7 @@ class BannerCourseOfferingAdmin(MultiDBModelAdmin):
     search_fields = ('course__title','course__number','term_code',)
 
 class BannerScheduledClassAdmin(admin.ModelAdmin):
-    list_display = ('course_offering','day','begin_at','end_at',)
+    list_display = ('course_offering','day','begin_at','end_at','room')
 
 class RequirementAdmin(admin.ModelAdmin):
     form = RequirementForm
@@ -221,9 +234,11 @@ admin.site.register(BannerCourse, BannerCourseAdmin)
 admin.site.register(BannerFacultyMember, BannerFacultyMemberAdmin)
 admin.site.register(BannerCourseOffering, BannerCourseOfferingAdmin)
 admin.site.register(BannerScheduledClass, BannerScheduledClassAdmin)
-admin.site.register(BannerSemesterCodeToImport)
+admin.site.register(BannerSemesterCodeToImport, BannerSemesterCodeToImportAdmin)
 admin.site.register(BannerSubjectToImport)
 admin.site.register(MessageFragment, MessageFragmentAdmin)
 admin.site.register(Message, MessageAdmin)
+admin.site.register(BannerBuilding, BannerBuildingAdmin)
+admin.site.register(BannerRoom, BannerRoomAdmin)
 
 
