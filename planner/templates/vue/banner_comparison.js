@@ -962,7 +962,8 @@ var app = new Vue({
         dataForPost.meetings.push({
           beginAt: meetingTime.begin_at,
           endAt: meetingTime.end_at,
-          day: meetingTime.day
+          day: meetingTime.day,
+          room: JSON.parse(JSON.stringify(meetingTime.room))
         })
       });
       item.banner.instructors_detail.forEach(instructorItem => {
@@ -2123,7 +2124,7 @@ var app = new Vue({
     },
 
     copyDataToiChair(item, dataToUpdate, copyFromBanner) {
-      // assume that an iChair course offering object exists already (the actual creation of a an
+      // assume that an iChair course offering object exists already (the actual creation of an
       // iChair course offering -- i.e., copying the entire course offering from Banner -- already 
       // happens in another method); if copyFromBanner === true, then a banner course offering should exist, 
       // or else we have nothing to copy from....

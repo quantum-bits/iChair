@@ -34,10 +34,14 @@ class Command(BaseCommand):
             rows = cursor.execute("select @@VERSION").fetchall()
 
             term_group = ""
+            include_rooms_dict = {}
             for semester in BannerSemesterCodeToImport.objects.all():
+                include_rooms_dict[semester.term_code] = semester.allow_room_copy
                 if len(term_group) > 0:
                     term_group += " OR "
                 term_group += "term = '"+semester.term_code+"'"
+
+            print('include_rooms_dict: ', include_rooms_dict)
 
             subject_group = ""
             for banner_subject in BannerSubjectToImport.objects.all():
@@ -322,7 +326,7 @@ class Command(BaseCommand):
                         })
                     
                     room = None
-                    if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
+                    if include_rooms_dict[co_meeting.term] and (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
                         rooms = BannerRoom.objects.filter(Q(building__abbrev = co_meeting.building_code) & Q(number = co_meeting.room_number))
                         if len(rooms) > 1:
                             print('ERROR!!!  There seem to be more than one copy of this room: ', co_meeting.building_code, co_meeting.room_number)

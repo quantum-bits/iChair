@@ -37,6 +37,9 @@ class Room(StampedModel):
     def __str__(self):
         return '{0} {1}'.format(self.building, self.number)
 
+    @property
+    def short_name(self):
+        return '{0} {1}'.format(self.building.abbrev, self.number)
 
 class Subject(StampedModel):
     """Subject areas such as COS, PHY, SYS, etc. Note that subject and department are not the

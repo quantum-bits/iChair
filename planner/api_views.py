@@ -8,6 +8,8 @@ from banner.models import CourseOffering as BannerCourseOffering
 from banner.models import ScheduledClass as BannerScheduledClass
 from banner.models import FacultyMember as BannerFacultyMember
 from banner.models import OfferingInstructor as BannerOfferingInstructor
+from banner.models import Room as BannerRoom
+from banner.models import Building as BannerBuilding
 
 from .helper_functions import *
 
@@ -377,7 +379,7 @@ def create_course_offering(request):
     comments = json_data['comments']
 
     #print('comments: ', comments)
-
+    print(meetings)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     user_department = user_preferences.department_to_view
@@ -415,15 +417,28 @@ def create_course_offering(request):
     course_offering.save()
 
     # now add the scheduled classes
+    classrooms_unassigned = False
     for meeting in meetings:
+        ichair_room = None
+        if meeting["room"] != None:
+            if meeting["room"]["id"] != None:
+                banner_room = BannerRoom.objects.get(pk=meeting["room"]["id"])
+                if (banner_room.number != None) and (banner_room.number != '') and (banner_room.building.abbrev != None) and (banner_room.building.abbrev != ''):
+                    ichair_rooms = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
+                    if len(ichair_rooms) > 1:
+                        print("ERROR!!!  There appear to be more than one iChair room with the same name.")
+                    elif len(ichair_rooms) == 1:
+                        ichair_room = ichair_rooms[0]
+        if ichair_room == None:
+            classrooms_unassigned = True
+
         sc = ScheduledClass.objects.create(
             course_offering=course_offering,
             day=meeting["day"],
             begin_at=meeting['beginAt'],
-            end_at=meeting['endAt'])
+            end_at=meeting['endAt'],
+            room=ichair_room)
         sc.save()
-
-    classrooms_unassigned = len(meetings) > 0
 
     # now add in the offering instructors; if one of them is primary, give that person all of the load
     # set to true if one of the instructors is listed as being the primary (in theory, there should be at most one primary instructor)
@@ -470,11 +485,14 @@ def create_course_offering(request):
     # ...at this point, since we are copying this information from Banner, and since we are not getting room
     # information from Banner, we leave the rooms unspecified.
     # could use the method sort_rooms(...) for this....
-    presorted_ico_meeting_times_list = class_time_and_room_summary(
-        course_offering.scheduled_classes.all(), include_rooms=False)
+    presorted_ico_meeting_times_list,  presorted_ico_room_list = class_time_and_room_summary(
+        course_offering.scheduled_classes.all())
     # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
     ico_meeting_times_list = sorted(
         presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+
+    # sort the rooms so that the sort order matches that of the meeting times....
+    ico_room_list = sort_rooms(presorted_ico_meeting_times_list, ico_meeting_times_list, presorted_ico_room_list)
 
     ico_instructors = construct_instructor_list(course_offering, True)
     ico_instructors_detail = construct_ichair_instructor_detail_list(course_offering)
@@ -496,7 +514,7 @@ def create_course_offering(request):
 
     available_instructors = user_department.available_instructors(semester.year, course_offering, faculty_to_view_ids)
 
-    ico_room_list = ['---' for mt in ico_meeting_times_list] # make a list of strings that is the same length as meeting_times
+    #ico_room_list = ['---' for mt in ico_meeting_times_list] # make a list of strings that is the same length as meeting_times
 
     ichair_course_offering_data = {
         "course_offering_id": course_offering.id,
@@ -672,7 +690,7 @@ def banner_comparison_data(request):
                 bco_instructors = construct_instructor_list(bco)
                 bco_instructors_detail = construct_instructor_detail_list(bco)
 
-                bco_meeting_times_detail = construct_meeting_times_detail(bco)
+                bco_meeting_times_detail = construct_meeting_times_detail(bco, True)
 
                 course_offering_item = {
                     "index": index,  # used in the UI as a unique key
@@ -946,7 +964,7 @@ def banner_comparison_data(request):
                     bco_instructors_detail = construct_instructor_detail_list(
                         unlinked_bco)
                     bco_meeting_times_detail = construct_meeting_times_detail(
-                        unlinked_bco)
+                        unlinked_bco, True)
 
                     banner_options.append({
                         "crn": unlinked_bco.crn,
@@ -2919,12 +2937,24 @@ def copy_course_offering_data_to_ichair(request):
 
                 # now we go through the remaining banner meeting times and copy them over to iChair
                 for banner_sc in banner_scheduled_classes:
+                    # if the banner scheduled class has a room, try to find a corresponding room in the iChair database
+                    ichair_room = None
                     classrooms_unassigned = True
+                    if banner_sc.room != None:
+                        if (banner_sc.room.number != None) and (banner_sc.room.number != '') and (banner_sc.room.building.abbrev != None) and (banner_sc.room.building.abbrev != ''):
+                            ichair_rooms = Room.objects.filter(Q(number=banner_sc.room.number) & Q(building__abbrev=banner_sc.room.building.abbrev))
+                            if len(ichair_rooms) > 1:
+                                print("ERROR!!!  There appear to be more than one iChair room with the same name.")
+                            elif len(ichair_rooms) == 1:
+                                ichair_room = ichair_rooms[0]
+                                classrooms_unassigned = False
+
                     isc = ScheduledClass.objects.create(
                         day=banner_sc.day,
                         begin_at=banner_sc.begin_at,
                         end_at=banner_sc.end_at,
-                        course_offering=ico
+                        course_offering=ico,
+                        room=ichair_room
                     )
                     isc.save()
                 snapshot["scheduled_classes"] = snapshot_from_db["scheduled_classes"]
