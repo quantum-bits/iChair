@@ -673,7 +673,7 @@ def banner_comparison_data(request):
             # then we should sort the list so the order doesn't seem crazy
 
             for bco in banner_course_offerings:
-                #print(bco)
+                #print(bco," ", bco.term_code, " ", bco.crn)
                 # attempt to assign an iChair course offering to the banner one
                 find_ichair_course_offering(bco, semester, subject)
 

@@ -166,14 +166,21 @@ class CourseOffering(StampedModel):
                     # here I am considering the beginnings of the iChair course numbers and looking for an exact match
                     # with Banner: '3', '31', '311' and '311L' would all be searched
                     course_num = course["number"][:ii]
+                    #print(course)
                     #print('searching course number....', course_num)
                     for co in cls.objects.filter(
                         Q(course__subject__abbrev=subject.abbrev) & 
                         Q(term_code=term_code) & 
                         Q(course__credit_hours = course["credit_hours"]) & 
                         Q(course__number = course_num)):
-                        #print('found the following: ', co)
-                        course_offerings.append(co)
+                        print('>>>>>found the following: ', co, ' ', co.id)
+                        list_contains_co = False
+                        for collected_co in course_offerings:
+                            if co.id == collected_co.id:
+                                list_contains_co = True
+                                print('Yikes!  Almost copied this one twice!!!')
+                        if not list_contains_co:
+                            course_offerings.append(co)
             #print('>>>>>>>extra-departmental course offerings found: ', course_offerings)
             return course_offerings
 
