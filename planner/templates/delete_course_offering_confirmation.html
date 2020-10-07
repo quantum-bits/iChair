@@ -13,13 +13,27 @@
 <div class="content-center">
 <h2> Are you sure? </h2>
 <p>
+<!--
 <div class="alert alert-student-info">  
   <div>  
     Are you sure that you want to <b> delete </b> 
     the following course offering, including associated information about days, times, rooms and professors?<br> <br>
-    <b>This action is not reversible.</b>
+    While <b>this action is not reversible, </b>note that you are only deleting this course offering
+    from this semester, not from all semesters.
   </div> 
 </div>
+-->
+
+<div class="alert alert-student-info">  
+  <div>  
+    Are you sure that you want to <b> delete </b> 
+    the following course offering, including associated information about days, times, rooms and professors?
+    <b>This action is not reversible.</b><br> <br>
+    Note that you will only be deleting this course offering
+    from this semester, not from all semesters.
+  </div> 
+</div>
+
 </p>
 
 <p>
@@ -45,7 +59,7 @@
 
 <p> <a class="btn btn-success" href="{{sending_page}}">No! It's all been a terrible mistake!</a></p>
 
-<p><input class="btn btn-warning" type="submit" value="Delete"></p>
+<p><input class="btn btn-warning" type="submit" value="Delete course offering from this semester"></p>
 </form>
 
    <script>
