@@ -596,6 +596,8 @@ def collect_data_for_summary(request):
 
     # Note: even if the user has decided not to view certain load types (in user preferences), those load types
     # will still show up in the list if there is load assigned for the load type.  That way we don't miss anything.
+    # We've updated how other loads are now displayed in the Faculty Loads page -- only loads that a faculty member
+    # has are displayed, so now the other_load_types_to_view property in UserPreferences is somewhat obsolete....
     for load in other_loads:
         if (load.instructor in faculty_to_view):
             # https://stackoverflow.com/questions/42315072/python-update-a-key-in-dict-if-it-doesnt-exist
@@ -3387,6 +3389,55 @@ def compare_with_banner(request):
 
     print(context)
     return render(request, 'banner_comparison.html', context)
+
+@login_required
+def update_other_load_this_faculty(request,id):
+    """Update amounts of load and/or types of 'other' (administrative-type) loads for a particular faculty member."""
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    #user_department = user_preferences.department_to_view
+
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
+    instance = FacultyMember.objects.get(pk = id)
+    year = user_preferences.academic_year_to_view
+
+    # need to restrict the year somehow......
+
+# create the formset class
+    OtherLoadFormset = inlineformset_factory(FacultyMember, OtherLoad, formset = BaseOtherLoadOneFacultyFormset, exclude = [], extra=4)
+    OtherLoadFormset.form = wraps(OtherLoadOneFacultyForm)(partial(OtherLoadOneFacultyForm, year_to_view=year))
+# create the formset
+    formset = OtherLoadFormset(instance=instance, queryset=OtherLoad.objects.filter(semester__year = year))
+
+    errordict={}
+    dict = {"formset": formset
+        , "instance": instance
+        , "errordict": errordict
+    }
+    if request.method == 'POST':
+        formset = OtherLoadFormset(request.POST, instance=instance)
+        formset.is_valid()
+        formset_error=formset.non_form_errors()
+
+        if formset.is_valid() and not formset_error:
+            formset.save()
+            next = request.GET.get('next', 'home')
+            return redirect(next)
+        else:
+            dict["formset"]=formset
+            if formset_error:
+                errordict.update({'formset_error':formset_error})
+            for subform in formset:
+                if subform.errors:
+                    errordict.update(subform.errors)
+
+            return render(request, 'update_other_load_this_faculty.html', dict)
+
+    else:
+        return render(request, 'update_other_load_this_faculty.html', dict)
+
 
 @login_required
 def update_other_load(request, id):

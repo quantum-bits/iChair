@@ -35,6 +35,7 @@ urlpatterns = [
     url(r'^deletecourseoffering/(\d+)/$', myapp_views.delete_course_offering, name='delete_course_offering'),
     url(r'^deletecourseconfirmation/(\d+)/$', myapp_views.delete_course_confirmation, name='delete_course_confirmation'),
     url(r'^updateotherload/(\d+)/$', myapp_views.update_other_load, name='update_other_load'),
+    url(r'^updateotherloadthisfaculty/(\d+)/$', myapp_views.update_other_load_this_faculty, name='update_other_load_this_faculty'),
     url(r'^updateroomstoview/(\d+)/$', myapp_views.update_rooms_to_view, name='update_rooms_to_view'),
     url(r'^updatefacultytoview/$', myapp_views.update_faculty_to_view, name='update_faculty_to_view'),
     url(r'^updatedepartmenttoview/$', myapp_views.update_department_to_view, name='update_department_to_view'),

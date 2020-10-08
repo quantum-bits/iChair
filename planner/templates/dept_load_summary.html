@@ -299,16 +299,15 @@ class="btn btn-warning"
 									<td style="text-align: center;"> {{course.comment}}</td>
 								</tr>
 								{% endfor %}
-
+								{% if instructor_row.instructor_is_in_this_dept %}
 								<tr>
-									<td colspan="2"> <strong>Non-Teaching Loads</strong> <a
-											title="Choose which types of non-teaching loads to display"
-											href="{% url 'update_loads_to_view' id %}?next={{ request.path|urlencode }}">(Edit)</a>
-										<!--
-<p>
-<a class="btn btn-info" href="{% url 'update_loads_to_view' id %}?next={{ request.path|urlencode }}">Edit Which Types of Non-Teaching Load to View</a>
-</p>
--->
+									<td colspan="2"> <strong>Non-Teaching Loads</strong> 
+										{% if can_edit %}
+										<a
+											title="Add or update non-teaching loads for this faculty member"
+											href="{% url 'update_other_load_this_faculty' instructor_row.instructor_id %}?next={{ request.path|urlencode }}">(Update or Add Another)</a>
+										{% endif %}
+										
 									</td>
 									<td> </td>
 									<td> </td>
@@ -321,9 +320,10 @@ class="btn btn-warning"
 									<td colspan="3" style="text-align: center;"> </td>
 									<td> </td>
 								</tr>
-
+								{% endif %}
 
 								{% for data_element in instructor_row.admin_data_list %}
+								{% if data_element.has_this_load_type %}
 								<tr>
 									<td> </td>
 									<td> {{data_element.load_type}}</td>
@@ -348,6 +348,7 @@ class="btn btn-warning"
 									{% endfor %}
 									<td> </td>
 								</tr>
+								{% endif %}
 								{% endfor %}
 
 								<tr>

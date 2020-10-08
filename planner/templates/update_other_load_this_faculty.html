@@ -5,17 +5,17 @@
 <p> {{form.errors}} </p>
 
    <div class="content-center">
+     {% if errordict.load_type %}
+        <p class="error" style="color: orange;"> Please choose a load type for every item. </p>
+     {% endif %}
      {% if errordict.load_credit %}
         <p class="error" style="color: orange;"> Please specify the number of load hours for every item. </p>
      {% endif %}
      {% if errordict.semester %}
         <p class="error" style="color: orange;"> Please choose a semester for every item. </p>
      {% endif %}
-     {% if errordict.instructor %}
-        <p class="error" style="color: orange;"> Please specify a faculty member for every item. </p>
-     {% endif %}
      {% if errordict.over_all_form_errors %}
-        <p class="error" style="color: orange;"> {{errordict.over_all_form_errors}} </p>
+        <p class="error"> {{errordict.over_all_form_errors}} </p>
      {% endif %}
     <form action="" method="post">
       {% csrf_token %}
@@ -23,16 +23,16 @@
 	{{ formset.management_form }}
 	<table class="table table-striped table-bordered table-hover table-condensed">
 	<tr>
+   <td> Load Type </td>
 	<td> Semester </td>
-	<td> Instructor </td>
 	<td> Load Credit </td>
 	<td> Comments (can be left blank) </td>
 	<td> Delete </td>
 	</tr>
 	{% for subform in formset %}
 	<tr>
+      <td>{{subform.id}} {{ subform.load_type }}</td>
         <td>{{subform.id}} {{ subform.semester }}</td>
-	<td>{{subform.id}} {{ subform.instructor }}</td>
 	<td>{{subform.id}} {{ subform.load_credit }}</td>
 	<td>{{subform.id}} {{ subform.comments }}</td>
 	<td>{{subform.id}} {{ subform.DELETE }} </td>
@@ -48,7 +48,7 @@
    <script>
     $(window).load(function(){
     $("#nav-coursesummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Update Non-Teaching Load: {{other_load_type}}</h1>');
+    $('.page-name').find('h1').replaceWith('<h1>Non-Teaching Load</h1><h2>{{instance}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
    </script>
 

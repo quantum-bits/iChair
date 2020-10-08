@@ -296,6 +296,24 @@ class InstructorForm(forms.ModelForm):
 #        exclude = ('instructor',)
 
 
+class BaseOtherLoadOneFacultyFormset(forms.models.BaseInlineFormSet):
+    """can be used to set up validation errors, etc."""
+    def clean(self):
+        if any(self.errors):
+            return
+
+class OtherLoadOneFacultyForm(forms.ModelForm):
+
+    def __init__(self, year_to_view, *args, **kwargs):
+        super (OtherLoadOneFacultyForm,self).__init__(*args,**kwargs)
+        # following code from Tom Nurkkala
+        #        self.fields['instructor'].queryset = FacultyMember.objects.filter(Q(department__id = department_id))
+        #        self.fields['semester'].queryset = Semester.objects.filter(Q(year__begin_on__year=year_to_view))
+        self.fields['semester'].queryset = Semester.objects.filter(Q(year = year_to_view))
+
+    class Meta:
+        model = OtherLoad
+        fields = "__all__"
 
 class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
 
@@ -450,7 +468,6 @@ class OtherLoadForm(forms.ModelForm):
         model = OtherLoad
         fields = "__all__"
         
-
 class UpdateRoomsToViewForm(forms.ModelForm):
 
     class Meta:
