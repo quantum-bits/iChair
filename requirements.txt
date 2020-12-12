@@ -3,7 +3,7 @@ django-crontab==0.7.1
 django-debug-toolbar==1.4
 gunicorn==18.0
 html5lib==1.0.1
-Pillow==6.0.0
+Pillow==7.1.0
 pyodbc==4.0.26
 PyPDF2==1.26.0
 pytz==2019.1
