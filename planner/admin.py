@@ -14,6 +14,7 @@ from banner.models import SemesterCodeToImport as BannerSemesterCodeToImport
 from banner.models import SubjectToImport as BannerSubjectToImport
 from banner.models import Building as BannerBuilding
 from banner.models import Room as BannerRoom
+from banner.models import DeliveryMethod as BannerDeliveryMethod
 
 class MultiDBModelAdmin(admin.ModelAdmin):
     # https://docs.djangoproject.com/en/2.2/topics/db/multi-db/
@@ -77,6 +78,10 @@ class BannerRoomAdmin(MultiDBModelAdmin):
     search_fields = ('number', 'building',)
     list_display = ('building', 'number', 'capacity',)
 
+class BannerDeliveryMethodAdmin(MultiDBModelAdmin):
+    search_fields = ('code', 'description',)
+    list_display = ('description', 'code',)
+
 class BannerSemesterCodeToImportAdmin(MultiDBModelAdmin):
     list_display = ('term_code', 'allow_room_copy',)
 
@@ -94,8 +99,9 @@ class BannerCourseOfferingCommentInline(MultiDBTabularInline):
 
 class BannerCourseOfferingAdmin(MultiDBModelAdmin):
     inlines = (BannerOfferingInstructorInline, BannerCourseOfferingCommentInline,)
-    list_display = ('course', 'crn', 'term_code', 'semester_fraction','max_enrollment', )
-    search_fields = ('course__title','course__number','term_code',)
+    list_display = ('course', 'crn', 'term_code', 'semester_fraction','max_enrollment', 'delivery_method')
+    # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
+    search_fields = ('course__title','course__number','term_code','delivery_method__description',)
 
 class BannerScheduledClassAdmin(admin.ModelAdmin):
     list_display = ('course_offering','day','begin_at','end_at','room')
@@ -160,9 +166,9 @@ class CourseOfferingPublicCommentInline(admin.TabularInline):
 
 class CourseOfferingAdmin(admin.ModelAdmin):
     inlines = (OfferingInstructorInline, CourseOfferingPublicCommentInline,)
-    list_display = ('course','crn','semester',)
+    list_display = ('course','crn','semester','delivery_method',)
     # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
-    search_fields = ('course__title','course__number','semester__name__name', 'semester__banner_code',)
+    search_fields = ('course__title','course__number','semester__name__name', 'semester__banner_code', 'delivery_method__description',)
     
 class ClassMeetingAdmin(admin.ModelAdmin):
     list_display = ('course_offering','held_on','begin_at','end_at','room','instructor',)
@@ -172,6 +178,10 @@ class ScheduledClassAdmin(admin.ModelAdmin):
 
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('building','number','capacity',)
+
+class DeliveryMethodAdmin(admin.ModelAdmin):
+    search_fields = ('code', 'description',)
+    list_display = ('description', 'code',)
 
 class BuildingAdmin(admin.ModelAdmin):
     list_display = ('name','abbrev',)
@@ -240,5 +250,7 @@ admin.site.register(MessageFragment, MessageFragmentAdmin)
 admin.site.register(Message, MessageAdmin)
 admin.site.register(BannerBuilding, BannerBuildingAdmin)
 admin.site.register(BannerRoom, BannerRoomAdmin)
+admin.site.register(BannerDeliveryMethod, BannerDeliveryMethodAdmin)
+admin.site.register(DeliveryMethod, DeliveryMethodAdmin)
 
 

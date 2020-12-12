@@ -673,6 +673,18 @@ class OtherLoad(models.Model):
                                 help_text='optional longer comments')
 
 
+class DeliveryMethod(StampedModel):
+
+    code = models.CharField(max_length=3)
+    description = models.CharField(max_length=30)
+
+    def __str__(self):
+        return self.description
+
+    class Meta:
+        ordering = ['description']
+
+
 class CourseOffering(StampedModel):
     """Course as listed in the course schedule (i.e., an offering of a course)."""
 
@@ -694,6 +706,7 @@ class CourseOffering(StampedModel):
                                         related_name='course_offerings')
     load_available = models.FloatField(default=3)
     max_enrollment = models.PositiveIntegerField(default=10)
+    delivery_method = models.ForeignKey(DeliveryMethod, related_name='offerings', blank=True, null=True, on_delete=models.SET_NULL)
     comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.CharField(max_length=5, blank=True, null=True)
 

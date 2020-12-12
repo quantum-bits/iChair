@@ -14,6 +14,7 @@ from banner.models import SemesterCodeToImport as BannerSemesterCodeToImport
 from banner.models import Room as BannerRoom
 from banner.models import Building as BannerBuilding
 from banner.models import SubjectToImport as BannerSubjectToImport
+from banner.models import DeliveryMethod as BannerDeliveryMethod
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
@@ -121,6 +122,7 @@ class Command(BaseCommand):
             rooms_created = []
             buildings_created = []
             building_room_errors = 0
+            delivery_methods_created = []
 
             # start by clearing the banner database!
             # https://stackoverflow.com/questions/3805958/how-to-delete-a-record-in-django-models
@@ -194,12 +196,30 @@ class Command(BaseCommand):
                         error_list.append(error_string)
                         raise CommandError(error_string)
 
+                    # find the delivery type; create a new one if the one we need does not yet exist....
+                    delivery_methods = BannerDeliveryMethod.objects.filter(code = co.delivery_method_code)
+                    
+                    if len(delivery_methods) == 1:
+                        delivery_method = delivery_methods[0]
+                    elif len(delivery_methods) == 0:
+                        delivery_method = BannerDeliveryMethod.objects.create(
+                            code = co.delivery_method_code,
+                            description = co.delivery_method)
+                        delivery_method.save()
+                        delivery_methods_created.append(delivery_method.description)
+                    else:
+                        number_errors = number_errors +1
+                        error_string = 'Ambiguity: there are multiple versions of '+co.delivery_method+' in our version of the Banner database....'
+                        error_list.append(error_string)
+                        delivery_method = delivery_methods[0]
+
                     course_offering = BannerCourseOffering.objects.create(
                         course = course,
                         term_code = co.term,
                         semester_fraction = semester_fraction,
                         max_enrollment = co.section_capacity,
-                        crn = co.course_reference_number)
+                        crn = co.course_reference_number,
+                        delivery_method = delivery_method)
                     course_offering.save()
                 elif len(banner_course_offerings) == 1:
                     # assume that all other course offering properties are consistent, since the CRN+term are supposed to be a unique identifier
@@ -221,12 +241,14 @@ class Command(BaseCommand):
 
                     #print('%s %s %s %s -- no meeting times or anything scheduled!!!' %
                     #      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE))
+                    #print('delivery type: ', ' ', co_meeting.delivery_method_code, ' ', co_meeting.delivery_method)
                 elif (co_meeting.DAY == None) or (co_meeting.STARTTIME == None) or (co_meeting.ENDTIME == None):
                     # iChair needs all of these in order to have a ScheduledClass object, so if any are missing, we need to skip it (at least for now)
                     # if all of these are missing, there's nothing to worry about.  If only some are missing, then we may need to think a bit more....
                     num_no_mtgs_sched = num_no_mtgs_sched + 1
                     #print('%s %s %s %s %s %s %s %s -- have partial meeting time information!!!' %
                     #      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.MEETINGTIMEKEY))
+                    #print('delivery type: ', ' ', co_meeting.delivery_method_code, ' ', co_meeting.delivery_method)
                     if not ((co_meeting.DAY == None) and (co_meeting.STARTTIME == None) and (co_meeting.ENDTIME == None)):
                         # at least one of these is not None....
                         classes_missing_scheduled_meeting_info.append(co_meeting)
@@ -248,6 +270,10 @@ class Command(BaseCommand):
                         error_list.append(error_string)
                         raise CommandError(error_string)
                     
+                    #print('%s %s %s %s %s %s %s %s -- things look good....' %
+                    #      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.MEETINGTIMEKEY))
+                    #print('delivery type: ', co_meeting.INSTRUCTIONALTYPECODE,' ', co_meeting.INSTRUCTIONALTYPEDESCRIPTION, ' ', co_meeting.delivery_method_code, ' ', co_meeting.delivery_method)
+
                     if co_meeting.DAY == 'M':
                         day_of_week = BannerScheduledClass.MONDAY
                     elif co_meeting.DAY == 'T':
@@ -497,6 +523,15 @@ class Command(BaseCommand):
                 print('There are some classes with only partial meeting info...need to deal with this!')
             
             print(' ')
+            print('number of new delivery methods created: ', len(delivery_methods_created))
+            if len(delivery_methods_created) > 0:
+                print(' ')
+                print('new delivery methods added to banner.db:')
+                print(' ')
+                for new_delivery_method in delivery_methods_created:
+                    print(new_delivery_method)
+
+            print(' ')
             print('total number of errors encountered: ', number_errors)
 
             if len(error_list) > 0:
@@ -510,6 +545,7 @@ class Command(BaseCommand):
                 'number_errors': number_errors,
                 'num_no_mtgs_sched': num_no_mtgs_sched,
                 'rooms_created': rooms_created,
+                'delivery_methods_created': delivery_methods_created,
                 'buildings_created': buildings_created,
                 'building_room_errors': building_room_errors
                 }
@@ -609,7 +645,15 @@ Rooms created:
             plaintext_message += """
     {0} {1} (capacity: {2})
             """.format(room["building_abbrev"], room["number"], room["capacity"])
-    
+    if len(context["delivery_methods_created"]) > 0:
+        plaintext_message += """
+Delivery methods created:
+        """
+        for delivery_method in context["delivery_methods_created"]:
+            plaintext_message += """
+    {0}
+            """.format(delivery_method)
+
     plaintext_message += """
 Number of errors: {0}
         """.format(context["number_errors"])

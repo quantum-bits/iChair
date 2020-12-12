@@ -82,6 +82,16 @@ class FacultyMember(StampedModel):
     class Meta:
         ordering = ['last_name','first_name']
 
+class DeliveryMethod(StampedModel):
+
+    code = models.CharField(max_length=3)
+    description = models.CharField(max_length=30)
+
+    def __str__(self):
+        return self.description
+
+    class Meta:
+        ordering = ['description']
 
 class CourseOffering(StampedModel):
     """Course as listed in the course schedule (i.e., an offering of a course)."""
@@ -107,6 +117,7 @@ class CourseOffering(StampedModel):
     #banner_comment = models.CharField(max_length=20, blank=True, null=True, help_text="(optional)")
     crn = models.CharField(max_length=5)
     ichair_id = models.PositiveIntegerField(blank=True, null=True) # id of corresponding ichair course offering, if it exists
+    delivery_method = models.ForeignKey(DeliveryMethod, related_name='offerings', blank=True, null=True, on_delete=models.SET_NULL)
 
     def comment_list(self):
         # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
