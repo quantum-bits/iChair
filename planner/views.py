@@ -1404,10 +1404,13 @@ def update_course_offering(request,id, daisy_chain):
                     updated_fields.append("max_enrollment")
                 if original_co_snapshot["comment"] != revised_co_snapshot["comment"]:
                     updated_fields.append("comment")
+                if original_co_snapshot["delivery_method"]["id"] != revised_co_snapshot["delivery_method"]["id"]:
+                    updated_fields.append("delivery_method")
                 if user_preferences.permission_level == UserPreferences.SUPER:
                     user_department_param = None
                 else:
                     user_department_param = user_department
+                print('updated fields: ', updated_fields)
                 create_message_course_offering_update(user.username, user_department_param, course_department, year,
                                             original_co_snapshot, revised_co_snapshot, updated_fields)
 
@@ -2873,17 +2876,19 @@ def add_course_offering(request, course_id, daisy_chain):
             load_available = form.cleaned_data.get('load_available')
             max_enrollment = form.cleaned_data.get('max_enrollment')
             comment = form.cleaned_data.get('comment')
+            delivery_method = form.cleaned_data.get('delivery_method')
             new_course_offering = CourseOffering(course = course,
                                                  semester = semester,
                                                  semester_fraction = semester_fraction,
                                                  load_available = load_available,
                                                  max_enrollment = max_enrollment,
+                                                 delivery_method = delivery_method,
                                                  comment = comment)
             new_course_offering.save()
 
             if user_department != course_department:
                 revised_co_snapshot = new_course_offering.snapshot
-                updated_fields = ["semester", "semester_fraction", "load_available", "max_enrollment"]
+                updated_fields = ["semester", "semester_fraction", "load_available", "max_enrollment", "delivery_method"]
                 if comment != '':
                     updated_fields.append("comment")
                 create_message_course_offering_update(user.username, user_department, course_department, year,
@@ -3003,7 +3008,7 @@ def delete_course_offering(request, id):
     if request.method == 'POST':
         instance.delete()
         if user_department != course_department:
-            updated_fields = ["semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment"]
+            updated_fields = ["semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "delivery_method"]
             if original_co_snapshot["comment"] != None:
                 updated_fields.append("comment")
             create_message_course_offering_update(user.username, user_department, course_department, year,
@@ -3929,7 +3934,7 @@ def copy_course_offering(request, id):
             revised_co_snapshot = new_co.snapshot
             create_message_course_offering_update(user.username, department, course_department, year,
                                         None, revised_co_snapshot, 
-                                        ["semester", "semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "comment", "public_comments"])
+                                        ["semester", "semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "comment", "public_comments", "delivery_method"])
 
         return redirect(sending_page)
 
@@ -3995,6 +4000,7 @@ def copy_courses(request, id, check_all_flag):
                                                    semester_fraction = co.semester_fraction,
                                                    load_available = co.load_available,
                                                    max_enrollment = co.max_enrollment,
+                                                   delivery_method = co.delivery_method,
                                                    comment = co.comment
                                                    )
             new_co.save()

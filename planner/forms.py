@@ -227,9 +227,9 @@ class BaseInstructorFormSet(forms.models.BaseInlineFormSet):
                     instructors.append(instructor)
             except KeyError:
                 pass
-        print('instructors: ', instructors)
+        #print('instructors: ', instructors)
         if not instructor_error:
-            print('no instructor error!')
+            #print('no instructor error!')
             number_primary_instructors = 0
             for subform in self.forms:
                 try:
@@ -594,7 +594,7 @@ class SemesterSelectForm(forms.ModelForm):
 
     class Meta:
         model = CourseOffering
-        exclude = ('course','instructor','load_available','max_enrollment', 'comment','crn',)
+        exclude = ('course','instructor','load_available','max_enrollment', 'comment','crn','delivery_method')
 
     def clean(self):
         return self.cleaned_data

@@ -725,6 +725,11 @@ class CourseOffering(StampedModel):
             "semester_fraction": self.semester_fraction,
             "load_available": self.load_available,
             "max_enrollment": self.max_enrollment,
+            "delivery_method": {
+                "id": self.delivery_method.id if self.delivery_method != None else None,
+                "code": self.delivery_method.code if self.delivery_method != None else "",
+                "description": self.delivery_method.description if self.delivery_method != None else "",
+            },
             "comment": self.comment,
             "public_comments": [{
                     "id": pc.id,

@@ -6,7 +6,7 @@ from banner.models import CourseOffering as BannerCourseOffering
 
 class Command(BaseCommand):
     # https://stackoverflow.com/questions/30230490/django-custom-command-error-unrecognized-arguments
-    help = "Copies delivery methods from the banner database to the iChair database for all iChair course offerings that have a CRN."
+    help = "Copies delivery methods from the banner database to the iChair database for all iChair course offerings that have a CRN.  This command overwrites the delivery methods property and should not generally be used."
 
     def handle(self, *args, **options):
         num_unmatched = 0
@@ -26,11 +26,12 @@ class Command(BaseCommand):
                     num_exact_matches += 1
                     bco = banner_course_offerings[0]
                     delivery_method = DeliveryMethod.objects.filter(code = bco.delivery_method.code)
-                    if len(delivery_method) == 1:
-                        co.delivery_method = delivery_method[0]
-                        co.save()
-                    else:
-                        num_delivery_method_errors += 1
+                    # next lines commented out to prevent accidental use of this command
+                    #if len(delivery_method) == 1:
+                    #    co.delivery_method = delivery_method[0]
+                    #    co.save()
+                    #else:
+                    #    num_delivery_method_errors += 1
 
                 else:
                     print('??? well that is weird...there seem to be two banner course offerings for this iChair course offering: ',co)
