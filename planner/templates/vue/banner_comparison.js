@@ -16,12 +16,14 @@ const DELTA_UPDATE_TYPE_INSTRUCTORS = "instructors";
 const DELTA_UPDATE_TYPE_SEMESTER_FRACTION = "semesterFraction";
 const DELTA_UPDATE_TYPE_ENROLLMENT_CAP = "enrollmentCap";
 const DELTA_UPDATE_TYPE_COMMENTS = "publicComments";
+const DELTA_UPDATE_TYPE_DELIVERY_METHOD = "deliveryMethod";
 
 const COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT = "enrollmentCap";
 const COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION = "semesterFraction";
 const COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS = "instructors";
 const COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES = "meetingTimes";
 const COPY_REGISTRAR_TO_ICHAIR_COMMENTS = "publicComments";
+const COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD = "deliveryMethod";
 const COPY_REGISTRAR_TO_ICHAIR_ALL = "all";
 
 const NO_ROOM_SELECTED_ID = Number.NEGATIVE_INFINITY;
@@ -37,6 +39,7 @@ var app = new Vue({
       DELTA_UPDATE_TYPE_SEMESTER_FRACTION: DELTA_UPDATE_TYPE_SEMESTER_FRACTION,
       DELTA_UPDATE_TYPE_ENROLLMENT_CAP: DELTA_UPDATE_TYPE_ENROLLMENT_CAP,
       DELTA_UPDATE_TYPE_COMMENTS: DELTA_UPDATE_TYPE_COMMENTS,
+      DELTA_UPDATE_TYPE_DELIVERY_METHOD: DELTA_UPDATE_TYPE_DELIVERY_METHOD,
       DELTA_ACTION_SET: DELTA_ACTION_SET,
       DELTA_ACTION_UNSET: DELTA_ACTION_UNSET,
       DELTA_ACTION_CREATE: DELTA_ACTION_CREATE,
@@ -47,6 +50,7 @@ var app = new Vue({
       COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS: COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS,
       COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES: COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES,
       COPY_REGISTRAR_TO_ICHAIR_COMMENTS: COPY_REGISTRAR_TO_ICHAIR_COMMENTS,
+      COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD: COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD,
       COPY_REGISTRAR_TO_ICHAIR_ALL: COPY_REGISTRAR_TO_ICHAIR_ALL,
       semesterFractionsReverse: {}, // used to convert
       semesterFractions: {},
@@ -438,6 +442,7 @@ var app = new Vue({
                 instructorsMatch: course.instructors_match,
                 semesterFractionsMatch: course.semester_fractions_match,
                 enrollmentCapsMatch: course.enrollment_caps_match,
+                deliveryMethodsMatch: course.delivery_methods_match,
                 publicCommentsMatch: course.public_comments_match,
                 ichairSubjectId: course.ichair_subject_id,
                 delta: course.delta,
@@ -522,6 +527,20 @@ var app = new Vue({
     deactivateMaxEnrollmentLeftArrow(item) {
       return item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner;
     },
+    deactivateDeliveryMethodRightArrow(item) {
+      if (item.delta !== null) {
+        if (
+          item.delta.requested_action === DELTA_ACTION_CREATE &&
+          !item.delta.request_update_delivery_method
+        ) {
+          return false;
+        }
+      }
+      return item.deliveryMethodsMatch || !item.hasIChair || !item.hasBanner;
+    },
+    deactivateDeliveryMethodLeftArrow(item) {
+      return item.deliveryMethodsMatch || !item.hasIChair || !item.hasBanner;
+    },
     deactivateSemesterFractionRightArrow(item) {
       if (item.delta !== null) {
         if (
@@ -578,6 +597,7 @@ var app = new Vue({
             enrollmentCap: false,
             semesterFraction: false,
             publicComments: false,
+            deliveryMethod: false,
           }, // request all delta mods by default when issuing a "create" request to the registrar
           deltaId: null, // shouldn't exist at this point, since we are creating a new delta object
           action: DELTA_ACTION_DELETE,
@@ -647,6 +667,9 @@ var app = new Vue({
             item.enrollmentCapsMatch =
               jsonResponse.agreement_update.max_enrollments_match ||
               item.delta.request_update_max_enrollment;
+            item.deliveryMethodsMatch =
+              jsonResponse.agreement_update.delivery_methods_match ||
+              item.delta.request_update_delivery_method;
             item.publicCommentsMatch =
               jsonResponse.agreement_update.public_comments_match ||
               item.delta.request_update_public_comments;
@@ -664,7 +687,8 @@ var app = new Vue({
               item.instructorsMatch &&
               item.schedulesMatch &&
               item.semesterFractionsMatch &&
-              item.publicCommentsMatch;
+              item.publicCommentsMatch &&
+              item.deliveryMethodsMatch;
             console.log("item after delta update!", item);
             console.log("all course offerings: ", _this.courseOfferings);
             //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
@@ -951,6 +975,7 @@ var app = new Vue({
         bannerCourseOfferingId: item.banner.course_offering_id,
         semesterFraction: item.banner.semester_fraction,
         maxEnrollment: item.banner.max_enrollment,
+        deliveryMethod: item.banner.delivery_method,
         semesterId: item.semesterId,
         crn: item.crn,
         loadAvailable: item.creditHours, //need to warn the user that this has been set automatically
@@ -997,6 +1022,7 @@ var app = new Vue({
                 }
               });
               courseOfferingItem.enrollmentCapsMatch = jsonResponse.agreement_update.max_enrollments_match;
+              courseOfferingItem.deliveryMethodsMatch = jsonResponse.agreement_update.delivery_methods_match;
               courseOfferingItem.publicCommentsMatch = jsonResponse.agreement_update.public_comments_match;
               courseOfferingItem.instructorsMatch = jsonResponse.agreement_update.instructors_match;
               courseOfferingItem.schedulesMatch = jsonResponse.agreement_update.meeting_times_match;
@@ -1006,7 +1032,8 @@ var app = new Vue({
                 courseOfferingItem.instructorsMatch &&
                 courseOfferingItem.schedulesMatch &&
                 courseOfferingItem.semesterFractionsMatch &&
-                courseOfferingItem.publicCommentsMatch;
+                courseOfferingItem.publicCommentsMatch &&
+                courseOfferingItem.deliveryMethodsMatch;
               courseOfferingItem.hasIChair = true;
               courseOfferingItem.linked = true;
               courseOfferingItem.showCourseOfferingRadioSelect = false;
@@ -1126,7 +1153,8 @@ var app = new Vue({
             meetingTimes: true,
             enrollmentCap: true,
             semesterFraction: true,
-            publicComments: true
+            publicComments: true,
+            deliveryMethod: true,
           }, // request all delta mods by default when issuing a "create" request to the registrar
           deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
           action: DELTA_ACTION_CREATE,
@@ -1197,6 +1225,9 @@ var app = new Vue({
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match ||
             item.delta.request_update_max_enrollment;
+          item.deliveryMethodsMatch =
+            jsonResponse.agreement_update.delivery_methods_match ||
+            item.delta.request_update_delivery_method;
           item.publicCommentsMatch =
             jsonResponse.agreement_update.public_comments_match ||
             item.delta.request_update_public_comments;
@@ -1214,7 +1245,8 @@ var app = new Vue({
             item.instructorsMatch &&
             item.schedulesMatch &&
             item.semesterFractionsMatch &&
-            item.publicCommentsMatch;
+            item.publicCommentsMatch &&
+            item.deliveryMethodsMatch;
           console.log("item after delta update!", item);
           console.log("all course offerings: ", _this.courseOfferings);
           //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
@@ -1495,7 +1527,8 @@ var app = new Vue({
                   courseOfferingItem.instructorsMatch &&
                   courseOfferingItem.schedulesMatch &&
                   courseOfferingItem.semesterFractionsMatch &&
-                  courseOfferingItem.publicCommentsMatch;
+                  courseOfferingItem.publicCommentsMatch && 
+                  courseOfferingItem.deliveryMethodsMatch;
                 courseOfferingItem.numberPrimaryInstructorsIncorrectMessage = "";
                 courseOfferingItem.loadsAdjustedWarning = "";
                 courseOfferingItem.errorMessage = ""; // clear out any error that may have been there, since things are probably OK now....and if not, the user will see an error in the dialog
@@ -1866,7 +1899,8 @@ var app = new Vue({
                   courseOfferingItem.instructorsMatch &&
                   courseOfferingItem.schedulesMatch &&
                   courseOfferingItem.semesterFractionsMatch &&
-                  courseOfferingItem.publicCommentsMatch;
+                  courseOfferingItem.publicCommentsMatch &&
+                  courseOfferingItem.deliveryMethodsMatch;
               }
             });
             _this.cancelCommentsForm();
@@ -1903,6 +1937,8 @@ var app = new Vue({
           item.delta = null;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match;
+          item.deliveryMethodsMatch =
+            jsonResponse.agreement_update.delivery_methods_match;
           item.publicCommentsMatch =
             jsonResponse.agreement_update.max_enrollments_match;
           item.instructorsMatch =
@@ -1916,7 +1952,8 @@ var app = new Vue({
             item.instructorsMatch &&
             item.schedulesMatch &&
             item.semesterFractionsMatch &&
-            item.publicCommentsMatch;
+            item.publicCommentsMatch &&
+            item.deliveryMethodsMatch;
           if (deltaAction === DELTA_ACTION_CREATE) {
             // we deleted a request to create a new banner course offering, so now we need to show the list of banner choices again
             item.bannerChoice = null;
@@ -1944,6 +1981,7 @@ var app = new Vue({
       //  - DELTA_UPDATE_TYPE_ENROLLMENT_CAP
       //  - DELTA_UPDATE_TYPE_SEMESTER_FRACTION
       //  - DELTA_UPDATE_TYPE_COMMENTS
+      //  - DELTA_UPDATE_TYPE_DELIVERY_METHOD
       // updateOrUndo is DELTA_ACTION_UPDATE or DELTA_ACTION_UNDO_UPDATE
       //
       // https://www.w3schools.com/jsref/jsref_switch.asp
@@ -1980,6 +2018,11 @@ var app = new Vue({
             enrollmentCap: updateSetOrUnset === DELTA_ACTION_SET ? true : false
           };
           break;
+        case DELTA_UPDATE_TYPE_DELIVERY_METHOD:
+            deltaMods = {
+              deliveryMethod: updateSetOrUnset === DELTA_ACTION_SET ? true : false
+            };
+            break;
         case DELTA_UPDATE_TYPE_COMMENTS:
           deltaMods = {
             publicComments: updateSetOrUnset === DELTA_ACTION_SET ? true : false
@@ -2094,6 +2137,9 @@ var app = new Vue({
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match ||
             item.delta.request_update_max_enrollment;
+          item.deliveryMethodsMatch =
+            jsonResponse.agreement_update.delivery_methods_match ||
+            item.delta.request_update_delivery_method;
           item.publicCommentsMatch =
             jsonResponse.agreement_update.public_comments_match ||
             item.delta.request_update_public_comments;
@@ -2111,7 +2157,8 @@ var app = new Vue({
             item.instructorsMatch &&
             item.schedulesMatch &&
             item.semesterFractionsMatch &&
-            item.publicCommentsMatch;
+            item.publicCommentsMatch &&
+            item.deliveryMethodsMatch;
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
@@ -2162,6 +2209,9 @@ var app = new Vue({
       } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_COMMENTS) {
         dataForPost.propertiesToUpdate.push("comments");
       }
+        else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD) {
+          dataForPost.propertiesToUpdate.push("delivery_method");
+      }
       $.ajax({
         // initialize an AJAX request
         type: "POST",
@@ -2175,6 +2225,7 @@ var app = new Vue({
           let maxEnrollmentChangeCanBeUndone = false;
           let meetingTimesChangeCanBeUndone = false;
           let semesterFractionChangeCanBeUndone = false;
+          let deliveryMethodChangeCanBeUndone = false;
           if (item.hasIChair) {
             // get the "change_can_be_undone" settings before making the updates....
             commentsChangeCanBeUndone = item.ichair.change_can_be_undone.comments;
@@ -2182,7 +2233,9 @@ var app = new Vue({
             maxEnrollmentChangeCanBeUndone = item.ichair.change_can_be_undone.max_enrollment;
             meetingTimesChangeCanBeUndone = item.ichair.change_can_be_undone.meeting_times;
             semesterFractionChangeCanBeUndone = item.ichair.change_can_be_undone.semester_fraction;
+            deliveryMethodChangeCanBeUndone = item.ichair.change_can_be_undone.delivery_method;
           }
+
           item.delta = jsonResponse.delta_response;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match; // don't need to check item.delta.request_update_max_enrollment, since this was already sorted out by the server-side code....
@@ -2194,12 +2247,15 @@ var app = new Vue({
             jsonResponse.agreement_update.meeting_times_match;
           item.semesterFractionsMatch =
             jsonResponse.agreement_update.semester_fractions_match;
+          item.deliveryMethodsMatch =
+            jsonResponse.agreement_update.delivery_methods_match;
           item.allOK =
             item.enrollmentCapsMatch &&
             item.instructorsMatch &&
             item.schedulesMatch &&
             item.semesterFractionsMatch &&
-            item.publicCommentsMatch;
+            item.publicCommentsMatch &&
+            item.deliveryMethodsMatch;
           item.ichair = jsonResponse.course_offering_update;
           item.ichair.meeting_times_detail.forEach( mtd => {
             if (mtd.room === null) {
@@ -2218,6 +2274,7 @@ var app = new Vue({
           item.ichair.change_can_be_undone.max_enrollment = item.ichair.change_can_be_undone.max_enrollment || maxEnrollmentChangeCanBeUndone;
           item.ichair.change_can_be_undone.meeting_times = item.ichair.change_can_be_undone.meeting_times || meetingTimesChangeCanBeUndone;
           item.ichair.change_can_be_undone.semester_fraction = item.ichair.change_can_be_undone.semester_fraction || semesterFractionChangeCanBeUndone;
+          item.ichair.change_can_be_undone.delivery_method = item.ichair.change_can_be_undone.delivery_method || deliveryMethodChangeCanBeUndone;
 
           // if we are undoing a previous change, then should set the undo flag back to false....
           if (!copyFromBanner) {
@@ -2231,6 +2288,8 @@ var app = new Vue({
               item.ichair.change_can_be_undone.meeting_times = false;
             } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_COMMENTS) {
               item.ichair.change_can_be_undone.comments = false;
+            } else if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD) {
+              item.ichair.change_can_be_undone.delivery_method = false;
             }
           }
 
@@ -2496,17 +2555,20 @@ var app = new Vue({
                   courseOfferingItem.schedulesMatch = jsonResponse.schedules_match || jsonResponse.delta.request_update_meeting_times;
                   courseOfferingItem.enrollmentCapsMatch = jsonResponse.max_enrollments_match || jsonResponse.delta.request_update_max_enrollment;
                   courseOfferingItem.semesterFractionsMatch = jsonResponse.semester_fractions_match || jsonResponse.delta.request_update_semester_fraction;
+                  courseOfferingItem.deliveryMethodsMatch = jsonResponse.delivery_methods_match || jsonResponse.delta.request_update_delivery_method;
                 } else {
                   courseOfferingItem.schedulesMatch = jsonResponse.schedules_match;
                   courseOfferingItem.enrollmentCapsMatch = jsonResponse.max_enrollments_match;
                   courseOfferingItem.semesterFractionsMatch = jsonResponse.semester_fractions_match;
+                  courseOfferingItem.deliveryMethodsMatch = jsonResponse.delivery_methods_match;
                 }
                 courseOfferingItem.allOK =
                   courseOfferingItem.enrollmentCapsMatch &&
                   courseOfferingItem.instructorsMatch &&
                   courseOfferingItem.schedulesMatch &&
                   courseOfferingItem.semesterFractionsMatch &&
-                  courseOfferingItem.publicCommentsMatch;
+                  courseOfferingItem.publicCommentsMatch &&
+                  courseOfferingItem.deliveryMethodsMatch;
                 courseOfferingItem.classroomsUnassignedWarning = "";
               }
             });

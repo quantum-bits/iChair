@@ -30,7 +30,8 @@
                 2. Please select which courses from other departments you might want to edit:
             </v-flex>
 
-            <v-flex xs10 offset-xs2 class="my-0" class="mt-n12" v-for="course in extraDepartmentalCourseChoices" :key="course.id">
+            <v-flex xs10 offset-xs2 class="my-0" class="mt-n12" v-for="course in extraDepartmentalCourseChoices"
+                :key="course.id">
                 <v-checkbox class="mb-0" color="success" :label="course.name" :value="course.id"
                     v-model="chosenExtraCourses" hide-details></v-checkbox>
             </v-flex>
@@ -46,8 +47,8 @@
             </v-flex>
             <v-flex xs6 offset-xs3 class="mt-4">
                 <v-alert color="#2A3B4D" outlined>
-                    For some help getting started on this process, click <a href="https://www.youtube.com/watch?v=x8u6bgVSsTM"
-                        target="_blank">here</a>.
+                    For some help getting started on this process, click <a
+                        href="https://www.youtube.com/watch?v=x8u6bgVSsTM" target="_blank">here</a>.
                 </v-alert>
             </v-flex>
             <v-flex xs4></v-flex>
@@ -135,8 +136,7 @@
                     <v-divider class="ma-0"></v-divider>
                     <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn color="primary" text
-                            @click="noSemestersChosenDialog = false">
+                        <v-btn color="primary" text @click="noSemestersChosenDialog = false">
                             Got it!
                         </v-btn>
                     </v-card-actions>
@@ -193,8 +193,7 @@
         <template>
             <v-data-table :headers="headers" :items="courseOfferings" show-expand :page.sync="page"
                 :items-per-page="itemsPerPage" hide-default-footer item-key="index" class="elevation-1"
-                :expanded.sync="expanded" :single-expand="singleExpand"
-                @page-count="pageCount = $event">
+                :expanded.sync="expanded" :single-expand="singleExpand" @page-count="pageCount = $event">
                 <template v-slot:item="{ item, expand, isExpanded }">
                     <tr @click="expand(!isExpanded)" class="include-pointer">
                         <td>
@@ -416,7 +415,8 @@
                                                             <v-flex xs2>
                                                                 <select class="mt-2"
                                                                     style="border-style: solid; height: 32px; width: 100%;"
-                                                                    id="room_select" v-model="meetingTimeDetail.room.id">
+                                                                    id="room_select"
+                                                                    v-model="meetingTimeDetail.room.id">
                                                                     <option v-for="roomChoice in roomChoices"
                                                                         :value="roomChoice.id">[[roomChoice.short_name]]
                                                                     </option>
@@ -698,13 +698,13 @@
                                                     </span>
 
                                                 </td>
-                                                <td v-if="item.delta.requested_action == DELTA_ACTION_CREATE" class="undo-icon-container">
+                                                <td v-if="item.delta.requested_action == DELTA_ACTION_CREATE"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary" @click="deleteDelta(item)"
-                                                                    v-on="on">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="deleteDelta(item)" v-on="on">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -712,13 +712,13 @@
                                                         <span>Don't request this change</span>
                                                     </v-tooltip>
                                                 </td>
-                                                <td v-else-if="item.delta.requested_action == DELTA_ACTION_DELETE" class="undo-icon-container">
+                                                <td v-else-if="item.delta.requested_action == DELTA_ACTION_DELETE"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary" @click="deleteDelta(item)"
-                                                                    v-on="on">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="deleteDelta(item)" v-on="on">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -734,8 +734,10 @@
                                                 <td v-if="item.hasIChair" class="text-center">
                                                     <a @click="editMeetingTimes(item)">
                                                         <div v-if="item.ichair.meeting_times.length > 0">
-                                                            <div v-for="(meetingTime, index) in item.ichair.meeting_times">
-                                                                [[meetingTime]] / [[roomListItem(item.ichair.rooms, index)]]
+                                                            <div
+                                                                v-for="(meetingTime, index) in item.ichair.meeting_times">
+                                                                [[meetingTime]] / [[roomListItem(item.ichair.rooms,
+                                                                index)]]
                                                             </div>
                                                         </div>
                                                         <div v-else>
@@ -751,12 +753,12 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.meeting_times" class="undo-icon-container">
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.meeting_times"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_MEETING_TIMES, false)"
                                                                     v-on="on">
                                                                     mdi-undo
@@ -845,13 +847,12 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
-                                                <td v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times" 
+                                                <td v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times"
                                                     class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_UNSET)"
                                                                     v-on="on">
                                                                     mdi-close-circle
@@ -892,12 +893,12 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.instructors" class="undo-icon-container">
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.instructors"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS, false)"
                                                                     v-on="on">
                                                                     mdi-undo
@@ -988,12 +989,12 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
-                                                <td v-if="item.delta && item.delta.request_update_instructors && item.delta.instructors" class="undo-icon-container" >
+                                                <td v-if="item.delta && item.delta.request_update_instructors && item.delta.instructors"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_UNSET)"
                                                                     v-on="on">
                                                                     mdi-close-circle
@@ -1025,12 +1026,12 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.max_enrollment" class="undo-icon-container">
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.max_enrollment"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT, false)"
                                                                     v-on="on">
                                                                     mdi-undo
@@ -1112,12 +1113,12 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
-                                                <td v-if="item.delta && item.delta.request_update_max_enrollment && item.delta.max_enrollment" class="undo-icon-container" >
+                                                <td v-if="item.delta && item.delta.request_update_max_enrollment && item.delta.max_enrollment"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
                                                                     v-on="on">
                                                                     mdi-close-circle
@@ -1127,7 +1128,7 @@
                                                         <span>Don't request this change</span>
                                                     </v-tooltip>
                                                 </td>
-                                                <td v-else class="undo-icon-container" ></td>
+                                                <td v-else class="undo-icon-container"></td>
                                                 <td class="text-center">
                                                     <v-icon class="green--text" v-if="item.enrollmentCapsMatch">
                                                         mdi-check-circle</v-icon>
@@ -1160,12 +1161,12 @@
                                                 </a>
                                                 -->
                                                 </td>
-                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.semester_fraction" class="undo-icon-container">
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.semester_fraction"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION, false)"
                                                                     v-on="on">
                                                                     mdi-undo
@@ -1279,12 +1280,12 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
-                                                <td v-if="item.delta && item.delta.request_update_semester_fraction && item.delta.semester_fraction" class="undo-icon-container" >
+                                                <td v-if="item.delta && item.delta.request_update_semester_fraction && item.delta.semester_fraction"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
                                                                     v-on="on">
                                                                     mdi-close-circle
@@ -1302,6 +1303,129 @@
                                                 </td>
                                             </tr>
                                             <tr>
+                                                <!-- DELIVERY METHOD -->
+                                                <td>Delivery Method</td>
+                                                <td v-if="item.hasIChair" class="text-center">
+                                                    <a @click="editMeetingTimes(item)">
+                                                        [[item.ichair.delivery_method.description]]
+                                                    </a>
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.delivery_method"
+                                                    class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD, false)"
+                                                                    v-on="on">
+                                                                    mdi-undo
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Undo recent action</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container"></td>
+                                                <td>
+                                                    <div class="arrow-group">
+                                                        <div v-if="deactivateDeliveryMethodLeftArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-left-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else top>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD, true)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-left-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Copy the registrar's version to iChair</span>
+                                                        </v-tooltip>
+                                                        <div v-if="deactivateDeliveryMethodRightArrow(item)"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-arrow-right-bold-circle
+                                                            </v-icon>
+                                                        </div>
+                                                        <v-tooltip v-else bottom>
+                                                            <template v-slot:activator="{ on }">
+                                                                <div class="text-center">
+                                                                    <v-icon class="include-pointer" color="primary"
+                                                                        @click="deltaUpdate(item, DELTA_UPDATE_TYPE_DELIVERY_METHOD, DELTA_ACTION_SET)"
+                                                                        v-on="on">
+                                                                        mdi-arrow-right-bold-circle
+                                                                    </v-icon>
+                                                                </div>
+
+                                                            </template>
+                                                            <span>Create a message for the registrar, requesting a
+                                                                change</span>
+                                                        </v-tooltip>
+                                                    </div>
+                                                </td>
+                                                <td v-if="item.hasBanner" class="text-center">
+                                                    [[item.banner.delivery_method.description]]
+                                                </td>
+                                                <td v-else class="text-center">
+                                                    ---
+                                                </td>
+                                                <td
+                                                    v-if="item.delta && item.delta.request_update_delivery_method && item.delta.delivery_method">
+                                                    <div>
+                                                        <span v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">
+                                                            <strong>Was:</strong> [[item.delta.delivery_method.was]]
+                                                        </span>
+                                                    </div>
+
+                                                    <div>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
+                                                            to:</strong>
+                                                        <strong
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
+                                                        [[item.delta.delivery_method.change_to]]
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    v-else-if="item.delta && item.delta.requested_action == DELTA_ACTION_DELETE">
+                                                    <strong>Delete</strong>
+                                                </td>
+                                                <td v-else></td>
+                                                <td v-if="item.delta && item.delta.request_update_delivery_method && item.delta.delivery_method"
+                                                    class="undo-icon-container">
+                                                    <v-tooltip top>
+                                                        <template v-slot:activator="{ on }">
+                                                            <span class="float-right">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="deltaUpdate(item, DELTA_UPDATE_TYPE_DELIVERY_METHOD, DELTA_ACTION_UNSET)"
+                                                                    v-on="on">
+                                                                    mdi-close-circle
+                                                                </v-icon>
+                                                            </span>
+                                                        </template>
+                                                        <span>Don't request this change</span>
+                                                    </v-tooltip>
+                                                </td>
+                                                <td v-else class="undo-icon-container"></td>
+                                                <td class="text-center">
+                                                    <v-icon class="green--text" v-if="item.deliveryMethodsMatch">
+                                                        mdi-check-circle</v-icon>
+                                                    <v-icon class="orange--text" v-else>mdi-alert</v-icon>
+                                                </td>
+
+
+                                            </tr>
+                                            <tr>
+                                                <!-- PUBLIC COMMENTS -->
                                                 <td>Public Comments</td>
                                                 <td v-if="item.hasIChair" class="text-center">
                                                     <div v-if="item.ichair.comments.summary_contains_all_text">
@@ -1355,12 +1479,12 @@
                                                 <td v-else class="text-center">
                                                     ---
                                                 </td>
-                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.public_comments" class="undo-icon-container">
+                                                <td v-if="item.hasIChair && item.ichair.change_can_be_undone.public_comments"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="copyDataToiChair(item, COPY_REGISTRAR_TO_ICHAIR_COMMENTS, false)"
                                                                     v-on="on">
                                                                     mdi-undo
@@ -1461,7 +1585,7 @@
                                                             <strong>Was:</strong>
                                                             [[item.delta.public_comments_summary.was]]
                                                         </span>
-                                                        
+
                                                     </div>
                                                     <div>
                                                         <strong
@@ -1477,12 +1601,12 @@
                                                     <strong>Delete</strong>
                                                 </td>
                                                 <td v-else></td>
-                                                <td v-if="item.delta && item.delta.request_update_public_comments && item.delta.public_comments" class="undo-icon-container" >
+                                                <td v-if="item.delta && item.delta.request_update_public_comments && item.delta.public_comments"
+                                                    class="undo-icon-container">
                                                     <v-tooltip top>
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
-                                                                <v-icon class="include-pointer"
-                                                                    color="primary"
+                                                                <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_UNSET)"
                                                                     v-on="on">
                                                                     mdi-close-circle
@@ -1498,6 +1622,7 @@
                                                         mdi-check-circle</v-icon>
                                                     <v-icon class="orange--text" v-else>mdi-alert</v-icon>
                                                 </td>
+
 
 
 
@@ -1574,8 +1699,7 @@
                                             class="red--text">[[item.numberPrimaryInstructorsIncorrectMessage]]</strong>
                                     </div>
                                     <div v-if="noPidmsMessage(item)">
-                                        <strong
-                                            class="orange--text">[[noPidmsMessage(item)]]</strong>
+                                        <strong class="orange--text">[[noPidmsMessage(item)]]</strong>
                                     </div>
                                 </v-flex>
                             </v-layout>

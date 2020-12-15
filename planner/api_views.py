@@ -370,6 +370,7 @@ def create_course_offering(request):
     course_id = json_data['courseId']
     semester_fraction = json_data['semesterFraction']
     max_enrollment = json_data['maxEnrollment']
+    delivery_method = json_data['deliveryMethod']
     crn = json_data['crn']
     semester_id = json_data['semesterId']
     load_available = json_data['loadAvailable']
@@ -405,6 +406,7 @@ def create_course_offering(request):
     # first get the course and semester objects
     course = Course.objects.get(pk=course_id)
     semester = Semester.objects.get(pk=semester_id)
+    ichair_delivery_methods = DeliveryMethod.objects.filter(code=delivery_method["code"])
 
     # now create the course offering
     course_offering = CourseOffering.objects.create(
@@ -413,6 +415,7 @@ def create_course_offering(request):
         semester_fraction=semester_fraction,
         max_enrollment=max_enrollment,
         load_available=course.credit_hours,
+        delivery_method=ichair_delivery_methods[0] if len(ichair_delivery_methods) == 1 else None,
         crn=crn)
     course_offering.save()
 
@@ -532,6 +535,7 @@ def create_course_offering(request):
             "semester_fraction": False,
             "instructors": False,
             "meeting_times": False,
+            "delivery_method": False,
         },
         "load_available": course_offering.load_available,
         "semester": course_offering.semester.name.name,
@@ -541,14 +545,16 @@ def create_course_offering(request):
         "number": course_offering.course.number,
         "credit_hours": course_offering.course.credit_hours,
         "course_title": course_offering.course.title,
-        "comments": course_offering.comment_list()
+        "comments": course_offering.comment_list(),
+        "delivery_method": create_delivery_method_dict(course_offering.delivery_method)
     }
     agreement_update = {
         "instructors_match": instructors_match(bco, course_offering),
         "meeting_times_match": scheduled_classes_match(bco, course_offering),
         "max_enrollments_match": max_enrollments_match(bco, course_offering),
         "semester_fractions_match": semester_fractions_match(bco, course_offering),
-        "public_comments_match": public_comments_match(bco, course_offering)
+        "public_comments_match": public_comments_match(bco, course_offering),
+        "delivery_methods_match": delivery_methods_match(bco, course_offering),
     }
 
     data = {
@@ -706,6 +712,7 @@ def banner_comparison_data(request):
                     "semester_fractions_match": False,
                     "enrollment_caps_match": False,
                     "public_comments_match": False,
+                    "delivery_methods_match": False,
                     "ichair_subject_id": subject.id,
                     "banner": {
                         "course_offering_id": bco.id,
@@ -721,7 +728,8 @@ def banner_comparison_data(request):
                         "number": bco.course.number,
                         "credit_hours": bco.course.credit_hours,
                         "course_title": bco.course.title,
-                        "comments": bco.comment_list()
+                        "comments": bco.comment_list(),
+                        "delivery_method": create_delivery_method_dict(bco.delivery_method)
                     },
                     "ichair": {},
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
@@ -794,6 +802,8 @@ def banner_comparison_data(request):
                                 bco, ico) or delta_response["request_update_max_enrollment"]
                             comments_match = public_comments_match(
                                 bco, ico) or delta_response["request_update_public_comments"]
+                            del_methods_match = delivery_methods_match(
+                                bco, ico) or delta_response["request_update_delivery_method"]
                         else:
                             schedules_match = scheduled_classes_match(bco, ico)
                             inst_match = instructors_match(bco, ico)
@@ -802,6 +812,8 @@ def banner_comparison_data(request):
                             enrollment_caps_match = max_enrollments_match(
                                 bco, ico)
                             comments_match = public_comments_match(
+                                bco, ico)
+                            del_methods_match = delivery_methods_match(
                                 bco, ico)
 
                         course_offering_item["ichair"] = {
@@ -820,6 +832,7 @@ def banner_comparison_data(request):
                                 "semester_fraction": False,
                                 "instructors": False,
                                 "meeting_times": False,
+                                "delivery_method": False,
                             },
                             "load_available": ico.load_available,
                             "semester": ico.semester.name.name,
@@ -829,7 +842,8 @@ def banner_comparison_data(request):
                             "number": ico.course.number,
                             "credit_hours": ico.course.credit_hours,
                             "course_title": ico.course.title,
-                            "comments": ico.comment_list()
+                            "comments": ico.comment_list(),
+                            "delivery_method": create_delivery_method_dict(ico.delivery_method)
                         }
                         course_offering_item["has_ichair"] = True
                         course_offering_item["linked"] = True
@@ -838,8 +852,9 @@ def banner_comparison_data(request):
                         course_offering_item["semester_fractions_match"] = sem_fractions_match
                         course_offering_item["enrollment_caps_match"] = enrollment_caps_match
                         course_offering_item["public_comments_match"] = comments_match
+                        course_offering_item["delivery_methods_match"] = del_methods_match
 
-                        course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match and enrollment_caps_match and comments_match
+                        course_offering_item["all_OK"] = schedules_match and inst_match and sem_fractions_match and enrollment_caps_match and comments_match and del_methods_match
 
                     except CourseOffering.DoesNotExist:
                         print(
@@ -871,6 +886,7 @@ def banner_comparison_data(request):
                         course_offering_item["ichair_options"].append({
                             "course_title": unlinked_ico.course.title,
                             "comments": unlinked_ico.comment_list(),
+                            "delivery_method": create_delivery_method_dict(unlinked_ico.delivery_method),
                             "course": unlinked_ico.course.subject.abbrev+' '+unlinked_ico.course.number,
                             "number": unlinked_ico.course.number,
                             "credit_hours": unlinked_ico.course.credit_hours,
@@ -889,6 +905,7 @@ def banner_comparison_data(request):
                                 "semester_fraction": False,
                                 "instructors": False,
                                 "meeting_times": False,
+                                "delivery_method": False,
                             },
                             "load_available": unlinked_ico.load_available,
                             "semester": unlinked_ico.semester.name.name,
@@ -924,6 +941,7 @@ def banner_comparison_data(request):
                         course_offering_item["semester_fractions_match"] = True
                         course_offering_item["enrollment_caps_match"] = True
                         course_offering_item["public_comments_match"] = True
+                        course_offering_item["delivery_methods_match"] = True
 
                         course_offering_item["all_OK"] = True
                         course_offering_item["delta"] = delta_response
@@ -970,6 +988,7 @@ def banner_comparison_data(request):
                         "crn": unlinked_bco.crn,
                         "course_title": unlinked_bco.course.title,
                         "comments": unlinked_bco.comment_list(),
+                        "delivery_method": create_delivery_method_dict(unlinked_bco.delivery_method),
                         "course": unlinked_bco.course.subject.abbrev+' '+unlinked_bco.course.number,
                         "number": unlinked_bco.course.number,
                         "credit_hours": unlinked_bco.course.credit_hours,
@@ -1009,6 +1028,7 @@ def banner_comparison_data(request):
                     sem_fractions_match = delta_response["request_update_semester_fraction"]
                     enrollment_caps_match = delta_response["request_update_max_enrollment"]
                     comments_match = delta_response["request_update_public_comments"]
+                    del_methods_match = delta_response["request_update_delivery_method"]
                 else:
                     delta_response = None
                     schedules_match = False
@@ -1016,6 +1036,7 @@ def banner_comparison_data(request):
                     sem_fractions_match = False
                     enrollment_caps_match = False
                     comments_match = False
+                    del_methods_match = False
 
                 course_offering_item = {
                     "index": index,
@@ -1031,6 +1052,7 @@ def banner_comparison_data(request):
                     "semester_fractions_match": sem_fractions_match,
                     "enrollment_caps_match": enrollment_caps_match,
                     "public_comments_match": comments_match,
+                    "delivery_methods_match": del_methods_match,
                     "ichair_subject_id": subject.id,
                     "banner": {},
                     "ichair": {
@@ -1049,6 +1071,7 @@ def banner_comparison_data(request):
                             "semester_fraction": False,
                             "instructors": False,
                             "meeting_times": False,
+                            "delivery_method": False,
                         },
                         "load_available": ico.load_available,
                         "semester": ico.semester.name.name,
@@ -1058,7 +1081,8 @@ def banner_comparison_data(request):
                         "number": ico.course.number,
                         "credit_hours": ico.course.credit_hours,
                         "course_title": ico.course.title,
-                        "comments": ico.comment_list()
+                        "comments": ico.comment_list(),
+                        "delivery_method": create_delivery_method_dict(ico.delivery_method)
                     },
                     # options for possible matches (if the banner course offering is linked to an iChair course offering, this list remains empty)
                     "ichair_options": [],
@@ -1067,7 +1091,7 @@ def banner_comparison_data(request):
                     "has_ichair": True,
                     "linked": False,
                     "delta": delta_response,
-                    "all_OK": schedules_match and inst_match and sem_fractions_match and enrollment_caps_match and comments_match,
+                    "all_OK": schedules_match and inst_match and sem_fractions_match and enrollment_caps_match and comments_match and del_methods_match,
                     "crn": None
                 }
                 index = index + 1
@@ -1088,6 +1112,13 @@ def banner_comparison_data(request):
         "available_rooms": available_rooms
     }
     return JsonResponse(data)
+
+def create_delivery_method_dict(delivery_method_object):
+
+    if delivery_method_object == None:
+        return {"id": None, "code": "", "description": "---"}
+    else:
+        return {"id": delivery_method_object.id, "code": delivery_method_object.code, "description": delivery_method_object.description}
 
 def sort_rooms(presorted_meeting_times, sorted_meeting_times, presorted_rooms):
     """
@@ -1157,10 +1188,13 @@ def delta_update_status(bco, ico, delta):
         "request_update_max_enrollment": delta.update_max_enrollment,
         # True if this update is being requested by the user
         "request_update_public_comments": delta.update_public_comments,
+        # True if this update is being requested by the user
+        "request_update_delivery_method": delta.update_delivery_method,
         "meeting_times": None,
         "instructors": None,
         "semester_fraction": None,
         "max_enrollment": None,
+        "delivery_method": None,
         "public_comments": None,
         "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
@@ -1193,6 +1227,12 @@ def delta_update_status(bco, ico, delta):
             "change_to": ico.max_enrollment
         }
 
+    if delta.update_delivery_method and (not delivery_methods_match(bco, ico)):
+        delta_response["delivery_method"] = {
+            "was": bco.delivery_method.description if bco.delivery_method is not None else None,
+            "change_to": ico.delivery_method.description if ico.delivery_method is not None else None
+        }
+
     if delta.update_public_comments and (not public_comments_match(bco, ico)):
         delta_response["public_comments"] = {
             "was": [comment["text"] for comment in bco.comment_list()["comment_list"]],
@@ -1203,7 +1243,7 @@ def delta_update_status(bco, ico, delta):
             "change_to": ico.comment_list()["summary"]
         }
 
-    if (delta_response["registrar_comment"] is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
+    if (delta_response["registrar_comment"] is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None) or (delta_response["delivery_method"] is not None):
         delta_response["messages_exist"] = True
 
     # print(delta_response)
@@ -1232,10 +1272,13 @@ def delta_create_status(ico, delta):
         "request_update_max_enrollment": delta.update_max_enrollment,
         # True if the user is requesting that the registrar create this property for a given course offering
         "request_update_public_comments": delta.update_public_comments,
+        # True if the user is requesting that the registrar create this property for a given course offering
+        "request_update_delivery_method": delta.update_delivery_method,
         "meeting_times": None,
         "instructors": None,
         "semester_fraction": None,
         "max_enrollment": None,
+        "delivery_method": None,
         "public_comments": None,
         "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
@@ -1268,6 +1311,12 @@ def delta_create_status(ico, delta):
             "change_to": ico.max_enrollment
         }
     
+    if delta.update_delivery_method:
+        delta_response["delivery_method"] = {
+            "was": None,
+            "change_to": ico.delivery_method.description if ico.delivery_method is not None else None
+        }
+
     if delta.update_public_comments:
         delta_response["public_comments"] = {
             "was": [],
@@ -1278,7 +1327,7 @@ def delta_create_status(ico, delta):
             "change_to": ico.comment_list()["summary"]
         }
 
-    if (delta_response["registrar_comment"]  is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None):
+    if (delta_response["registrar_comment"]  is not None) or (delta_response["meeting_times"] is not None) or (delta_response["instructors"] is not None) or (delta_response["semester_fraction"] is not None) or (delta_response["max_enrollment"] is not None) or (delta_response["public_comments"] is not None) or (delta_response["delivery_method"] is not None):
         delta_response["messages_exist"] = True
 
     # print(delta_response)
@@ -1309,10 +1358,13 @@ def delta_delete_status(delta):
         # Should be false, since the registrar is simply going to delete the course offering
         "request_update_public_comments": delta.update_public_comments,
         # we could fetch them, but there's not really much point....
+        "request_update_delivery_method": delta.update_delivery_method,
+        # Should be false, since the registrar is simply going to delete the course offering
         "meeting_times": None,
         "instructors": None,
         "semester_fraction": None,
         "max_enrollment": None,
+        "delivery_method": None,
         "public_comments": None,
         "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
@@ -1478,6 +1530,8 @@ def generate_pdf(request):
                 y, imgDoc = render_updates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
             if item["delta"]["max_enrollment"] is not None:
                 y, imgDoc = render_updates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
+            if item["delta"]["delivery_method"] is not None:
+                y, imgDoc = render_updates(imgDoc, y, layout, "Delivery Method: ", item["delta"]["delivery_method"], data_in_list = False)
             if item["delta"]["semester_fraction"] is not None:
                 y, imgDoc = render_updates(imgDoc, y, layout, "Semester Fraction: ", item["delta"]["semester_fraction"], data_in_list = False, data_is_sem_fraction = True)
             if item["delta"]["public_comments"] is not None:
@@ -1545,6 +1599,8 @@ def generate_pdf(request):
                 y, imgDoc = render_creates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
             if item["delta"]["max_enrollment"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
+            if item["delta"]["delivery_method"] is not None:
+                y, imgDoc = render_creates(imgDoc, y, layout, "Delivery Method: ", item["delta"]["delivery_method"], data_in_list = False)
             if item["delta"]["semester_fraction"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Semester Fraction: ", item["delta"]["semester_fraction"], data_in_list = False, data_is_sem_fraction = True)
             if item["delta"]["public_comments"] is not None:
@@ -1602,6 +1658,8 @@ def require_page_break(y, layout, item):
             delta_y += dy + dy*max(len(item["delta"]["public_comments"]["was"]), 1) + dy*max(len(item["delta"]["public_comments"]["change_to"]), 1)
         if item["delta"]["max_enrollment"] is not None:
             delta_y += 3*dy 
+        if item["delta"]["delivery_method"] is not None:
+            delta_y += 3*dy 
         if item["delta"]["semester_fraction"] is not None:
             delta_y += 3*dy
     if item["delta"]["requested_action"] == 'create':
@@ -1613,6 +1671,8 @@ def require_page_break(y, layout, item):
             delta_y += dy*max(len(item["delta"]["public_comments"]["change_to"]), 1)
         if item["delta"]["max_enrollment"] is not None:
             delta_y += dy 
+        if item["delta"]["delivery_method"] is not None:
+            delta_y += dy
         if item["delta"]["semester_fraction"] is not None:
             delta_y += dy
     # nothing to do if 'delete', since the delta_y only corresponds to one line (except if there are registrar comments....)
@@ -2023,6 +2083,14 @@ def semester_fractions_match(banner_course_offering, ichair_course_offering):
 def max_enrollments_match(banner_course_offering, ichair_course_offering):
     return banner_course_offering.max_enrollment == ichair_course_offering.max_enrollment
 
+def delivery_methods_match(banner_course_offering, ichair_course_offering):
+    if (banner_course_offering.delivery_method == None) and (ichair_course_offering.delivery_method == None):
+        return True
+    elif (banner_course_offering.delivery_method == None) or (ichair_course_offering.delivery_method == None):
+        return False
+    else:
+        return banner_course_offering.delivery_method.code == ichair_course_offering.delivery_method.code
+
 def public_comments_match(banner_course_offering, ichair_course_offering):
     bco_comments = banner_course_offering.comment_list()
     ico_comments = ichair_course_offering.comment_list()
@@ -2071,7 +2139,8 @@ def delete_delta(request):
         "meeting_times_match": False,
         "max_enrollments_match": False,
         "semester_fractions_match": False,
-        "public_comments_match": False
+        "public_comments_match": False,
+        "delivery_methods_match": False,
     }
 
     data = {
@@ -2175,6 +2244,11 @@ def generate_update_delta(request):
             else:
                 update_max_enrollment = False
 
+            if 'deliveryMethod' in delta_mods.keys():
+                update_delivery_method = delta_mods['deliveryMethod']
+            else:
+                update_delivery_method = False
+
             if 'publicComments' in delta_mods.keys():
                 update_public_comments = delta_mods['publicComments']
             else:
@@ -2189,7 +2263,8 @@ def generate_update_delta(request):
                 update_instructors=update_instructors,
                 update_semester_fraction=update_semester_fraction,
                 update_max_enrollment=update_max_enrollment,
-                update_public_comments=update_public_comments)
+                update_public_comments=update_public_comments,
+                update_delivery_method=update_delivery_method)
             dco.save()
 
     else:
@@ -2207,6 +2282,9 @@ def generate_update_delta(request):
 
         if 'enrollmentCap' in delta_mods.keys():
             dco.update_max_enrollment = delta_mods['enrollmentCap']
+
+        if 'deliveryMethod' in delta_mods.keys():
+            dco.update_delivery_method = delta_mods['deliveryMethod']
 
         if 'publicComments' in delta_mods.keys():
             dco.update_public_comments = delta_mods['publicComments']
@@ -2226,7 +2304,8 @@ def generate_update_delta(request):
                 "meeting_times_match": scheduled_classes_match(bco, ico),
                 "max_enrollments_match": max_enrollments_match(bco, ico),
                 "semester_fractions_match": semester_fractions_match(bco, ico),
-                "public_comments_match": public_comments_match(bco, ico)
+                "public_comments_match": public_comments_match(bco, ico),
+                "delivery_methods_match": delivery_methods_match(bco, ico),
             }
         elif action == 'create':
             # in this case we only have an ichair id....
@@ -2237,7 +2316,8 @@ def generate_update_delta(request):
                 "meeting_times_match": False,
                 "max_enrollments_match": False,
                 "semester_fractions_match": False,
-                "public_comments_match": False
+                "public_comments_match": False,
+                "delivery_methods_match": False,
             }
         elif action == 'delete':
             # in this case we only have a banner id....
@@ -2248,7 +2328,8 @@ def generate_update_delta(request):
                 "meeting_times_match": True,
                 "max_enrollments_match": True,
                 "semester_fractions_match": True,
-                "public_comments_match": True
+                "public_comments_match": True,
+                "delivery_methods_match": True,
             }
 
         # WORKING HERE: need to add some other functionality for the delete' action....
@@ -2770,6 +2851,21 @@ def copy_course_offering_data_to_ichair(request):
             else:
                 ico.max_enrollment = snapshot["max_enrollment"]
                 ico.save()
+        if 'delivery_method' in properties_to_update:
+            if copy_from_banner:
+                delivery_methods = DeliveryMethod.objects.filter(code = bco.delivery_method.code)
+                if len(delivery_methods) == 1:
+                    ico.delivery_method = delivery_methods[0]
+                    ico.save()
+                snapshot["delivery_method"] = snapshot_from_db["delivery_method"]
+            else:
+                if snapshot["delivery_method"]["id"] == None:
+                    ico.delivery_method = None
+                    ico.save()
+                else:
+                    delivery_method = DeliveryMethod.objects.get(pk=snapshot["delivery_method"]["id"])
+                    ico.delivery_method = delivery_method
+                    ico.save()
         if 'comments' in properties_to_update:
             # first delete any existing iChair comments
             existing_iChair_comments = ico.comment_list()
@@ -3004,20 +3100,26 @@ def copy_course_offering_data_to_ichair(request):
                     bco, ico) or delta_response["request_update_max_enrollment"]
                 comments_match = public_comments_match(
                     bco, ico) or delta_response["request_update_public_comments"]
+                del_methods_match = delivery_methods_match(
+                    bco, ico) or delta_response["request_update_delivery_method"]
             else:
                 schedules_match = scheduled_classes_match(bco, ico)
                 inst_match = instructors_match(bco, ico)
                 sem_fractions_match = semester_fractions_match(
                     bco, ico)
                 enrollment_caps_match = max_enrollments_match(bco, ico)
-            comments_match = public_comments_match(bco, ico)
+                # KK: increased the indent of the following line because it seemed to be incorrect....from the git history, it looks like an
+                # a block of text was indented together, but the last line was missed....
+                comments_match = public_comments_match(bco, ico)
+                del_methods_match = delivery_methods_match(bco, ico)
 
         agreement_update = {
             "instructors_match": inst_match if has_banner else False,
             "meeting_times_match": schedules_match if has_banner else False,
             "max_enrollments_match": enrollment_caps_match if has_banner else False,
             "semester_fractions_match": sem_fractions_match if has_banner else False,
-            "public_comments_match": comments_match if has_banner else False
+            "public_comments_match": comments_match if has_banner else False,
+            "delivery_methods_match": del_methods_match if has_banner else False
         }
 
         # "change_can_be_undone" here is just looking locally at what has been done; the client can make a better judgement
@@ -3029,6 +3131,7 @@ def copy_course_offering_data_to_ichair(request):
                 "semester_fraction": 'semester_fraction' in properties_to_update,
                 "instructors": 'instructors' in properties_to_update,
                 "meeting_times": 'meeting_times' in properties_to_update,
+                "delivery_method": 'delivery_method' in properties_to_update,
             }
         else:
             change_can_be_undone = {
@@ -3037,6 +3140,7 @@ def copy_course_offering_data_to_ichair(request):
                 "semester_fraction": False,
                 "instructors": False,
                 "meeting_times": False,
+                "delivery_method": False,
             }
 
         course_offering_update = {
@@ -3054,7 +3158,8 @@ def copy_course_offering_data_to_ichair(request):
             "semester": ico.semester.name.name,
             "semester_fraction": int(ico.semester_fraction),
             "max_enrollment": int(ico.max_enrollment),
-            "comments": ico.comment_list()}
+            "comments": ico.comment_list(),
+            "delivery_method": create_delivery_method_dict(ico.delivery_method)}
 
         if user_department != course_department:
             revised_co_snapshot = ico.snapshot
@@ -3071,6 +3176,8 @@ def copy_course_offering_data_to_ichair(request):
                 updated_fields.append("max_enrollment")
             if 'comments' in properties_to_update:
                 updated_fields.append("public_comments")
+            if 'delivery_method' in properties_to_update:
+                updated_fields.append("delivery_method")
             create_message_course_offering_update(user.username, user_department, course_department, academic_year,
                                                 snapshot_from_db, revised_co_snapshot, updated_fields)
 

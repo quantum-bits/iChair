@@ -15,6 +15,7 @@ from banner.models import Room as BannerRoom
 from banner.models import Building as BannerBuilding
 from banner.models import SubjectToImport as BannerSubjectToImport
 from banner.models import DeliveryMethod as BannerDeliveryMethod
+from planner.models import DeliveryMethod
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
@@ -531,6 +532,20 @@ class Command(BaseCommand):
                 for new_delivery_method in delivery_methods_created:
                     print(new_delivery_method)
 
+            # check that banner.db and ichair.db have exactly the same delivery methods....
+            number_matching_ichair_delivery_methods = 0
+            number_banner_delivery_methods = 0
+            for banner_delivery_method in BannerDeliveryMethod.objects.all():
+                number_banner_delivery_methods += 1
+                ichair_delivery_methods = DeliveryMethod.objects.filter(code = banner_delivery_method.code)
+                if len(ichair_delivery_methods) == 1:
+                    number_matching_ichair_delivery_methods += 1
+            if number_matching_ichair_delivery_methods != number_banner_delivery_methods:
+                number_errors += 1
+
+            print(' ')
+            print('iChair and Banner delivery methods agree exactly?', number_matching_ichair_delivery_methods == number_banner_delivery_methods)
+
             print(' ')
             print('total number of errors encountered: ', number_errors)
 
@@ -547,7 +562,8 @@ class Command(BaseCommand):
                 'rooms_created': rooms_created,
                 'delivery_methods_created': delivery_methods_created,
                 'buildings_created': buildings_created,
-                'building_room_errors': building_room_errors
+                'building_room_errors': building_room_errors,
+                'delivery_methods_agree': number_matching_ichair_delivery_methods == number_banner_delivery_methods
                 }
 
             # In the following I can use just "banner_import_report.txt" (without the path) if I'm running the warehouse command at the 
@@ -653,6 +669,11 @@ Delivery methods created:
             plaintext_message += """
     {0}
             """.format(delivery_method)
+
+    if not context["delivery_methods_agree"]:
+        plaintext_message += """
+iChair and Banner delivery methods are not in exact agreement -- this error needs to be fixed!
+        """
 
     plaintext_message += """
 Number of errors: {0}

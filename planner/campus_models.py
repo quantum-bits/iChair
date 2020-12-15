@@ -913,6 +913,7 @@ class DeltaCourseOffering(StampedModel):
     update_semester_fraction = models.BooleanField(default=False)
     update_max_enrollment = models.BooleanField(default=False)
     update_public_comments = models.BooleanField(default=False)
+    update_delivery_method = models.BooleanField(default=False)
 
     def __str__(self):
         if self.course_offering is not None:
