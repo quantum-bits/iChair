@@ -27,6 +27,7 @@ const COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD = "deliveryMethod";
 const COPY_REGISTRAR_TO_ICHAIR_ALL = "all";
 
 const NO_ROOM_SELECTED_ID = Number.NEGATIVE_INFINITY;
+const NO_DELIVERY_METHOD_SELECTED_ID = Number.NEGATIVE_INFINITY;
 
 var app = new Vue({
   delimiters: ["[[", "]]"],
@@ -119,12 +120,14 @@ var app = new Vue({
       editEnrollmentCap: null, // used to store enrollment data in the class schedule form
       editLoadAvailable: null, // used to store "load available" data in the edit intructors form
       editSemesterFraction: null, // used to store semester fraction data in the class schedule form
+      editDeliveryMethodId: null, // used to store delivery method data in the class schedule form
       editComments: [], // used to store the data in the public comments form
       editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule and public comments forms
       initialMeetingData: [], // used to hold on to the initial class schedule (before editing)
       initialEnrollmentData: null, // used to hold on to the initial enrollment data (before editing)
       initialLoadAvailableData: null, // used to hold on to the initial "load available" data (before editing)
       initialSemesterFractionData: null, // used to hold on to the initial semester fraction data (before editing)
+      initialDeliveryMethodId: null, // used to hold on to the initial delivery method data (before editing)
       initialCommentData: [], // used to hold on to the initial comments (before editing)
       meetingFormErrorMessage: "", // used to display errors in the class scheduling form
       instructorFormErrorMessage: "", // used to display errors in the instructor form
@@ -284,6 +287,7 @@ var app = new Vue({
           data: JSON.stringify(dataForPost),
           success: function(incomingData) {
             _this.showLinearProgressBar = false;
+            console.log('available delivery methods: ', incomingData.available_delivery_methods);
             //_this.facultyChoices = incomingData.available_faculty;
             //console.log('faculty choices: ', _this.facultyChoices);
             // https://stackoverflow.com/questions/3590685/accessing-this-from-within-an-objects-inline-function
@@ -293,8 +297,15 @@ var app = new Vue({
                 short_name: "-----",
                 capacity: -1
               };
+            let noDeliveryMethod = {
+              id: NO_DELIVERY_METHOD_SELECTED_ID,
+              code: "",
+              description: "-----",
+            };
             _this.roomChoices = incomingData.available_rooms;
             _this.roomChoices.unshift(noRoom);
+            _this.deliveryMethodChoices = incomingData.available_delivery_methods;
+            _this.deliveryMethodChoices.unshift(noDeliveryMethod);
             incomingData.course_data.forEach(course => {
               let ichairChoices = [];
               let showIChairRadioSelect = false;
@@ -1298,6 +1309,7 @@ var app = new Vue({
 
     //courseOfferings
     editMeetingTimes(courseInfo) {
+      console.log('course info: ', courseInfo);
       let bannerId = null;
       if (courseInfo.hasBanner) {
         bannerId = courseInfo.banner.course_offering_id;
@@ -1323,12 +1335,18 @@ var app = new Vue({
           meeting.room.id = NO_ROOM_SELECTED_ID;
         }
       });
+      if (courseInfo.ichair.delivery_method.id === null) {
+        this.editDeliveryMethodId = NO_ROOM_SELECTED_ID;
+      } else {
+        this.editDeliveryMethodId = courseInfo.ichair.delivery_method.id;
+      }
       console.log('edit meetings: ', this.editMeetings);
       this.editEnrollmentCap = courseInfo.ichair.max_enrollment;
       this.editSemesterFraction = courseInfo.ichair.semester_fraction;
       this.initialMeetingData = meetingDetails;
       this.initialEnrollmentData = this.editEnrollmentCap;
       this.initialSemesterFractionData = this.editSemesterFraction;
+      this.initialDeliveryMethodId = this.editDeliveryMethodId;
     },
 
     editOfferingInstructors(courseInfo) {
@@ -2359,6 +2377,7 @@ var app = new Vue({
       this.editCourseOfferingData = {};
       this.editEnrollmentCap = null;
       this.editSemesterFraction = null;
+      this.editDeliveryMethodId = null;
     },
     submitMeetingsForm() {
       let meetingsToDelete = []; //list of ids
@@ -2368,10 +2387,12 @@ var app = new Vue({
       this.meetingFormErrorMessage = "";
       let formOK = true;
       updateEnrollmentCap = false;
+      updateDeliveryMethod = false;
       updateSemesterFraction = false;
       let numChanges = 0;
       console.log('enrollment cap: ', this.editEnrollmentCap, ' ', typeof this.editEnrollmentCap);
       console.log('sem fraction: ', this.editSemesterFraction, ' ', typeof this.editSemesterFraction);
+      console.log('delivery method: ', this.editDeliveryMethodId, ' ', typeof this.editDeliveryMethodId);
       
       // this.editEnrollmentCap could be either an int (the original data) or a string (if it's been edited, I think);
       // the following checks that, no matter if it is a string or an int, it has the form of an int;
@@ -2392,6 +2413,11 @@ var app = new Vue({
       if (parseInt(this.editSemesterFraction)!==parseInt(this.initialSemesterFractionData)) {
         console.log('need to update semester fraction!');
         updateSemesterFraction = true;
+        numChanges = numChanges + 1;
+      }
+      
+      if ((+this.editDeliveryMethodId) !== (+this.initialDeliveryMethodId)) {
+        updateDeliveryMethod = true;
         numChanges = numChanges + 1;
       }
 
@@ -2502,8 +2528,10 @@ var app = new Vue({
           create: meetingsToCreate,
           updateSemesterFraction: updateSemesterFraction,
           updateEnrollmentCap: updateEnrollmentCap,
+          updateDeliveryMethod: updateDeliveryMethod,
           semesterFraction: parseInt(this.editSemesterFraction),
-          enrollmentCap: parseInt(this.editEnrollmentCap)
+          enrollmentCap: parseInt(this.editEnrollmentCap),
+          deliveryMethodId: (+this.editDeliveryMethodId) === Number.NEGATIVE_INFINITY ? null : +this.editDeliveryMethodId
         };
         // https://stackoverflow.com/questions/53714037/decoding-django-post-request-body
         // https://stackoverflow.com/questions/1208067/wheres-my-json-data-in-my-incoming-django-request
@@ -2530,6 +2558,9 @@ var app = new Vue({
                 if (updateSemesterFraction) {
                   courseOfferingItem.ichair.change_can_be_undone.semester_fraction = true;
                 }
+                if (updateDeliveryMethod) {
+                  courseOfferingItem.ichair.change_can_be_undone.delivery_method = true;
+                }
                 if ((meetingsToDelete.length > 0) || (meetingsToUpdate.length > 0) || (meetingsToCreate.length > 0)) {
                   console.log('meetings have been updated....');
                   courseOfferingItem.ichair.change_can_be_undone.meeting_times = true;
@@ -2550,6 +2581,11 @@ var app = new Vue({
                 courseOfferingItem.ichair.rooms = jsonResponse.rooms;
                 courseOfferingItem.ichair.max_enrollment = jsonResponse.max_enrollment;
                 courseOfferingItem.ichair.semester_fraction = jsonResponse.semester_fraction;
+                courseOfferingItem.ichair.delivery_method = {
+                  id: jsonResponse.delivery_method.id,
+                  code: jsonResponse.delivery_method.code,
+                  description: jsonResponse.delivery_method.description
+                }
 
                 if (jsonResponse.has_delta) {
                   courseOfferingItem.schedulesMatch = jsonResponse.schedules_match || jsonResponse.delta.request_update_meeting_times;

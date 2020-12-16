@@ -1105,18 +1105,25 @@ def banner_comparison_data(request):
         "short_name": room.short_name
         } for room in Room.objects.all()]
 
+    available_delivery_methods = [{
+        "id": delivery_method.id,
+        "code": delivery_method.code,
+        "description": delivery_method.description
+    } for delivery_method in DeliveryMethod.objects.all()]
+
     data = {
         "course_data": sorted_course_offerings,  # course_offering_data,
         "semester_fractions": semester_fractions,
         "semester_fractions_reverse": semester_fractions_reverse,
-        "available_rooms": available_rooms
+        "available_rooms": available_rooms,
+        "available_delivery_methods": available_delivery_methods,
     }
     return JsonResponse(data)
 
 def create_delivery_method_dict(delivery_method_object):
 
     if delivery_method_object == None:
-        return {"id": None, "code": "", "description": "---"}
+        return {"id": None, "code": "", "description": ""}
     else:
         return {"id": delivery_method_object.id, "code": delivery_method_object.code, "description": delivery_method_object.description}
 
@@ -2590,11 +2597,16 @@ def update_class_schedule_api(request):
     delta = json_data['delta']
     update_semester_fraction = json_data["updateSemesterFraction"]
     update_enrollment_cap = json_data["updateEnrollmentCap"]
+    update_delivery_method = json_data["updateDeliveryMethod"]
     semester_fraction = json_data["semesterFraction"]
     enrollment_cap = json_data["enrollmentCap"]
+    delivery_method_id = json_data["deliveryMethodId"]
 
     # delta course offering actions from the model itself:
     delta_course_offering_actions = DeltaCourseOffering.actions()
+
+    #print('update delivery method? ', update_delivery_method)
+    #print('delivery method id: ', delivery_method_id)
 
     #print('sem fraction update? ', update_semester_fraction)
     #print('enrollment cap update? ', update_enrollment_cap)
@@ -2612,10 +2624,18 @@ def update_class_schedule_api(request):
         original_co_snapshot = course_offering.snapshot
         year = course_offering.semester.year
         #print(original_co_snapshot)
-
     except:
         course_offering = None
         print('could not find the course offering....')
+
+    if delivery_method_id == None:
+        delivery_method = None
+    else:
+        try:
+            delivery_method = DeliveryMethod.objects.get(pk=delivery_method_id)
+        except:
+            print('unable to find the delivery method with id = ', delivery_method_id)
+            delivery_method = None
 
     if course_offering:
         #print('found the course offering')
@@ -2625,7 +2645,10 @@ def update_class_schedule_api(request):
         if update_enrollment_cap:
             course_offering.max_enrollment = enrollment_cap
             course_offering.save()
-
+        if update_delivery_method:
+            course_offering.delivery_method = delivery_method
+            course_offering.save()
+            
     # delete scheduled classes
     deletes_successful = True
     for delete_id in delete_ids:
@@ -2721,6 +2744,7 @@ def update_class_schedule_api(request):
     schedules_match = False
     enrollment_caps_match = False
     sem_fractions_match = False
+    del_methods_match = False
     delta_response = None
     if has_banner and course_offering:
         bco = BannerCourseOffering.objects.get(pk=banner_id)
@@ -2728,6 +2752,7 @@ def update_class_schedule_api(request):
         #print('schedules match? ', schedules_match)
         enrollment_caps_match = max_enrollments_match(bco, course_offering)
         sem_fractions_match = semester_fractions_match(bco, course_offering)
+        del_methods_match = delivery_methods_match(bco, course_offering)
         if has_delta:
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
             delta_response = delta_update_status(bco, course_offering, dco)
@@ -2742,11 +2767,13 @@ def update_class_schedule_api(request):
                 schedules_match = delta_response["request_update_meeting_times"]
                 sem_fractions_match = delta_response["request_update_semester_fraction"]
                 enrollment_caps_match = delta_response["request_update_max_enrollment"]
-                
+                del_methods_match = delta_response["request_update_delivery_method"]
     if update_semester_fraction:
         snapshot["semester_fraction"] = original_co_snapshot["semester_fraction"]
     if update_enrollment_cap:
         snapshot["max_enrollment"] = original_co_snapshot["max_enrollment"]
+    if update_delivery_method:
+        snapshot["delivery_method"] = original_co_snapshot["delivery_method"]
     if (len(delete_ids) > 0) or (len(update_dict) > 0) or (len(create_dict) > 0):
         snapshot["scheduled_classes"] = original_co_snapshot["scheduled_classes"]
 
@@ -2761,8 +2788,10 @@ def update_class_schedule_api(request):
         'schedules_match': schedules_match,
         'max_enrollments_match': enrollment_caps_match,
         'semester_fractions_match': sem_fractions_match,
+        'delivery_methods_match': del_methods_match,
         'max_enrollment': max_enrollment,
         'semester_fraction': semester_fraction,
+        'delivery_method': create_delivery_method_dict(delivery_method),
         'has_delta': has_delta,
         'delta': delta_response # will be None if there is no delta object
     }
@@ -2853,10 +2882,14 @@ def copy_course_offering_data_to_ichair(request):
                 ico.save()
         if 'delivery_method' in properties_to_update:
             if copy_from_banner:
-                delivery_methods = DeliveryMethod.objects.filter(code = bco.delivery_method.code)
-                if len(delivery_methods) == 1:
-                    ico.delivery_method = delivery_methods[0]
+                if bco.delivery_method == None:
+                    ico.delivery_method = None
                     ico.save()
+                else:
+                    delivery_methods = DeliveryMethod.objects.filter(code = bco.delivery_method.code)
+                    if len(delivery_methods) == 1:
+                        ico.delivery_method = delivery_methods[0]
+                        ico.save()
                 snapshot["delivery_method"] = snapshot_from_db["delivery_method"]
             else:
                 if snapshot["delivery_method"]["id"] == None:

@@ -377,10 +377,26 @@
                                                             </select>
                                                         </v-flex>
                                                     </v-layout>
-                                                    <v-layout text-center>
+                                                    <v-layout v-if="enrollmentErrorMessage" text-center>
                                                         <v-flex xs12>
                                                             <div class="red--text">
                                                                 [[enrollmentErrorMessage]]</div>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <v-layout wrap>
+                                                        <v-flex xs3>
+                                                            <div class="mt-2">
+                                                                Delivery Method:
+                                                            </div>
+                                                        </v-flex>
+                                                        <v-flex xs4>
+                                                            <select class="mt-2"
+                                                                style="border-style: solid; height: 32px; width: 100%;"
+                                                                id="delivery_method_select" v-model="editDeliveryMethodId">
+                                                                <option v-for="deliveryMethodChoice in deliveryMethodChoices"
+                                                                    :value="deliveryMethodChoice.id">[[deliveryMethodChoice.description]]
+                                                                </option>
+                                                            </select>
                                                         </v-flex>
                                                     </v-layout>
                                                     <v-divider></v-divider>
@@ -1307,7 +1323,12 @@
                                                 <td>Delivery Method</td>
                                                 <td v-if="item.hasIChair" class="text-center">
                                                     <a @click="editMeetingTimes(item)">
-                                                        [[item.ichair.delivery_method.description]]
+                                                        <div v-if="item.ichair.delivery_method.description ===''">
+                                                            ---
+                                                        </div>
+                                                        <div v-else>
+                                                            [[item.ichair.delivery_method.description]]
+                                                        </div>
                                                     </a>
                                                 </td>
                                                 <td v-else class="text-center">
@@ -1373,7 +1394,12 @@
                                                     </div>
                                                 </td>
                                                 <td v-if="item.hasBanner" class="text-center">
-                                                    [[item.banner.delivery_method.description]]
+                                                    <div v-if="item.banner.delivery_method.description ===''">
+                                                        ---
+                                                    </div>
+                                                    <div v-else>
+                                                        [[item.banner.delivery_method.description]]
+                                                    </div>
                                                 </td>
                                                 <td v-else class="text-center">
                                                     ---
