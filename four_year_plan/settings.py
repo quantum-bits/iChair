@@ -1,7 +1,7 @@
 # Django settings for iGrad project.
 
 from .run_mode import RunMode
-from .secret import SECRET_KEY, BANNER_DB
+from .secret import SECRET_KEY, BANNER_DB, ICHAIR_DB
 from django.conf import global_settings
 import os.path
 
@@ -21,7 +21,7 @@ if run_mode.dev:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': 'ichair.db',
+            'NAME': ICHAIR_DB #'ichair.db',
         },
         'banner': {
             'ENGINE': 'django.db.backends.sqlite3',
