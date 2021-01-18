@@ -22,7 +22,7 @@
             </v-flex>
             <v-flex xs10 offset-xs2 class="my-0" v-for="semester in semesterChoices" :key="semester.id">
                 <v-checkbox class="mb-0" color="success" :label="semester.semester_name" :value="semester.id"
-                    v-model="chosenSemesters" hide-details></v-checkbox>
+                    @change="semesterChoicesUpdated" v-model="chosenSemesters" hide-details></v-checkbox>
             </v-flex>
         </v-layout>
         <v-layout row wrap class="mt-2">
@@ -38,6 +38,16 @@
             <v-flex xs10 offset-xs2 mt-2>
                 <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
                 <v-btn outlined color="success" @click="launchSearchOtherCoursesDialog()">Add Other Courses</v-btn>
+            </v-flex>
+        </v-layout>
+        <v-layout v-if="roomRequestsAllowed" row wrap class="mt-2">
+            <v-flex xs9 offset-xs1 class="subtitle-1 mt-2">
+                3. Would you like to be able to request room edits? (This option may not be enabled for all semesters.)
+            </v-flex>
+            <v-flex xs10 offset-xs2 class="my-0" class="mt-n12">
+                <v-checkbox class="mb-0" color="success" hide-details v-model="includeRoomComparisons"
+                    label="Include room requests as part of schedule edits">
+                </v-checkbox>
             </v-flex>
         </v-layout>
         <v-layout row class="mt-4">
@@ -392,9 +402,12 @@
                                                         <v-flex xs4>
                                                             <select class="mt-2"
                                                                 style="border-style: solid; height: 32px; width: 100%;"
-                                                                id="delivery_method_select" v-model="editDeliveryMethodId">
-                                                                <option v-for="deliveryMethodChoice in deliveryMethodChoices"
-                                                                    :value="deliveryMethodChoice.id">[[deliveryMethodChoice.description]]
+                                                                id="delivery_method_select"
+                                                                v-model="editDeliveryMethodId">
+                                                                <option
+                                                                    v-for="deliveryMethodChoice in deliveryMethodChoices"
+                                                                    :value="deliveryMethodChoice.id">
+                                                                    [[deliveryMethodChoice.description]]
                                                                 </option>
                                                             </select>
                                                         </v-flex>
@@ -828,8 +841,21 @@
                                                     </div>
                                                 </td>
                                                 <td v-if="item.hasBanner" class="text-center">
-                                                    <div v-for="meetingTime in item.banner.meeting_times">
-                                                        [[meetingTime]]
+                                                    <div v-if="item.banner.meeting_times.length > 0">
+                                                        <div v-if="item.includeRoomComparisons">
+                                                            <div v-for="(meetingTime, index) in item.banner.meeting_times">
+                                                                [[meetingTime]] / [[roomListItem(item.banner.rooms,
+                                                                index)]]
+                                                            </div>
+                                                        </div>
+                                                        <div v-else>
+                                                            <div v-for="meetingTime in item.banner.meeting_times">
+                                                                [[meetingTime]]
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div v-else>
+                                                        ---
                                                     </div>
                                                 </td>
                                                 <td v-else class="text-center">
@@ -843,7 +869,12 @@
                                                             v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
                                                         <div class="delta-detail-list"
                                                             v-for="meetingTime in item.delta.meeting_times.was">
-                                                            [[meetingTime]]
+                                                            <span v-if="item.includeRoomComparisons">
+                                                                [[meetingTime.times]] / [[meetingTime.room]]
+                                                            </span>
+                                                            <span v-else>
+                                                                [[meetingTime.times]]
+                                                            </span>
                                                         </div>
                                                     </div>
                                                     <div>
@@ -854,7 +885,12 @@
                                                             v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
                                                         <div class="delta-detail-list"
                                                             v-for="meetingTime in item.delta.meeting_times.change_to">
-                                                            [[meetingTime]]
+                                                            <span v-if="item.includeRoomComparisons">
+                                                                [[meetingTime.times]] / [[meetingTime.room]]
+                                                            </span>
+                                                            <span v-else>
+                                                                [[meetingTime.times]]
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </td>

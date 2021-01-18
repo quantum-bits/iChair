@@ -36,14 +36,10 @@ class Command(BaseCommand):
             rows = cursor.execute("select @@VERSION").fetchall()
 
             term_group = ""
-            include_rooms_dict = {}
             for semester in BannerSemesterCodeToImport.objects.all():
-                include_rooms_dict[semester.term_code] = semester.allow_room_copy
                 if len(term_group) > 0:
                     term_group += " OR "
                 term_group += "term = '"+semester.term_code+"'"
-
-            print('include_rooms_dict: ', include_rooms_dict)
 
             subject_group = ""
             for banner_subject in BannerSubjectToImport.objects.all():
@@ -109,6 +105,15 @@ class Command(BaseCommand):
                 FROM dw.dim_course_section dcs -- use the course section dimension as base.
                 WHERE (({0}) AND ({1}) AND campus = 'U')
                     """.format(term_group, subject_group)).fetchall()
+
+            
+            # to find the building and room information for a course section with no scheduled
+            # classes, can do this (for example):
+            # select * from dbo.ssrmeet
+            #    where ssrmeet_crn='30410' and ssrmeet_term_code='202120'
+            # the building and room information are in 
+            # ssrmeet_building_code and ssrmeet_room_code (which could be null or a string)
+
 
             cursor.close()
             connection.close()
@@ -353,7 +358,7 @@ class Command(BaseCommand):
                         })
                     
                     room = None
-                    if include_rooms_dict[co_meeting.term] and (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
+                    if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
                         rooms = BannerRoom.objects.filter(Q(building__abbrev = co_meeting.building_code) & Q(number = co_meeting.room_number))
                         if len(rooms) > 1:
                             print('ERROR!!!  There seem to be more than one copy of this room: ', co_meeting.building_code, co_meeting.room_number)

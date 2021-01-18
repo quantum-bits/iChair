@@ -31,7 +31,7 @@ from xhtml2pdf import pisa
 from django.template.loader import get_template
 from django.template import Context
 
-from cgi import escape
+#from cgi import escape
 from io import BytesIO
 
 from functools import partial
@@ -52,7 +52,7 @@ def render_to_pdf(template_src, context_dict={}):
     pdf = pisa.pisaDocument(BytesIO(html.encode("ISO-8859-1")), result)
     if not pdf.err:
         return HttpResponse(result.getvalue(), content_type='application/pdf')
-    return HttpResponse('We had some errors<pre>%s</pre>' % escape(html))
+    return HttpResponse('We had some errors....')
 
 # some other resources:
 # https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django

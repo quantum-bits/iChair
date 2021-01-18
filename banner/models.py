@@ -280,7 +280,7 @@ class SemesterCodeToImport(StampedModel):
     from time to time, but this allows us the ability to import old data (when setting up a new department, for example).
     """
     term_code = models.CharField(max_length=6)
-    allow_room_copy = models.BooleanField(default=True) # this is used in the UI; if True, then we allow the copying of room information from Banner to iChair
+    allow_room_requests = models.BooleanField(default=False) # set to true when the registrar is ready to receive room requests for this semester
 
     def __str__(self):
         return self.term_code

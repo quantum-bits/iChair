@@ -58,6 +58,8 @@ var app = new Vue({
       semesterFractionsDropdown: [], // used for a drop-down menu
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
+      roomRequestsAllowed: false, // true if room requests are allowed for one of the chosen semesters
+      includeRoomComparisons: true, // can be set to true by the user if they would like to request room edits
       facultyChoices: [], // faculty available to teach courses
       roomChoices: [], // rooms available for course offerings
       extraDepartmentalCourseChoices: [], // courses to possible include in schedule editing
@@ -150,6 +152,23 @@ var app = new Vue({
 
       this.searchOtherCoursesDialog = true;
     },
+    semesterChoicesUpdated(event) {
+      console.log("event:" ,event);
+      console.log("semester choices: ", this.semesterChoices);
+      console.log("chosen semesters: ", this.chosenSemesters);
+      let roomRequestsAllowed = false;
+      this.chosenSemesters.forEach(chosenSemester => {
+        this.semesterChoices.forEach(semesterChoice => {
+          if (semesterChoice.id === chosenSemester) {
+            if (semesterChoice.allow_room_requests) {
+              roomRequestsAllowed = true;
+            } 
+          }
+        });
+      });
+      this.roomRequestsAllowed = roomRequestsAllowed;
+    },
+
     onSubjectSelected(event) {
       console.log('subject id: ', event.target.value, typeof event.target.value);
       this.extraDepartmentalSubjectChoice = +event.target.value;
@@ -275,7 +294,8 @@ var app = new Vue({
           departmentId: json_data.departmentId, // add the faculty id to the GET parameters
           yearId: json_data.yearId,
           semesterIds: this.chosenSemesters,
-          extraDepartmentalCourseIdList: this.chosenExtraCourses
+          extraDepartmentalCourseIdList: this.chosenExtraCourses,
+          includeRoomComparisons: this.includeRoomComparisons
         };
 
         $.ajax({
@@ -445,6 +465,8 @@ var app = new Vue({
                 semesterId: course.semester_id,
                 courseOwnedByUser: course.course_owned_by_user,
                 termCode: course.term_code,
+                allowRoomRequests: course.allow_room_requests,// whether room edit requests may be made for this semester (regardless of whether the user wants to do them)
+                includeRoomComparisons: course.include_room_comparisons,// whether to include room comparisons as part of the meeting time comparisons
                 course: course.course,
                 creditHours: course.credit_hours,
                 name: course.course_title,
@@ -615,7 +637,8 @@ var app = new Vue({
           crn: item.crn, // asking the registrar to delete this CRN
           iChairCourseOfferingId: null, // don't have one; we're asking the registrar to delete a course offering b/c it doesn't correspond to one in iChair
           bannerCourseOfferingId: item.banner.course_offering_id, // this is the banner course offering that we are requesting be deleted
-          semesterId: item.semesterId
+          semesterId: item.semesterId,
+          includeRoomComparisons: item.includeRoomComparisons
         };
         item.showCourseOfferingRadioSelect = false;
       } else {
@@ -654,7 +677,8 @@ var app = new Vue({
           crn: item.crn,
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
-          semesterId: item.semesterId
+          semesterId: item.semesterId,
+          includeRoomComparisons: item.includeRoomComparisons
         };
         this.removeUnlinkedIChairItemFromCourseOfferings(
           item.banner.course_offering_id,
@@ -987,6 +1011,7 @@ var app = new Vue({
         semesterFraction: item.banner.semester_fraction,
         maxEnrollment: item.banner.max_enrollment,
         deliveryMethod: item.banner.delivery_method,
+        includeRoomComparisons: item.includeRoomComparisons,
         semesterId: item.semesterId,
         crn: item.crn,
         loadAvailable: item.creditHours, //need to warn the user that this has been set automatically
@@ -1172,7 +1197,8 @@ var app = new Vue({
           crn: null, // doesn't exist yet
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: null, // don't have one, since we're requesting that the registrar create one
-          semesterId: item.semesterId
+          semesterId: item.semesterId,
+          includeRoomComparisons: item.includeRoomComparisons
         };
         item.showBannerCourseOfferingRadioSelect = false;
       } else {
@@ -1210,7 +1236,8 @@ var app = new Vue({
           crn: item.crn,
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
-          semesterId: item.semesterId
+          semesterId: item.semesterId,
+          includeRoomComparisons: item.includeRoomComparisons
         };
         this.removeUnlinkedBannerItemFromCourseOfferings(
           item.banner.course_offering_id,
@@ -1319,7 +1346,8 @@ var app = new Vue({
         courseOfferingId: courseInfo.ichair.course_offering_id,
         ichairObject: courseInfo.ichair,
         bannerId: bannerId,
-        delta: courseInfo.delta
+        delta: courseInfo.delta,
+        includeRoomComparisons: courseInfo.includeRoomComparisons
       };
       this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
       let meetingDetails = courseInfo.ichair.meeting_times_detail;
@@ -1359,7 +1387,8 @@ var app = new Vue({
         courseOfferingId: courseInfo.ichair.course_offering_id,
         ichairObject: courseInfo.ichair,
         bannerId: bannerId,
-        delta: courseInfo.delta
+        delta: courseInfo.delta,
+        includeRoomComparisons: courseInfo.includeRoomComparisons
       };
       this.facultyChoices = courseInfo.ichair.available_instructors; // set the faculty choices for the drop-down for this course offering
       console.log('initializing dialog; faculty choices: ', this.facultyChoices);
@@ -1499,9 +1528,7 @@ var app = new Vue({
 
       if (!errorInForm) {
         console.log('ready to submit! ', instructorList);
-        // submit
-        // WORKING HERE: write endpoint and submit(!)
-
+        
         let dataForPost = {
           courseOfferingId: this.editCourseOfferingData.courseOfferingId,
           snapshot: this.editCourseOfferingData.ichairObject.snapshot,
@@ -1511,6 +1538,7 @@ var app = new Vue({
           delta: this.editCourseOfferingData.delta,
           instructorList: instructorList,
           loadAvailable: loadAvailable,
+          includeRoomComparisons: this.editCourseOfferingData.includeRoomComparisons,
           loadAvailableRequiresUpdate: !(loadAvailable === this.initialLoadAvailableData),
         };
         console.log('data for post: ', dataForPost);
@@ -1632,7 +1660,8 @@ var app = new Vue({
         iChairId: iChairId,
         delta: courseInfo.delta,
         hasIChair: courseInfo.hasIChair,
-        hasBanner: courseInfo.hasBanner
+        hasBanner: courseInfo.hasBanner,
+        includeRoomComparisons: courseInfo.includeRoomComparisons
       };
       this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
       this.commentForRegistrarDialog = true;
@@ -1700,7 +1729,8 @@ var app = new Vue({
         iChairId: this.editCourseOfferingData.iChairId,
         bannerId: this.editCourseOfferingData.bannerId,
         hasIChair: this.editCourseOfferingData.hasIChair,
-        hasBanner: this.editCourseOfferingData.hasBanner
+        hasBanner: this.editCourseOfferingData.hasBanner,
+        includeRoomComparisons: this.editCourseOfferingData.includeRoomComparisons
       }
       if (OKToSubmit) {
         this.createUpdateDeleteNoteForRegistrar(noteInfo);
@@ -1749,7 +1779,8 @@ var app = new Vue({
         courseOfferingId: courseInfo.ichair.course_offering_id,
         ichairObject: courseInfo.ichair,
         bannerId: bannerId,
-        delta: courseInfo.delta
+        delta: courseInfo.delta,
+        includeRoomComparisons: courseInfo.includeRoomComparisons
       };
       let commentDetails = courseInfo.ichair.comments.comment_list;
       this.publicCommentsDialog = true;
@@ -1885,7 +1916,8 @@ var app = new Vue({
           delta: this.editCourseOfferingData.delta,
           delete: commentsToDelete,
           update: commentsToUpdate,
-          create: commentsToCreate
+          create: commentsToCreate,
+          includeRoomComparisons: this.editCourseOfferingData.includeRoomComparisons
         };
         $.ajax({
           // initialize an AJAX request
@@ -2112,7 +2144,8 @@ var app = new Vue({
             crn: item.crn,
             iChairCourseOfferingId: item.ichair.course_offering_id,
             bannerCourseOfferingId: item.banner.course_offering_id,
-            semesterId: item.semesterId
+            semesterId: item.semesterId,
+            includeRoomComparisons: item.includeRoomComparisons
           };
         } else if (item.delta.requested_action === DELTA_ACTION_CREATE) {
           dataForPost = {
@@ -2122,7 +2155,8 @@ var app = new Vue({
             crn: item.crn,
             iChairCourseOfferingId: item.ichair.course_offering_id,
             bannerCourseOfferingId: null, // no banner course offering exists, since we are requesting that the registrar create a new one
-            semesterId: item.semesterId
+            semesterId: item.semesterId,
+            includeRoomComparisons: item.includeRoomComparisons
           };
         } else if (item.delta.requested_action === DELTA_ACTION_DELETE) {
           console.log("deleting!");
@@ -2136,7 +2170,8 @@ var app = new Vue({
           crn: item.crn,
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
-          semesterId: item.semesterId
+          semesterId: item.semesterId,
+          includeRoomComparisons: item.includeRoomComparisons
         };
       }
 
@@ -2215,6 +2250,7 @@ var app = new Vue({
         propertiesToUpdate: [],
         departmentId: json_data.departmentId, // add the faculty id to the GET parameters
         yearId: json_data.yearId,
+        includeRoomComparisons: item.includeRoomComparisons
       };
       if (dataToUpdate === COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT) {
         dataForPost.propertiesToUpdate.push("max_enrollment");
@@ -2523,6 +2559,7 @@ var app = new Vue({
           bannerId: this.editCourseOfferingData.bannerId, // in python code -- first check if hasBanner; if so, can safely get id
           hasDelta: this.editCourseOfferingData.delta !== null,// same idea as above....
           delta: this.editCourseOfferingData.delta,
+          includeRoomComparisons: this.editCourseOfferingData.includeRoomComparisons,
           delete: meetingsToDelete,
           update: meetingsToUpdate,
           create: meetingsToCreate,
@@ -2804,6 +2841,7 @@ var app = new Vue({
       success: function(incomingData) {
         console.log(incomingData);
         _this.semesterChoices = incomingData.semester_choices;
+        //_this.roomRequestsAllowed = incomingData.allow_room_requests;
         _this.extraDepartmentalCourseChoices = incomingData.extra_courses_this_year;
         _this.chosenExtraCourses = [];
         _this.extraDepartmentalSubjectChoices = [{

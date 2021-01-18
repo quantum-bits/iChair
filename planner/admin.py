@@ -83,7 +83,7 @@ class BannerDeliveryMethodAdmin(MultiDBModelAdmin):
     list_display = ('description', 'code',)
 
 class BannerSemesterCodeToImportAdmin(MultiDBModelAdmin):
-    list_display = ('term_code', 'allow_room_copy',)
+    list_display = ('term_code', 'allow_room_requests')
 
 class BannerFacultyMemberAdmin(MultiDBModelAdmin):
     search_fields = ('pidm', 'first_name', 'last_name', 'formal_first_name', 'middle_name',)

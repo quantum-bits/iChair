@@ -5,6 +5,7 @@ from django.db.models import Q
 from .models import *
 from banner.models import Course as BannerCourse
 from banner.models import CourseOffering as BannerCourseOffering
+from banner.models import SemesterCodeToImport as BannerSemesterCodeToImport
 from banner.models import ScheduledClass as BannerScheduledClass
 from banner.models import FacultyMember as BannerFacultyMember
 from banner.models import OfferingInstructor as BannerOfferingInstructor
@@ -69,8 +70,13 @@ def fetch_semesters_and_extra_departmental_courses(request):
         })
     #print(other_extra_departmental_courses)
 
-
     for semester in semesters:
+        # try to find this semester in the "semesters to import" in the banner database
+        banner_semester_codes_to_import = BannerSemesterCodeToImport.objects.filter(term_code=semester.banner_code)
+        allow_room_requests_this_semester = False
+        if len(banner_semester_codes_to_import) == 1:
+            allow_room_requests_this_semester = banner_semester_codes_to_import[0].allow_room_requests
+
         banner_data_exists_this_semester = False
         # check if there is any banner data for the given semester, but stop checking once something is found
         for subject in department.subjects.all():
@@ -89,7 +95,8 @@ def fetch_semesters_and_extra_departmental_courses(request):
             "semester_name": '{0} {1} (Banner code: {2}) {3} '.format(semester.name, semester.year, semester.banner_code, no_data_message),
             "id": semester.id,
             "banner_code": semester.banner_code,
-            "banner_data_exists": banner_data_exists_this_semester
+            "banner_data_exists": banner_data_exists_this_semester,
+            "allow_room_requests": allow_room_requests_this_semester
         })
 
     data = {
@@ -261,6 +268,7 @@ def update_instructors_for_course_offering(request):
     has_delta = json_data['hasDelta']
     has_banner = json_data['hasBanner']
     delta = json_data["delta"]
+    include_room_comparisons = json_data['includeRoomComparisons']
 
     # delta course offering actions from the model itself:
     delta_course_offering_actions = DeltaCourseOffering.actions()
@@ -333,7 +341,7 @@ def update_instructors_for_course_offering(request):
 
         if has_delta:
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
-            delta_response = delta_update_status(bco, ico, dco)
+            delta_response = delta_update_status(bco, ico, dco, check_rooms = include_room_comparisons)
     elif (not(has_banner)) and ico:
         if has_delta:
             # in this case we are talking about a delta requested action of "create"
@@ -341,7 +349,7 @@ def update_instructors_for_course_offering(request):
             if dco.requested_action != delta_course_offering_actions["create"]:
                 print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
             else:
-                delta_response = delta_create_status(ico, dco)
+                delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons)
                 inst_match = delta_response["request_update_instructors"]
     
     snapshot["load_available"] = original_co_snapshot["load_available"]
@@ -378,6 +386,7 @@ def create_course_offering(request):
     instructor_details = json_data['instructorDetails']
     banner_course_offering_id = json_data['bannerCourseOfferingId']
     comments = json_data['comments']
+    include_room_comparisons = json_data['includeRoomComparisons']
 
     #print('comments: ', comments)
     print(meetings)
@@ -488,7 +497,7 @@ def create_course_offering(request):
     # ...at this point, since we are copying this information from Banner, and since we are not getting room
     # information from Banner, we leave the rooms unspecified.
     # could use the method sort_rooms(...) for this....
-    presorted_ico_meeting_times_list,  presorted_ico_room_list = class_time_and_room_summary(
+    presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(
         course_offering.scheduled_classes.all())
     # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
     ico_meeting_times_list = sorted(
@@ -513,7 +522,7 @@ def create_course_offering(request):
     # now fetch the banner course offering object
     bco = BannerCourseOffering.objects.get(pk=banner_course_offering_id)
     
-    delta_response = delta_update_status(bco, course_offering, delta_object)
+    delta_response = delta_update_status(bco, course_offering, delta_object, check_rooms = include_room_comparisons)
 
     available_instructors = user_department.available_instructors(semester.year, course_offering, faculty_to_view_ids)
 
@@ -550,7 +559,7 @@ def create_course_offering(request):
     }
     agreement_update = {
         "instructors_match": instructors_match(bco, course_offering),
-        "meeting_times_match": scheduled_classes_match(bco, course_offering),
+        "meeting_times_match": scheduled_classes_match(bco, course_offering, check_rooms = include_room_comparisons),
         "max_enrollments_match": max_enrollments_match(bco, course_offering),
         "semester_fractions_match": semester_fractions_match(bco, course_offering),
         "public_comments_match": public_comments_match(bco, course_offering),
@@ -581,6 +590,9 @@ def banner_comparison_data(request):
     semester_ids = json_data['semesterIds']
 
     extra_departmental_course_id_list = json_data['extraDepartmentalCourseIdList']
+    include_room_comparisons = json_data['includeRoomComparisons']
+
+    print("include room comparisons?", include_room_comparisons)
 
     day_sorter_dict = {
         'M': 0,
@@ -589,11 +601,6 @@ def banner_comparison_data(request):
         'R': 3,
         'F': 4
     }
-
-    #print('dept id: ', department_id)
-    #print('year id: ', year_id)
-    #print('semester ids:', semester_ids)
-    #print('extra-departmental courses: ', extra_departmental_course_id_list)
 
     semester_sorter_dict = {}
     counter = 0
@@ -653,6 +660,14 @@ def banner_comparison_data(request):
     for semester_id in semester_ids:
         semester = Semester.objects.get(pk=semester_id)
         term_code = semester.banner_code
+
+        banner_semester_codes_to_import = BannerSemesterCodeToImport.objects.filter(term_code=term_code)
+        allow_room_requests_this_semester = False
+        include_room_comparisons_this_semester = False
+        if len(banner_semester_codes_to_import) == 1:
+            allow_room_requests_this_semester = banner_semester_codes_to_import[0].allow_room_requests
+            include_room_comparisons_this_semester = include_room_comparisons and allow_room_requests_this_semester
+            
         # eventually expand this to include extra-departmental courses taught by dept...?
         for subject in department.subjects_including_outside_courses(semester, extra_departmental_course_id_list):
             # first should reset all crns of the iChair course offerings, so we start with a clean slate
@@ -685,14 +700,23 @@ def banner_comparison_data(request):
 
             # now we cycle through all the banner course offerings and add them to the list
             for bco in banner_course_offerings:
-                presorted_bco_meeting_times_list = class_time_and_room_summary(
-                    bco.scheduled_classes.all(), include_rooms=False)
-                # >>> Note: if the room list is ever included in the above, will need to be more careful about the sorting
-                # >>> that is done below, since the room list order and the meeting times order are correlated!
-                bco_meeting_times_list = sorted(
-                    presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
                 # https://stackoverflow.com/questions/7108080/python-get-the-first-character-of-the-first-string-in-a-list
                 # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
+                if not allow_room_requests_this_semester:
+                    presorted_bco_meeting_times_list = class_time_and_room_summary(
+                        bco.scheduled_classes.all(), include_rooms=False)
+                    bco_meeting_times_list = sorted(
+                        presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                    bco_room_list = ['---' for mt in bco_meeting_times_list]
+                else:
+                    presorted_bco_meeting_times_list, presorted_bco_room_list = class_time_and_room_summary(
+                        bco.scheduled_classes.all())
+                    # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
+                    bco_meeting_times_list = sorted(
+                        presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                    # sort the rooms so that the sort order matches that of the meeting times....
+                    bco_room_list = sort_rooms(presorted_bco_meeting_times_list, bco_meeting_times_list, presorted_bco_room_list)
+
                 bco_instructors = construct_instructor_list(bco)
                 bco_instructors_detail = construct_instructor_detail_list(bco)
 
@@ -702,6 +726,8 @@ def banner_comparison_data(request):
                     "index": index,  # used in the UI as a unique key
                     "semester": semester.name.name,
                     "term_code": term_code,
+                    "allow_room_requests": allow_room_requests_this_semester, # whether room edit requests may be made for this semester (regardless of whether the user wants to do them)
+                    "include_room_comparisons": include_room_comparisons_this_semester, # whether to include room comparisons as part of the meeting time comparisons
                     "semester_id": semester.id,
                     "course_owned_by_user": department == subject.department,
                     "course": bco.course.subject.abbrev+' '+bco.course.number,
@@ -718,7 +744,7 @@ def banner_comparison_data(request):
                         "course_offering_id": bco.id,
                         "meeting_times": bco_meeting_times_list,
                         "meeting_times_detail": bco_meeting_times_detail,
-                        "rooms": ['---' for mt in bco_meeting_times_list],
+                        "rooms": bco_room_list,
                         "instructors": bco_instructors,
                         "instructors_detail": bco_instructors_detail,
                         "term_code": bco.term_code,
@@ -787,13 +813,13 @@ def banner_comparison_data(request):
                                     #      recent_delta_object.updated_at)
 
                             delta_response = delta_update_status(
-                                bco, ico, recent_delta_object)
+                                bco, ico, recent_delta_object, check_rooms = include_room_comparisons_this_semester)
                             course_offering_item["delta"] = delta_response
 
                         if delta_exists:
                             # either these properties already match, or we are going to request a change from the registrar so that they do match
                             schedules_match = scheduled_classes_match(
-                                bco, ico) or delta_response["request_update_meeting_times"]
+                                bco, ico, include_room_comparisons_this_semester) or delta_response["request_update_meeting_times"]
                             inst_match = instructors_match(
                                 bco, ico) or delta_response["request_update_instructors"]
                             sem_fractions_match = semester_fractions_match(
@@ -805,7 +831,7 @@ def banner_comparison_data(request):
                             del_methods_match = delivery_methods_match(
                                 bco, ico) or delta_response["request_update_delivery_method"]
                         else:
-                            schedules_match = scheduled_classes_match(bco, ico)
+                            schedules_match = scheduled_classes_match(bco, ico, include_room_comparisons_this_semester)
                             inst_match = instructors_match(bco, ico)
                             sem_fractions_match = semester_fractions_match(
                                 bco, ico)
@@ -971,11 +997,20 @@ def banner_comparison_data(request):
                 banner_options = []
                 for unlinked_bco in unlinked_banner_course_offerings:
                     #print(unlinked_bco)
-                    presorted_bco_meeting_times_list = class_time_and_room_summary(
-                        unlinked_bco.scheduled_classes.all(), include_rooms=False)
-                    # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
-                    bco_meeting_times_list = sorted(
-                        presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                    if not allow_room_requests_this_semester:
+                        presorted_bco_meeting_times_list = class_time_and_room_summary(
+                            unlinked_bco.scheduled_classes.all(), include_rooms=False)
+                        bco_meeting_times_list = sorted(
+                            presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                        bco_room_list = ['---' for mt in bco_meeting_times_list]
+                    else:
+                        presorted_bco_meeting_times_list, presorted_bco_room_list = class_time_and_room_summary(
+                            unlinked_bco.scheduled_classes.all())
+                        # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
+                        bco_meeting_times_list = sorted(
+                            presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
+                        # sort the rooms so that the sort order matches that of the meeting times....
+                        bco_room_list = sort_rooms(presorted_bco_meeting_times_list, bco_meeting_times_list, presorted_bco_room_list)
 
                     bco_instructors = construct_instructor_list(
                         unlinked_bco)
@@ -994,7 +1029,7 @@ def banner_comparison_data(request):
                         "credit_hours": unlinked_bco.course.credit_hours,
                         "course_offering_id": unlinked_bco.id,
                         "meeting_times": bco_meeting_times_list,
-                        "rooms": ['---' for mt in bco_meeting_times_list],
+                        "rooms": bco_room_list,
                         "meeting_times_detail": bco_meeting_times_detail,
                         "instructors": bco_instructors,
                         "instructors_detail": bco_instructors_detail,
@@ -1044,6 +1079,8 @@ def banner_comparison_data(request):
                     "semester_id": semester.id,
                     "course_owned_by_user": department == subject.department,
                     "term_code": term_code,
+                    "allow_room_requests": allow_room_requests_this_semester, # whether room edit requests may be made for this semester (regardless of whether the user wants to do them)
+                    "include_room_comparisons": include_room_comparisons_this_semester, # whether to include room comparisons as part of the meeting time comparisons
                     "course": ico.course.subject.abbrev+' '+ico.course.number,
                     "credit_hours": ico.course.credit_hours,
                     "course_title": ico.course.title,
@@ -1178,7 +1215,7 @@ def construct_ichair_instructor_detail_list(ico):
         "load_credit": instr.load_credit,
         "name": instr.instructor.first_name + ' ' + instr.instructor.last_name}  for instr in ico.offering_instructors.all()]
 
-def delta_update_status(bco, ico, delta):
+def delta_update_status(bco, ico, delta, check_rooms = False):
     """Uses a delta object to compare the current status of a banner course offering compared to its corresponding iChair course offering."""
     # at this point it is assumed that the delta object is of the "request that the registrar do an update" variety
 
@@ -1210,10 +1247,41 @@ def delta_update_status(bco, ico, delta):
     }
 
     # we only check if the meetings agree if the user has requested that a message be generated for this property
-    if delta.update_meeting_times and (not scheduled_classes_match(bco, ico)):
+    if delta.update_meeting_times and (not scheduled_classes_match(bco, ico, check_rooms)):
+
+        # this is not a great way to do this, but it avoid rewriting the class_time_and_room_summary() method....
+        was_list = []
+        change_to_list = []
+        if not check_rooms:
+            bco_meeting_times = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms)
+            ico_meeting_times = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+            for ii in range(0, len(bco_meeting_times)):
+                was_list.append({
+                    "times": bco_meeting_times[ii],
+                    "room": None
+                })
+            for ii in range(0, len(ico_meeting_times)):
+                change_to_list.append({
+                    "times": ico_meeting_times[ii],
+                    "room": None
+                })
+        else:
+            bco_meeting_times, bco_rooms = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms)
+            ico_meeting_times, ico_rooms = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+            for ii in range(0, len(bco_meeting_times)):
+                was_list.append({
+                    "times": bco_meeting_times[ii],
+                    "room": bco_rooms[ii]
+                })
+            for ii in range(0, len(ico_meeting_times)):
+                change_to_list.append({
+                    "times": ico_meeting_times[ii],
+                    "room": ico_rooms[ii]
+                })
+
         delta_response["meeting_times"] = {
-            "was": class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms=False),
-            "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)
+            "was": was_list,
+            "change_to": change_to_list
         }
 
     if delta.update_instructors and (not instructors_match(bco, ico)):
@@ -1258,7 +1326,7 @@ def delta_update_status(bco, ico, delta):
     return delta_response
 
 
-def delta_create_status(ico, delta):
+def delta_create_status(ico, delta, check_rooms = False):
     """
     Uses a delta "create" type of object to generate a delta response for an iChair course offering.
     No banner course offering object exists in this case, since this is something that we are requesting
@@ -1297,7 +1365,7 @@ def delta_create_status(ico, delta):
     if delta.update_meeting_times:
         delta_response["meeting_times"] = {
             "was": [],
-            "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)
+            "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)#check_rooms)
         }
 
     if delta.update_instructors:
@@ -1919,7 +1987,7 @@ def choose_course_offering_second_cut(bco, candidate_ichair_matches):
         return None
 
     # print('inside choose_course_offering_second_cut!')
-    # meet above criteria, as well as being a match on meeting days and times
+    # meet above criteria, as well as being a match on meeting days and times (but don't check rooms)
     second_cut_ichair_matches = []
     for ichair_match in candidate_ichair_matches:
         # print(ichair_match)
@@ -2027,8 +2095,11 @@ def construct_meeting_times_detail(course_offering, include_room = False):
     return meeting_times_detail
 
 
-def scheduled_classes_match(banner_course_offering, ichair_course_offering):
-    """Returns true if the scheduled class objects for an iChair course offering exactly match those for the corresponding banner course offering."""
+def scheduled_classes_match(banner_course_offering, ichair_course_offering, check_rooms = False):
+    """
+    Returns true if the scheduled class objects for an iChair course offering exactly match those for 
+    the corresponding banner course offering.  If check_rooms is True, also checks to see if the rooms
+    match; if not, returns False."""
     banner_scheduled_classes = banner_course_offering.scheduled_classes.all()
     ichair_scheduled_classes = ichair_course_offering.scheduled_classes.all()
     classes_match = True
@@ -2036,11 +2107,17 @@ def scheduled_classes_match(banner_course_offering, ichair_course_offering):
         classes_match = False
         return classes_match
     for bsc in banner_scheduled_classes:
-        # if the # of scheduled classes agree and there is an isc match for each bsc, then the overall schedules agree
+        # if the # of scheduled classes agree and there is an isc match for each bsc, 
+        # then the overall schedules agree (assuming the bsc's are all different...this 
+        # could eventually be an issue we need to think about)
         one_fits = False
         for isc in ichair_scheduled_classes:
             if bsc.day == isc.day and bsc.begin_at == isc.begin_at and bsc.end_at == isc.end_at:
-                one_fits = True
+                if check_rooms:
+                    if bsc.room.number == isc.room.number and bsc.room.building.abbrev == isc.room.building.abbrev:
+                        one_fits = True
+                else:
+                    one_fits = True
         if not one_fits:
             classes_match = False
     return classes_match
@@ -2171,7 +2248,8 @@ def generate_update_delta(request):
     crn = json_data['crn']
     ichair_course_offering_id = json_data['iChairCourseOfferingId']
     banner_course_offering_id = json_data['bannerCourseOfferingId']
-
+    include_room_comparisons = json_data['includeRoomComparisons']
+    
     # None if null in the UI code (i.e., if creating a new delta)
     delta_id = json_data['deltaId']
 
@@ -2305,10 +2383,10 @@ def generate_update_delta(request):
             bco = BannerCourseOffering.objects.get(
                 pk=banner_course_offering_id)
             ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-            delta_response = delta_update_status(bco, ico, dco)
+            delta_response = delta_update_status(bco, ico, dco, check_rooms = include_room_comparisons)
             agreement_update = {
                 "instructors_match": instructors_match(bco, ico),
-                "meeting_times_match": scheduled_classes_match(bco, ico),
+                "meeting_times_match": scheduled_classes_match(bco, ico, check_rooms = include_room_comparisons),
                 "max_enrollments_match": max_enrollments_match(bco, ico),
                 "semester_fractions_match": semester_fractions_match(bco, ico),
                 "public_comments_match": public_comments_match(bco, ico),
@@ -2390,6 +2468,7 @@ def create_update_delete_note_for_registrar_api(request):
     delta_id = json_data["deltaId"]
     has_ichair = json_data["hasIChair"]
     has_banner = json_data["hasBanner"]
+    include_room_comparisons = json_data['includeRoomComparisons']
     
     updates_successful = True
 
@@ -2437,10 +2516,10 @@ def create_update_delete_note_for_registrar_api(request):
     if dco:
         if dco.requested_action == delta_course_offering_actions["update"]:
             if has_ichair and has_banner:
-                delta_response = delta_update_status(bco, ico, dco)
+                delta_response = delta_update_status(bco, ico, dco, check_rooms = include_room_comparisons)
         elif dco.requested_action == delta_course_offering_actions["create"]:
             if has_ichair:
-                delta_response = delta_create_status(ico, dco)
+                delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons)
         elif dco.requested_action == delta_course_offering_actions["delete"]:
             delta_response = delta_delete_status(dco)
 
@@ -2472,6 +2551,7 @@ def update_public_comments_api(request):
     banner_id = json_data['bannerId']
     has_delta = json_data['hasDelta']
     delta = json_data['delta']
+    include_room_comparisons = json_data['includeRoomComparisons']
 
     # delta course offering actions from the model itself:
     delta_course_offering_actions = DeltaCourseOffering.actions()
@@ -2543,7 +2623,7 @@ def update_public_comments_api(request):
         if has_delta:
             # if has_banner and has_delta, then we are talking about a delta requested action of "update"
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
-            delta_response = delta_update_status(bco, course_offering, dco)
+            delta_response = delta_update_status(bco, course_offering, dco, check_rooms = include_room_comparisons)
     elif (not(has_banner)) and course_offering:
         if has_delta:
             # in this case we are talking about a delta requested action of "create"
@@ -2551,7 +2631,7 @@ def update_public_comments_api(request):
             if dco.requested_action != delta_course_offering_actions["create"]:
                 print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
             else:
-                delta_response = delta_create_status(course_offering, dco)
+                delta_response = delta_create_status(course_offering, dco, check_rooms = include_room_comparisons)
                 pc_match = delta_response["request_update_public_comments"]
 
     if course_offering:
@@ -2601,6 +2681,9 @@ def update_class_schedule_api(request):
     semester_fraction = json_data["semesterFraction"]
     enrollment_cap = json_data["enrollmentCap"]
     delivery_method_id = json_data["deliveryMethodId"]
+    include_room_comparisons = json_data['includeRoomComparisons']
+
+    #print('include room comparisons?', include_room_comparisons)
 
     # delta course offering actions from the model itself:
     delta_course_offering_actions = DeltaCourseOffering.actions()
@@ -2748,14 +2831,14 @@ def update_class_schedule_api(request):
     delta_response = None
     if has_banner and course_offering:
         bco = BannerCourseOffering.objects.get(pk=banner_id)
-        schedules_match = scheduled_classes_match(bco, course_offering)
+        schedules_match = scheduled_classes_match(bco, course_offering, check_rooms = include_room_comparisons)
         #print('schedules match? ', schedules_match)
         enrollment_caps_match = max_enrollments_match(bco, course_offering)
         sem_fractions_match = semester_fractions_match(bco, course_offering)
         del_methods_match = delivery_methods_match(bco, course_offering)
         if has_delta:
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
-            delta_response = delta_update_status(bco, course_offering, dco)
+            delta_response = delta_update_status(bco, course_offering, dco, check_rooms = include_room_comparisons)
     elif (not(has_banner)) and course_offering:
         if has_delta:
             # in this case we are talking about a delta requested action of "create"
@@ -2763,7 +2846,7 @@ def update_class_schedule_api(request):
             if dco.requested_action != delta_course_offering_actions["create"]:
                 print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
             else:
-                delta_response = delta_create_status(course_offering, dco)
+                delta_response = delta_create_status(course_offering, dco, check_rooms = include_room_comparisons)
                 schedules_match = delta_response["request_update_meeting_times"]
                 sem_fractions_match = delta_response["request_update_semester_fraction"]
                 enrollment_caps_match = delta_response["request_update_max_enrollment"]
@@ -2842,11 +2925,13 @@ def copy_course_offering_data_to_ichair(request):
 
     department = Department.objects.get(pk=department_id)
     academic_year = AcademicYear.objects.get(pk = year_id)
-
     # if there is no banner course offering id, this will be None
     delta_id = json_data['deltaId']
     # if delta is None (i.e., null in the the javascript code), then there is no known delta object for this iChair course offering;
     # if there is a delta object, then we will search for it and be sure to update it as appropriate after making the iChair changes....
+
+    include_room_comparisons = json_data['includeRoomComparisons']
+    print("include room comparisons?", include_room_comparisons)
 
     #print('banner course offering id: ', banner_course_offering_id)
     #print('delta id: ', delta_id)
@@ -3038,31 +3123,37 @@ def copy_course_offering_data_to_ichair(request):
 
         if 'meeting_times' in properties_to_update:
             if copy_from_banner:
-                # we don't want to unintentionally lose room information, so we can't just delete all existing meeting times and start over....
+                
                 banner_scheduled_classes = bco.scheduled_classes.all()
 
-                for ichair_sc in ico.scheduled_classes.all():
-                    # first, check to see if there is a similar object in the banner list....
-                    #  - if not, delete the scheduled class from iChair
-                    #  - if it is found in the banner list, pop the corresponding item out of the banner list
-                    banner_match = None
-                    #print('ichair meeting time: ', ichair_sc)
-                    for banner_sc in banner_scheduled_classes:
-                        if (ichair_sc.day == banner_sc.day) and (ichair_sc.begin_at == banner_sc.begin_at) and (ichair_sc.end_at == banner_sc.end_at):
-                            banner_match = banner_sc
-                            print('found a banner match!', banner_match)
-                    if banner_match is None:
-                        #print(
-                        #    'no corresponding banner match; deleting iChair meeting time....')
-                        # apparently this is OK to do while iterating through the queryset....
+                if not include_room_comparisons:
+                    # in this case, we don't want to unintentionally lose room information, so we can't just delete all existing meeting times and start over....
+                    for ichair_sc in ico.scheduled_classes.all():
+                        # first, check to see if there is a similar object in the banner list....
+                        #  - if not, delete the scheduled class from iChair
+                        #  - if it is found in the banner list, pop the corresponding item out of the banner list
+                        banner_match = None
+                        #print('ichair meeting time: ', ichair_sc)
+                        for banner_sc in banner_scheduled_classes:
+                            if (ichair_sc.day == banner_sc.day) and (ichair_sc.begin_at == banner_sc.begin_at) and (ichair_sc.end_at == banner_sc.end_at):
+                                banner_match = banner_sc
+                                print('found a banner match!', banner_match)
+                        if banner_match is None:
+                            #print(
+                            #    'no corresponding banner match; deleting iChair meeting time....')
+                            # apparently this is OK to do while iterating through the queryset....
+                            ichair_sc.delete()
+                        else:
+                            #print('popping the banner match out of the list')
+                            #print('before: ', banner_scheduled_classes)
+                            # https://stackoverflow.com/questions/1207406/how-to-remove-items-from-a-list-while-iterating
+                            banner_scheduled_classes = [
+                                bsc for bsc in banner_scheduled_classes if not banner_match.id == bsc.id]
+                            #print('after: ', banner_scheduled_classes)
+                else:
+                    # in this case, we assume the user wants to copy over both meeting time and room information
+                    for ichair_sc in ico.scheduled_classes.all():
                         ichair_sc.delete()
-                    else:
-                        #print('popping the banner match out of the list')
-                        #print('before: ', banner_scheduled_classes)
-                        # https://stackoverflow.com/questions/1207406/how-to-remove-items-from-a-list-while-iterating
-                        banner_scheduled_classes = [
-                            bsc for bsc in banner_scheduled_classes if not banner_match.id == bsc.id]
-                        #print('after: ', banner_scheduled_classes)
 
                 # now we go through the remaining banner meeting times and copy them over to iChair
                 for banner_sc in banner_scheduled_classes:
@@ -3086,6 +3177,7 @@ def copy_course_offering_data_to_ichair(request):
                         room=ichair_room
                     )
                     isc.save()
+                
                 snapshot["scheduled_classes"] = snapshot_from_db["scheduled_classes"]
             else:
                 for ichair_sc in ico.scheduled_classes.all():
@@ -3124,7 +3216,7 @@ def copy_course_offering_data_to_ichair(request):
                 delta_response = delta_update_status(bco, ico, dco)
 
                 schedules_match = scheduled_classes_match(
-                    bco, ico) or delta_response["request_update_meeting_times"]
+                    bco, ico, check_rooms = include_room_comparisons) or delta_response["request_update_meeting_times"]
                 inst_match = instructors_match(
                     bco, ico) or delta_response["request_update_instructors"]
                 sem_fractions_match = semester_fractions_match(
@@ -3136,7 +3228,7 @@ def copy_course_offering_data_to_ichair(request):
                 del_methods_match = delivery_methods_match(
                     bco, ico) or delta_response["request_update_delivery_method"]
             else:
-                schedules_match = scheduled_classes_match(bco, ico)
+                schedules_match = scheduled_classes_match(bco, ico, check_rooms = include_room_comparisons)
                 inst_match = instructors_match(bco, ico)
                 sem_fractions_match = semester_fractions_match(
                     bco, ico)
