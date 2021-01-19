@@ -279,6 +279,14 @@ var app = new Vue({
       this.displayCreateUpdateErrorMessage = true;
       this.courseAlignmentPhaseReady = false;
     },
+
+    changeRoomComparisonStatus() {
+      console.log("include room comparisions? ", this.includeRoomComparisons);
+      this.courseOfferingAlignmentPhaseReady = false;
+      this.courseOfferings = [];
+      this.alignCourseOfferings();
+    },
+
     alignCourseOfferings() {
       if (this.chosenSemesters.length === 0) {
         this.noSemestersChosenDialog = true;
@@ -1682,6 +1690,7 @@ var app = new Vue({
         bannerId: courseInfo.hasBanner ? courseInfo.banner.course_offering_id : null,
         hasIChair: courseInfo.hasIChair, // but doesn't matter
         hasBanner: courseInfo.hasBanner, // but doesn't matter
+        includeRoomComparisons: courseInfo.includeRoomComparisons
       }
       this.createUpdateDeleteNoteForRegistrar(noteInfo);
     },
@@ -2744,7 +2753,8 @@ var app = new Vue({
               banner: item.banner,
               ichair: item.ichair,
               delta: item.delta,
-              courseOwnedByUser: item.courseOwnedByUser
+              courseOwnedByUser: item.courseOwnedByUser,
+              includeRoomComparisons: item.includeRoomComparisons
             })
           }
         }

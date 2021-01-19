@@ -1057,7 +1057,7 @@ def banner_comparison_data(request):
 
                 if delta_exists:
                     delta_response = delta_create_status(
-                        ico, recent_delta_object)
+                        ico, recent_delta_object, check_rooms = include_room_comparisons_this_semester)
                     schedules_match = delta_response["request_update_meeting_times"]
                     inst_match = delta_response["request_update_instructors"]
                     sem_fractions_match = delta_response["request_update_semester_fraction"]
@@ -1248,37 +1248,19 @@ def delta_update_status(bco, ico, delta, check_rooms = False):
 
     # we only check if the meetings agree if the user has requested that a message be generated for this property
     if delta.update_meeting_times and (not scheduled_classes_match(bco, ico, check_rooms)):
-
         # this is not a great way to do this, but it avoid rewriting the class_time_and_room_summary() method....
         was_list = []
         change_to_list = []
         if not check_rooms:
-            bco_meeting_times = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms)
-            ico_meeting_times = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
-            for ii in range(0, len(bco_meeting_times)):
-                was_list.append({
-                    "times": bco_meeting_times[ii],
-                    "room": None
-                })
-            for ii in range(0, len(ico_meeting_times)):
-                change_to_list.append({
-                    "times": ico_meeting_times[ii],
-                    "room": None
-                })
+            was_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms)
+            change_to_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
         else:
             bco_meeting_times, bco_rooms = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms)
             ico_meeting_times, ico_rooms = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
             for ii in range(0, len(bco_meeting_times)):
-                was_list.append({
-                    "times": bco_meeting_times[ii],
-                    "room": bco_rooms[ii]
-                })
+                was_list.append(bco_meeting_times[ii] + ' / ' + bco_rooms[ii])
             for ii in range(0, len(ico_meeting_times)):
-                change_to_list.append({
-                    "times": ico_meeting_times[ii],
-                    "room": ico_rooms[ii]
-                })
-
+                change_to_list.append(ico_meeting_times[ii] + ' / ' + ico_rooms[ii])
         delta_response["meeting_times"] = {
             "was": was_list,
             "change_to": change_to_list
@@ -1363,9 +1345,18 @@ def delta_create_status(ico, delta, check_rooms = False):
 
     # we only check if there are meetings if the user has requested that a message be generated for this property
     if delta.update_meeting_times:
+
+        # this is not a great way to do this, but it avoid rewriting the class_time_and_room_summary() method....
+        change_to_list = []
+        if not check_rooms:
+            change_to_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+        else:
+            ico_meeting_times, ico_rooms = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+            for ii in range(0, len(ico_meeting_times)):
+                change_to_list.append(ico_meeting_times[ii] + ' / ' + ico_rooms[ii])
         delta_response["meeting_times"] = {
             "was": [],
-            "change_to": class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms=False)#check_rooms)
+            "change_to": change_to_list
         }
 
     if delta.update_instructors:
@@ -1602,7 +1593,10 @@ def generate_pdf(request):
             if item["delta"]["instructors"] is not None:
                 y, imgDoc = render_updates(imgDoc, y, layout, "Instructor(s): ", item["delta"]["instructors"], data_in_list = True)
             if item["delta"]["meeting_times"] is not None:
-                y, imgDoc = render_updates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
+                if item["includeRoomComparisons"]:
+                    y, imgDoc = render_updates(imgDoc, y, layout, "Meeting Times / Rooms: ", item["delta"]["meeting_times"], data_in_list = True)
+                else:
+                    y, imgDoc = render_updates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
             if item["delta"]["max_enrollment"] is not None:
                 y, imgDoc = render_updates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
             if item["delta"]["delivery_method"] is not None:
@@ -1671,6 +1665,7 @@ def generate_pdf(request):
             if item["delta"]["instructors"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Instructor(s): ", item["delta"]["instructors"], data_in_list = True)
             if item["delta"]["meeting_times"] is not None:
+                print(item["delta"]["meeting_times"])
                 y, imgDoc = render_creates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
             if item["delta"]["max_enrollment"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
@@ -2395,7 +2390,7 @@ def generate_update_delta(request):
         elif action == 'create':
             # in this case we only have an ichair id....
             ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-            delta_response = delta_create_status(ico, dco)
+            delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons_this_semester)
             agreement_update = {
                 "instructors_match": False,
                 "meeting_times_match": False,
@@ -3213,7 +3208,7 @@ def copy_course_offering_data_to_ichair(request):
             if delta_id is not None:
                 dco = DeltaCourseOffering.objects.get(pk=delta_id)
                 #print('delta course offering: ', dco)
-                delta_response = delta_update_status(bco, ico, dco)
+                delta_response = delta_update_status(bco, ico, dco, check_rooms = include_room_comparisons)
 
                 schedules_match = scheduled_classes_match(
                     bco, ico, check_rooms = include_room_comparisons) or delta_response["request_update_meeting_times"]

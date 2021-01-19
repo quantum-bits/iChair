@@ -196,6 +196,10 @@
                     </div>
                 </v-toolbar-title>
                 <v-spacer></v-spacer>
+                <v-checkbox v-if="roomRequestsAllowed" class="pr-10 pt-2" color="success"
+                    @change="changeRoomComparisonStatus()" hide-details v-model="includeRoomComparisons"
+                    label="Include room requests">
+                </v-checkbox>
                 <v-btn color="primary" class="mt-2" @click="generatePDF()">Generate PDF</v-btn>
             </v-toolbar>
         </template>
@@ -843,7 +847,8 @@
                                                 <td v-if="item.hasBanner" class="text-center">
                                                     <div v-if="item.banner.meeting_times.length > 0">
                                                         <div v-if="item.includeRoomComparisons">
-                                                            <div v-for="(meetingTime, index) in item.banner.meeting_times">
+                                                            <div
+                                                                v-for="(meetingTime, index) in item.banner.meeting_times">
                                                                 [[meetingTime]] / [[roomListItem(item.banner.rooms,
                                                                 index)]]
                                                             </div>
@@ -869,12 +874,7 @@
                                                             v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
                                                         <div class="delta-detail-list"
                                                             v-for="meetingTime in item.delta.meeting_times.was">
-                                                            <span v-if="item.includeRoomComparisons">
-                                                                [[meetingTime.times]] / [[meetingTime.room]]
-                                                            </span>
-                                                            <span v-else>
-                                                                [[meetingTime.times]]
-                                                            </span>
+                                                            [[meetingTime]]
                                                         </div>
                                                     </div>
                                                     <div>
@@ -885,12 +885,7 @@
                                                             v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
                                                         <div class="delta-detail-list"
                                                             v-for="meetingTime in item.delta.meeting_times.change_to">
-                                                            <span v-if="item.includeRoomComparisons">
-                                                                [[meetingTime.times]] / [[meetingTime.room]]
-                                                            </span>
-                                                            <span v-else>
-                                                                [[meetingTime.times]]
-                                                            </span>
+                                                            [[meetingTime]]
                                                         </div>
                                                     </div>
                                                 </td>
