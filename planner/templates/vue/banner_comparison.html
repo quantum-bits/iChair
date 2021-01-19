@@ -196,11 +196,29 @@
                     </div>
                 </v-toolbar-title>
                 <v-spacer></v-spacer>
-                <v-checkbox v-if="roomRequestsAllowed" class="pr-10 pt-2" color="success"
-                    @change="changeRoomComparisonStatus()" hide-details v-model="includeRoomComparisons"
-                    label="Include room requests">
-                </v-checkbox>
-                <v-btn color="primary" class="mt-2" @click="generatePDF()">Generate PDF</v-btn>
+
+                <v-tooltip top>
+                    <template v-slot:activator="{ on }">
+                        <span v-on="on">
+                            <v-checkbox v-if="roomRequestsAllowed" class="pr-10 pt-2" color="success"
+                                @change="changeRoomComparisonStatus()" hide-details v-model="includeRoomComparisons"
+                                label="Include room requests (if allowed)">
+                            </v-checkbox>
+                        </span>
+                    </template>
+                    <span>Check the box to include room requests in your schedule edits -- this may only be allowed for certain semesters</span>
+                </v-tooltip>
+
+                <v-tooltip top>
+                    <template v-slot:activator="{ on }">
+                        <span v-on="on">
+                            <v-btn color="primary" class="mt-2" @click="generatePDF()">Generate PDF</v-btn>
+                        </span>
+                    </template>
+                    <span>Generate a pdf that can be downloaded and emailed to the registrar to request updates</span>
+                </v-tooltip>
+
+                
             </v-toolbar>
         </template>
         <!-- :expanded.sync="expanded :single-expand="singleExpand"" -->
@@ -871,7 +889,8 @@
                                                     v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times">
                                                     <div>
                                                         <strong
-                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:</strong>
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Was:<span v-if="!item.allowRoomRequests">*</span>
+                                                        </strong>
                                                         <div class="delta-detail-list"
                                                             v-for="meetingTime in item.delta.meeting_times.was">
                                                             [[meetingTime]]
@@ -880,9 +899,9 @@
                                                     <div>
                                                         <strong
                                                             v-if="item.delta.requested_action == DELTA_ACTION_UPDATE">Change
-                                                            to:</strong>
+                                                            to:<span v-if="!item.allowRoomRequests">*</span></strong>
                                                         <strong
-                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:</strong>
+                                                            v-if="item.delta.requested_action == DELTA_ACTION_CREATE">Add:<span v-if="!item.allowRoomRequests">*</span></strong>
                                                         <div class="delta-detail-list"
                                                             v-for="meetingTime in item.delta.meeting_times.change_to">
                                                             [[meetingTime]]
@@ -1691,13 +1710,15 @@
                                     </table>
                                 </v-flex>
                             </v-layout>
+                            
                             <v-layout>
-                                <v-flex v-if="displayAddNoteButton(item)" xs12>
+                                <v-flex v-if="displayAddNoteButton(item)" xs12 class="pb-2">
                                     <v-btn small class="ml-4" color="primary"
                                         @click="displayNoteForRegistrarDialog(item)">
                                         Add Note for Registrar</v-btn>
                                 </v-flex>
                             </v-layout>
+
                             <v-layout v-if="displayNote(item)">
                                 <!--<v-flex xs8 offset-xs1>
                                 <strong>Note for Registrar:</strong> [[item.delta.registrar_comment]]
@@ -1736,26 +1757,28 @@
                                         <span>Edit this note for the registrar.</span>
                                     </v-tooltip>
                                 </v-flex>
-
-
-
+                            </v-layout>
+                            <v-layout v-if="item.delta && item.delta.request_update_meeting_times && item.delta.meeting_times && (!item.allowRoomRequests)">
+                                <v-flex xs12>
+                                    * Note that room requests are not currently allowed for this semester. 
+                                </v-flex>
                             </v-layout>
                             <v-layout>
                                 <v-flex>
-                                    <div v-if="item.classroomsUnassignedWarning">
+                                    <div v-if="item.classroomsUnassignedWarning" class="pt-1">
                                         <strong class="green--text">[[item.classroomsUnassignedWarning]]</strong>
                                     </div>
-                                    <div v-if="item.loadsAdjustedWarning">
+                                    <div v-if="item.loadsAdjustedWarning" class="pt-1">
                                         <strong class="green--text">[[item.loadsAdjustedWarning]]</strong>
                                     </div>
-                                    <div v-if="item.errorMessage">
+                                    <div v-if="item.errorMessage" class="pt-1">
                                         <strong class="orange--text">[[item.errorMessage]]</strong>
                                     </div>
-                                    <div v-if="item.numberPrimaryInstructorsIncorrectMessage">
+                                    <div v-if="item.numberPrimaryInstructorsIncorrectMessage" class="pt-1">
                                         <strong
                                             class="red--text">[[item.numberPrimaryInstructorsIncorrectMessage]]</strong>
                                     </div>
-                                    <div v-if="noPidmsMessage(item)">
+                                    <div v-if="noPidmsMessage(item)" class="pt-1">
                                         <strong class="orange--text">[[noPidmsMessage(item)]]</strong>
                                     </div>
                                 </v-flex>

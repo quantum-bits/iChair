@@ -2390,7 +2390,7 @@ def generate_update_delta(request):
         elif action == 'create':
             # in this case we only have an ichair id....
             ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-            delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons_this_semester)
+            delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons)
             agreement_update = {
                 "instructors_match": False,
                 "meeting_times_match": False,
