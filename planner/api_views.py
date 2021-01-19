@@ -592,7 +592,7 @@ def banner_comparison_data(request):
     extra_departmental_course_id_list = json_data['extraDepartmentalCourseIdList']
     include_room_comparisons = json_data['includeRoomComparisons']
 
-    print("include room comparisons?", include_room_comparisons)
+    #print("include room comparisons?", include_room_comparisons)
 
     day_sorter_dict = {
         'M': 0,
@@ -2926,7 +2926,7 @@ def copy_course_offering_data_to_ichair(request):
     # if there is a delta object, then we will search for it and be sure to update it as appropriate after making the iChair changes....
 
     include_room_comparisons = json_data['includeRoomComparisons']
-    print("include room comparisons?", include_room_comparisons)
+    #print("include room comparisons?", include_room_comparisons)
 
     #print('banner course offering id: ', banner_course_offering_id)
     #print('delta id: ', delta_id)
