@@ -38,12 +38,12 @@ class Command(BaseCommand):
                             bco = banner_course_offerings[0]
 
                             delivery_method = DeliveryMethod.objects.filter(code = bco.delivery_method.code)
-                            # next lines commented out to prevent accidental use of this command
-                            if len(delivery_method) == 1:
-                                co.delivery_method = delivery_method[0]
-                                co.save()
-                            else:
-                                num_delivery_method_errors += 1
+                            # next lines commented out to prevent accidental use of this command...although the code should now actually be safe....
+                            #if len(delivery_method) == 1:
+                            #    co.delivery_method = delivery_method[0]
+                            #    co.save()
+                            #else:
+                            #    num_delivery_method_errors += 1
 
                         else:
                             print('??? well that is weird...there seem to be two banner course offerings for this iChair course offering: ',co)
@@ -65,15 +65,15 @@ class Command(BaseCommand):
                             print("banner: ", banner_options)
                             banner_delivery_method = banner_options[0].delivery_method
                             delivery_method = DeliveryMethod.objects.filter(code = banner_delivery_method.code)
-                            # next lines commented out to prevent accidental use of this command
-                            if len(delivery_method) == 1:
-                                co.delivery_method = delivery_method[0]
-                                co.save()
-                                num_no_stored_crn_now_updated_delivery_method += 1
-                            else:
-                                num_delivery_method_errors += 1
-                            print("banner delivery method: ", banner_delivery_method)
-                            print("updated iChair delivery method: ", co.delivery_method)
+                            # next lines commented out to prevent accidental use of this command...although the code should now actually be safe....
+                            #if len(delivery_method) == 1:
+                            #    co.delivery_method = delivery_method[0]
+                            #    co.save()
+                            #    num_no_stored_crn_now_updated_delivery_method += 1
+                            #else:
+                            #    num_delivery_method_errors += 1
+                            #print("banner delivery method: ", banner_delivery_method)
+                            #print("updated iChair delivery method: ", co.delivery_method)
                         else:
                             num_no_crn_and_no_match_found_in_banner += 1
                 else:
