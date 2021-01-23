@@ -2109,8 +2109,11 @@ def scheduled_classes_match(banner_course_offering, ichair_course_offering, chec
         for isc in ichair_scheduled_classes:
             if bsc.day == isc.day and bsc.begin_at == isc.begin_at and bsc.end_at == isc.end_at:
                 if check_rooms:
-                    if bsc.room.number == isc.room.number and bsc.room.building.abbrev == isc.room.building.abbrev:
+                    if (bsc.room is None) and (isc.room is None):
                         one_fits = True
+                    elif (bsc.room is not None) and (isc.room is not None):
+                        if bsc.room.number == isc.room.number and bsc.room.building.abbrev == isc.room.building.abbrev:
+                            one_fits = True
                 else:
                     one_fits = True
         if not one_fits:
