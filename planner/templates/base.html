@@ -108,7 +108,9 @@ div.page-name h1 {
 		<a href="{% url 'display_notes' %}">notes</a> |
 		<a href="{% url 'display_messages' %}">messages</a> |
 	{% endif %}
+	<!--
     <a href="{% url 'getting_started' %}">help</a> | 
+	-->
     {% if user.is_authenticated %}
     <a href="{% url 'logout' %}?next={% url 'login' %}">logout</a>
     {% else %}
