@@ -1104,7 +1104,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
             sheet.col(col).width = width
             col = col+1
         
-        sheet.write_merge(0,0,0,7,global_data['school'],xlwt.easyxf(styles['bold_title']))
+        #sheet.write_merge(0,0,0,7,global_data['school'],xlwt.easyxf(styles['bold_title']))
         
         if (not faculty["is_in_this_dept"]) and (not faculty["is_adjunct"]):
             sheet.write_merge(1,1,0,7,'This sheet summarizes load taught in this department by non-adjunct faculty from other departments.  This is included purely',xlwt.easyxf(styles['bold_title_green']))
