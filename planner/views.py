@@ -4780,6 +4780,7 @@ def weekly_course_schedule_entire_dept(request):
                 table_title = department.name +' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
 
             master_dict={}
+            min_hour = 7
             num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
             num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
 
@@ -4855,10 +4856,15 @@ def weekly_course_schedule_entire_dept(request):
                                 else:
                                     local_data.append('(ends @ '+str(sc.end_at.hour)+':'+str(sc.end_at.minute)+')')
 
-                        if len(master_dict[day][hour_range[ii]])>0:
-                            master_dict[day][hour_range[ii]].append('')
-                        for new_line in local_data:
-                            master_dict[day][hour_range[ii]].append(new_line)
+                        if min(hour_range) >= min_hour:
+                            # times before 7 a.m. will not show up (or crash the page!)
+                            if len(master_dict[day][hour_range[ii]])>0:
+                                master_dict[day][hour_range[ii]].append('')
+                            for new_line in local_data:
+                                master_dict[day][hour_range[ii]].append(new_line)
+                        else:
+                            print('time outside of range!')
+                            print(sc)
 
     #        print(master_dict)
             
