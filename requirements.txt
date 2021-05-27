@@ -1,6 +1,6 @@
 Django==2.2.2
 django-crontab==0.7.1
-django-debug-toolbar==1.4
+django-debug-toolbar==1.11.1
 gunicorn==18.0
 html5lib==1.0.1
 Pillow==6.0.0
