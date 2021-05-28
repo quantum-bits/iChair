@@ -16,6 +16,7 @@ from banner.models import Building as BannerBuilding
 from banner.models import SubjectToImport as BannerSubjectToImport
 from banner.models import DeliveryMethod as BannerDeliveryMethod
 from planner.models import DeliveryMethod
+from planner.models import FacultyMember
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
@@ -106,6 +107,20 @@ class Command(BaseCommand):
                 WHERE (({0}) AND ({1}) AND campus = 'U')
                     """.format(term_group, subject_group)).fetchall()
 
+            faculty_pidms = cursor.execute("""
+                SELECT df.pidm
+                FROM dw.dim_faculty df
+                    """).fetchall()
+            
+            
+
+            #print(all_banner_faculty_pidms)
+            # https://www.programiz.com/python-programming/methods/list/index
+            #index = all_banner_faculty_pidms.index('502163')
+            #print('The index of 502163:', index)
+
+
+            
             
             # to find the building and room information for a course section with no scheduled
             # classes, can do this (for example):
@@ -129,6 +144,33 @@ class Command(BaseCommand):
             buildings_created = []
             building_room_errors = 0
             delivery_methods_created = []
+            faculty_with_pidm_in_ichair_not_in_banner = []
+            repeated_ichair_pidms = []
+            banner_faculty_without_perfect_match_in_ichair = []
+            
+            #print("Checking faculty....")
+            
+            # check that:
+            # - all faculty in ichair.db with pidms also exist in the datawarehouse db (or at least the pidms exist)
+            # - check that no two faculty in ichair.db have the same pidm
+            # - check (by pidm) that all faculty in banner.db exist in ichair.db (this is checked a bit later on)
+            # ...if any of the above are an issue, report that in the email
+
+            #https://www.geeksforgeeks.org/convert-decimal-to-string-in-python/#:~:text=str()%20method%20can%20be,decimal%20to%20string%20in%20Python.
+            all_banner_faculty_pidms = [str(pidm[0]) for pidm in faculty_pidms] # the entries in faculty_pidms are of Decimal type
+            all_ichair_faculty_pidms = []
+            for faculty in FacultyMember.objects.all():
+                if not((faculty.pidm == '') or (faculty.pidm == None)): #faculty member does have a pidm
+                    if faculty.pidm not in all_ichair_faculty_pidms:
+                        all_ichair_faculty_pidms.append(faculty.pidm)
+                    else:
+                        print('pidm is repeated in iChair: ', faculty)
+                        repeated_ichair_pidms.append(faculty.pidm)
+                        number_errors += 1
+                    if faculty.pidm not in all_banner_faculty_pidms:
+                        print('pidm is in iChair, but not in banner: ', faculty)
+                        faculty_with_pidm_in_ichair_not_in_banner.append(faculty.first_name + ' ' + faculty.last_name)
+                        number_errors += 1
 
             # start by clearing the banner database!
             # https://stackoverflow.com/questions/3805958/how-to-delete-a-record-in-django-models
@@ -420,6 +462,7 @@ class Command(BaseCommand):
             print('Number of course offerings without scheduled classes: ', num_no_mtgs_sched)
 
             #print('Assigning instructors....')
+            current_banner_instructor_pidms = []
             for co_instructor in course_instructors:
                 if co_instructor.faculty_key is not None:
                     # nothing more to do in this case....
@@ -429,6 +472,11 @@ class Command(BaseCommand):
                     #print('%s %s %s %s %s %s %s %s %s ' % (co_instructor.course_section_key, co_instructor.term, co_instructor.course, co_instructor.faculty_key,
                     #                                       co_instructor.primary_instructor, co_instructor.secondary_instructor, co_instructor.pidm, co_instructor.last_name, co_instructor.first_name))
                     
+                    # collect the pidms for later use
+                    co_instructor_pidm = str(co_instructor.pidm)
+                    if co_instructor_pidm not in current_banner_instructor_pidms:
+                        current_banner_instructor_pidms.append(co_instructor_pidm)
+                
                     try:
                         course_offering = BannerCourseOffering.objects.get(Q(crn = co_instructor.course_reference_number)&Q(term_code = co_instructor.term))
                         #print("Found: ", course_offering)
@@ -537,6 +585,24 @@ class Command(BaseCommand):
                 for new_delivery_method in delivery_methods_created:
                     print(new_delivery_method)
 
+            # now check (by pidm) that the instructors in banner.db also exist in ichair.db
+            for pidm in current_banner_instructor_pidms:
+                ichair_fms = FacultyMember.objects.filter(pidm=pidm)
+                if len(ichair_fms) != 1: #catches if there are 0 matches or more than 1
+                    banner_fm = BannerFacultyMember.objects.filter(pidm=pidm)
+                    number_errors += 1
+                    print(' ')
+                    if len(banner_fm) == 1:
+                        banner_fm_name = banner_fm[0].first_name + ' ' + banner_fm[0].last_name
+                        banner_faculty_without_perfect_match_in_ichair.append(banner_fm_name)
+                        print('The following Banner faculty member does not have a perfect match in iChair: ', banner_fm_name)
+                    else:
+                        print('There is not exactly one banner faculty member with the following pidm: ', pidm)
+                        number_errors += 1
+
+            print(' ')
+            print('number of errors associated with faculty members: ', len(faculty_with_pidm_in_ichair_not_in_banner) + len(repeated_ichair_pidms) + len(banner_faculty_without_perfect_match_in_ichair))
+            
             # check that banner.db and ichair.db have exactly the same delivery methods....
             number_matching_ichair_delivery_methods = 0
             number_banner_delivery_methods = 0
@@ -568,7 +634,10 @@ class Command(BaseCommand):
                 'delivery_methods_created': delivery_methods_created,
                 'buildings_created': buildings_created,
                 'building_room_errors': building_room_errors,
-                'delivery_methods_agree': number_matching_ichair_delivery_methods == number_banner_delivery_methods
+                'delivery_methods_agree': number_matching_ichair_delivery_methods == number_banner_delivery_methods,
+                'faculty_with_pidm_in_ichair_not_in_banner': faculty_with_pidm_in_ichair_not_in_banner,
+                'repeated_ichair_pidms': repeated_ichair_pidms,
+                'banner_faculty_without_perfect_match_in_ichair': banner_faculty_without_perfect_match_in_ichair
                 }
 
             # In the following I can use just "banner_import_report.txt" (without the path) if I'm running the warehouse command at the 
@@ -647,6 +716,39 @@ Number of classes with partial meeting info: {0}
         {0} {1} {2} ({3}); {4} - {5} (day: {6}); mtg time key: {7}
                 """.format(pmc.CMP, pmc.CRN, pmc.COURSE, pmc.TITLE, pmc.STARTTIME, pmc.ENDTIME, pmc.DAY, pmc.MEETINGTIMEKEY)
     
+    number_faculty_errors = len(context["faculty_with_pidm_in_ichair_not_in_banner"]) + len(context["repeated_ichair_pidms"]) + len(context["banner_faculty_without_perfect_match_in_ichair"])
+    
+    plaintext_message += """
+Number of errors associated with faculty members: {0}
+    """.format(number_faculty_errors)
+
+    if len(context["faculty_with_pidm_in_ichair_not_in_banner"]) > 0:
+        plaintext_message += """
+The following faculty members have a pidm in iChair that does not appear in Banner:
+        """
+        for fm in context["faculty_with_pidm_in_ichair_not_in_banner"]:
+            plaintext_message += """
+    {0}
+            """.format(fm)
+
+    if len(context["repeated_ichair_pidms"]) > 0:
+        plaintext_message += """
+The following pidms are repeated in iChair:
+        """
+        for pidm in context["repeated_ichair_pidms"]:
+            plaintext_message += """
+    {0}
+            """.format(pidm)
+
+    if len(context["banner_faculty_without_perfect_match_in_ichair"]) > 0:
+        plaintext_message += """
+The following Banner faculty members do not have a perfect match in iChair:
+        """
+        for fm in context["banner_faculty_without_perfect_match_in_ichair"]:
+            plaintext_message += """
+    {0}
+            """.format(fm)
+
     plaintext_message += """
 Number of building or room errors (due to existence of multiple versions): {0}
     """.format(context["building_room_errors"])
