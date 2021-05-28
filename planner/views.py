@@ -11,6 +11,8 @@ from django.template import RequestContext
 #from django.utils import simplejson
 import json as simplejson
 from django.utils.functional import curry
+from django.core.mail import EmailMultiAlternatives
+from django.contrib.sites.models import Site
 
 from .models import *
 from .forms import *
@@ -2754,6 +2756,38 @@ def add_faculty(request):
                                                       pidm = pidm
                                                       )
             #next = request.GET.get('next', 'home')
+            # send email to admin
+
+            email_plaintext_message = """
+A new faculty member was added to the iChair database by the user {0}.
+                """.format(user)
+
+            email_plaintext_message += """
+Name of new faculty member: {0}
+Department of new faculty member: {1}
+Rank of new faculty member: {2}
+                """.format(instructor.first_name + ' ' + instructor.last_name, instructor.department, instructor.rank)
+
+            # https://stackoverflow.com/questions/1451138/how-can-i-get-the-domain-name-of-my-site-within-a-django-template
+            current_site = request.META['HTTP_HOST']
+            if current_site == '127.0.0.1:8000': # development/localhost (https://forum.djangoproject.com/t/cant-start-the-development-server-at-http-127-0-0-1-8000/1934)
+                print(' ')
+                print('Email that would be sent in production: ')
+                print(email_plaintext_message)
+            else:
+                msg = EmailMultiAlternatives(
+                    # title:
+                    ("Faculty member added to iChair database"),
+                    # message:
+                    email_plaintext_message,
+                    # from:
+                    "noreply@taylor.edu",
+                    # to:
+                    ["knkiers@taylor.edu"]
+                )
+                msg.send()
+
+
             if instructor not in user_preferences.faculty_to_view.all():
                 user_preferences.faculty_to_view.add(instructor)
             next = '/planner/updatefacultytoview'

@@ -46,6 +46,8 @@ else:
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ['127.0.0.1', 'ichair.cse.taylor.edu']
+# https://forum.djangoproject.com/t/cant-start-the-development-server-at-http-127-0-0-1-8000/1934
+# if the development localhost address is changed at some point, need to update a conditional block in views.add_faculty(...)
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -197,7 +199,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 if run_mode.debug_toolbar:
     INSTALLED_APPS += ('debug_toolbar',)
     MIDDLEWARE.append('debug_toolbar.middleware.DebugToolbarMiddleware') #KK: not sure about this
-    INTERNAL_IPS = ('127.0.0.1',)
+    INTERNAL_IPS = ('127.0.0.1',) # if this is changed at some point, need to update a conditional block in views.add_faculty(...)
     DEBUG_TOOLBAR_CONFIG = { 'INTERCEPT_REDIRECTS': False }
 
 LOGIN_REDIRECT_URL = 'home'
