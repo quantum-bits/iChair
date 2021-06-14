@@ -43,6 +43,18 @@ elif run_mode.prod:
 else:
     raise RuntimeError("No database configured.")
 
+# KK (6/14/21):
+# Setting DEFAULT_AUTO_FIELD explicitly was added by KK when upgrading from Django 2.2.20 to Django 3.2.4.  
+# The new default for auto-created primary keys is going to be BigAutoField (which maxes out at a huge integer);
+# prior to this, the default was AutoField, which maxes out at a smaller, but still huge, integer.
+# At some point we may want to consider switching over to BigAutoField, but it's probably fine 
+# for now.  The current issue is that automatically created through-tables would need to be migrated
+# somewhat manually, and it's not clear to me if that is worth the headache at the moment.
+# 
+# https://docs.djangoproject.com/en/3.2/releases/3.2/#customizing-type-of-auto-created-primary-keys
+# https://docs.djangoproject.com/en/3.2/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ['127.0.0.1', 'ichair.cse.taylor.edu']

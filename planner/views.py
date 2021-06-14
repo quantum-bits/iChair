@@ -10,7 +10,7 @@ from django.shortcuts import render, redirect
 from django.template import RequestContext
 #from django.utils import simplejson
 import json as simplejson
-from django.utils.functional import curry
+#from django.utils.functional import curry
 from django.core.mail import EmailMultiAlternatives
 from django.contrib.sites.models import Site
 
