@@ -13,7 +13,7 @@ def load_hour_rounder(load):
         rounded_load = load
     return rounded_load
 
-def class_time_and_room_summary(scheduled_classes, include_rooms = True):
+def class_time_and_room_summary(scheduled_classes, include_rooms = True, new_format = False):
 # Returns a class time summary list and an accompanying room list, such as ['MWF 9-9:50','T 10-10:50'] and ['NS 210', 'ESC 141']
 # scheduled_classes is assumed to be a list of ScheduledClass objects with at least one element
 
@@ -24,23 +24,42 @@ def class_time_and_room_summary(scheduled_classes, include_rooms = True):
     schedule_list = []
     for sc in scheduled_classes:
         time_string=start_end_time_string(sc.begin_at.hour, sc.begin_at.minute, sc.end_at.hour, sc.end_at.minute)
-        if include_rooms:
-            if sc.room != None:
-                room = sc.room.building.abbrev+' '+sc.room.number
+        if new_format:
+            if include_rooms:
+                if len(sc.rooms.all()) > 0:
+                    rooms = [room.building.abbrev+' ' + room.number for room in sc.rooms.all()]
+                else:
+                    rooms = ['---']
+            else:
+                rooms = ['---']
+            for room_string in rooms:
+                schedule_list.append([sc.day, time_string, room_string])
+                day_dict[time_string+room_string]=''
+                room_dict[time_string+room_string] = room_string
+                time_dict[time_string+room_string] = time_string
+        else:
+            if include_rooms:
+                if sc.room != None:
+                    room = sc.room.building.abbrev+' '+sc.room.number
+                else:
+                    room = '---'
             else:
                 room = '---'
-        else:
-            room = '---'
-        schedule_list.append([sc.day, time_string, room])
-        day_dict[time_string+room]=''
-        room_dict[time_string+room] = room
-        time_dict[time_string+room] = time_string
+            schedule_list.append([sc.day, time_string, room])
+            day_dict[time_string+room]=''
+            room_dict[time_string+room] = room
+            time_dict[time_string+room] = time_string
+
+        print('room_dict: ', room_dict)
+        print('time_dict: ', time_dict)
 
     schedule_sorted = sorted(schedule_list, key=lambda row: (row[0], row[1]))
 
+    print('schedule_sorted: ', schedule_sorted)
     for item in schedule_sorted:
         day_dict[item[1]+item[2]]=day_dict[item[1]+item[2]]+day_list[item[0]]
 
+    print('day_dict: ', day_dict)
     class_times_list = []
     room_list = []
     for key in list(day_dict.keys()):

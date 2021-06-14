@@ -490,7 +490,7 @@ def collect_data_for_summary(request):
             room_list = ["---"]
         else:
             meetings_scheduled = True
-            meeting_times_list, room_list = class_time_and_room_summary(classes)
+            meeting_times_list, room_list = class_time_and_room_summary(classes, new_format = True)
             
         number = "{0} {1}".format(course_offering_dict[key]['course_offering'].course.subject,
                                    course_offering_dict[key]['course_offering'].course.number)
@@ -1918,7 +1918,7 @@ def construct_dropdown_list(offering_dict):
         if value['name'] not in repeated_items:
             offering_list.append({'id': key, 'name': value["name"]})
         else:
-            meeting_times_list, room_list = class_time_and_room_summary(value['scheduled_class_info'])
+            meeting_times_list, room_list = class_time_and_room_summary(value['scheduled_class_info'], new_format = True)
             if len(meeting_times_list)==0:
                 offering_list.append({'id': key, 'name': value["name"]})
             elif len(meeting_times_list)==1:
@@ -3058,7 +3058,7 @@ def delete_course_offering(request, id):
             room_list = ["---"]
         else:
             meetings_scheduled = True
-            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
         counter = 0
         meeting_info = []
         for meeting_time in meeting_times_list:
@@ -3242,7 +3242,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                 #            instructor_conflict_check_dict[offering_instructor.instructor.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
                                 course_offering_instructors = co.offering_instructors.all()
                                 for sc in co.scheduled_classes.all():
-
+                                    # TODO FIX ROOMS HERE
                                     if sc.room != None:
                                         if co.max_enrollment > sc.room.capacity:
                                             new_overbooked_room_message = 'Max enrollment in '+course.subject.abbrev+course.number+' ('+str(co.max_enrollment)+') exceeds the room capacity in '+sc.room.building.abbrev+sc.room.number+' ('+str(sc.room.capacity)+')'
@@ -3297,6 +3297,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                         instructor_list = ['TBA']
 
                     for sc in co.scheduled_classes.all():
+                        print("sc pk: ", sc.pk)
                         scheduled_classes.append(sc)
 
                     if len(scheduled_classes)==0:
@@ -3305,7 +3306,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                         room_list = ["---"]
                     else:
                         meetings_scheduled = True
-                        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+                        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
 
                     loads_OK = True
                     if (load_diff != 0):
@@ -3953,6 +3954,9 @@ def copy_course_offering(request, id):
                                                                 room = sc.room,
                                                                 comment = sc.comment
                                                                 )
+            # https://stackoverflow.com/questions/1182380/how-to-add-data-into-manytomany-field
+            for room in sc.rooms.all():
+                schedule_addition.rooms.add(room)
             schedule_addition.save()
         
         for pc in co.offering_comments.all():
@@ -3980,7 +3984,7 @@ def copy_course_offering(request, id):
             room_list = ["---"]
         else:
             meetings_scheduled = True
-            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
         counter = 0
         meeting_info = []
         for meeting_time in meeting_times_list:
@@ -4077,6 +4081,11 @@ def copy_courses(request, id, check_all_flag):
                                                                   room = sc.room,
                                                                   comment = sc.comment
                                                                   )
+                
+                # https://stackoverflow.com/questions/1182380/how-to-add-data-into-manytomany-field
+                for room in sc.rooms.all():
+                    schedule_addition.rooms.add(room)
+
                 schedule_addition.save()
             
             for pc in co.offering_comments.all():
@@ -4117,7 +4126,7 @@ def copy_courses(request, id, check_all_flag):
                         room_list = ["---"]
                     else:
                         meetings_scheduled = True
-                        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+                        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
 # now try to find "collisions" between current course offerings (in the "copy to" year) and
 # the course offerings in the year being copied from
                     scheduled_classes_current_year=[]
@@ -4288,7 +4297,7 @@ def search_form(request):
                             room_list = ["---"]
                         else:
                             meetings_scheduled = True
-                            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+                            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
 
 
                         instructor_list=[]
@@ -4399,7 +4408,7 @@ def search_form_time(request):
                             room_list = ["---"]
                         else:
                             meetings_scheduled = True
-                            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes)
+                            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
 
                         instructor_list=[]
 
