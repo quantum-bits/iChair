@@ -443,10 +443,10 @@ def collect_data_for_summary(request):
     scheduled_classes = [sc for sc in ScheduledClass.objects.filter(
         Q(course_offering__course__subject__department=department)&
         Q(course_offering__semester__year=academic_year_object)).select_related(
-            'room__building',
+            #'room__building',
             'course_offering__semester__name',
             'course_offering__semester__year',
-            'course_offering__course__subject')]
+            'course_offering__course__subject').prefetch_related('rooms__building')]
 
     offering_instructors = [oi for oi in OfferingInstructor.objects.filter(
         Q(course_offering__course__subject__department=department)&
@@ -1744,14 +1744,15 @@ def daily_schedule(request):
 
             idnum = idnum + 1
 
+            # https://stackoverflow.com/questions/18819218/django-prefetch-related-from-model-with-multiple-manytomany-relationships/18819306
             scheduled_classes = [sc for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year)&
                                                     Q(course_offering__course__subject__department = department)).select_related(
-                                                        'room__building',
+                                                        #'room__building',
                                                         'course_offering__semester__name',
                                                         'course_offering__semester__year',
-                                                        'course_offering__course__subject')]
+                                                        'course_offering__course__subject').prefetch_related('rooms__building')]
 
             semester_this_year = Semester.objects.filter(Q(name__name=semester_name)&Q(year__begin_on__year=academic_year))
 
@@ -1805,10 +1806,10 @@ def daily_schedule(request):
                                                                                     ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                                 sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
 
-                    if sc.room != None:
-                        if sc.room.id not in list(room_conflict_check_dict.keys()):
-                            room_conflict_check_dict[sc.room.id] = {'today':[]}
-                        room_conflict_check_dict[sc.room.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                    for room in sc.rooms.all():
+                        if room.id not in list(room_conflict_check_dict.keys()):
+                            room_conflict_check_dict[room.id] = {'today':[]}
+                        room_conflict_check_dict[room.id]['today'].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                             sc.end_at.hour*100+sc.end_at.minute,
                                                                             sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
                                                                             ' ('+start_end_time_string(sc.begin_at.hour,
@@ -1973,8 +1974,8 @@ def room_schedule(request):
         for semester_name in semester_list:
             
             idnum = idnum + 1
-
-            scheduled_classes = ScheduledClass.objects.filter(Q(room = room)&
+            # https://docs.djangoproject.com/en/3.2/topics/db/examples/many_to_many/
+            scheduled_classes = ScheduledClass.objects.filter(Q(rooms = room)&
                                                     Q(course_offering__semester__name__name=semester_name)&
                                                     Q(course_offering__semester__year__begin_on__year = academic_year))
 
@@ -2431,8 +2432,14 @@ def rectangle_coordinates_schedule(schedule, scheduled_class_object, data_column
     course_label = subject+course_number
     if not is_full_semester:
         course_label+=' ('+'\u00BD'+' sem)'
-    if scheduled_class_object.room != None:
-        room_label = scheduled_class_object.room.building.abbrev+scheduled_class_object.room.number
+    room_counter = 0
+    if len(scheduled_class_object.rooms.all()) > 0:
+        room_label = ''
+        for room in scheduled_class_object.rooms.all():
+            room_counter += 1
+            if room_counter > 1:
+                room_label += ' / '
+            room_label += room.building.abbrev+room.number
     else:
         room_label = '---'
 
@@ -3242,19 +3249,19 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                                 #            instructor_conflict_check_dict[offering_instructor.instructor.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
                                 course_offering_instructors = co.offering_instructors.all()
                                 for sc in co.scheduled_classes.all():
-                                    # TODO FIX ROOMS HERE
-                                    if sc.room != None:
-                                        if co.max_enrollment > sc.room.capacity:
-                                            new_overbooked_room_message = 'Max enrollment in '+course.subject.abbrev+course.number+' ('+str(co.max_enrollment)+') exceeds the room capacity in '+sc.room.building.abbrev+sc.room.number+' ('+str(sc.room.capacity)+')'
+
+                                    for room in sc.rooms.all():
+                                        if co.max_enrollment > room.capacity:
+                                            new_overbooked_room_message = 'Max enrollment in '+course.subject.abbrev+course.number+' ('+str(co.max_enrollment)+') exceeds the room capacity in '+room.building.abbrev+room.number+' ('+str(room.capacity)+')'
                                             if new_overbooked_room_message not in overbooked_room_messages:
                                                 overbooked_room_messages.append(new_overbooked_room_message)
 
-                                        if sc.room.id not in list(room_conflict_check_dict.keys()):
-                                            room_conflict_check_dict[sc.room.id] = {}
+                                        if room.id not in list(room_conflict_check_dict.keys()):
+                                            room_conflict_check_dict[room.id] = {}
                                             for p_s in partial_semesters:
-                                                room_conflict_check_dict[sc.room.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                                                room_conflict_check_dict[room.id][p_s['semester_fraction']] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
                                     
-                                        room_conflict_check_dict[sc.room.id][partial_semester['semester_fraction']][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                                        room_conflict_check_dict[room.id][partial_semester['semester_fraction']][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                                             sc.end_at.hour*100+sc.end_at.minute,
                                                                                             sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
                                                                                                     ' ('+start_end_time_string(sc.begin_at.hour,
@@ -4838,10 +4845,18 @@ def weekly_course_schedule_entire_dept(request):
                     half_sem_text = ''
                     if not sc.course_offering.is_full_semester():
                         half_sem_text = ' ('+'\u00BD'+' sem)'
-                    if sc.room != None:
-                        room_text = sc.room.building.abbrev+sc.room.number
+
+                    room_counter = 0
+                    if len(sc.rooms.all()) > 0:
+                        room_text = ''
+                        for room in sc.rooms.all():
+                            room_counter += 1
+                            if room_counter > 1:
+                                room_text += ' / '
+                            room_text += room.building.abbrev+room.number
                     else:
                         room_text = 'TBD'
+
                     data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+' - '+
                                         room_text+half_sem_text]
 
@@ -4853,11 +4868,11 @@ def weekly_course_schedule_entire_dept(request):
                                                                                     sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
                                                                                                 ' ('+start_end_time_string(sc.begin_at.hour,
                                                                                                                         sc.begin_at.minute,sc.end_at.hour,sc.end_at.minute)+')'])
-                    if sc.room != None:
-                        if sc.room.id not in list(room_conflict_check_dict.keys()):
-                            room_conflict_check_dict[sc.room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
+                    for room in sc.rooms.all():
+                        if room.id not in list(room_conflict_check_dict.keys()):
+                            room_conflict_check_dict[room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
 
-                        room_conflict_check_dict[sc.room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
+                        room_conflict_check_dict[room.id][day_list[sc.day]].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                                                         sc.end_at.hour*100+sc.end_at.minute,
                                                                                         sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+
                                                                                                     ' ('+start_end_time_string(sc.begin_at.hour,
