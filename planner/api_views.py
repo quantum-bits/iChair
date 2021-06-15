@@ -498,7 +498,7 @@ def create_course_offering(request):
     # information from Banner, we leave the rooms unspecified.
     # could use the method sort_rooms(...) for this....
     presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(
-        course_offering.scheduled_classes.all())
+        course_offering.scheduled_classes.all(), new_format = True)
     # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
     ico_meeting_times_list = sorted(
         presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
@@ -704,13 +704,13 @@ def banner_comparison_data(request):
                 # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                 if not allow_room_requests_this_semester:
                     presorted_bco_meeting_times_list = class_time_and_room_summary(
-                        bco.scheduled_classes.all(), include_rooms=False)
+                        bco.scheduled_classes.all(), include_rooms=False, new_format = True)
                     bco_meeting_times_list = sorted(
                         presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
                     bco_room_list = ['---' for mt in bco_meeting_times_list]
                 else:
                     presorted_bco_meeting_times_list, presorted_bco_room_list = class_time_and_room_summary(
-                        bco.scheduled_classes.all())
+                        bco.scheduled_classes.all(), new_format = True)
                     # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                     bco_meeting_times_list = sorted(
                         presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
@@ -775,7 +775,7 @@ def banner_comparison_data(request):
                     try:
                         ico = CourseOffering.objects.get(pk=bco.ichair_id)
                         presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(
-                            ico.scheduled_classes.all())
+                            ico.scheduled_classes.all(), new_format = True)
                         # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                         ico_meeting_times_list = sorted(
                             presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
@@ -896,7 +896,7 @@ def banner_comparison_data(request):
                     for unlinked_ico in unlinked_ichair_course_offerings:
                         #print(unlinked_ico)
                         presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(
-                            unlinked_ico.scheduled_classes.all())
+                            unlinked_ico.scheduled_classes.all(), new_format = True)
                         # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                         ico_meeting_times_list = sorted(
                             presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
@@ -977,7 +977,7 @@ def banner_comparison_data(request):
             # and now we go through the remaining iChair course offerings (i.e., the ones that have not been linked to banner course offerings)
             for ico in subject.restricted_course_offerings_no_crn(department, semester, extra_departmental_course_id_list):
 
-                presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all())
+                presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all(), new_format = True)
                 # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                 ico_meeting_times_list = sorted(
                     presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
@@ -999,13 +999,13 @@ def banner_comparison_data(request):
                     #print(unlinked_bco)
                     if not allow_room_requests_this_semester:
                         presorted_bco_meeting_times_list = class_time_and_room_summary(
-                            unlinked_bco.scheduled_classes.all(), include_rooms=False)
+                            unlinked_bco.scheduled_classes.all(), include_rooms=False, new_format = True)
                         bco_meeting_times_list = sorted(
                             presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
                         bco_room_list = ['---' for mt in bco_meeting_times_list]
                     else:
                         presorted_bco_meeting_times_list, presorted_bco_room_list = class_time_and_room_summary(
-                            unlinked_bco.scheduled_classes.all())
+                            unlinked_bco.scheduled_classes.all(), new_format = True)
                         # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
                         bco_meeting_times_list = sorted(
                             presorted_bco_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
@@ -1252,11 +1252,11 @@ def delta_update_status(bco, ico, delta, check_rooms = False):
         was_list = []
         change_to_list = []
         if not check_rooms:
-            was_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms)
-            change_to_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+            was_list = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms, new_format = True)
+            change_to_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms, new_format = True)
         else:
-            bco_meeting_times, bco_rooms = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms)
-            ico_meeting_times, ico_rooms = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+            bco_meeting_times, bco_rooms = class_time_and_room_summary(bco.scheduled_classes.all(), include_rooms = check_rooms, new_format = True)
+            ico_meeting_times, ico_rooms = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms, new_format = True)
             for ii in range(0, len(bco_meeting_times)):
                 was_list.append(bco_meeting_times[ii] + ' / ' + bco_rooms[ii])
             for ii in range(0, len(ico_meeting_times)):
@@ -1349,9 +1349,9 @@ def delta_create_status(ico, delta, check_rooms = False):
         # this is not a great way to do this, but it avoid rewriting the class_time_and_room_summary() method....
         change_to_list = []
         if not check_rooms:
-            change_to_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+            change_to_list = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms, new_format = True)
         else:
-            ico_meeting_times, ico_rooms = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms)
+            ico_meeting_times, ico_rooms = class_time_and_room_summary(ico.scheduled_classes.all(), include_rooms = check_rooms, new_format = True)
             for ii in range(0, len(ico_meeting_times)):
                 change_to_list.append(ico_meeting_times[ii] + ' / ' + ico_rooms[ii])
         delta_response["meeting_times"] = {
@@ -2799,7 +2799,7 @@ def update_class_schedule_api(request):
     # now retrieve the scheduled classes, etc., from the db again
     if course_offering:
         meeting_times_list, room_list = class_time_and_room_summary(
-            course_offering.scheduled_classes.all())
+            course_offering.scheduled_classes.all(), new_format = True)
         meeting_times_detail = construct_meeting_times_detail(course_offering, True)
         max_enrollment = course_offering.max_enrollment
         semester_fraction = course_offering.semester_fraction
@@ -3195,7 +3195,7 @@ def copy_course_offering_data_to_ichair(request):
                     
         # the following code is copied from above...if we need it again somewhere, should
         # consider putting this all in a function
-        presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all())
+        presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(ico.scheduled_classes.all(), new_format = True)
         ico_meeting_times_list = sorted(presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
 
         # sort the rooms so that the sort order matches that of the meeting times....

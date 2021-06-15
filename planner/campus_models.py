@@ -741,6 +741,11 @@ class CourseOffering(StampedModel):
                     "begin_at": sc.begin_at,
                     "end_at": sc.end_at,
                     "day": sc.day,
+                    "rooms": [{
+                            "id": room.id,
+                            "name": room.short_name
+                            } for room in sc.rooms.all()],
+                    # TODO: delete room_id and room
                     "room_id": sc.room.id if sc.room != None else None,
                     "room": sc.room.short_name if sc.room != None else "",
                 } for sc in self.scheduled_classes.all()],

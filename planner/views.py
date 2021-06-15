@@ -3297,7 +3297,6 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                         instructor_list = ['TBA']
 
                     for sc in co.scheduled_classes.all():
-                        print("sc pk: ", sc.pk)
                         scheduled_classes.append(sc)
 
                     if len(scheduled_classes)==0:
