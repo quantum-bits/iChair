@@ -746,8 +746,8 @@ class CourseOffering(StampedModel):
                             "name": room.short_name
                             } for room in sc.rooms.all()],
                     # TODO: delete room_id and room
-                    "room_id": sc.room.id if sc.room != None else None,
-                    "room": sc.room.short_name if sc.room != None else "",
+                    #"room_id": sc.room.id if sc.room != None else None,
+                    #"room": sc.room.short_name if sc.room != None else "",
                 } for sc in self.scheduled_classes.all()],
             "offering_instructors": [{
                     "id": oi.id,

@@ -1251,24 +1251,6 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
 
     return book
 
-def room_list_summary(scheduled_classes):
-    """
-    Returns a list of the rooms in which a given class occurs during a given semester;
-    scheduled_classes is assumed to be a list of ScheduledClass objects with at least one element.
-    """
-    # looks like this method is no longer used....
-    room_list = []
-    for sc in scheduled_classes:
-        if sc.room != None:
-            room = sc.room.building.abbrev+' '+sc.room.number
-        else:
-            room = '---'
-        if room not in room_list:
-            room_list.append(room)
-
-    return room_list
-
-
 def class_time_summary(scheduled_classes):
 # Returns a class time summary list, such as ['MWF 9-9:50','T 10-10:50']
 # scheduled_classes is assumed to be a list of ScheduledClass objects with at least one element

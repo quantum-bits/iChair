@@ -436,17 +436,17 @@
                                                     </v-layout>
                                                     <v-divider></v-divider>
                                                     <v-layout wrap>
-                                                        <v-flex xs3>Day</v-flex>
+                                                        <v-flex xs2>Day</v-flex>
                                                         <v-flex xs3>Begin Time (e.g., 13:00)</v-flex>
                                                         <v-flex xs3>End Time (e.g., 13:50)</v-flex>
-                                                        <v-flex xs2>Room</v-flex>
+                                                        <v-flex xs3>Room</v-flex>
                                                         <v-flex xs1>Delete</v-flex>
                                                     </v-layout>
                                                     <div v-for="meetingTimeDetail in editMeetings">
                                                         <v-layout wrap>
-                                                            <v-flex xs3>
+                                                            <v-flex xs2>
                                                                 <select class="mt-2"
-                                                                    style="border-style: solid; height: 32px; width: 150px;"
+                                                                    style="border-style: solid; height: 32px; width: 100px;"
                                                                     id="day_select" v-model="meetingTimeDetail.day">
                                                                     <option value="0">Monday</option>
                                                                     <option value="1">Tuesday</option>
@@ -463,7 +463,8 @@
                                                                 <input class="mt-2" style="height: 32px; width: 150px;"
                                                                     type="text" v-model="meetingTimeDetail.end_at">
                                                             </v-flex>
-                                                            <v-flex xs2>
+                                                            <v-flex xs3>
+                                                                <!--
                                                                 <select class="mt-2"
                                                                     style="border-style: solid; height: 32px; width: 100%;"
                                                                     id="room_select"
@@ -472,17 +473,71 @@
                                                                         :value="roomChoice.id">[[roomChoice.short_name]]
                                                                     </option>
                                                                 </select>
+                                                                -->
+                                                                <div v-for="(room, index) in meetingTimeDetail.rooms">
+                                                                    <select class="mt-2"
+                                                                    style="border-style: solid; height: 32px; width: 120px;"
+                                                                    id="room_select"
+                                                                    v-model="room.id">
+                                                                        <option v-for="roomChoice in filteredRoomChoices(room.id, meetingTimeDetail.rooms)"
+                                                                            :value="roomChoice.id">[[roomChoice.short_name]]
+                                                                        </option> 
+                                                                    </select>
+                                                                    <v-tooltip v-if="index == 0" top>
+                                                                        <template v-slot:activator="{ on }">
+                                                                            <span style="margin-top: 13px;">
+                                                                                <v-icon class="include-pointer" color="primary"
+                                                                                    @click="addRoomToMeetingTime(meetingTimeDetail.rooms)" v-on="on">
+                                                                                    mdi-plus-circle
+                                                                                </v-icon>
+                                                                            </span>
+                                                                        </template>
+                                                                        <span>Add another room for this meeting time</span>
+                                                                    </v-tooltip>
+                                                                    <v-tooltip v-if="index != 0" top>
+                                                                        <template v-slot:activator="{ on }">
+                                                                            <span style="margin-top: 13px;">
+                                                                                <v-icon class="include-pointer" color="orange"
+                                                                                    @click="dropThisRoom(index, meetingTimeDetail.rooms)" v-on="on">
+                                                                                    mdi-close-circle
+                                                                                </v-icon>
+                                                                            </span>
+                                                                        </template>
+                                                                        <span>Drop this room</span>
+                                                                    </v-tooltip>
+                                                                </div>
                                                             </v-flex>
+                                                            <!--
                                                             <v-flex xs1>
-                                                                <v-checkbox class="mt-2"
-                                                                    v-model="meetingTimeDetail.delete">
-                                                                </v-checkbox>
+                                                                <v-tooltip top>
+                                                                    <template v-slot:activator="{ on }">
+                                                                        <span class="float-left" style="margin-top: 13px;">
+                                                                            <v-icon class="include-pointer" color="primary"
+                                                                                @click="addRoomToMeetingTime(meetingTimeDetail.rooms)" v-on="on">
+                                                                                mdi-plus-circle
+                                                                            </v-icon>
+                                                                        </span>
+                                                                    </template>
+                                                                    <span>Add another room for this meeting time</span>
+                                                                </v-tooltip>
+                                                                
+                                                            </v-flex>
+                                                        -->
+                                                            <v-flex xs1>
+                                                                <v-tooltip top>
+                                                                    <template v-slot:activator="{ on }">
+                                                                        <v-checkbox class="mt-2"
+                                                                            v-model="meetingTimeDetail.delete" v-on="on">
+                                                                        </v-checkbox>
+                                                                    </template>
+                                                                    <span>Drop this meeting time and any associated rooms</span>
+                                                                </v-tooltip>
                                                             </v-flex>
                                                         </v-layout>
                                                     </div>
                                                     <v-layout>
                                                         <v-flex xs12>
-                                                            <v-btn color="primary" @click="addMeetingTime()">Add Another
+                                                            <v-btn color="primary" @click="addMeetingTime()">Add Meeting Time
                                                             </v-btn>
                                                         </v-flex>
                                                     </v-layout>

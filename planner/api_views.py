@@ -34,6 +34,7 @@ import json
 import re
 import uuid
 
+import collections
 
 @login_required
 def fetch_semesters_and_extra_departmental_courses(request):
@@ -431,25 +432,29 @@ def create_course_offering(request):
     # now add the scheduled classes
     classrooms_unassigned = False
     for meeting in meetings:
-        ichair_room = None
-        if meeting["room"] != None:
-            if meeting["room"]["id"] != None:
-                banner_room = BannerRoom.objects.get(pk=meeting["room"]["id"])
-                if (banner_room.number != None) and (banner_room.number != '') and (banner_room.building.abbrev != None) and (banner_room.building.abbrev != ''):
-                    ichair_rooms = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
-                    if len(ichair_rooms) > 1:
-                        print("ERROR!!!  There appear to be more than one iChair room with the same name.")
-                    elif len(ichair_rooms) == 1:
-                        ichair_room = ichair_rooms[0]
-        if ichair_room == None:
+        ichair_rooms_to_add = []
+        if len(meeting["rooms"]) == 0:
             classrooms_unassigned = True
+        for room in meeting["rooms"]:
+            banner_room = BannerRoom.objects.get(pk=room["id"])
+            ichair_rooms = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
+            if len(ichair_rooms) > 1:
+                print("ERROR!!!  There appear to be more than one iChair room with the same name.")
+                classrooms_unassigned = True
+            elif len(ichair_rooms) == 1:
+                ichair_rooms_to_add.append(ichair_rooms[0])
+            else:
+                print("ERROR!!!  There does not appear to be an iChair room for this Banner room.", banner_room)
+                classrooms_unassigned = True
 
         sc = ScheduledClass.objects.create(
             course_offering=course_offering,
             day=meeting["day"],
             begin_at=meeting['beginAt'],
-            end_at=meeting['endAt'],
-            room=ichair_room)
+            end_at=meeting['endAt'])
+        for ichair_room in ichair_rooms_to_add:
+            sc.rooms.add(ichair_room)
+        
         sc.save()
 
     # now add in the offering instructors; if one of them is primary, give that person all of the load
@@ -2078,14 +2083,22 @@ def construct_meeting_times_detail(course_offering, include_room = False):
                 "begin_at": sc.begin_at,
                 "end_at": sc.end_at,
                 "id": sc.id,
-                "room": None
+                #"room": None,
+                "rooms": []
             }
-        if include_room and sc.room != None:
-            new_meeting_times_element["room"] = {
-                    "id": sc.room.id,
-                    "short_name": sc.room.short_name,
-                    "capacity": sc.room.capacity
-                }
+        #if include_room and sc.room != None:
+        #    new_meeting_times_element["room"] = {
+        #            "id": sc.room.id,
+        #            "short_name": sc.room.short_name,
+        #            "capacity": sc.room.capacity
+        #        }
+        if include_room:
+            for room in sc.rooms.all():
+                new_meeting_times_element["rooms"].append({
+                    "id": room.id,
+                    "short_name": room.short_name,
+                    "capacity": room.capacity
+                })
         meeting_times_detail.append(new_meeting_times_element)
     return meeting_times_detail
 
@@ -2109,17 +2122,18 @@ def scheduled_classes_match(banner_course_offering, ichair_course_offering, chec
         for isc in ichair_scheduled_classes:
             if bsc.day == isc.day and bsc.begin_at == isc.begin_at and bsc.end_at == isc.end_at:
                 if check_rooms:
-                    if (bsc.room is None) and (isc.room is None):
-                        one_fits = True
-                    elif (bsc.room is not None) and (isc.room is not None):
-                        if bsc.room.number == isc.room.number and bsc.room.building.abbrev == isc.room.building.abbrev:
-                            one_fits = True
+                    bsc_room_ids = [room.building.abbrev + '-' + room.number for room in bsc.rooms.all()]
+                    isc_room_ids = [room.building.abbrev + '-' + room.number for room in isc.rooms.all()]
+                    one_fits = listsOfIntegersMatch(bsc_room_ids, isc_room_ids)
                 else:
                     one_fits = True
         if not one_fits:
             classes_match = False
     return classes_match
 
+# https://stackoverflow.com/questions/8866652/determine-if-2-lists-have-the-same-elements-regardless-of-order
+def listsOfIntegersMatch(list1, list2):
+    return collections.Counter(list1) == collections.Counter(list2)
 
 def instructors_match(banner_course_offering, ichair_course_offering):
     """
@@ -2754,16 +2768,23 @@ def update_class_schedule_api(request):
             begin = p.match(meeting['begin_at'])
             end = p.match(meeting['end_at'])
             day = int(meeting['day'])
-            room_id = meeting['roomId']
+            #room_id = meeting['roomId']
+            room_ids = meeting['roomIds']
             if (begin and end and (day <= 4) and (day >= 0)):
                 sc.begin_at = meeting['begin_at']
                 sc.end_at = meeting['end_at']
                 sc.day = day
-                if room_id == None:
-                    sc.room = None
-                else:
+                # first clear all rooms, then add in the ones in the rooms_ids list
+                # https://docs.djangoproject.com/en/3.2/ref/models/relations/#django.db.models.fields.related.RelatedManager.clear
+                sc.rooms.clear()
+                for room_id in meeting['roomIds']:
                     room = Room.objects.get(pk=int(room_id))
-                    sc.room = room
+                    sc.rooms.add(room)
+                #if room_id == None:
+                #    sc.room = None
+                #else:
+                #    room = Room.objects.get(pk=int(room_id))
+                #    sc.room = room
                 sc.save()
             else:
                 updates_successful = False
@@ -2779,16 +2800,19 @@ def update_class_schedule_api(request):
             begin = p.match(meeting['begin_at'])
             end = p.match(meeting['end_at'])
             day = int(meeting['day'])
-            room_id = meeting['roomId']
+            #room_id = meeting['roomId']
             if (begin and end and (day <= 4) and (day >= 0)):
                 sc = ScheduledClass.objects.create(
                     course_offering=course_offering,
                     day=day,
                     begin_at=meeting['begin_at'],
                     end_at=meeting['end_at'])
-                if room_id != None:
+                #if room_id != None:
+                #    room = Room.objects.get(pk=int(room_id))
+                #    sc.room = room
+                for room_id in meeting['roomIds']:
                     room = Room.objects.get(pk=int(room_id))
-                    sc.room = room
+                    sc.rooms.add(room)
                 sc.save()
             else:
                 creates_successful = False
@@ -3158,22 +3182,32 @@ def copy_course_offering_data_to_ichair(request):
                     # if the banner scheduled class has a room, try to find a corresponding room in the iChair database
                     ichair_room = None
                     classrooms_unassigned = True
-                    if banner_sc.room != None:
-                        if (banner_sc.room.number != None) and (banner_sc.room.number != '') and (banner_sc.room.building.abbrev != None) and (banner_sc.room.building.abbrev != ''):
-                            ichair_rooms = Room.objects.filter(Q(number=banner_sc.room.number) & Q(building__abbrev=banner_sc.room.building.abbrev))
-                            if len(ichair_rooms) > 1:
-                                print("ERROR!!!  There appear to be more than one iChair room with the same name.")
-                            elif len(ichair_rooms) == 1:
-                                ichair_room = ichair_rooms[0]
-                                classrooms_unassigned = False
+
+                    #sc.rooms.clear()
+                    #for room_id in meeting['roomIds']:
+                    #    room = Room.objects.get(pk=int(room_id))
+                    #    sc.rooms.add(room)
+                    ichair_rooms_to_add = []
+                    for banner_room in banner_sc.rooms.all():
+                        ichair_rooms = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
+                        if len(ichair_rooms) > 1:
+                            print("ERROR!!!  There appear to be more than one iChair room with the same name.")
+                        elif len(ichair_rooms) == 1:
+                            ichair_rooms_to_add.append(ichair_rooms[0])
+                            classrooms_unassigned = False
+                        else:
+                            print("ERROR!!!  There does not appear to be an iChair room for this Banner room.", banner_room)
 
                     isc = ScheduledClass.objects.create(
                         day=banner_sc.day,
                         begin_at=banner_sc.begin_at,
                         end_at=banner_sc.end_at,
-                        course_offering=ico,
-                        room=ichair_room
+                        course_offering=ico
                     )
+                    
+                    for ichair_room in ichair_rooms_to_add:
+                        isc.rooms.add(ichair_room)
+
                     isc.save()
                 
                 snapshot["scheduled_classes"] = snapshot_from_db["scheduled_classes"]
@@ -3187,11 +3221,12 @@ def copy_course_offering_data_to_ichair(request):
                             end_at=sc["end_at"],
                             course_offering=ico
                         )
+                    for room in sc["rooms"]:
+                        room = Room.objects.get(pk=int(room["id"]))
+                        print("found room in snapshot!", room)
+                        isc.rooms.add(room)
                     isc.save()
-                    if sc["room_id"]:
-                        room = Room.objects.get(pk=sc["room_id"])
-                        isc.room = room
-                        isc.save()
+                    
                     
         # the following code is copied from above...if we need it again somewhere, should
         # consider putting this all in a function

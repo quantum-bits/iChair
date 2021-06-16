@@ -351,7 +351,7 @@ var app = new Vue({
                   });
                   if (meetingTimes.length >= 2) {
                     // https://tecadmin.net/remove-last-character-from-string-in-javascript/
-                    console.log("meeting times:", meetingTimes);
+                    //console.log("meeting times:", meetingTimes);
                     meetingTimes = meetingTimes.substring(
                       0,
                       meetingTimes.length - 2
@@ -408,7 +408,7 @@ var app = new Vue({
                   });
                   if (meetingTimes.length >= 2) {
                     // https://tecadmin.net/remove-last-character-from-string-in-javascript/
-                    console.log("meeting times:", meetingTimes);
+                    //console.log("meeting times:", meetingTimes);
                     meetingTimes = meetingTimes.substring(
                       0,
                       meetingTimes.length - 2
@@ -446,6 +446,7 @@ var app = new Vue({
                   showBannerRadioSelect = true;
                 }
               }
+              /*
               if (course.has_ichair) {
                 course.ichair.meeting_times_detail.forEach( mtd => {
                   if (mtd.room === null) {
@@ -468,6 +469,7 @@ var app = new Vue({
                   }
                 });
               }
+              */
               _this.courseOfferings.push({
                 semester: course.semester,
                 semesterId: course.semester_id,
@@ -657,6 +659,7 @@ var app = new Vue({
         item.ichairOptions.forEach(iChairOption => {
           if (iChairOption.course_offering_id === item.ichairChoice) {
             item.ichair = iChairOption; //this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
+            /*
             item.ichair.meeting_times_detail.forEach( mtd => {
               if (mtd.room === null) {
                 mtd.room = {
@@ -666,6 +669,7 @@ var app = new Vue({
                 };
               }
             });
+            */
           }
         });
         // add the banner title to the iChair version of the course;
@@ -1032,7 +1036,8 @@ var app = new Vue({
           beginAt: meetingTime.begin_at,
           endAt: meetingTime.end_at,
           day: meetingTime.day,
-          room: JSON.parse(JSON.stringify(meetingTime.room))
+          //room: JSON.parse(JSON.stringify(meetingTime.room))
+          rooms: JSON.parse(JSON.stringify(meetingTime.rooms))
         })
       });
       item.banner.instructors_detail.forEach(instructorItem => {
@@ -1056,6 +1061,7 @@ var app = new Vue({
               // found the one we're working on
               courseOfferingItem.delta = jsonResponse.delta;
               courseOfferingItem.ichair = jsonResponse.ichair_course_offering_data;
+              /*
               courseOfferingItem.ichair.meeting_times_detail.forEach( mtd => {
                 if (mtd.room === null) {
                   mtd.room = {
@@ -1065,6 +1071,7 @@ var app = new Vue({
                   };
                 }
               });
+              */
               courseOfferingItem.enrollmentCapsMatch = jsonResponse.agreement_update.max_enrollments_match;
               courseOfferingItem.deliveryMethodsMatch = jsonResponse.agreement_update.delivery_methods_match;
               courseOfferingItem.publicCommentsMatch = jsonResponse.agreement_update.public_comments_match;
@@ -1367,9 +1374,25 @@ var app = new Vue({
         // looks like the trick of using JSON.parse(JSON.stringify(...)) to clone an object has a problem when
         // a number is Number.NEGATIVE_INFINITY...it appears to turn it into null, so we need to replace the null by 
         // Number.NEGATIVE_INFINITY again.
+        /*
         if (meeting.room.id === null) {
           meeting.room.id = NO_ROOM_SELECTED_ID;
         }
+        */
+        if (meeting.rooms.length === 0) {
+          meeting.rooms.push({
+            id: NO_ROOM_SELECTED_ID,
+            short_name: "",
+            capacity: -1
+          });
+        }
+        // the id property can be edited in the dialog...and will get out of synch with the short_name and capacity, so those are
+        // being altered here.  There must be a better way to do this, but vue wants to set the v-model to a property of an object
+        // that is being iterated over....  In any case, we will only use the id later on.
+        meeting.rooms.forEach( room => {
+          room.short_name = "";
+          room.capacity = -1; 
+        })
       });
       if (courseInfo.ichair.delivery_method.id === null) {
         this.editDeliveryMethodId = NO_ROOM_SELECTED_ID;
@@ -2320,6 +2343,7 @@ var app = new Vue({
             item.publicCommentsMatch &&
             item.deliveryMethodsMatch;
           item.ichair = jsonResponse.course_offering_update;
+          /*
           item.ichair.meeting_times_detail.forEach( mtd => {
             if (mtd.room === null) {
               mtd.room = {
@@ -2329,6 +2353,7 @@ var app = new Vue({
               };
             }
           });
+          */
 
           // if changes could previously be undone for some category, add that possibility here...otherwise this gets forgotten for other categories 
           // than the one(s) that were just edited; the following gives the default behaviour....
@@ -2411,7 +2436,12 @@ var app = new Vue({
           id: NO_ROOM_SELECTED_ID,
           short_name: "-----",
           capacity: -1
-        }
+        },
+        rooms: [{
+          id: NO_ROOM_SELECTED_ID,
+          short_name: "-----",
+          capacity: -1
+        }]
       });
     },
     cancelMeetingsForm() {
@@ -2474,12 +2504,19 @@ var app = new Vue({
           if (meeting.begin_at !== "" || meeting.end_at !== "") {
             if (meeting.id === null) {
               let checkTime = this.checkTimes(meeting.begin_at, meeting.end_at);
+              let roomIds = [];
+              meeting.rooms.forEach( room => {
+                if ((+room.id) !== NO_ROOM_SELECTED_ID) {
+                  roomIds.push(+room.id);
+                }
+              });
               if (checkTime.timesOK) {
                 meetingsToCreate.push({
                   day: parseInt(meeting.day),
                   begin_at: meeting.begin_at,
                   end_at: meeting.end_at,
-                  roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id
+                  //roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id,
+                  roomIds: roomIds
                 });
               } else {
                 this.meetingFormErrorMessage = checkTime.errorMessage;
@@ -2488,7 +2525,7 @@ var app = new Vue({
             } else {
               let checkTime = this.checkTimes(meeting.begin_at, meeting.end_at);
               // now check if anything is different....
-              let timesIdentical = true;
+              //let timesIdentical = true;
               if (!checkTime.timesOK) {
                 this.meetingFormErrorMessage = checkTime.errorMessage;
                 formOK = false;
@@ -2503,28 +2540,45 @@ var app = new Vue({
                     matchingMeeting = initialData;
                   }
                 });
+
+                let roomIdsInForm = [];
+                meeting.rooms.forEach( room => {
+                  if ((+room.id) !== NO_ROOM_SELECTED_ID) {
+                    roomIdsInForm.push(+room.id);
+                  }
+                });
+
                 if (foundMeeting) {
-                  console.log(matchingMeeting.room.id, typeof matchingMeeting.room.id);
-                  console.log(meeting.room.id, typeof meeting.room.id, typeof +meeting.room.id);
                   // meeting.day could come from the form, so it might be a string....
-                  timesAndRoomsIdentical =
+                  
+                  let initialRoomIds = [];
+                  matchingMeeting.rooms.forEach( room => {
+                    if ((+room.id) !== NO_ROOM_SELECTED_ID) {
+                      initialRoomIds.push(+room.id);
+                    }
+                  });
+                
+                  timesAndRoomsIdentical = this.listsIdentical(initialRoomIds, roomIdsInForm) &&
                     matchingMeeting.day === parseInt(meeting.day) &&
                     matchingMeeting.begin_at === meeting.begin_at &&
-                    matchingMeeting.end_at === meeting.end_at && 
-                    matchingMeeting.room.id === +meeting.room.id;
+                    matchingMeeting.end_at === meeting.end_at;
+                    // && 
+                    //matchingMeeting.room.id === +meeting.room.id;
                   console.log('times and rooms identical? ', timesAndRoomsIdentical);
                 } else {
                   console.log(
                     "something is wrong! cannot find the id for the update...."
                   );
                 }
+                
                 if (!timesAndRoomsIdentical) {
                   meetingsToUpdate.push({
                     id: meeting.id,
                     day: parseInt(meeting.day),
                     begin_at: meeting.begin_at,
                     end_at: meeting.end_at,
-                    roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id
+                    //roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id,
+                    roomIds: roomIdsInForm
                   });
                 } else {
                   meetingsToLeave.push({
@@ -2532,7 +2586,8 @@ var app = new Vue({
                     day: parseInt(meeting.day),
                     begin_at: meeting.begin_at,
                     end_at: meeting.end_at,
-                    roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id
+                    //roomId: (+meeting.room.id) === NO_ROOM_SELECTED_ID ? null : +meeting.room.id,
+                    roomIds: roomIdsInForm
                   });
                 }
               }
@@ -2544,6 +2599,7 @@ var app = new Vue({
       meetingsToCreate.forEach(meeting => meetingSummary.push(meeting));
       meetingsToUpdate.forEach(meeting => meetingSummary.push(meeting));
       meetingsToLeave.forEach(meeting => meetingSummary.push(meeting));
+
       if (formOK) {
         // everything else is OK, so check if the various times conflict with each other
         let checkTimeOverlaps = this.checkTimeConflicts(meetingSummary);
@@ -2613,6 +2669,7 @@ var app = new Vue({
                 }
                   
                 courseOfferingItem.ichair.meeting_times_detail = jsonResponse.meeting_times_detail;
+                /*
                 courseOfferingItem.ichair.meeting_times_detail.forEach( mtd => {
                   if (mtd.room === null) {
                     mtd.room = {
@@ -2622,6 +2679,7 @@ var app = new Vue({
                     };
                   }
                 });
+                */
 
                 courseOfferingItem.ichair.meeting_times = jsonResponse.meeting_times;
                 courseOfferingItem.ichair.rooms = jsonResponse.rooms;
@@ -2666,6 +2724,26 @@ var app = new Vue({
       } else if (formOK && numChanges === 0) {
         this.cancelMeetingsForm();
       }
+    },
+    listsIdentical(list1, list2) {
+      // lists are assumed to contain integers
+      let listsMatch = true;
+      let localList1 = JSON.parse(JSON.stringify(list1));
+      let localList2 = JSON.parse(JSON.stringify(list2));
+
+      if (localList1.length !== localList2.length) {
+        listsMatch = false;
+      } else {
+        localList1.forEach( item => {
+          let index = localList2.indexOf(item);
+          if (index === -1) {
+            listsMatch = false;
+          } else {
+            localList2.splice(index, 1)
+          }
+        });
+      }
+      return listsMatch;
     },
     checkTimes(beginTime, endTime) {
       let beginValid = this.timeStringValid(beginTime);
@@ -2797,11 +2875,33 @@ var app = new Vue({
           //  "Sorry, there appears to have been an error.";
         }
       });
+    },
 
+    filteredRoomChoices(roomId, rooms) {
+      //console.log(roomId);
+      //console.log(rooms);
+      let otherUsedRoomIds = [];
+      rooms.forEach( room => {
+        if ((room.id !== roomId) && (room.id !== NO_ROOM_SELECTED_ID)) {
+          otherUsedRoomIds.push(room.id);
+        }
+      });
+      //console.log(otherUsedRoomIds);
+      //https://stackoverflow.com/questions/33577868/filter-array-not-in-another-array#:~:text=You%20can%20simply%20run%20through,when%20the%20callback%20returns%20true%20.
+      return this.roomChoices.filter( roomOption => !otherUsedRoomIds.includes(roomOption.id));
+    },
 
+    addRoomToMeetingTime(rooms) {
+      rooms.push({
+        id: NO_ROOM_SELECTED_ID,
+        capacity: -1,
+        short_name: ""
+      })
+    },
 
-
-
+    // https://stackoverflow.com/questions/5767325/how-can-i-remove-a-specific-item-from-an-array
+    dropThisRoom(index, rooms) {
+      rooms.splice(index, 1);
     },
 
     greet: function(name) {
