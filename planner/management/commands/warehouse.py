@@ -137,7 +137,8 @@ class Command(BaseCommand):
 
             number_errors = 0
             number_meetings = 0
-            repeated_meetings_list = []
+            number_repeated_rooms_in_meeting = 0
+            repeated_room_in_meetings_list = []
             class_meeting_dict = {}
             error_list = []
             rooms_created = []
@@ -372,31 +373,73 @@ class Command(BaseCommand):
                                 #print('A meeting time is being repeated!!!', co_meeting.CRN, co_meeting.term)
                                 #print(day_of_week, ' ', start_time, ' ', end_time)
                                 #print(class_meeting_dict[co_key])
-                                repeated_meetings_list.append({
-                                    'CRN': co_meeting.CRN,
-                                    'course': co_meeting.COURSE,
-                                    'term_code': co_meeting.term,
-                                    'day': day_of_week,
-                                    'begin_at': start_time,
-                                    'end_at': end_time
-                                })
+
                                 class_meeting_repeated = True
+
+                                #print('other meeting(s): ', class_meeting_dict[co_key])
+                                #print('room for this (new) meeting: ', co_meeting.building_code, co_meeting.room_number)
+                                # add the room info....
+                                if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
+                                    # check that we don't already have this room in the list of rooms
+                                    room_repeated_this_meeting_time = False
+                                    for existing_room in mtg['rooms']:
+                                        if (existing_room['building_abbrev'] == co_meeting.building_code) and (existing_room['number'] == co_meeting.room_number):
+                                            room_repeated_this_meeting_time = True
+                                            repeated_room_in_meetings_list.append({
+                                                'CRN': co_meeting.CRN,
+                                                'course': co_meeting.COURSE,
+                                                'term_code': co_meeting.term,
+                                                'day': day_of_week,
+                                                'begin_at': start_time,
+                                                'end_at': end_time
+                                            })
+                                            number_repeated_rooms_in_meeting += 1
+                                            number_errors += 1
+
+                                    if not room_repeated_this_meeting_time:
+                                        mtg['rooms'].append({
+                                            'building_abbrev': co_meeting.building_code,
+                                            'number': co_meeting.room_number
+                                        })
+                                else:
+                                    print("Class meeting is repeated, but there is not complete room information....")
+                                    print(class_meeting_dict[co_key])
+                                    print("   building: ", co_meeting.building_code)
+                                    print("   room: ", co_meeting.room_number)
+                                    #print('    >>>> updated object: ', class_meeting_dict[co_key])
+
                         if not class_meeting_repeated:
+                            rooms = []
+                            if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
+                                rooms.append({
+                                    'building_abbrev': co_meeting.building_code,
+                                    'number': co_meeting.room_number
+                                })
+                            
                             class_meeting_dict[co_key]['scheduled_meetings'].append({
                                 'day': day_of_week,
                                 'begin_at': start_time,
-                                'end_at': end_time
+                                'end_at': end_time,
+                                'rooms': rooms
                             })
                     else:
                         class_meeting_dict[co_key] = {
+                            'course': co_meeting.COURSE,
                             'CRN': co_meeting.CRN,
                             'term_code': co_meeting.term,
                             'scheduled_meetings': []
                         }
+                        rooms = []
+                        if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
+                            rooms.append({
+                                'building_abbrev': co_meeting.building_code,
+                                'number': co_meeting.room_number
+                            })
                         class_meeting_dict[co_key]['scheduled_meetings'].append({
                             'day': day_of_week,
                             'begin_at': start_time,
-                            'end_at': end_time
+                            'end_at': end_time,
+                            'rooms': rooms
                         })
                     
                     room = None
@@ -444,19 +487,34 @@ class Command(BaseCommand):
                                 })
                         else:
                             room = rooms[0]
-                    #else:
-                    #    print('room not completely specified: ', co_meeting.COURSE, co_meeting.CRN, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.building_code, co_meeting.room_number)
-
+                    
                     if not class_meeting_repeated:
                         scheduled_class = BannerScheduledClass.objects.create(
                             day = day_of_week,
                             begin_at = start_time,
                             end_at = end_time,
-                            course_offering = course_offering,
-                            room = room
+                            course_offering = course_offering
                         )
+                        if room is not None:
+                            scheduled_class.rooms.add(room)
                         scheduled_class.save()
                         number_meetings += 1
+                    elif (class_meeting_repeated and (room is not None)):
+                        #print('we have a new room to add to an existing meeting...attempting to find the meeting and add the new room')
+                        scheduled_classes = BannerScheduledClass.objects.filter(
+                            Q(day = day_of_week) &
+                            Q(begin_at = start_time) &
+                            Q(begin_at = start_time) &
+                            Q(end_at = end_time) &
+                            Q(course_offering = course_offering)
+                        )
+                        #print("...existing scheduled classes: ", scheduled_classes)
+                        if len(scheduled_classes) == 1:
+                            scheduled_classes[0].rooms.add(room)
+                            scheduled_classes[0].save()
+                        else:
+                            error_list.append("There should be exactly one scheduled class, but there is/are: {0} (CRN: {1}, {2} - {3})".format(len(scheduled_classes), co_meeting.CRN, co_meeting.COURSE, co_meeting.term))
+                            number_errors += 1
 
             print(' ')
             print('Number of course offerings without scheduled classes: ', num_no_mtgs_sched)
@@ -550,19 +608,14 @@ class Command(BaseCommand):
             print('number of class meetings scheduled: ', number_meetings)
 
             print(' ')
-            print('number of repeated meetings: ', len(repeated_meetings_list))
-            if len(repeated_meetings_list) > 0:
+            print('number of repeated rooms in meetings: ', len(repeated_room_in_meetings_list))
+            if len(repeated_room_in_meetings_list) > 0:
                 print(' ')
-                print('Repeated meetings can occur if there are two or more rooms booked for a ')
-                print('course for the exact same time slot.  At this point we are not allowing')
-                print('this in iChair (and in any case, we are not concerned with rooms during the')
-                print('schedule editing process), so we coalesce these multiple meetings into one.')
-                print('If we incorporate rooms into the schedule editing process in the future we')
-                print('may need to start being more careful about this...!')
+                print('There were one or more instances of a room being repeated for a given meeting time.')
 
             print(' ')
-            print('repeated meetings (only scheduled once each): ')
-            for mtg in repeated_meetings_list:
+            print('repeated rooms in meetings (only scheduled once each): ')
+            for mtg in repeated_room_in_meetings_list:
                 print(mtg)
 
             print(' ')
@@ -626,7 +679,7 @@ class Command(BaseCommand):
 
             context = {
                 'number_meetings': number_meetings,
-                'repeated_meetings_list': repeated_meetings_list,
+                'repeated_room_in_meetings_list': repeated_room_in_meetings_list,
                 'classes_missing_scheduled_meeting_info': classes_missing_scheduled_meeting_info,
                 'number_errors': number_errors,
                 'num_no_mtgs_sched': num_no_mtgs_sched,
@@ -637,7 +690,8 @@ class Command(BaseCommand):
                 'delivery_methods_agree': number_matching_ichair_delivery_methods == number_banner_delivery_methods,
                 'faculty_with_pidm_in_ichair_not_in_banner': faculty_with_pidm_in_ichair_not_in_banner,
                 'repeated_ichair_pidms': repeated_ichair_pidms,
-                'banner_faculty_without_perfect_match_in_ichair': banner_faculty_without_perfect_match_in_ichair
+                'banner_faculty_without_perfect_match_in_ichair': banner_faculty_without_perfect_match_in_ichair,
+                'class_meeting_dict': class_meeting_dict
                 }
 
             # In the following I can use just "banner_import_report.txt" (without the path) if I'm running the warehouse command at the 
@@ -676,7 +730,7 @@ class Command(BaseCommand):
 
 def banner_updated_message(context):
     #print(context)
-    num_repeated_mtgs = len(context["repeated_meetings_list"])
+    num_repeated_rooms_in_mtgs = len(context["repeated_room_in_meetings_list"])
     num_incomplete_schedule_info = len(context["classes_missing_scheduled_meeting_info"])
     plaintext_message = """
 The nightly Data Warehouse import has been completed.  The following is a summary.
@@ -685,25 +739,39 @@ Number of meetings scheduled: {0}
 
 Number of course offerings without scheduled classes: {1}
 
-Number of repeated meetings (only one copy of each was made): {2}
-        """.format(context["number_meetings"], context["num_no_mtgs_sched"], str(num_repeated_mtgs))
+Number of repeated rooms in meetings (only one copy of each was made): {2}
+        """.format(context["number_meetings"], context["num_no_mtgs_sched"], str(num_repeated_rooms_in_mtgs))
 
-    if num_repeated_mtgs > 0:
+    if num_repeated_rooms_in_mtgs > 0:
         plaintext_message += """
-    Repeated class meetings...details:
+    Repeated rooms in class meetings...details:
             """
-        for mtg in context["repeated_meetings_list"]:
+        for mtg in context["repeated_room_in_meetings_list"]:
             plaintext_message += """
         {0} (CRN: {1}; {2}): {3} - {4} (day: {5})
                 """.format(mtg["course"], mtg["CRN"], mtg["term_code"], mtg["begin_at"], mtg["end_at"], mtg["day"])
         plaintext_message += """
-Repeated meetings can occur if there are two or more rooms booked for a course for 
-the exact same time slot.  At this point we are not allowing this in iChair (and in 
-any case, we are not concerned with rooms during the schedule editing process), so 
-we coalesce these multiple meetings into one.  If we incorporate rooms into the 
-schedule editing process in the future we may need to start being more careful about 
-this...!
+There were one or more instances of a room being repeated for a given meeting time.
             """
+
+    plaintext_message += """
+The following meeting times have more than one room assigned:
+    """
+    # https://realpython.com/iterate-through-dictionary-python/#iterating-through-keys-directly
+    for co_key in context["class_meeting_dict"]:
+        for scheduled_meeting in context["class_meeting_dict"][co_key]['scheduled_meetings']:
+            if len(scheduled_meeting["rooms"]) > 1:
+                room_string = ""
+                for room in scheduled_meeting["rooms"]:
+                    if len(room_string) > 0:
+                        room_string += ", "
+                    room_string += "{0} {1}".format(room["building_abbrev"], room["number"])
+                plaintext_message += """
+    CRN: {0}, term: {1} ({2}) - day: {3}, {4}-{5} ({6})
+                """.format(context["class_meeting_dict"][co_key]['CRN'], 
+                context["class_meeting_dict"][co_key]['term_code'], context["class_meeting_dict"][co_key]['course'],
+                scheduled_meeting["day"], scheduled_meeting["begin_at"], scheduled_meeting["end_at"], room_string)
+                
     plaintext_message += """
 Number of classes with partial meeting info: {0}
         """.format(str(num_incomplete_schedule_info))
