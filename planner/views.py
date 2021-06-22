@@ -45,6 +45,7 @@ from django.core.files.base import ContentFile
 import io
 
 ALL_SEMESTERS_ID = -1
+NO_ROOM_SELECTED_ID = -1
 
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
 def render_to_pdf(template_src, context_dict={}):
@@ -1462,12 +1463,53 @@ def update_class_schedule(request,id, daisy_chain):
 # create the formset
     formset = ClassScheduleFormset(instance=instance)
 
+    #print(formset.as_table())
+    room_ids_for_labels = []
+    row_data = []
+    for subform in formset:
+        row_data.append({
+            "day_id_label": subform['day'].id_for_label,
+            "begin_at_id_label": subform['begin_at'].id_for_label,
+            "end_at_id_label": subform['end_at'].id_for_label,
+            "rooms_id_label": subform['rooms'].id_for_label,
+            "day": subform['day'].value(),
+            #"begin_at": subform['begin_at'].value(),
+            #"end_at": subform['end_at'].value(),
+            "selected_room_ids":subform['rooms'].value()
+        })
+        room_ids_for_labels.append(subform['rooms'].id_for_label)
+        print(subform['rooms'].id_for_label)
+        print(subform['begin_at'].value())
+        print(subform['begin_at'].id_for_label)
+        print(subform['rooms'].value())
+        print(subform['rooms'].name)
+        
+    for row in row_data:
+        print(row)
+    
+    all_rooms = [{
+        "id": -1,
+        "name": "----"
+    }]
+    for room in Room.objects.all():
+        all_rooms.append({
+            "id": room.id,
+            "name": room.short_name
+        })
+
+    #json_data = json.dumps({
+    #    "rooms": room_data,
+    #    "row_data": row_data
+    #})
+
     errordict={}
     dict = {"formset": formset
         , "instance": instance
         , "course": instance
         , "errordict": errordict
         , "daisy_chaining": daisy_chaining
+        , "all_rooms": all_rooms
+        , "no_room_selected_id": NO_ROOM_SELECTED_ID
     }
 
     if request.method == 'POST':
