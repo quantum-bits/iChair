@@ -57,10 +57,9 @@
 	<td>{{subform.id}} {{ subform.end_at }}</td>
         <td>
                 
-                {% if subform.id.value is None %} None!!
+                {% if subform.id.value is None %}
                         <rooms-container 
                                 :initial-room-ids="[]" 
-                                :scheduled-class-id="null" 
                                 :all-rooms="{{ all_rooms }}" 
                                 :scheduled-class-counter="{{ forloop.counter0 }}"
                                 :no-room-selected-id="{{ no_room_selected_id }}"
@@ -69,27 +68,14 @@
                 {% else %}
                         <rooms-container 
                                 :initial-room-ids="{{ subform.rooms.value }}" 
-                                :scheduled-class-id="{{ subform.id.value }}" 
                                 :all-rooms="{{ all_rooms }}" 
                                 :scheduled-class-counter="{{ forloop.counter0 }}"
                                 :no-room-selected-id="{{ no_room_selected_id }}"
                                 :base-ids-for-label="{{ rooms_id_for_label }}"
                                 ></rooms-container>
                 {% endif %}
-
-
-
-                <!--https://stackoverflow.com/questions/17484512/django-show-manytomany-field-of-model-using-modelchoicefield
-                <select name='room' style="width: 50%;">
-                        {% for room in rooms %}
-                            <option value='{{ room.id }}'>{{ room.short_name }}</option>
-                        {% endfor %}
-                </select>
-                <span style="float: right;">
-                        <a class="btn btn-info" href="">
-                                        Add Room</a>
-                </span>
-        -->
+                <!--https://stackoverflow.com/questions/17484512/django-show-manytomany-field-of-model-using-modelchoicefield -->
+ 
         </td>
 	<!--<td>{{subform.id}} {{ subform.room }}</td>-->
         <!--<td>{{subform.id}} {{ subform.rooms }}</td>-->
@@ -103,111 +89,6 @@
     </form>
     </div>
 
-    <!--
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
-
-    <div class="cyoc_div extra-bottom-margin">
-	{{ formset.management_form }}
-
-        <div id="app">
-
-        
-	<table class="table table-striped table-bordered table-hover table-condensed">
-	<tr>
-	<td> Day </td>
-	<td> Begin Time (e.g., 13:00)</td>
-	<td> End Time (e.g., 13:50)</td>
-	
-        <!--
-        <td> Room </td>
-        
-        <td> Rooms </td>
-	<td> Delete </td>
-	</tr>
-	
-        {% for subform in formset %}
-	<tr>
-        <td>{{subform.id}} {{ subform.day }}</td>
-	<td>{{subform.id}} {{ subform.begin_at }}</td>
-	<td>{{subform.id}} {{ subform.end_at }}</td>
-        <td>
-                {% if subform.id.value is None %} None!!
-                <rooms-container :selected-rooms-ids="[]" :scheduled-class-id="null" :all-rooms="{{ all_rooms }}" :scheduled-class-counter="{{ forloop.counter0 }}"></rooms-container>
-                {% else %}
-                <rooms-container :selected-room-ids="{{ subform.rooms.value }}" :scheduled-class-id="{{ subform.id.value }}" :all-rooms="{{ all_rooms }}" :scheduled-class-counter="{{ forloop.counter0 }}"></rooms-container>
-                {% endif %}
-        </td>
-        <!-- {{ forloop.counter0 }}-->
-        <!--subform.rooms.value gives the list of values; subform.rooms.name gives the list of all rooms-->
-	<!--<td>{{subform.id}} {{ subform.room }}</td>-->
-        <!--<td>{{subform.id}} {{ subform.rooms }}</td>
-	<td>{{subform.id}} {{ subform.DELETE }} </td>
-	</tr>
-	{% endfor %}
-
-        <!--
-        <scheduled-meeting v-for="row in rowData" :data="row"></scheduled-meeting>
-        
-
-	
-	</table>
-
-        </div>
-
-      </div>
--->
-
-
-    <!-- Embedded data (from server) -->
-    <script>
-      const dayData = [
-        {
-          id: "day-1",
-          name: "Monday",
-          rooms: [
-            { id: "E103", name: "Euler 103" },
-            { id: "E109", name: "Euler 109" },
-            { id: "N123", name: "Nussbaum 123" },
-          ],
-        },
-        {
-          id: "day-2",
-          name: "Wednesday",
-          rooms: [
-            { id: "E103", name: "Euler 103" },
-            { id: "E109", name: "Euler 109" },
-          ],
-        },
-        {
-          id: "day-3",
-          name: "Friday",
-          rooms: [
-            { id: "E109", name: "Euler 109" },
-            { id: "N123", name: "Nussbaum 123" },
-          ],
-        },
-      ];
-    </script>
-
-    <!---
-        <div id="app">
-        <!--{% include "vue/rooms.html" %}
-        <p>[[ message ]]</p>
-        <form method="post">
-                <!-- Illustrating use of child component 
-                <day-picker v-for="day in days" :day="day" :key="day.id"></day-picker>
-                
-                <!-- Ordinary form submission 
-                <input type="submit" value="Book My Room(s)" />
-        </form>
-        <room-collection :rooms="rooms" :rows="rowData"></room-collection>
-
-        <div v-for="room in rooms">
-                [[room]]
-        </div>
-    </div>
-        -->
-    
   </div>
 
    <script>

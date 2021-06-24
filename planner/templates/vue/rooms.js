@@ -1,17 +1,6 @@
-Vue.component("day-picker", {
-    template: `
-      <div>
-        <label :for="day.id">Choose Room for [[day.name]]</label>
-        <select id="day.id" :name="day.id">
-          <option v-for="room in day.rooms" :value="room.id" :key="room.id">
-              [[room.name]]
-          </option>
-        </select>
-      </div>
-      `,
-    delimiters: ["[[", "]]"],
-    props: ["day"],
-});
+/*
+some of the following code was adapted from code written by Tom Nurkkala
+*/
 
 Vue.component("room-picker", {
   template: `
@@ -37,7 +26,7 @@ Vue.component("room-picker", {
     </div>
     `,
   delimiters: ["[[", "]]"],
-  props: ["availableRooms", "room", "index", "scheduledClassId", "scheduledClassCounter"],
+  props: ["availableRooms", "room", "index"],
   data: function() {
     return {
       // https://stackoverflow.com/questions/40408096/whats-the-correct-way-to-pass-props-as-initial-data-in-vue-js-2
@@ -57,43 +46,32 @@ Vue.component("room-picker", {
   },
   updated() {
     this.$nextTick(function () {
-      console.log("room picker updated: ", this.room.id, this.selectedRoomId);
+      //console.log("room picker updated: ", this.room.id, this.selectedRoomId);
       this.selectedRoomId = this.room.id;
       // Code that will run only after the
       // entire view has been re-rendered
     })
   },
   mounted: function() {
-    console.log("room picker mounted: ", this.room.id, this.selectedRoomId);
-  },
-
-  computed: {
-    //selectId() {
-    //  return 'room-picker-'+this.scheduledClassCounter.toString()+'-'+this.index.toString();
-    //}
+    //console.log("room picker mounted: ", this.room.id, this.selectedRoomId);
   }
 });
 
 Vue.component("rooms-container", {
   template: `
     <div>
-      [[roomData]] [[scheduledClassId]]
-      <div>
-        <room-picker v-for="(room, index) in roomData" 
-          :key="index" 
-          :index="index"
-          :availableRooms="filteredRoomChoices(room.id)" 
-          :room="room"
-          :scheduledClassId="scheduledClassId"
-          :scheduledClassCounter="scheduledClassCounter"
-          @roomChanged="roomChanged"
-          @addRoom="addRoom"
-          @dropRoom="dropRoom"></room-picker>
-      </div>
+      <room-picker v-for="(room, index) in roomData" 
+        :key="index" 
+        :index="index"
+        :availableRooms="filteredRoomChoices(room.id)" 
+        :room="room"
+        @roomChanged="roomChanged"
+        @addRoom="addRoom"
+        @dropRoom="dropRoom"></room-picker>
     </div>
     `,
   delimiters: ["[[", "]]"],
-  props: ["initialRoomIds", "scheduledClassId", "allRooms", "scheduledClassCounter", "noRoomSelectedId", "baseIdsForLabel"],
+  props: ["initialRoomIds", "allRooms", "scheduledClassCounter", "noRoomSelectedId", "baseIdsForLabel"],
   data: function() {
     return {
       // https://stackoverflow.com/questions/40408096/whats-the-correct-way-to-pass-props-as-initial-data-in-vue-js-2
@@ -114,11 +92,11 @@ Vue.component("rooms-container", {
     },
     // https://medium.com/js-dojo/component-communication-in-vue-js-ca8b591d7efa
     roomChanged(changedRoom, newRoomId) {
-      console.log('message received!', changedRoom, newRoomId);
+      //console.log('message received!', changedRoom, newRoomId);
       let roomIndex = changedRoom.index;
       this.roomData.forEach( room => {
         if (room.index == roomIndex) {
-          console.log('found the room!', room);
+          //console.log('found the room!', room);
           room.id = newRoomId;
         }
       });
@@ -127,7 +105,7 @@ Vue.component("rooms-container", {
       //Vue.set(this.selectedRoomIds, roomSelectorIndex, newRoomId)
     },
     addRoom() {
-      console.log('time to add a room!');
+      //console.log('time to add a room!');
       let largestIndex = -1;
       this.roomData.forEach( room => {
         if (room.index > largestIndex) {
@@ -142,7 +120,7 @@ Vue.component("rooms-container", {
         });
     },
     dropRoom(roomToDrop) {
-      console.log('drop this room!', roomToDrop);
+      //console.log('drop this room!', roomToDrop);
       let counter = 0;
       let roomDataIndexToDrop;
       this.roomData.forEach( room => {
@@ -151,7 +129,7 @@ Vue.component("rooms-container", {
         }
         counter += 1;
       });
-      console.log('found the index: ', roomDataIndexToDrop);
+      //console.log('found the index: ', roomDataIndexToDrop);
       this.roomData.splice(roomDataIndexToDrop, 1);
     },
   },
@@ -160,7 +138,7 @@ Vue.component("rooms-container", {
     // Code that will run only after the
     // entire view has been rendered
     
-    console.log('inside mounted');
+    //console.log('inside mounted');
     this.roomData = [];
     let counter = 0;
     if (this.initialRoomIds.length === 0) {
@@ -179,23 +157,23 @@ Vue.component("rooms-container", {
         counter += 1;
       });
     
-      console.log('roomData: ', this.roomData);
+      //console.log('roomData: ', this.roomData);
     }
   }
   
 });
 
-
-// "Top-level" Vue component that will associate itself with the `#alpha` div.
+// The following is adapted from code written by Tom Nurkkala.
+// "Top-level" Vue component that will associate itself with the `#app` div.
 new Vue({
     delimiters: ["[[", "]]"],
     name: "class-schedule-form", // This shows up in the Vue debugger.
     el: "#app", // DOM element to take over
     data: {
-        // Local data value, just for illustration.
-        message: "Pick a room, ... any room.",
+        // Local data value, just for illustration. (KK: the following is not used anymore....)
+        //message: "Pick a room, ... any room.",
         // Access static data from the server, defined in the top-level `<script>` tag.
-        days: dayData,
+        //days: dayData,
         //rooms: json_data.rooms,
         //rowData: json_data.row_data
     },
