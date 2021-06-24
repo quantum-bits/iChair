@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.db.models.manager import EmptyManager
 from django.forms.models import inlineformset_factory
 from django.shortcuts import render, redirect
 from django.template import RequestContext
@@ -1450,7 +1451,9 @@ def update_class_schedule(request,id, daisy_chain):
     else:
         daisy_chaining = False
 
+    
     instance = CourseOffering.objects.get(pk = id)
+
     course_department = instance.course.subject.department
     original_co_snapshot = instance.snapshot
     year = instance.semester.year
@@ -1459,12 +1462,14 @@ def update_class_schedule(request,id, daisy_chain):
 
 #    form = CourseOfferingForm(instance=instance)
 # create the formset class
-    ClassScheduleFormset = inlineformset_factory(CourseOffering, ScheduledClass, formset = BaseClassScheduleFormset, exclude = [], extra=4)
+    ClassScheduleFormset = inlineformset_factory(CourseOffering, ScheduledClass, formset = BaseClassScheduleFormset, exclude = ['rooms'], extra=4)
+
 # create the formset
     formset = ClassScheduleFormset(instance=instance)
 
     #print(formset.as_table())
     rooms_id_for_label = []
+    sc_rooms = []
     for subform in formset:
         # the following gives some ways to access various things in the subform....
         #print(subform['rooms'].id_for_label)
@@ -1474,8 +1479,14 @@ def update_class_schedule(request,id, daisy_chain):
         #print(subform['begin_at'].id_for_label)
         #print(subform['rooms'].name)
         # the following is safe as long as this view and the template loop through the formset in the same order
-        rooms_id_for_label.append(subform['rooms'].id_for_label)
-        
+        rooms_id_for_label.append(subform['day'].id_for_label + '-rooms-')
+        if request.method != 'POST':
+            # get the initial room data from the database
+            if subform["id"].value() is not None:
+                sc_rooms.append([room.id for room in ScheduledClass.objects.get(pk=subform["id"].value()).rooms.all()])
+            else:
+                sc_rooms.append([])
+
     all_rooms = [{
         "id": NO_ROOM_SELECTED_ID,
         "name": "----"
@@ -1495,11 +1506,17 @@ def update_class_schedule(request,id, daisy_chain):
         , "all_rooms": all_rooms
         , "no_room_selected_id": NO_ROOM_SELECTED_ID
         , "rooms_id_for_label": rooms_id_for_label
+        , "sc_rooms": sc_rooms
     }
 
     if request.method == 'POST':
 #        form = CourseOfferingForm(request.POST, instance=instance)
         formset = ClassScheduleFormset(request.POST, instance = instance)
+
+        #print("after including request.POST....")
+        #for subform in formset:
+        #    print(subform['id'].value(), type(subform['id'].value()), subform['day'].value())
+    
 
         formset.is_valid()
         formset_error=formset.non_form_errors()
@@ -1514,7 +1531,7 @@ def update_class_schedule(request,id, daisy_chain):
                 room_id_list = []
                 # https://stackoverflow.com/questions/36719569/how-to-get-all-post-data-from-a-request-in-django/36724506
                 for key in request.POST.keys():
-                    if key.startswith(subform['rooms'].id_for_label):
+                    if key.startswith(subform['day'].id_for_label + '-rooms-'):
                         if int(request.POST[key]) != NO_ROOM_SELECTED_ID:
                             room_id_list.append(int(request.POST[key]))
                 #print("rooms: ", room_id_list)
@@ -1578,6 +1595,18 @@ def update_class_schedule(request,id, daisy_chain):
                 return redirect(url_string)
         else:
             dict["formset"]=formset
+            # need to repopulate the room ids using the data from the post
+            sc_rooms = []
+            for subform in formset:
+                rooms_this_sc = []
+                # https://stackoverflow.com/questions/36719569/how-to-get-all-post-data-from-a-request-in-django/36724506
+                for key in request.POST.keys():
+                    if key.startswith(subform['day'].id_for_label + '-rooms-'):
+                        if int(request.POST[key]) != NO_ROOM_SELECTED_ID:
+                            rooms_this_sc.append(int(request.POST[key]))
+                sc_rooms.append(rooms_this_sc)
+            dict["sc_rooms"] = sc_rooms
+
             if formset_error:
                 errordict.update({'formset_error':formset_error})
             for subform in formset:
@@ -1586,6 +1615,7 @@ def update_class_schedule(request,id, daisy_chain):
 
             return render(request, 'update_class_schedule.html', dict)
     else:
+
         # User is not submitting the form; show them the blank add create your own course form
         return render(request, 'update_class_schedule.html', dict)
 

@@ -56,24 +56,13 @@
 	<td>{{subform.id}} {{ subform.begin_at }}</td>
 	<td>{{subform.id}} {{ subform.end_at }}</td>
         <td>
-                
-                {% if subform.id.value is None %}
-                        <rooms-container 
-                                :initial-room-ids="[]" 
-                                :all-rooms="{{ all_rooms }}" 
-                                :scheduled-class-counter="{{ forloop.counter0 }}"
-                                :no-room-selected-id="{{ no_room_selected_id }}"
-                                :base-ids-for-label="{{ rooms_id_for_label }}"
-                                ></rooms-container>
-                {% else %}
-                        <rooms-container 
-                                :initial-room-ids="{{ subform.rooms.value }}" 
-                                :all-rooms="{{ all_rooms }}" 
-                                :scheduled-class-counter="{{ forloop.counter0 }}"
-                                :no-room-selected-id="{{ no_room_selected_id }}"
-                                :base-ids-for-label="{{ rooms_id_for_label }}"
-                                ></rooms-container>
-                {% endif %}
+                <rooms-container 
+                        :all-initial-room-ids="{{ sc_rooms }}" 
+                        :all-rooms="{{ all_rooms }}" 
+                        :scheduled-class-counter="{{ forloop.counter0 }}"
+                        :no-room-selected-id="{{ no_room_selected_id }}"
+                        :base-ids-for-label="{{ rooms_id_for_label }}"
+                        ></rooms-container>
                 <!--https://stackoverflow.com/questions/17484512/django-show-manytomany-field-of-model-using-modelchoicefield -->
  
         </td>

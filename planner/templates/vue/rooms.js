@@ -71,7 +71,7 @@ Vue.component("rooms-container", {
     </div>
     `,
   delimiters: ["[[", "]]"],
-  props: ["initialRoomIds", "allRooms", "scheduledClassCounter", "noRoomSelectedId", "baseIdsForLabel"],
+  props: ["allInitialRoomIds", "allRooms", "scheduledClassCounter", "noRoomSelectedId", "baseIdsForLabel"],
   data: function() {
     return {
       // https://stackoverflow.com/questions/40408096/whats-the-correct-way-to-pass-props-as-initial-data-in-vue-js-2
@@ -132,23 +132,33 @@ Vue.component("rooms-container", {
       //console.log('found the index: ', roomDataIndexToDrop);
       this.roomData.splice(roomDataIndexToDrop, 1);
     },
+    /*
+    updated() {
+      this.$nextTick(function () {
+        console.log("rooms container has been updated!");
+        // Code that will run only after the
+        // entire view has been re-rendered
+      })
+    },
+    */
   },
   mounted: function () {
     // https://vuejs.org/v2/api/#mounted
     // Code that will run only after the
     // entire view has been rendered
     
-    //console.log('inside mounted');
+    console.log('inside mounted', this.initialRoomIds);
+    let initialRoomIds = this.allInitialRoomIds[this.scheduledClassCounter];
     this.roomData = [];
     let counter = 0;
-    if (this.initialRoomIds.length === 0) {
+    if (initialRoomIds.length === 0) {
       this.roomData.push({
         id: this.noRoomSelectedId,
         index: counter,
         idForLabel: this.baseIdsForLabel[this.scheduledClassCounter] + '-' +counter.toString()
       });
     } else {
-      this.initialRoomIds.forEach( roomId => {
+      initialRoomIds.forEach( roomId => {
         this.roomData.push({
           id: roomId,
           index: counter,
