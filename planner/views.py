@@ -1464,8 +1464,8 @@ def update_class_schedule(request,id, daisy_chain):
     formset = ClassScheduleFormset(instance=instance)
 
     #print(formset.as_table())
-    room_ids_for_labels = []
     row_data = []
+    rooms_id_for_label = []
     for subform in formset:
         row_data.append({
             "day_id_label": subform['day'].id_for_label,
@@ -1477,18 +1477,20 @@ def update_class_schedule(request,id, daisy_chain):
             #"end_at": subform['end_at'].value(),
             "selected_room_ids":subform['rooms'].value()
         })
-        room_ids_for_labels.append(subform['rooms'].id_for_label)
-        print(subform['rooms'].id_for_label)
-        print(subform['begin_at'].value())
-        print(subform['begin_at'].id_for_label)
-        print(subform['rooms'].value())
-        print(subform['rooms'].name)
+        #print(subform['rooms'].id_for_label)
+        #print(subform['begin_at'].value())
+        #print(subform['begin_at'].id_for_label)
+        #print(subform['rooms'].value())
+        #print(subform['rooms'].name)
+
+        # the following is safe as long as this view and the template loop through the formset in the same order
+        rooms_id_for_label.append(subform['rooms'].id_for_label)
         
     for row in row_data:
         print(row)
     
     all_rooms = [{
-        "id": -1,
+        "id": NO_ROOM_SELECTED_ID,
         "name": "----"
     }]
     for room in Room.objects.all():
@@ -1496,11 +1498,6 @@ def update_class_schedule(request,id, daisy_chain):
             "id": room.id,
             "name": room.short_name
         })
-
-    #json_data = json.dumps({
-    #    "rooms": room_data,
-    #    "row_data": row_data
-    #})
 
     errordict={}
     dict = {"formset": formset
@@ -1510,6 +1507,7 @@ def update_class_schedule(request,id, daisy_chain):
         , "daisy_chaining": daisy_chaining
         , "all_rooms": all_rooms
         , "no_room_selected_id": NO_ROOM_SELECTED_ID
+        , "rooms_id_for_label": rooms_id_for_label
     }
 
     if request.method == 'POST':
@@ -1521,7 +1519,64 @@ def update_class_schedule(request,id, daisy_chain):
 
         if formset.is_valid() and (not formset_error):
 #            form.save()
-            formset.save()
+
+            #print(request.POST.keys())
+
+            
+        
+            for subform in formset:
+                print(" ")
+                print("###")
+                #print(subform['rooms'].id_for_label)
+                #print(subform['rooms'].value())
+                #print(subform['day'].id_for_label)
+                #print(subform["id"].value(), subform["id"], subform.cleaned_data.get("id") is not None)
+                #print("delete?", subform.cleaned_data.get('DELETE'))
+                #print("changed? ",subform.has_changed())
+                #print(subform.cleaned_data)
+
+                room_id_list = []
+                # https://stackoverflow.com/questions/36719569/how-to-get-all-post-data-from-a-request-in-django/36724506
+                for key in request.POST.keys():
+                    if key.startswith(subform['rooms'].id_for_label):
+                        if int(request.POST[key]) != NO_ROOM_SELECTED_ID:
+                            room_id_list.append(int(request.POST[key]))
+                print("rooms: ", room_id_list)
+                
+                # check that rooms are not repeated; if so, condense down to unique rooms (should never happen)
+                # https://www.tutorialspoint.com/check-if-list-contains-all-unique-elements-in-python
+                if(len(set(room_id_list)) != len(room_id_list)): # oops...!  one or more values are repeated
+                    print("uh oh...!  looks like there are one or more repeaterd rooms...list: ", room_id_list)
+                    # https://www.geeksforgeeks.org/python-convert-set-into-a-list/
+                    room_id_list = list(set(room_id_list))
+                    print("...fixed the problem; new list: ", room_id_list)
+
+                if subform.has_changed():
+                    print('form id before update: ', subform["id"].value(), type(subform["id"].value()))
+                    if (not subform.cleaned_data.get('DELETE')): # not marked for deletion
+                        scheduled_class = subform.save()
+                        # now update the rooms, in case they've been changed
+                        room_set_success = set_rooms_for_scheduled_class(scheduled_class, room_id_list)
+                        if not room_set_success:
+                            print("something went wrong with setting the rooms for this scheduled class! ", scheduled_class, room_id_list)
+                        
+                    elif subform.cleaned_data.get('id') is not None: # is marked for deletion; check if the scheduled class exists (if not, there's nothing to delete)
+                        deleted_scheduled_class = subform.cleaned_data.get('id').delete()
+                        print(deleted_scheduled_class)
+                else:
+                    # subform has not "changed" as far as django is concerned, but it's not keeping track of the rooms, so we need to do some manual checking
+                    print('form not changed; form id before update: ', subform["id"].value(), type(subform["id"].value()))
+                    print('...and, rooms....: ', room_id_list)
+                    if subform["id"].value() != '':
+                        # non-rooms part of form has not been changed, and scheduled class already exists
+                        print("non-rooms part of form has not been changed, and scheduled class already exists")
+                        print(subform["id"].value(), subform["id"])
+                        scheduled_class = ScheduledClass.objects.get(pk=int(subform["id"].value()))
+                        room_set_success = set_rooms_for_scheduled_class(scheduled_class, room_id_list)
+                        if not room_set_success:
+                            print("something went wrong with setting the rooms for this scheduled class! ", scheduled_class, room_id_list)
+                        
+
             revised_course_offering = CourseOffering.objects.get(pk = id)
             if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
                 revised_co_snapshot = revised_course_offering.snapshot
@@ -1554,6 +1609,23 @@ def update_class_schedule(request,id, daisy_chain):
     else:
         # User is not submitting the form; show them the blank add create your own course form
         return render(request, 'update_class_schedule.html', dict)
+
+def set_rooms_for_scheduled_class(sc, room_id_list):
+    """
+    sets rooms for a scheduled class; sc is a ScheduledClass object and room_list is a list of integers corresponding to the
+    ids of the rooms to be added; starts by clearing the previous room assignments
+    """
+    room_set_success = True
+    try:
+        sc.rooms.clear()
+        for room_id in room_id_list:
+            room = Room.objects.get(pk=int(room_id))
+            sc.rooms.add(room)
+        sc.save()
+    except:
+        room_set_success = False
+
+    return room_set_success
 
 @login_required
 def weekly_schedule(request):
