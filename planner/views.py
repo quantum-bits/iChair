@@ -3263,7 +3263,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
         })
 
     if "semester_to_view" not in request.session:
-        print("semester_to_view not in keys....")
+        print("semester_to_view not in keys....adding it now")
         request.session["semester_to_view"] = ALL_SEMESTERS_ID
     
     semester_found = False
