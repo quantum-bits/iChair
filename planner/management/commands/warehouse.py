@@ -367,9 +367,7 @@ class Command(BaseCommand):
                         for mtg in class_meeting_dict[co_key]['scheduled_meetings']:
                             if (mtg['day'] == day_of_week) and (mtg['begin_at'] == start_time) and (mtg['end_at'] == end_time):
                                 # We have a repeat; this can occur if a course offering is offered in two different rooms at the same
-                                # time and day, which is allowed in Banner; this may be associated with a trick in Banner; not sure.
-                                # Since we are not concerned with rooms during schedule editing time, we merge these multiple-meetings 
-                                # into one.
+                                # time and day, which is allowed in Banner (and also, now, in iChair).
                                 #print('A meeting time is being repeated!!!', co_meeting.CRN, co_meeting.term)
                                 #print(day_of_week, ' ', start_time, ' ', end_time)
                                 #print(class_meeting_dict[co_key])
@@ -613,10 +611,10 @@ class Command(BaseCommand):
                 print(' ')
                 print('There were one or more instances of a room being repeated for a given meeting time.')
 
-            print(' ')
-            print('repeated rooms in meetings (only scheduled once each): ')
-            for mtg in repeated_room_in_meetings_list:
-                print(mtg)
+                print(' ')
+                print('repeated rooms in meetings (only scheduled once each): ')
+                for mtg in repeated_room_in_meetings_list:
+                    print(mtg)
 
             print(' ')
             print('classes with partial meeting info: ')

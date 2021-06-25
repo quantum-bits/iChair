@@ -104,7 +104,7 @@ class BannerCourseOfferingAdmin(MultiDBModelAdmin):
     search_fields = ('course__title','course__number','term_code','delivery_method__description',)
 
 class BannerScheduledClassAdmin(admin.ModelAdmin):
-    list_display = ('course_offering','day','begin_at','end_at','room')
+    list_display = ('course_offering','day','begin_at','end_at')
 
 class RequirementAdmin(admin.ModelAdmin):
     form = RequirementForm
@@ -171,10 +171,10 @@ class CourseOfferingAdmin(admin.ModelAdmin):
     search_fields = ('course__title','course__number','semester__name__name', 'semester__banner_code', 'delivery_method__description',)
     
 class ClassMeetingAdmin(admin.ModelAdmin):
-    list_display = ('course_offering','held_on','begin_at','end_at','room','instructor',)
+    list_display = ('course_offering','held_on','begin_at','end_at','instructor',)
 
 class ScheduledClassAdmin(admin.ModelAdmin):
-    list_display = ('course_offering','day','begin_at','end_at','room','comment',)
+    list_display = ('course_offering','day','begin_at','end_at','comment',)
 
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('building','number','capacity',)

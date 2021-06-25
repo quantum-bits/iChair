@@ -253,7 +253,7 @@ class ScheduledClass(StampedModel):
     end_at = models.TimeField()
     course_offering = models.ForeignKey(CourseOffering, related_name='scheduled_classes', on_delete=models.CASCADE)
     # leave out the room for now....
-    room = models.ForeignKey(Room, related_name='scheduled_classes', blank=True, null=True, on_delete=models.SET_NULL)
+    #room = models.ForeignKey(Room, related_name='scheduled_classes', blank=True, null=True, on_delete=models.SET_NULL)
     rooms = models.ManyToManyField(Room, related_name = 'scheduled_class_objects', blank=True)
 #    instructor = models.ForeignKey(FacultyMember, blank=True, null=True)
 # at this point let the instructor(s) be determined by CourseOffering...  Eventually
