@@ -402,7 +402,7 @@ class Room(StampedModel):
         scheduled = False
         scheduled_classes = ScheduledClass.objects.filter(
             Q(course_offering__semester__year = academic_year_object) &
-            Q(room = self) &
+            Q(rooms = self) &
             Q(course_offering__course__subject__department = department_object)
         )
         if len(scheduled_classes) > 0:
