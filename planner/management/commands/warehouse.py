@@ -16,7 +16,7 @@ from banner.models import Building as BannerBuilding
 from banner.models import SubjectToImport as BannerSubjectToImport
 from banner.models import DeliveryMethod as BannerDeliveryMethod
 from planner.models import DeliveryMethod
-from planner.models import FacultyMember
+from planner.models import FacultyMember, Department
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
@@ -148,6 +148,7 @@ class Command(BaseCommand):
             faculty_with_pidm_in_ichair_not_in_banner = []
             repeated_ichair_pidms = []
             banner_faculty_without_perfect_match_in_ichair = []
+            adj_fac_w_pidm_not_in_adjunct_dept = []
             
             #print("Checking faculty....")
             
@@ -574,6 +575,18 @@ class Command(BaseCommand):
                         is_primary = is_primary)
                     offering_instructor.save()
 
+            # check if there are adjunct faculty in ichair.db who DO have a pidm but are not in the "Adjunct" department; if so, report them
+            adj_rank = FacultyMember.ADJUNCT_RANK
+            adj_depts = Department.objects.filter(name='Adjunct')
+            if (len(adj_depts) == 1):
+                for fm in FacultyMember.objects.filter (rank = adj_rank):
+                    if (fm.department != adj_depts[0]) and not (fm.pidm == '' or fm.pidm is None):
+                        adj_fac_w_pidm_not_in_adjunct_dept.append(fm.first_name + ' ' + fm.last_name + ' (pidm: ' + fm.pidm + ')')
+                        number_errors += 1
+            else:
+                print("There appears to be more than one adjunct department!")
+                number_errors += 1
+
             #print('Add comments to course offerings....')
             for co_comment in course_offering_comments:
                 #print(co_comment.COMMENTTERM, ' ', co_comment.term, ' ', co_comment.COMMENTCRN, ' ',co_comment.CRN, ' ',co_comment.SEQNO, ' ', co_comment.COMMENTTEXT)
@@ -654,6 +667,12 @@ class Command(BaseCommand):
             print(' ')
             print('number of errors associated with faculty members: ', len(faculty_with_pidm_in_ichair_not_in_banner) + len(repeated_ichair_pidms) + len(banner_faculty_without_perfect_match_in_ichair))
             
+            if len(adj_fac_w_pidm_not_in_adjunct_dept) > 0:
+                print(' ')
+                print('One or more adjunct faculty members are not in the Adjunct department, even though they have pidms: ')
+                for adj_fm in adj_fac_w_pidm_not_in_adjunct_dept:
+                    print('   {0}'.format(adj_fm))
+
             # check that banner.db and ichair.db have exactly the same delivery methods....
             number_matching_ichair_delivery_methods = 0
             number_banner_delivery_methods = 0
@@ -689,7 +708,8 @@ class Command(BaseCommand):
                 'faculty_with_pidm_in_ichair_not_in_banner': faculty_with_pidm_in_ichair_not_in_banner,
                 'repeated_ichair_pidms': repeated_ichair_pidms,
                 'banner_faculty_without_perfect_match_in_ichair': banner_faculty_without_perfect_match_in_ichair,
-                'class_meeting_dict': class_meeting_dict
+                'class_meeting_dict': class_meeting_dict,
+                'adj_fac_w_pidm_not_in_adjunct_dept': adj_fac_w_pidm_not_in_adjunct_dept
                 }
 
             # In the following I can use just "banner_import_report.txt" (without the path) if I'm running the warehouse command at the 
@@ -793,6 +813,15 @@ Number of errors associated with faculty members: {0}
 The following faculty members have a pidm in iChair that does not appear in Banner:
         """
         for fm in context["faculty_with_pidm_in_ichair_not_in_banner"]:
+            plaintext_message += """
+    {0}
+            """.format(fm)
+
+    if len(context["adj_fac_w_pidm_not_in_adjunct_dept"]) > 0:
+        plaintext_message += """
+One or more adjunct faculty members are not in the Adjunct department, even though they have pidms:
+        """
+        for fm in context["adj_fac_w_pidm_not_in_adjunct_dept"]:
             plaintext_message += """
     {0}
             """.format(fm)
