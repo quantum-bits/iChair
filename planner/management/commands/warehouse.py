@@ -22,6 +22,8 @@ from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
 from django.core.mail import EmailMultiAlternatives
 
+from four_year_plan.secret import ADMIN_EMAIL, NO_REPLY_EMAIL
+
 # https://github.com/mkleehammer/pyodbc/wiki/Objects
 
 #print(f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
@@ -727,9 +729,9 @@ class Command(BaseCommand):
                 # message:
                 email_plaintext_message,
                 # from:
-                "noreply@taylor.edu",
+                NO_REPLY_EMAIL,
                 # to:
-                ["knkiers@taylor.edu"]
+                [ADMIN_EMAIL]
             )
             msg.send()
 
@@ -740,9 +742,9 @@ class Command(BaseCommand):
                 # message:
                 "There was a problem with updating the banner database.",
                 # from:
-                "noreply@taylor.edu",
+                NO_REPLY_EMAIL,
                 # to:
-                ["knkiers@taylor.edu"]
+                [ADMIN_EMAIL]
             )
             msg.send()
 

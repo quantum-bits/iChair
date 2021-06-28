@@ -45,6 +45,8 @@ import math
 from django.core.files.base import ContentFile
 import io
 
+from four_year_plan.secret import ADMIN_EMAIL, NO_REPLY_EMAIL
+
 ALL_SEMESTERS_ID = -1
 NO_ROOM_SELECTED_ID = -1
 
@@ -2893,12 +2895,11 @@ Rank of new faculty member: {2}
                     # message:
                     email_plaintext_message,
                     # from:
-                    "noreply@taylor.edu",
+                    NO_REPLY_EMAIL,
                     # to:
-                    ["knkiers@taylor.edu"]
+                    [ADMIN_EMAIL]
                 )
                 msg.send()
-
 
             if instructor not in user_preferences.faculty_to_view.all():
                 user_preferences.faculty_to_view.add(instructor)
