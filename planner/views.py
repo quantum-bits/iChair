@@ -409,7 +409,7 @@ def collect_data_for_summary(request):
     number_faculty=ii
 # the following assumes that semesters are returned in the order Summer, Fall, J-term, Spring, so that
 # Fall ends up being 0, J-term is 1 and Spring is 2.
-    ii = -1
+    ii = 0
     semesterdict=dict()
     for semester in SemesterName.objects.all():
         semesterdict[semester.name] = ii
@@ -418,7 +418,7 @@ def collect_data_for_summary(request):
 #
 # load for summer is added to the fall....
 #
-    semesterdict['Summer']=0
+    #semesterdict['Summer']=0
 
     data_list = []
     unassigned_overassigned_data_list = []
@@ -427,7 +427,7 @@ def collect_data_for_summary(request):
 
     faculty_summary_load_list = []
     for ii in range(number_faculty):
-        faculty_summary_load_list.append([0,0,0])
+        faculty_summary_load_list.append([0,0,0,0])
 
     course_offerings = [co for co in CourseOffering.objects.filter(
         Q(course__subject__department=department)&
@@ -623,7 +623,7 @@ def collect_data_for_summary(request):
         load_list = []
         total_other_load=0
         for ii in range(number_faculty):
-            load_list.append([0,0,0])
+            load_list.append([0,0,0,0])
 
         instructor_loads_abbrev = []  
             
@@ -663,7 +663,7 @@ def collect_data_for_summary(request):
     total_load_hours=[]
     for ii in range(number_faculty):
         total_load_hours.append(load_hour_rounder(sum(faculty_summary_load_list[ii])))
-        for jj in range(3):
+        for jj in range(4):
             faculty_summary_load_list[ii][jj]=load_hour_rounder(faculty_summary_load_list[ii][jj])
 
     data_list_by_instructor = []
@@ -1063,6 +1063,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
         calibri_bold_bordered = 'font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
         calibri_bordered = 'font: height 220, color black, name Calibri;border: top thin, right thin, bottom thin, left thin;',
         calibri_bold_bordered_centered = 'alignment: horizontal center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bold_bordered_centered_v_h = 'alignment: horizontal center, vertical center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
         calibri_centered = 'font: height 220, color black, name Calibri; alignment:horizontal center;',
         bold_title = 'alignment:horizontal center; font: height 240, color black, name Calibri, bold 1;',
         bold_title_red = 'alignment:horizontal center; font: height 240, color red, name Calibri, bold 1;',
@@ -4597,6 +4598,7 @@ def prepare_excel_summary(context):
         calibri_bold_bordered = 'font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
         calibri_bordered = 'font: height 220, color black, name Calibri;border: top thin, right thin, bottom thin, left thin;',
         calibri_bold_bordered_centered = 'alignment: horizontal center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bold_bordered_centered_v_h = 'alignment: horizontal center, vertical center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
         calibri_bold_bordered_right = 'alignment: horizontal right; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
         calibri_centered_left_line = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; border: left thin;',
         calibri_centered_grey_left_line = 'font: height 220, color black, name Calibri; alignment:horizontal center, vertical top; pattern: pattern solid, fore_color 22; border: left thin;',
@@ -4614,7 +4616,7 @@ def prepare_excel_summary(context):
         )
 
 
-    row_data_start = 3
+    row_data_start = 4
     col_data_start = 7
 
     first_char_dict = {0:'',1:'A',2:'B',3:'C',4:'D',5:'E',6:'F'}
@@ -4626,7 +4628,7 @@ def prepare_excel_summary(context):
     counter = 0
     first_char_counter = 0
     col_dict = dict()
-    for num in range(num_profs*3+col_data_start):
+    for num in range(num_profs*4+col_data_start):
         if counter == 26:
             counter = 0
             first_char_counter = first_char_counter+1
@@ -4654,6 +4656,7 @@ def prepare_excel_summary(context):
     style_calibri_centered_right_line = xlwt.easyxf(styles['calibri_centered_right_line'])
     style_calibri_centered_grey_right_line = xlwt.easyxf(styles['calibri_centered_grey_right_line'])
     style_calibri_bold_bordered = xlwt.easyxf(styles['calibri_bold_bordered_centered'])
+    style_calibri_bold_bordered_v_h = xlwt.easyxf(styles['calibri_bold_bordered_centered_v_h'])
     style_calibri_bold_bordered_right = xlwt.easyxf(styles['calibri_bold_bordered_right'])
     style_calibri_left=xlwt.easyxf(styles['calibri_left'])
     style_calibri_left_grey=xlwt.easyxf(styles['calibri_left_grey'])
@@ -4675,13 +4678,13 @@ def prepare_excel_summary(context):
         col = col+1
         
     sheet.write_merge(0,0,0,6,'Load Summary -- Department of '+context['department'].name+' ('+context['academic_year']+')',xlwt.easyxf(styles['bold_title']))
-    sheet.write(2,0,'Number',style_calibri_bold_bordered)
-    sheet.write(2,1,'Name',style_calibri_bold_bordered)
-    sheet.write(2,2,'Semester',style_calibri_bold_bordered)
-    sheet.write(2,3,'Time',style_calibri_bold_bordered)
-    sheet.write(2,4,'Room',style_calibri_bold_bordered)
-    sheet.write(2,5,'Load',style_calibri_bold_bordered)
-    sheet.write(2,6,'Diff',style_calibri_bold_bordered)
+    sheet.write_merge(2,3,0,0,'Number',style_calibri_bold_bordered_v_h)
+    sheet.write_merge(2,3,1,1,'Name',style_calibri_bold_bordered_v_h)
+    sheet.write_merge(2,3,2,2,'Semester',style_calibri_bold_bordered_v_h)
+    sheet.write_merge(2,3,3,3,'Time',style_calibri_bold_bordered_v_h)
+    sheet.write_merge(2,3,4,4,'Room',style_calibri_bold_bordered_v_h)
+    sheet.write_merge(2,3,5,5,'Load',style_calibri_bold_bordered_v_h)
+    sheet.write_merge(2,3,6,6,'Diff',style_calibri_bold_bordered_v_h)
 
     style_center_list=[style_calibri_centered,style_calibri_centered_grey]
     style_center_left_line_list=[style_calibri_centered_left_line,style_calibri_centered_grey_left_line]
@@ -4691,14 +4694,33 @@ def prepare_excel_summary(context):
 
     j = 0
     for instructor in context['instructor_list']:
-        sheet.col(col_data_start+3*j).width = int(0.4*one_inch)
-        sheet.col(col_data_start+3*j+1).width = int(0.4*one_inch)
-        sheet.col(col_data_start+3*j+2).width = int(0.4*one_inch)
-        sheet.write_merge(2,2,col_data_start+3*j,col_data_start+3*j+2,instructor,style_calibri_bold_bordered)
+        sheet.col(col_data_start+4*j).width = int(0.4*one_inch)
+        sheet.col(col_data_start+4*j+1).width = int(0.4*one_inch)
+        sheet.col(col_data_start+4*j+2).width = int(0.4*one_inch)
+        sheet.col(col_data_start+4*j+3).width = int(0.4*one_inch)
+        sheet.write_merge(2,2,col_data_start+4*j,col_data_start+4*j+3,instructor,style_calibri_bold_bordered)
         j = j+1
 
-    sheet.col(col_data_start+3*j).width = int(1.5*one_inch)
-    sheet.write(2,col_data_start+3*j,'Comments',style_calibri_bold_bordered)
+    sheet.col(col_data_start+4*j).width = int(1.5*one_inch)
+    sheet.write_merge(2,3,col_data_start+4*j,col_data_start+4*j,'Comments',style_calibri_bold_bordered_v_h)
+
+    #sheet.write(3,0,'',style_calibri_bold_bordered)
+    #sheet.write(3,1,'',style_calibri_bold_bordered)
+    #sheet.write(3,2,'',style_calibri_bold_bordered)
+    #sheet.write(3,3,'',style_calibri_bold_bordered)
+    #sheet.write(3,4,'',style_calibri_bold_bordered)
+    #sheet.write(3,5,'',style_calibri_bold_bordered)
+    #sheet.write(3,6,'',style_calibri_bold_bordered)    
+
+    j = 0
+    for instructor in context['instructor_list']:
+        sheet.write(3,col_data_start+4*j,'Su',style_calibri_bold_bordered)
+        sheet.write(3,col_data_start+4*j + 1,'F',style_calibri_bold_bordered)
+        sheet.write(3,col_data_start+4*j + 2,'J',style_calibri_bold_bordered)
+        sheet.write(3,col_data_start+4*j + 3,'Sp',style_calibri_bold_bordered)
+        j = j+1
+
+    #sheet.write(3,col_data_start+4*j,'',style_calibri_bold_bordered)
 
     i = 0
     data_list = context['course_data_list']
@@ -4739,21 +4761,23 @@ def prepare_excel_summary(context):
         temp_list = entry['load_hour_list'][:]
 
         for load in temp_list:
-            loads_to_write=['','','']
+            loads_to_write=['','','','']
             if load[0]>=0:
                 loads_to_write[load[1]] = load[0]
-            for kk in range(3):
+            for kk in range(4):
                 if kk == 0:
-                    sheet.write(row,col_data_start+3*j+kk,loads_to_write[kk],style_center_left_line)
+                    sheet.write(row,col_data_start+4*j+kk,loads_to_write[kk],style_center_left_line)
                 elif kk == 1:
-                    sheet.write(row,col_data_start+3*j+kk,loads_to_write[kk],style_center)
+                    sheet.write(row,col_data_start+4*j+kk,loads_to_write[kk],style_center)
+                elif kk == 2:
+                    sheet.write(row,col_data_start+4*j+kk,loads_to_write[kk],style_center)
                 else:
-                    sheet.write(row,col_data_start+3*j+kk,loads_to_write[kk],style_center_right_line)
+                    sheet.write(row,col_data_start+4*j+kk,loads_to_write[kk],style_center_right_line)
             j=j+1
 
-        sheet.write(row,col_data_start+3*j,entry['comment'],style_center_right_line)
+        sheet.write(row,col_data_start+4*j,entry['comment'],style_center_right_line)
 
-        sum_string = 'F'+str(row+1)+'-SUM('+col_dict[col_data_start]+str(row+1)+':'+col_dict[col_data_start+3*num_profs-1]+str(row+1)+')'
+        sum_string = 'F'+str(row+1)+'-SUM('+col_dict[col_data_start]+str(row+1)+':'+col_dict[col_data_start+4*num_profs-1]+str(row+1)+')'
         sheet.write(row_data_start+i,6,xlwt.Formula(sum_string),style_center_left_line)
 
         i=i+1
@@ -4784,35 +4808,37 @@ def prepare_excel_summary(context):
                 else:
                     load_to_write = ''
                 if kk == 0:
-                    sheet.write(row,col_data_start+3*j+kk,load_to_write,style_center_left_line)
+                    sheet.write(row,col_data_start+4*j+kk,load_to_write,style_center_left_line)
                 elif kk == 1:
-                    sheet.write(row,col_data_start+3*j+kk,load_to_write,style_center)
+                    sheet.write(row,col_data_start+4*j+kk,load_to_write,style_center)
+                elif kk == 2:
+                    sheet.write(row,col_data_start+4*j+kk,load_to_write,style_center)
                 else:
-                    sheet.write(row,col_data_start+3*j+kk,load_to_write,style_center_right_line)
+                    sheet.write(row,col_data_start+4*j+kk,load_to_write,style_center_right_line)
                 kk = kk+1
             j=j+1
-        sheet.write(row,col_data_start+3*j,'',style_center_right_line)
+        sheet.write(row,col_data_start+4*j,'',style_center_right_line)
         i=i+1
 
-    for j in range(num_profs*3):
+    for j in range(num_profs*4):
         sum_string = 'SUM('+col_dict[col_data_start+j]+str(row_data_start+1)+':'+col_dict[col_data_start+j]+str(row_data_start+i)+')'
         sheet.write(row_data_start+i,col_data_start+j,xlwt.Formula(sum_string),style_calibri_bold_bordered)
 
     sheet.write_merge(row_data_start+i,row_data_start+i,0,6,'Load Summary',style_calibri_bold_bordered_right)
-    sheet.write(row_data_start+i,col_data_start+3*num_profs,'',style_top_line)
+    sheet.write(row_data_start+i,col_data_start+4*num_profs,'',style_top_line)
 
     i=i+1
 
     for j in range(num_profs):
-        sum_string = 'SUM('+col_dict[col_data_start+3*j]+str(row_data_start+i)+':'+col_dict[col_data_start+3*j+2]+str(row_data_start+i)+')'
-        sheet.write_merge(row_data_start+i,row_data_start+i,col_data_start+3*j,col_data_start+3*j+2,xlwt.Formula(sum_string),style_calibri_bold_bordered)
+        sum_string = 'SUM('+col_dict[col_data_start+4*j]+str(row_data_start+i)+':'+col_dict[col_data_start+4*j+3]+str(row_data_start+i)+')'
+        sheet.write_merge(row_data_start+i,row_data_start+i,col_data_start+4*j,col_data_start+4*j+3,xlwt.Formula(sum_string),style_calibri_bold_bordered)
 
     sheet.write_merge(row_data_start+i,row_data_start+i,0,6,'Total',style_calibri_bold_bordered_right)
     i=i+1
 
     j = 0
     for instructor in context['instructor_list']:
-        sheet.write_merge(row_data_start+i,row_data_start+i,col_data_start+3*j,col_data_start+3*j+2,instructor,style_calibri_bold_bordered)
+        sheet.write_merge(row_data_start+i,row_data_start+i,col_data_start+4*j,col_data_start+4*j+3,instructor,style_calibri_bold_bordered)
         j = j+1
 
     return book
