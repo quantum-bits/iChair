@@ -91,6 +91,7 @@ var app = new Vue({
         { text: "Semester", value: "semester" },
         { text: "Code", value: "termCode" },
         { text: "CRN", value: "crn" },
+        { text: "CMP", value: "campus"},
         {
           text: "Number",
           align: "left",
@@ -481,6 +482,7 @@ var app = new Vue({
                 creditHours: course.credit_hours,
                 name: course.course_title,
                 crn: course.crn,
+                campus: course.campus,
                 schedulesMatch: course.schedules_match,
                 instructorsMatch: course.instructors_match,
                 semesterFractionsMatch: course.semester_fractions_match,
@@ -645,6 +647,7 @@ var app = new Vue({
           deltaId: null, // shouldn't exist at this point, since we are creating a new delta object
           action: DELTA_ACTION_DELETE,
           crn: item.crn, // asking the registrar to delete this CRN
+          campus: item.campus,
           iChairCourseOfferingId: null, // don't have one; we're asking the registrar to delete a course offering b/c it doesn't correspond to one in iChair
           bannerCourseOfferingId: item.banner.course_offering_id, // this is the banner course offering that we are requesting be deleted
           semesterId: item.semesterId,
@@ -687,6 +690,7 @@ var app = new Vue({
           deltaId: null, // shouldn't exist at this point, since we have only just linked the iChair course offering with the Banner one
           action: DELTA_ACTION_UPDATE,
           crn: item.crn,
+          campus: item.campus,
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
           semesterId: item.semesterId,
@@ -1026,6 +1030,7 @@ var app = new Vue({
         includeRoomComparisons: item.includeRoomComparisons,
         semesterId: item.semesterId,
         crn: item.crn,
+        campus: item.campus,
         loadAvailable: item.creditHours, //need to warn the user that this has been set automatically
         meetings: [],
         instructorDetails: [],
@@ -1210,6 +1215,7 @@ var app = new Vue({
           deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
           action: DELTA_ACTION_CREATE,
           crn: null, // doesn't exist yet
+          campus: null, // doesn't exist yet
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: null, // don't have one, since we're requesting that the registrar create one
           semesterId: item.semesterId,
@@ -1233,6 +1239,7 @@ var app = new Vue({
           if (bannerOption.course_offering_id === item.bannerChoice) {
             item.banner = bannerOption; //this version of the iChair object has a few extra properties compared to normal, but that's not a problem....
             item.crn = bannerOption.crn;
+            item.campus = bannerOption.campus;
             item.course = bannerOption.course;
             item.name = bannerOption.course_title;
           }
@@ -1249,6 +1256,7 @@ var app = new Vue({
           deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
           action: DELTA_ACTION_UPDATE,
           crn: item.crn,
+          campus: item.campus,
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
           semesterId: item.semesterId,
@@ -2174,6 +2182,7 @@ var app = new Vue({
             deltaId: item.delta.id,
             action: item.delta.requested_action, // action we are requesting of the registrar
             crn: item.crn,
+            campus: item.campus,
             iChairCourseOfferingId: item.ichair.course_offering_id,
             bannerCourseOfferingId: item.banner.course_offering_id,
             semesterId: item.semesterId,
@@ -2185,6 +2194,7 @@ var app = new Vue({
             deltaId: item.delta.id,
             action: item.delta.requested_action, // action we are requesting of the registrar
             crn: item.crn,
+            campus: item.campus,
             iChairCourseOfferingId: item.ichair.course_offering_id,
             bannerCourseOfferingId: null, // no banner course offering exists, since we are requesting that the registrar create a new one
             semesterId: item.semesterId,
@@ -2200,6 +2210,7 @@ var app = new Vue({
           deltaId: null,
           action: DELTA_ACTION_UPDATE, // action we are requesting of the registrar
           crn: item.crn,
+          campus: item.campus,
           iChairCourseOfferingId: item.ichair.course_offering_id,
           bannerCourseOfferingId: item.banner.course_offering_id,
           semesterId: item.semesterId,
@@ -2828,6 +2839,7 @@ var app = new Vue({
               term_code: item.termCode,
               term_name: item.semester,
               crn: item.crn,
+              campus: item.campus,
               banner: item.banner,
               ichair: item.ichair,
               delta: item.delta,

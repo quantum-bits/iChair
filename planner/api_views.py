@@ -771,7 +771,8 @@ def banner_comparison_data(request):
                     "linked": False,
                     "delta": None,
                     "all_OK": False,
-                    "crn": bco.crn
+                    "crn": bco.crn,
+                    "campus": bco.campus
                 }
                 index = index + 1
 
@@ -1026,6 +1027,7 @@ def banner_comparison_data(request):
 
                     banner_options.append({
                         "crn": unlinked_bco.crn,
+                        "campus": unlinked_bco.campus,
                         "course_title": unlinked_bco.course.title,
                         "comments": unlinked_bco.comment_list(),
                         "delivery_method": create_delivery_method_dict(unlinked_bco.delivery_method),
@@ -1134,7 +1136,8 @@ def banner_comparison_data(request):
                     "linked": False,
                     "delta": delta_response,
                     "all_OK": schedules_match and inst_match and sem_fractions_match and enrollment_caps_match and comments_match and del_methods_match,
-                    "crn": None
+                    "crn": None,
+                    "campus": None
                 }
                 index = index + 1
                 course_offering_data.append(course_offering_item)
@@ -1556,6 +1559,7 @@ def generate_pdf(request):
     for item in course_data:
         edit_number += 1
         crn = item["crn"] # will be None for 'create' requests
+        campus = item["campus"] # will be None for 'create' requests; the campus propery is not currently being displayed in the pdf, but could be added if that's helpful
         term_code = item["term_code"]
         if require_page_break(y, layout, item):
             imgDoc.drawString(layout["horizontal_center_page"], layout["bottom_margin"]-2*layout["dy"], str(page_number+1))

@@ -4678,6 +4678,7 @@ def prepare_excel_summary(context):
         col = col+1
         
     sheet.write_merge(0,0,0,6,'Load Summary -- Department of '+context['department'].name+' ('+context['academic_year']+')',xlwt.easyxf(styles['bold_title']))
+    # https://stackoverflow.com/questions/19672760/how-to-write-a-cell-with-multiple-columns-in-xlwt/19673269
     sheet.write_merge(2,3,0,0,'Number',style_calibri_bold_bordered_v_h)
     sheet.write_merge(2,3,1,1,'Name',style_calibri_bold_bordered_v_h)
     sheet.write_merge(2,3,2,2,'Semester',style_calibri_bold_bordered_v_h)
@@ -4704,14 +4705,6 @@ def prepare_excel_summary(context):
     sheet.col(col_data_start+4*j).width = int(1.5*one_inch)
     sheet.write_merge(2,3,col_data_start+4*j,col_data_start+4*j,'Comments',style_calibri_bold_bordered_v_h)
 
-    #sheet.write(3,0,'',style_calibri_bold_bordered)
-    #sheet.write(3,1,'',style_calibri_bold_bordered)
-    #sheet.write(3,2,'',style_calibri_bold_bordered)
-    #sheet.write(3,3,'',style_calibri_bold_bordered)
-    #sheet.write(3,4,'',style_calibri_bold_bordered)
-    #sheet.write(3,5,'',style_calibri_bold_bordered)
-    #sheet.write(3,6,'',style_calibri_bold_bordered)    
-
     j = 0
     for instructor in context['instructor_list']:
         sheet.write(3,col_data_start+4*j,'Su',style_calibri_bold_bordered)
@@ -4719,8 +4712,6 @@ def prepare_excel_summary(context):
         sheet.write(3,col_data_start+4*j + 2,'J',style_calibri_bold_bordered)
         sheet.write(3,col_data_start+4*j + 3,'Sp',style_calibri_bold_bordered)
         j = j+1
-
-    #sheet.write(3,col_data_start+4*j,'',style_calibri_bold_bordered)
 
     i = 0
     data_list = context['course_data_list']

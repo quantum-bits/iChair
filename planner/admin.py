@@ -99,9 +99,9 @@ class BannerCourseOfferingCommentInline(MultiDBTabularInline):
 
 class BannerCourseOfferingAdmin(MultiDBModelAdmin):
     inlines = (BannerOfferingInstructorInline, BannerCourseOfferingCommentInline,)
-    list_display = ('course', 'crn', 'term_code', 'semester_fraction','max_enrollment', 'delivery_method')
+    list_display = ('course', 'campus', 'crn', 'term_code', 'semester_fraction','max_enrollment', 'delivery_method')
     # https://blndxp.wordpress.com/2017/04/11/django-amdin-related-field-got-invalid-lookup-icontains/
-    search_fields = ('course__title','course__number','term_code','delivery_method__description',)
+    search_fields = ('course__title','course__number','term_code','delivery_method__description','campus',)
 
 class BannerScheduledClassAdmin(admin.ModelAdmin):
     list_display = ('course_offering','day','begin_at','end_at')

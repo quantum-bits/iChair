@@ -61,7 +61,7 @@ class Command(BaseCommand):
                 FROM dw.dim_course_section dcs -- Use the course section dimension as base.
                     -- Comments
                     LEFT OUTER JOIN dbo.ssrtext ssr ON ((ssr.ssrtext_term_code = dcs.term) AND (ssr.ssrtext_crn = dcs.course_reference_number))
-                WHERE (({0}) AND ({1}) AND campus = 'U')
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP'))
                     """.format(term_group, subject_group)).fetchall()
         
             course_offering_meetings = cursor.execute("""
@@ -88,7 +88,7 @@ class Command(BaseCommand):
                     LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                     LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
                     LEFT OUTER JOIN dw.dim_room dr ON (fcm.room_key = dr.room_key)
-                WHERE (({0}) AND ({1}) AND dcs.campus = 'U')
+                WHERE (({0}) AND ({1}) AND (dcs.campus = 'U' OR dcs.campus = 'OCD' OR dcs.campus = 'OCP'))
                     """.format(term_group, subject_group)).fetchall()
 
             course_instructors = cursor.execute("""
@@ -100,13 +100,13 @@ class Command(BaseCommand):
                 FROM dw.dim_course_section dcs -- use the course section dimension as base.
                     LEFT OUTER JOIN dw.fact_faculty_course ffc ON (ffc.scheduled_course_key = dcs.course_section_key)
                     LEFT OUTER JOIN dw.dim_faculty df ON (ffc.faculty_key = df.faculty_key)
-                WHERE (({0}) AND ({1}) AND campus = 'U')
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP'))
                     """.format(term_group, subject_group)).fetchall()
 
             course_offerings = cursor.execute("""
                 SELECT dcs.*
                 FROM dw.dim_course_section dcs -- use the course section dimension as base.
-                WHERE (({0}) AND ({1}) AND campus = 'U')
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP'))
                     """.format(term_group, subject_group)).fetchall()
 
             faculty_pidms = cursor.execute("""
@@ -151,6 +151,8 @@ class Command(BaseCommand):
             repeated_ichair_pidms = []
             banner_faculty_without_perfect_match_in_ichair = []
             adj_fac_w_pidm_not_in_adjunct_dept = []
+            number_OCD_sections = 0
+            number_OCP_sections = 0
             
             #print("Checking faculty....")
             
@@ -190,6 +192,14 @@ class Command(BaseCommand):
                 #                                      co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
                 #print('type of credit hours: ', type(co.section_credit_hours))
                 # print(int(co.section_credit_hours))
+                if co.campus == 'OCD':
+                    number_OCD_sections += 1
+                    print('OCD section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
+                        co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
+                if co.campus == 'OCP':
+                    number_OCP_sections += 1
+                    print('OCP section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
+                        co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
 
                 subjects = BannerSubject.objects.filter(abbrev=co.subject_code)
                 if len(subjects) == 0:
@@ -212,13 +222,13 @@ class Command(BaseCommand):
                 # print(courses)
                 if len(courses) == 0:
                     # create new course
-                    #print('creating new course!')
                     course = BannerCourse.objects.create(
                         subject=subject,
                         number=co.course_number,
                         title=co.course,
                         credit_hours=int(co.section_credit_hours))
                     course.save()
+                    #print('creating new course!', course)
                 elif len(courses) == 1:
                     #print('there is already exactly one copy of '+co.course+' with the appropriate properties....')
                     course = courses[0]
@@ -248,6 +258,13 @@ class Command(BaseCommand):
                         error_list.append(error_string)
                         raise CommandError(error_string)
 
+                    if (co.campus != BannerCourseOffering.U) and (co.campus != BannerCourseOffering.OCP) and (co.campus != BannerCourseOffering.OCD):
+                        # this exits the course_offerings loop....
+                        number_errors += 1
+                        error_string = 'Unknown value for campus: '+co.campus+'; exiting....'
+                        error_list.append(error_string)
+                        raise CommandError(error_string)
+
                     # find the delivery type; create a new one if the one we need does not yet exist....
                     delivery_methods = BannerDeliveryMethod.objects.filter(code = co.delivery_method_code)
                     
@@ -269,6 +286,7 @@ class Command(BaseCommand):
                         course = course,
                         term_code = co.term,
                         semester_fraction = semester_fraction,
+                        campus = co.campus,
                         max_enrollment = co.section_capacity,
                         crn = co.course_reference_number,
                         delivery_method = delivery_method)
@@ -619,6 +637,12 @@ class Command(BaseCommand):
 
             print(' ')
             print('number of class meetings scheduled: ', number_meetings)
+
+            print(' ')
+            print('number of OCD course offerings: ', number_OCD_sections)
+
+            print(' ')
+            print('number of OCP course offerings: ', number_OCP_sections)
 
             print(' ')
             print('number of repeated rooms in meetings: ', len(repeated_room_in_meetings_list))

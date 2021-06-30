@@ -107,9 +107,20 @@ class CourseOffering(StampedModel):
         (SECOND_HALF_SEMESTER, 'Second Half Semester')
     )
 
+    U = 'U'
+    OCP = 'OCP'
+    OCD = 'OCD'
+
+    CAMPUS_CHOICES = (
+        (U, 'U'),
+        (OCP, 'OCP'),
+        (OCD, 'OCD')
+    )
+
     course = models.ForeignKey(Course, related_name='offerings', on_delete=models.CASCADE)
     term_code = models.CharField(max_length=6)
     semester_fraction = models.IntegerField(choices = PARTIAL_SEMESTER_CHOICES, default = FULL_SEMESTER)
+    campus = models.CharField(max_length = 3, choices = CAMPUS_CHOICES, default = U)
     instructor = models.ManyToManyField(FacultyMember, through='OfferingInstructor',
                                         blank=True,
                                         related_name='course_offerings')
