@@ -381,8 +381,9 @@ def create_course_offering(request):
     max_enrollment = json_data['maxEnrollment']
     delivery_method = json_data['deliveryMethod']
     crn = json_data['crn']
+    campus = json_data['campus'] # should be one of 'U', 'OCD' or 'OCP'
     semester_id = json_data['semesterId']
-    load_available = json_data['loadAvailable']
+    #load_available = json_data['loadAvailable']
     meetings = json_data['meetings']
     instructor_details = json_data['instructorDetails']
     banner_course_offering_id = json_data['bannerCourseOfferingId']
@@ -418,13 +419,18 @@ def create_course_offering(request):
     semester = Semester.objects.get(pk=semester_id)
     ichair_delivery_methods = DeliveryMethod.objects.filter(code=delivery_method["code"])
 
+    if semester.is_summer() or campus == BannerCourseOffering.OCD or campus == BannerCourseOffering.OCP:
+        load_available = 0
+    else:
+        load_available = course.credit_hours
+
     # now create the course offering
     course_offering = CourseOffering.objects.create(
         course=course,
         semester=semester,
         semester_fraction=semester_fraction,
         max_enrollment=max_enrollment,
-        load_available=course.credit_hours,
+        load_available=load_available,
         delivery_method=ichair_delivery_methods[0] if len(ichair_delivery_methods) == 1 else None,
         crn=crn)
     course_offering.save()

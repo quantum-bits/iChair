@@ -1031,7 +1031,7 @@ var app = new Vue({
         semesterId: item.semesterId,
         crn: item.crn,
         campus: item.campus,
-        loadAvailable: item.creditHours, //need to warn the user that this has been set automatically
+        loadAvailable: item.creditHours, //need to warn the user that this has been set automatically; we actually compute the load available in api_views.py now (different for summer courses, OCD and OCP)
         meetings: [],
         instructorDetails: [],
         comments: item.banner.comments
