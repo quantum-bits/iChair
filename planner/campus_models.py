@@ -349,7 +349,7 @@ class Semester(models.Model):
     def is_summer(self):
         # this is a bit of a hack, but at least it isolates the search for "summer" courses....
         # the other way would be to search for banner_codes that end in '50'.
-        return self.name == 'Summer'
+        return self.name.name == 'Summer'
 
 class Holiday(models.Model):
     """Range of days off within a semester. Can be a single day (begin and end are the same

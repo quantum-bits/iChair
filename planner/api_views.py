@@ -419,10 +419,16 @@ def create_course_offering(request):
     semester = Semester.objects.get(pk=semester_id)
     ichair_delivery_methods = DeliveryMethod.objects.filter(code=delivery_method["code"])
 
+    print('is summer? ', semester.is_summer())
+    print('campus is OCD? ', campus == BannerCourseOffering.OCD)
+    print('campus is OCP? ', campus == BannerCourseOffering.OCP)
+
     if semester.is_summer() or campus == BannerCourseOffering.OCD or campus == BannerCourseOffering.OCP:
         load_available = 0
+        print("zero load!")
     else:
         load_available = course.credit_hours
+        print("non-zero load!", load_available)
 
     # now create the course offering
     course_offering = CourseOffering.objects.create(
@@ -475,7 +481,7 @@ def create_course_offering(request):
             instructor = candidate_instructors[0]
             if instructor.is_active(semester.year):
                 if instructor_item["isPrimary"]:
-                    load_credit = course.credit_hours
+                    load_credit = load_available
                 else:
                     load_credit = 0
                 offering_instructor = OfferingInstructor.objects.create(
