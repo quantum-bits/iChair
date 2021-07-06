@@ -4064,7 +4064,6 @@ def copy_course_offering(request, id):
                                                                 day = sc.day,
                                                                 begin_at = sc.begin_at,
                                                                 end_at = sc.end_at,
-                                                                room = sc.room,
                                                                 comment = sc.comment
                                                                 )
             # https://stackoverflow.com/questions/1182380/how-to-add-data-into-manytomany-field
