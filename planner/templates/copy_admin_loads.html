@@ -57,9 +57,7 @@
                 <td>
                 {% endif %}
                     <!-- https://docs.djangoproject.com/en/3.2/ref/templates/builtins/ -->
-                    {% if copy_to_single_faculty_member %}
-                        {{faculty_member}}
-                    {% elif load.exists %}
+                    {% if load.exists %}
                         {{load.instructor_match}}
                     {% else %}
                         <select
@@ -68,7 +66,12 @@
                             >
                             {% for fm in all_faculty %}
                             <option value="{{fm.id}}"
-                                {% if fm.id == load.other_load.instructor.id %} selected="selected"{% endif %} >
+                                {% if copy_to_single_faculty_member %}
+                                    {% if fm.id == faculty_member.id %} selected="selected"{% endif %} 
+                                {% else %}
+                                    {% if fm.id == load.other_load.instructor.id %} selected="selected"{% endif %}
+                                {% endif %}
+                                >
                                 {{fm.first_name}} {{fm.last_name}}
                             </option>
                             {% endfor %}
