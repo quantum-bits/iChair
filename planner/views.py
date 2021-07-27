@@ -387,6 +387,8 @@ def collect_data_for_summary(request):
 # 1.  Summer has been deleted from the load schedule.  If there is any load for summer,
 #     it is added to the fall.  This is HARDCODED (yech!)  Also, the indexing in the array
 #     assumes that Fall will be "0", etc., and this is tied to "seq" in the database.  UGLY!!!
+# Update: I don't believe this is the case anymore...although any summer load _is_ still merged
+#         with the fall load in the faculty load sheet
 #
 
     ii = 0
@@ -708,6 +710,7 @@ def collect_data_for_summary(request):
         if this_instructor.department != department:
             instructor_is_in_this_dept = False
         data_list_by_instructor.append({'instructor_id':instructor_id,
+                                        'instructor_dept': this_instructor.department.abbrev,
                                         'instructor_is_in_this_dept': instructor_is_in_this_dept,
                                         'course_info':instructor_data,
                                         'instructor':instructor_name_dict[instructor_id],
@@ -4291,7 +4294,7 @@ def copy_admin_loads(request, year_id, faculty_id=None):
         next = "home"
 
     user = request.user
-# assumes that users each have exactly ONE UserPreferences object
+    # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
         return redirect("home")
@@ -4302,11 +4305,17 @@ def copy_admin_loads(request, year_id, faculty_id=None):
     else:
         faculty_member = None
 
-    print('faculty member: ', faculty_member)
     academic_year_copy_from = AcademicYear.objects.get(pk = year_id)
     academic_year_copy_to = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all()
     faculty_ids = [faculty.id for faculty in faculty_to_view]
+
+    # following code snippet borrowed from form.py (and then edited);
+    # we only want to copy admin loads to faculty who are actually department members
+    # and who are "active" during the "copy to" year (otherwise there will be confusion, 
+    # because admin loads for non-department members are not being shown on the faculty load page)
+    faculty_for_copy_to = [fm for fm in FacultyMember.objects.filter(department=department) \
+                            if fm.is_active(academic_year_copy_to)]
 
     # add faculty to the list if they may have retired, but were possibly serving in a previous year, etc....trying not to miss some admin loads
     for faculty in department.faculty.all():
@@ -4314,30 +4323,13 @@ def copy_admin_loads(request, year_id, faculty_id=None):
             faculty_ids.append(faculty.id)
 
     if request.method == 'POST':
-        print("ready to process post request!")
         loads_to_copy_id_list = request.POST.getlist('loads_to_copy') # ids of other_load objects that were selected for copying to the "copy to" year
-        print(loads_to_copy_id_list)
-
-        """
-        if faculty_member is not None:
-            for ol_id in loads_to_copy_id_list:
-                ol = OtherLoad.objects.get(pk = ol_id)
-                semesters = Semester.objects.filter(Q(name=ol.semester.name)&Q(year=academic_year_copy_to))
-                if len(semesters) == 1: # should always be the case...but just in case
-                    new_ol = OtherLoad.objects.create(
-                        load_type = ol.load_type,
-                        semester = semesters[0],
-                        instructor = faculty_member,
-                        load_credit = ol.load_credit)
-                    new_ol.save()
-        else:
-        """
+        
         #https://stackoverflow.com/questions/36719569/how-to-get-all-post-data-from-a-request-in-django
         for key in request.POST.keys():
             #print(key, ' ', request.POST.get(key))
             if key[:13] == 'faculty-load-':
                 other_load_id = key[13:] # this is a string, but that seems to be OK...
-                print('id: ', other_load_id)
                 if other_load_id in loads_to_copy_id_list:
                     ol = OtherLoad.objects.get(pk = other_load_id)
                     instructor = FacultyMember.objects.get(pk=request.POST.get(key))
@@ -4355,9 +4347,6 @@ def copy_admin_loads(request, year_id, faculty_id=None):
         data_list = []
         other_loads_in_copy_to_year = [ol for ol in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_to, \
             faculty_member_ids=[faculty.id for faculty in faculty_to_view])]
-        for ol in other_loads_in_copy_to_year:
-            print(ol, ol.instructor, ol.semester)
-
         for other_load in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_from, faculty_member_ids=faculty_ids):
             # search other_loads_in_copy_to_year to see if there is an exact match there; if so, pop it out;
             # if there is not an exact match, do a second search to see if everything agrees except the instructor; if so, pop it out;
@@ -4396,30 +4385,9 @@ def copy_admin_loads(request, year_id, faculty_id=None):
                 'instructor_match': instructor_match
             })
 
-        """
-
-        data_list = []
-        if faculty_member is not None:
-            other_loads_this_faculty = {}
-            for ol in OtherLoad.objects.filter(Q(semester__year = academic_year_copy_to) & Q(instructor__pk = faculty_id)):
-                print(ol)
-                if ol.semester.name.id not in other_loads_this_faculty.keys():
-                    other_loads_this_faculty[ol.semester.name.id] = []
-                other_loads_this_faculty[ol.semester.name.id].append(ol.load_type.id)
-
-            for other_load in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_from, faculty_member_ids=faculty_ids):
-                data_list.append({
-                    'other_load': other_load, 
-                    'exists': (other_load.semester.name.id in other_loads_this_faculty.keys()) and (other_load.load_type.id in other_loads_this_faculty[other_load.semester.name.id]),
-                    'instructor_match': None
-                })
-        else:
-            # construct list of admin loads carried by faculty in the "faculty to view" list during the "copy to" year
-        """
-
         context = {
                 'copy_to_single_faculty_member': faculty_member is not None,
-                'all_faculty': faculty_to_view,
+                'faculty_for_dropdown': faculty_for_copy_to,
                 'faculty_member': faculty_member,
                 'other_loads': data_list,
                 'academic_year_copy_from':academic_year_copy_from,

@@ -64,7 +64,7 @@
                             id="option{{load.other_load.id}}"
                             name="faculty-load-{{load.other_load.id}}"
                             >
-                            {% for fm in all_faculty %}
+                            {% for fm in faculty_for_dropdown %}
                             <option value="{{fm.id}}"
                                 {% if copy_to_single_faculty_member %}
                                     {% if fm.id == faculty_member.id %} selected="selected"{% endif %} 

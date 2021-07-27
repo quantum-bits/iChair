@@ -7,19 +7,19 @@
 <style type="text/css">
 	div.f1 {
 		float: left;
-		width: 100px;
+		width: 150px;
 	}
 
 	div.f2 {
 		float: left;
 		text-align: right;
-		width: 150px;
+		width: 170px;
 	}
 
 	div.f3 {
 		float: left;
 		text-align: right;
-		width: 40px;
+		width: 45px;
 	}
 
 	div.f4 {
@@ -189,7 +189,8 @@ class="btn btn-warning"
 										{% if not instructor_row.instructor_is_in_this_dept %}
 										<p>
 											<div class="alert alert-student-info">
-												Note: This faculty member belongs to another department -- only loads in
+												Note: This faculty member belongs to another department ({{instructor_row.instructor_dept}})
+												-- only loads in
 												this department are being shown.
 											</div>
 										</p>
@@ -350,7 +351,7 @@ class="btn btn-warning"
 								{% endif %}
 
 								{% for data_element in instructor_row.admin_data_list %}
-								{% if data_element.has_this_load_type %}
+								{% if data_element.has_this_load_type and instructor_row.instructor_is_in_this_dept %}
 								<tr>
 									<td> </td>
 									<td> {{data_element.load_type}}</td>
