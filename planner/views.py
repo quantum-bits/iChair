@@ -4277,6 +4277,124 @@ def copy_courses(request, id, check_all_flag):
                    'check_all': check_all, 'check_all_flag_table':check_all_flag_table, 'year_id': id}
         return render(request, 'copy_courses.html', context)
 
+
+@login_required
+def copy_admin_loads(request, year_id, faculty_id=None):
+    """
+    Copy admin loads from a previous academic year and assign them to one or more faculty members.
+    If a faculty_id is supplied, then admin loads can only be copied to that faculty member.  If
+    faculty_id is None, then loads can be copied to all faculty members.
+    """
+    if "return_to_page" in request.session:
+        next = request.session["return_to_page"]
+    else:
+        next = "home"
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+
+    department = user_preferences.department_to_view
+    if faculty_id is not None:
+        faculty_member = FacultyMember.objects.get(pk=faculty_id)
+    else:
+        faculty_member = None
+
+    print('faculty member: ', faculty_member)
+    academic_year_copy_from = AcademicYear.objects.get(pk = year_id)
+    academic_year_copy_to = user_preferences.academic_year_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+    faculty_ids = [faculty.id for faculty in faculty_to_view]
+
+    # add faculty to the list if they may have retired, but were possibly serving in a previous year, etc....trying not to miss some admin loads
+    for faculty in department.faculty.all():
+        if faculty.id not in faculty_ids:
+            faculty_ids.append(faculty.id)
+
+    if request.method == 'POST':
+        print("ready to process post request!")
+        loads_to_copy_id_list = request.POST.getlist('loads_to_copy')
+        print(loads_to_copy_id_list)
+
+        if faculty_member is not None:
+            for ol_id in loads_to_copy_id_list:
+                ol = OtherLoad.objects.get(pk = ol_id)
+                semesters = Semester.objects.filter(Q(name=ol.semester.name)&Q(year=academic_year_copy_to))
+                if len(semesters) == 1: # should always be the case...but just in case
+                    new_ol = OtherLoad.objects.create(
+                        load_type = ol.load_type,
+                        semester = semesters[0],
+                        instructor = faculty_member,
+                        load_credit = ol.load_credit)
+                    new_ol.save()
+        else:
+            #https://stackoverflow.com/questions/36719569/how-to-get-all-post-data-from-a-request-in-django
+            for key in request.POST.keys():
+                #print(key, ' ', request.POST.get(key))
+                if key[:13] == 'faculty-load-':
+                    other_load_id = key[13:] # this is a string, but that seems to be OK...
+                    print('id: ', other_load_id)
+                    if other_load_id in loads_to_copy_id_list:
+                        #print('copy this one!', request.POST.get(key))
+                        ol = OtherLoad.objects.get(pk = other_load_id)
+                        instructor = FacultyMember.objects.get(pk=request.POST.get(key))
+                        semesters = Semester.objects.filter(Q(name=ol.semester.name)&Q(year=academic_year_copy_to))
+                        if len(semesters) == 1: # should always be the case...but just in case
+                            new_ol = OtherLoad.objects.create(
+                                load_type = ol.load_type,
+                                semester = semesters[0],
+                                instructor = instructor,
+                                load_credit = ol.load_credit)
+                            new_ol.save()
+        return redirect(next)
+
+    else:
+
+        data_list = []
+        if faculty_member is not None:
+            other_loads_this_faculty = {}
+            for ol in OtherLoad.objects.filter(Q(semester__year = academic_year_copy_to) & Q(instructor__pk = faculty_id)):
+                print(ol)
+                if ol.semester.name.id not in other_loads_this_faculty.keys():
+                    other_loads_this_faculty[ol.semester.name.id] = []
+                other_loads_this_faculty[ol.semester.name.id].append(ol.load_type.id)
+
+            for other_load in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_from, faculty_member_ids=faculty_ids):
+                data_list.append({
+                    'other_load': other_load, 
+                    'exists': (other_load.semester.name.id in other_loads_this_faculty.keys()) and (other_load.load_type.id in other_loads_this_faculty[other_load.semester.name.id])
+                })
+        else:
+            for other_load in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_from, faculty_member_ids=faculty_ids):
+                # if the same person already has this load in the same semester as they had it in the "copy from" year, then assume we're done
+                # with it and grey it out; otherwise leave it available to be copied forward to someone
+                ol_academic_year_copy_to = OtherLoad.objects.filter( \
+                        Q(semester__year = academic_year_copy_to) & \
+                        Q(instructor = other_load.instructor) & \
+                        Q(semester__name = other_load.semester.name) & \
+                        Q(load_type = other_load.load_type))
+                print(other_load)
+                print('found in current year: ',[ol for ol in ol_academic_year_copy_to])
+                data_list.append({
+                    'other_load': other_load,
+                    'exists': len(ol_academic_year_copy_to) > 0
+                })
+
+        context = {
+                'copy_to_single_faculty_member': faculty_member is not None,
+                'all_faculty': faculty_to_view,
+                'faculty_member': faculty_member,
+                'other_loads': data_list,
+                'academic_year_copy_from':academic_year_copy_from,
+                'academic_year_copy_to':academic_year_copy_to, 
+                'year_id': id
+            }
+        return render(request, 'copy_admin_loads.html', context)
+
+
+
 def scheduled_classes_overlap(sclist1, sclist2):
     """
     Compares sclist1 and sclist2, which are lists of ScheduledClass objects, 
@@ -4305,10 +4423,11 @@ def scheduled_classes_overlap(sclist1, sclist2):
 def convert_military_time(time_object):
     return time_object.hour*100+time_object.minute
 
-
 @login_required
-def choose_year_course_copy(request):
-
+def choose_year_admin_load_copy(request, faculty_id=None):
+    """
+    Choose the year from which to copy admin loads.
+    """
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
@@ -4325,8 +4444,49 @@ def choose_year_course_copy(request):
                     'year_id':year.id
                     })
 
-    context = {'year_list': year_list}
-    return render(request, 'choose_year_course_copy.html', context)
+    # true for copying course offerings, false for copying admin loads; if gets more complicated
+    # (i.e., more choices), should set some CONST values or something and choose from them
+    is_course_copy = False
+    context = {
+        'faculty_id': faculty_id,
+        'copy_to_particular_faculty_member': faculty_id is not None,
+        'year_list': year_list,
+        'is_course_copy': is_course_copy
+        }
+
+    return render(request, 'choose_year_course_or_admin_load_copy.html', context)
+
+@login_required
+def choose_year_course_copy(request):
+    """
+    Choose the year from which to copy course offerings.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+
+    academic_year_copy_to = user_preferences.academic_year_to_view
+    academic_years = AcademicYear.objects.all()
+    
+    year_list =[]
+    for year in academic_years:
+        if year.begin_on.year < academic_year_copy_to.begin_on.year:
+            year_list.append({
+                    'year_name':year,
+                    'year_id':year.id
+                    })
+
+    # true for copying course offerings, false for copying admin loads; if gets more complicated
+    # (i.e., more choices), should set some CONST values or something and choose from them
+    is_course_copy = True
+    context = {
+        'faculty_id': None,
+        'copy_to_particular_faculty_member': False, # doesn't matter...not used in this case
+        'year_list': year_list,
+        'is_course_copy': is_course_copy
+        }
+    return render(request, 'choose_year_course_or_admin_load_copy.html', context)
 
 @login_required
 def search_form(request):

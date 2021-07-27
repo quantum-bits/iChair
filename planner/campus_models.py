@@ -675,6 +675,16 @@ class OtherLoad(models.Model):
     comments = models.CharField(max_length=100, blank=True, null=True,
                                 help_text='optional longer comments')
 
+    def __str__(self):
+        return "{0}: {1}; {2} hour(s), ".format(self.load_type.load_type, self.instructor, self.load_credit)
+
+    @classmethod
+    def other_loads_this_year(cls, academic_year, faculty_member_ids):
+        other_loads = cls.objects.filter(
+            Q(semester__year = academic_year) &
+            Q(instructor__pk__in = faculty_member_ids)
+        )
+        return other_loads
 
 class DeliveryMethod(StampedModel):
 

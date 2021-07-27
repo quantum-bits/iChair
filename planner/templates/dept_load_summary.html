@@ -65,15 +65,17 @@
 			<a href="{% url 'select_course' %}?next={{ request.path|urlencode }}">
 				Add </a> a course offering manually.
 		</div>
-		<!--
-		<div style="padding: 2px 2px 8px 2px"> <a
-				href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
-				Copy</a> one or more course offerings from a previous year.
-		</div>
-		-->
-		<div style="padding: 2px 2px 2px 2px"> <a
+
+		<div style="padding: 2px 2px 2px 2px"> 
+			Copy 
+			<a
 			href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
-			Copy</a> one or more course offerings from a previous year.
+			course offerings</a>
+			or <a
+			title="Copy non-teaching loads from a previous year"
+			href="{% url 'choose_year_admin_load_copy' %}?next={{ request.path|urlencode }}">
+			non-teaching loads</a>
+			from a previous year.
 	</div>
 		<div style="padding: 2px 2px 8px 2px"> 
 			<a href="https://www.youtube.com/watch?v=wxKWqCRh7BA" target="_blank">Watch</a>
@@ -200,9 +202,6 @@ class="btn btn-warning"
 								<th style="text-align: center;"> Semester - Fraction </th>
 								<th style="text-align: center;"> Time </th>
 								<th style="text-align: center;"> Room </th>
-								{% if can_edit %}
-								<th style="text-align: center;"> </th>
-								{% endif %}
 								<th style="text-align: center;"> Available </th>
 								<th style="text-align: center;"> Diff </th>
 								<!--<th colspan="3" style="text-align: center;"> {{instructor_row.instructor}} </th>-->
@@ -211,6 +210,9 @@ class="btn btn-warning"
 								<th style="text-align: center;">J</th>
 								<th style="text-align: center;">Sp</th>
 								<th style="text-align: center;"> Comments </th>
+								{% if can_edit %}
+								<th style="text-align: center;"> </th>
+								{% endif %}
 								</tr>
 							</thead>
 							<tbody>
@@ -263,16 +265,6 @@ class="btn btn-warning"
 										</div>
 										{% endfor %}
 									</td>
-									{% if can_edit %}
-									<td style="text-align: center;">
-										<a title="Delete this course offering"
-											href="{% url 'delete_course_offering' course.id %}?next={{ request.path|urlencode }}">Delete</a>
-										|
-										<a title="Assign the load for this course offering to one or more instructors"
-											href="{% url 'update_course_offering' course.id 0 %}?next={{ request.path|urlencode }}">
-											Edit Loads</a>
-									</td>
-									{% endif %}
 									<td style="text-align: center;">
 										{{course.load_hours}} </td>
 									{% if course.load_difference < 0 %}
@@ -317,28 +309,44 @@ class="btn btn-warning"
 									</td>
 
 									<td style="text-align: center;"> {{course.comment}}</td>
+									{% if can_edit %}
+									<td style="text-align: center;">
+										<a title="Delete this course offering"
+											href="{% url 'delete_course_offering' course.id %}?next={{ request.path|urlencode }}">Delete</a>
+										|
+										<a title = "Make a copy of this course offering" href="{% url 'copy_course_offering' course.id %}?next={{ request.path|urlencode }}">Copy</a>
+										|
+										<a title="Assign the load for this course offering to one or more instructors"
+											href="{% url 'update_course_offering' course.id 0 %}?next={{ request.path|urlencode }}">
+											Edit Loads</a>
+									</td>
+									{% endif %}
 								</tr>
 								{% endfor %}
 								{% if instructor_row.instructor_is_in_this_dept %}
 								<tr>
-									<td colspan="2"> <strong>Non-Teaching Loads</strong> 
+									<td colspan="5"> <strong>Non-Teaching Loads</strong> 
 										{% if can_edit %}
-										<a
+										
+										(<a
 											title="Add or update non-teaching loads for this faculty member"
-											href="{% url 'update_other_load_this_faculty' instructor_row.instructor_id %}?next={{ request.path|urlencode }}">(Update or Add Another)</a>
-										{% endif %}
+											href="{% url 'update_other_load_this_faculty' instructor_row.instructor_id %}?next={{ request.path|urlencode }}">Update or Add Another</a>
+										|
+										<a
+											title="Copy non-teaching loads from a previous year"
+											href="{% url 'choose_year_admin_load_copy' instructor_row.instructor_id %}?next={{ request.path|urlencode }}">
+											Copy from previous year</a>)
+										
+											{% endif %}
 										
 									</td>
-									<td> </td>
-									<td> </td>
-									<td> </td>
-									{% if can_edit %}
-									<td></td>
-									{% endif %}
 									<td></td>
 									<td> </td>
 									<td colspan="4" style="text-align: center;"> </td>
 									<td> </td>
+									{% if can_edit %}
+									<td></td>
+									{% endif %}
 								</tr>
 								{% endif %}
 
@@ -350,13 +358,6 @@ class="btn btn-warning"
 									<td> </td>
 									<td> </td>
 									<td> </td>
-									{% if can_edit %}
-									<td style="text-align: center;">
-										<a title="Assign this load to one or more instructors"
-											href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}">
-											Edit Loads</a>
-									</td>
-									{% endif %}
 									<td style="text-align: center;"> {{data_element.total_load}}</td>
 									<td> </td>
 									{% for loadelement in data_element.load_hour_list %}
@@ -367,6 +368,13 @@ class="btn btn-warning"
 									</td>
 									{% endfor %}
 									<td> </td>
+									{% if can_edit %}
+									<td style="text-align: center;">
+										<a title="Assign this load to one or more instructors"
+											href="{% url 'update_other_load' data_element.id %}?next={{ request.path|urlencode }}">
+											Edit Loads</a>
+									</td>
+									{% endif %}
 								</tr>
 								{% endif %}
 								{% endfor %}
@@ -375,9 +383,9 @@ class="btn btn-warning"
 									<td> </td>
 									<td> </td>
 									{% if can_edit %}
-									<td colspan="6" style="text-align: right;"> Load Summary </td>
-									{% else %}
 									<td colspan="5" style="text-align: right;"> Load Summary </td>
+									{% else %}
+									<td colspan="4" style="text-align: right;"> Load Summary </td>
 									{% endif %}
 									{% for loadelement in instructor_row.load_summary %}
 									<td style="text-align: center;">
@@ -385,22 +393,26 @@ class="btn btn-warning"
 									</td>
 									{% endfor %}
 									<td> </td>
-
+									{% if can_edit %}
+									<td></td>
+									{% endif %}
 								</tr>
 
 								<tr>
 									<td> </td>
 									<td> </td>
 									{% if can_edit %}
-									<td colspan="6" style="text-align: right;"> Total </td>
-									{% else %}
 									<td colspan="5" style="text-align: right;"> Total </td>
+									{% else %}
+									<td colspan="4" style="text-align: right;"> Total </td>
 									{% endif %}
 									<td colspan="4" style="text-align: center;">
 										{{instructor_row.total_load_hours}}
 									</td>
 									<td> </td>
-
+									{% if can_edit %}
+									<td></td>
+									{% endif %}
 								</tr>
 
 							</tbody>

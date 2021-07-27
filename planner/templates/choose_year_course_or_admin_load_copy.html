@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-center">
+  {% if is_course_copy %}
+    <p> Choose year from which to copy courses: </p>
+  {% else %}
+    <p> Choose year from which to admin loads: </p>
+  {% endif %}
+  <table class="content-center">
+    {% for year in year_list %}
+      <tr>
+	<td>
+    {% if is_course_copy %}
+      <a href="{% url 'copy_courses' year.year_id 0 %}">
+        {{year.year_name}}
+      </a>
+    {% else %}
+      {% if copy_to_particular_faculty_member %}
+        <a href="{% url 'copy_admin_loads' year.year_id faculty_id %}">
+          {{year.year_name}}
+        </a>
+      {% else %}
+        <a href="{% url 'copy_admin_loads' year.year_id %}">
+          {{year.year_name}}
+        </a>
+      {% endif %}
+    {% endif %}
+	</td>
+      </tr>
+      {% endfor %}
+  </table>
+</div>
+
+   <script>
+    $(window).load(function(){
+    $("#nav-deptloadsummary").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Choose Year for {% if is_course_copy %} Course Copy {% else %} Admin Load Copy{% endif %}</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+   </script>
+
+{% endblock %}
