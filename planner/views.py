@@ -4315,7 +4315,7 @@ def copy_admin_loads(request, year_id, faculty_id=None):
 
     if request.method == 'POST':
         print("ready to process post request!")
-        loads_to_copy_id_list = request.POST.getlist('loads_to_copy')
+        loads_to_copy_id_list = request.POST.getlist('loads_to_copy') # ids of other_load objects that were selected for copying to the "copy to" year
         print(loads_to_copy_id_list)
 
         if faculty_member is not None:
@@ -4337,7 +4337,6 @@ def copy_admin_loads(request, year_id, faculty_id=None):
                     other_load_id = key[13:] # this is a string, but that seems to be OK...
                     print('id: ', other_load_id)
                     if other_load_id in loads_to_copy_id_list:
-                        #print('copy this one!', request.POST.get(key))
                         ol = OtherLoad.objects.get(pk = other_load_id)
                         instructor = FacultyMember.objects.get(pk=request.POST.get(key))
                         semesters = Semester.objects.filter(Q(name=ol.semester.name)&Q(year=academic_year_copy_to))
@@ -4364,22 +4363,52 @@ def copy_admin_loads(request, year_id, faculty_id=None):
             for other_load in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_from, faculty_member_ids=faculty_ids):
                 data_list.append({
                     'other_load': other_load, 
-                    'exists': (other_load.semester.name.id in other_loads_this_faculty.keys()) and (other_load.load_type.id in other_loads_this_faculty[other_load.semester.name.id])
+                    'exists': (other_load.semester.name.id in other_loads_this_faculty.keys()) and (other_load.load_type.id in other_loads_this_faculty[other_load.semester.name.id]),
+                    'instructor_match': None
                 })
         else:
+            # construct list of admin loads carried by faculty in the "faculty to view" list during the "copy to" year
+            other_loads_in_copy_to_year = [ol for ol in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_to, \
+                faculty_member_ids=[faculty.id for faculty in faculty_to_view])]
+            for ol in other_loads_in_copy_to_year:
+                print(ol, ol.instructor, ol.semester)
+
             for other_load in OtherLoad.other_loads_this_year(academic_year=academic_year_copy_from, faculty_member_ids=faculty_ids):
-                # if the same person already has this load in the same semester as they had it in the "copy from" year, then assume we're done
-                # with it and grey it out; otherwise leave it available to be copied forward to someone
-                ol_academic_year_copy_to = OtherLoad.objects.filter( \
-                        Q(semester__year = academic_year_copy_to) & \
-                        Q(instructor = other_load.instructor) & \
-                        Q(semester__name = other_load.semester.name) & \
-                        Q(load_type = other_load.load_type))
-                print(other_load)
-                print('found in current year: ',[ol for ol in ol_academic_year_copy_to])
+                # search other_loads_in_copy_to_year to see if there is an exact match there; if so, pop it out;
+                # if there is not an exact match, do a second search to see if everything agrees except the instructor; if so, pop it out;
+                # in the page these will be greyed it out; otherwise it will be available to be copied forward to someone
+                ii = 0
+                ii_match = -1
+                instructor_match = None
+                for ol_copy_to in other_loads_in_copy_to_year:
+                    if other_load.semester.name == ol_copy_to.semester.name and \
+                        other_load.instructor == ol_copy_to.instructor and \
+                            other_load.load_type == ol_copy_to.load_type and \
+                            load_hour_rounder(other_load.load_credit) == load_hour_rounder(ol_copy_to.load_credit):
+                        ii_match = ii
+                        instructor_match = ol_copy_to.instructor
+                        break
+                    ii += 1
+                if ii_match > -1:
+                    # pop item out of other_loads_in_copy_to_year
+                    # https://www.w3schools.com/python/python_lists_remove.asp
+                    other_loads_in_copy_to_year.pop(ii_match)
+                else: # if we didn't find a match, try again but don't try to match the instructor this time
+                    ii = 0
+                    ii_match = -1
+                    instructor_match = None
+                    for ol_copy_to in other_loads_in_copy_to_year:
+                        if other_load.semester.name == ol_copy_to.semester.name and \
+                            other_load.load_type == ol_copy_to.load_type and \
+                                load_hour_rounder(other_load.load_credit) == load_hour_rounder(ol_copy_to.load_credit):
+                            ii_match = ii
+                            instructor_match = ol_copy_to.instructor
+                            break
+                        ii += 1
                 data_list.append({
                     'other_load': other_load,
-                    'exists': len(ol_academic_year_copy_to) > 0
+                    'exists': instructor_match is not None,
+                    'instructor_match': instructor_match
                 })
 
         context = {

@@ -67,16 +67,15 @@
 		</div>
 
 		<div style="padding: 2px 2px 2px 2px"> 
-			Copy 
 			<a
 			href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
-			course offerings</a>
-			or <a
-			title="Copy non-teaching loads from a previous year"
+			Copy course offering(s)</a> from a previous year.
+		</div>
+		<div style="padding: 2px 2px 2px 2px"> 
+			<a
 			href="{% url 'choose_year_admin_load_copy' %}?next={{ request.path|urlencode }}">
-			non-teaching loads</a>
-			from a previous year.
-	</div>
+			Copy non-teaching loads</a> from a previous year.
+		</div>
 		<div style="padding: 2px 2px 8px 2px"> 
 			<a href="https://www.youtube.com/watch?v=wxKWqCRh7BA" target="_blank">Watch</a>
 			a short video for some help getting started on a new academic year.

@@ -8,14 +8,14 @@
       <table class="table table-striped table-bordered table-hover">
         <thead>
           <tr>
-            <th colspan="8">Non-teaching Loads for {{academic_year_copy_from}}</th>
+            <th colspan="8">Non-teaching Loads for {{academic_year_copy_from}} (further edits can be made in Faculty Loads page)</th>
             </tr>
             <tr>
             <td> Load Type </td>
             <td> Semester </td>
             <td> # Load Hours </td>
             <td> Faculty in {{academic_year_copy_from}}</td>
-            <td> Copy to...</td>
+            <td> Faculty in {{academic_year_copy_to}}</td>
             <td style="text-align: center;"> <div> Copy </div> 
             </td>
         </tr>
@@ -60,7 +60,7 @@
                     {% if copy_to_single_faculty_member %}
                         {{faculty_member}}
                     {% elif load.exists %}
-                        {{load.other_load.instructor}}
+                        {{load.instructor_match}}
                     {% else %}
                         <select
                             id="option{{load.other_load.id}}"
@@ -99,7 +99,7 @@
 
 </table>
 
-<p><input type="submit" value="Submit"/></p>
+<p style="margin-top: 15px;"><input type="submit" value="Submit"/></p>
 </form>
 </div>
 
