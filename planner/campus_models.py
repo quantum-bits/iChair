@@ -389,6 +389,10 @@ class Room(StampedModel):
     building = models.ForeignKey(Building, related_name='rooms', on_delete=models.CASCADE)
     capacity = models.PositiveIntegerField(default=20)
 
+    # https://stackoverflow.com/questions/11351619/how-to-make-djangos-datetimefield-optional/11351690
+    # the following property, if set, indicates that the room is no longer active or usable
+    inactive_after = models.DateField(null=True, blank=True)
+
     class Meta:
         ordering = ['building__name','number']
 
@@ -412,6 +416,14 @@ class Room(StampedModel):
             scheduled = True
 
         return scheduled
+
+    def is_active(self, semester):
+        # https://docs.djangoproject.com/en/3.2/ref/models/fields/#django.db.models.DateField
+        # https://www.geeksforgeeks.org/comparing-dates-python/
+        if self.inactive_after is None:
+            return True
+        else:
+            return semester.begin_on < self.inactive_after
 
 
 class Subject(StampedModel):

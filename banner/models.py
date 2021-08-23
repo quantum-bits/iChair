@@ -30,6 +30,7 @@ class Room(StampedModel):
     number = models.CharField(max_length=20)
     building = models.ForeignKey(Building, related_name='rooms', on_delete=models.CASCADE)
     capacity = models.PositiveIntegerField(default=20)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ['building__name','number']

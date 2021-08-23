@@ -29,6 +29,10 @@
 	  padding: 15px;
 	  font-weight: normal;
   }
+
+  div.alert.alert-student-info {
+  width: 600px!important;
+  }
   </style>
 
   
@@ -55,6 +59,7 @@
 				  <thead>
 				  <tr>
 					    <th> Room </th>
+						<th style="text-align: center;"> Status </th>
 					    <th style="text-align: center;"> In Use? </th>
 					    <th style="text-align: center;"> Display </th>
 				  </tr>
@@ -65,6 +70,9 @@
 				    <tr id="row{{room.room.id}}">
 					    <td id="room{{room.room.id}}">
 						    {{ room.room.building.abbrev }} {{room.room.number}}  
+					    </td>
+						<td style="text-align: center;">
+						    {{ room.status}}
 					    </td>
 					    <td style="text-align: center;" id="use{{room.room.id}}">
 						    {% if room.in_use %} yes {% endif %}
@@ -79,6 +87,7 @@
 		    </table>
 			  
 		  </div>
+
 		  <p><input type="submit" value="Submit"/></p>
 		
 	  </form>

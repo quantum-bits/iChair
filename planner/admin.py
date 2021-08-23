@@ -76,7 +76,7 @@ class BannerBuildingAdmin(MultiDBModelAdmin):
 
 class BannerRoomAdmin(MultiDBModelAdmin):
     search_fields = ('number', 'building',)
-    list_display = ('building', 'number', 'capacity',)
+    list_display = ('building', 'number', 'capacity','is_active',)
 
 class BannerDeliveryMethodAdmin(MultiDBModelAdmin):
     search_fields = ('code', 'description',)
@@ -177,7 +177,7 @@ class ScheduledClassAdmin(admin.ModelAdmin):
     list_display = ('course_offering','day','begin_at','end_at','comment',)
 
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ('building','number','capacity',)
+    list_display = ('building','number','capacity','inactive_after',)
 
 class DeliveryMethodAdmin(admin.ModelAdmin):
     search_fields = ('code', 'description',)

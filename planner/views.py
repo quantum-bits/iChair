@@ -1498,10 +1498,11 @@ def update_class_schedule(request,id, daisy_chain):
         "name": "----"
     }]
     for room in Room.objects.all():
-        all_rooms.append({
-            "id": room.id,
-            "name": room.short_name
-        })
+        if room.is_active(instance.semester):
+            all_rooms.append({
+                "id": room.id,
+                "name": room.short_name
+            })
 
     errordict={}
     dict = {"formset": formset
@@ -2169,6 +2170,7 @@ def room_schedule(request):
                 offering_list = construct_dropdown_list(offering_dict)
                 data_this_room.append({'room_id':roomid,
                                     'room_name': room.building.abbrev+' '+room.number,
+                                    'status': '' if room.inactive_after is None else '(...room no longer usable after {}...)'.format(room.inactive_after),
                                     'json_box_list': json_box_list,
                                     'json_box_label_list':json_box_label_list,
                                     'json_grid_list': json_grid_list,
@@ -2791,7 +2793,7 @@ def new_class_schedule(request,id, daisy_chain):
     year = course_offering.semester.year
 
     if request.method == 'POST':
-        form = EasyDaySchedulerForm(request.POST)
+        form = EasyDaySchedulerForm(course_offering.semester.id, request.POST)
         if form.is_valid():
             day_dict = {'M':0, 'T':1, 'W':2, 'R':3, 'F':4}
 
@@ -2820,10 +2822,12 @@ def new_class_schedule(request,id, daisy_chain):
                     end_minute_string = str(end_minute)
                 new_class.begin_at = str(start_hour)+':'+start_minute_string
                 new_class.end_at = str(end_hour)+':'+end_minute_string
-                
-                new_class.room = room
-                # if the db hangs, try new_class.room_id = room.id
                 new_class.save()
+
+                # the "easy scheduler" form only allows the user to assign zero or one room....
+                if room is not None:
+                    print("room: ", room, room.id)
+                    set_rooms_for_scheduled_class(new_class, [room.id])
 
             if user_department != course_department:
                 revised_co_snapshot = course_offering.snapshot
@@ -2844,7 +2848,7 @@ def new_class_schedule(request,id, daisy_chain):
             return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'daisy_chaining': daisy_chaining, 'course':course_offering})
 
     else:
-        form = EasyDaySchedulerForm()
+        form = EasyDaySchedulerForm(course_offering.semester.id)
         return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'daisy_chaining': daisy_chaining, 'course':course_offering })
 
 
@@ -3684,7 +3688,8 @@ def update_rooms_to_view(request, id):
                     view_this_room = True
                 else:
                     view_this_room = False
-                room_list.append({'room': room, 'in_use': in_use, 'view_this_room': view_this_room})
+                room_list.append({'room': room, 'in_use': in_use, 'view_this_room': view_this_room, \
+                    'status': 'OK' if room.inactive_after is None else 'Not usable after {}'.format(room.inactive_after)})
             room_info.append({
                 'building': building,
                 'rooms': room_list,
@@ -4071,7 +4076,9 @@ def copy_course_offering(request, id):
                                                                 )
             # https://stackoverflow.com/questions/1182380/how-to-add-data-into-manytomany-field
             for room in sc.rooms.all():
-                schedule_addition.rooms.add(room)
+                if room.is_active(new_co.semester):
+                    # the room _should_ be active, since we are copying information from one semester back into that same semester, but just in case....
+                    schedule_addition.rooms.add(room)
             schedule_addition.save()
         
         for pc in co.offering_comments.all():
@@ -4193,16 +4200,16 @@ def copy_courses(request, id, check_all_flag):
                                                                   day = sc.day,
                                                                   begin_at = sc.begin_at,
                                                                   end_at = sc.end_at,
-                                                                  room = sc.room,
                                                                   comment = sc.comment
-                                                                  )
-                
+                                                                  )            
+
                 # https://stackoverflow.com/questions/1182380/how-to-add-data-into-manytomany-field
                 for room in sc.rooms.all():
-                    schedule_addition.rooms.add(room)
-
+                    if room.is_active(new_co.semester):
+                        # it's possible that the room was active in the "copy from" semester, but is no longer active in the "copy to" semester
+                        schedule_addition.rooms.add(room)
                 schedule_addition.save()
-            
+
             for pc in co.offering_comments.all():
                 new_public_comment = CourseOfferingPublicComment.objects.create(course_offering = new_co,
                                                                                 text = pc.text,
@@ -5516,6 +5523,14 @@ def update_semester_for_course_offering(request, id):
             form.save()
 
             revised_course_offering = CourseOffering.objects.get(pk = id)
+            # if a room that was previously active (during the "old" semester) is no longer
+            # active, should drop that room
+            for sc in revised_course_offering.scheduled_classes.all():
+                for room in sc.rooms.all():
+                    #print(room, "active? ", room.is_active(revised_course_offering.semester))
+                    if not room.is_active(revised_course_offering.semester):
+                        sc.rooms.remove(room)
+
             if department != course_department:
                 print('user making change does not own the course!')
                 revised_co_snapshot = revised_course_offering.snapshot

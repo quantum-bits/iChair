@@ -417,8 +417,20 @@ class EasyDaySchedulerForm(forms.Form):
     days = forms.ChoiceField(label="Days of the week",choices=DAY_OPTIONS)
     start = forms.ChoiceField(label="Class starting times",choices=START_OPTIONS)
     duration = forms.ChoiceField(label="Duration",choices=DURATION_OPTIONS)
-    # https://stackoverflow.com/questions/2623325/is-a-modelchoicefield-always-required
-    room = forms.ModelChoiceField(queryset = Room.objects.all(), required=False,)
+
+    def __init__(self, sem_id, *args, **kwargs):
+        # https://stackoverflow.com/questions/14660037/django-forms-pass-parameter-to-form
+        # https://stackoverflow.com/questions/5685037/django-filter-query-based-on-custom-function
+        # https://stackoverflow.com/questions/27310454/django-dynamic-modelchoicefield-field
+        # https://stackoverflow.com/questions/2623325/is-a-modelchoicefield-always-required
+        semester_id = sem_id
+        semester = Semester.objects.get(pk=semester_id)
+        super (EasyDaySchedulerForm,self).__init__(*args,**kwargs)
+        active_room_ids = [room.id for room in Room.objects.all() if room.is_active(semester)]
+        self.fields['room'] = forms.ModelChoiceField(
+            queryset = Room.objects.filter(id__in = active_room_ids),
+            required=False,)
+        #self.fields['room'].required = False
 
 class AddCourseForm(forms.ModelForm):
 

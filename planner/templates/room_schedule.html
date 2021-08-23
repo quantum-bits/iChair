@@ -18,7 +18,7 @@
 	   data-toggle="collapse"
 	   data-parent="#year-accordion"
 	   href="#{{room_data.0.room_id}}">
-	 {{room_data.0.room_name}}
+	 {{room_data.0.room_name}} {% if room_data.0.status != '' %} {{room_data.0.status}} {% endif %}
 	</a>
        </div>{# accordion-heading #}
 

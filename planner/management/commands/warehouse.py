@@ -463,7 +463,7 @@ class Command(BaseCommand):
                     
                     room = None
                     if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
-                        rooms = BannerRoom.objects.filter(Q(building__abbrev = co_meeting.building_code) & Q(number = co_meeting.room_number))
+                        rooms = BannerRoom.objects.filter(Q(building__abbrev = co_meeting.building_code) & Q(number = co_meeting.room_number) & Q(is_active = True))
                         if len(rooms) > 1:
                             print('ERROR!!!  There seem to be more than one copy of this room: ', co_meeting.building_code, co_meeting.room_number)
                             building_room_errors += 1
