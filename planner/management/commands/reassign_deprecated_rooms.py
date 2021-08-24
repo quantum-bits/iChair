@@ -5,7 +5,23 @@ from django.db.models import Q
 from planner.models import *
 from banner.models import CourseOffering as BannerCourseOffering
 
+"""
+This command can be run after a room number becomes deprecated for some reason (either 
+the physical room disappears or it is assigned a new number).
 
+Do the following before running this script:
+- assign an inactive_after date for the room(s) in iChair that have been deprecated; this date should be 
+  before the beginning of the term when the room first becomes unusable (mid-summer if the room 
+  can no longer be used in the fall, for example)
+- create new rooms as needed in iChair (for example, if READE 222 becomes READE 223, first add the inactive_after 
+  to READE 222, then create the new READE 223 with the same room capacity)
+- if there is an obvious mapping between old room numbers and new ones, fill in the dictionary 
+  old_room_to_new_room_map (below) as appropriate; don't include anything for rooms that simply get deleted
+- in banner.db, can delete unused (deprecated) rooms
+- in banner.db, if any room numbers are recycled (but now refer to different physical rooms), need to be
+  sure to fix the capacities(!)
+Then the command can be run...!
+"""
 
 
 class Command(BaseCommand):
