@@ -16,7 +16,7 @@ from banner.models import Building as BannerBuilding
 from banner.models import SubjectToImport as BannerSubjectToImport
 from banner.models import DeliveryMethod as BannerDeliveryMethod
 from planner.models import DeliveryMethod
-from planner.models import FacultyMember, Department
+from planner.models import FacultyMember, Department, Room
 
 from four_year_plan.secret import DATA_WAREHOUSE_AUTH as DW
 
@@ -463,7 +463,7 @@ class Command(BaseCommand):
                     
                     room = None
                     if (not (co_meeting.building_code == None or co_meeting.building_code == '')) and (not (co_meeting.room_number == None or co_meeting.room_number == '')):
-                        rooms = BannerRoom.objects.filter(Q(building__abbrev = co_meeting.building_code) & Q(number = co_meeting.room_number) & Q(is_active = True))
+                        rooms = BannerRoom.objects.filter(Q(building__abbrev = co_meeting.building_code) & Q(number = co_meeting.room_number))
                         if len(rooms) > 1:
                             print('ERROR!!!  There seem to be more than one copy of this room: ', co_meeting.building_code, co_meeting.room_number)
                             building_room_errors += 1
@@ -713,6 +713,21 @@ class Command(BaseCommand):
             print(' ')
             print('iChair and Banner delivery methods agree exactly?', number_matching_ichair_delivery_methods == number_banner_delivery_methods)
 
+            # check for rooms in the iChair database that are inactive but are, nevertheless, scheduled to have classes;
+            # this should never happen, but we're checking just to make sure that something hasn't been missed....
+            number_scheduled_classes_in_inactive_rooms = 0
+            for room in Room.objects.all():
+                if room.inactive_after is not None:
+                    for sc in room.scheduled_class_objects.all():
+                        if sc.course_offering.semester.begin_on > room.inactive_after:
+                            print('class scheduled in inactive room: ', sc, room)
+                            number_scheduled_classes_in_inactive_rooms += 1
+                            number_errors += 1
+
+            if number_scheduled_classes_in_inactive_rooms > 0:
+                print(' ')
+                print('there are {} classes scheduled in inactive rooms'.format(number_scheduled_classes_in_inactive_rooms))
+
             print(' ')
             print('total number of errors encountered: ', number_errors)
 
@@ -721,6 +736,7 @@ class Command(BaseCommand):
                     print(error)
 
             context = {
+                'number_scheduled_classes_in_inactive_rooms': number_scheduled_classes_in_inactive_rooms,
                 'number_meetings': number_meetings,
                 'repeated_room_in_meetings_list': repeated_room_in_meetings_list,
                 'classes_missing_scheduled_meeting_info': classes_missing_scheduled_meeting_info,
@@ -902,6 +918,10 @@ Delivery methods created:
         plaintext_message += """
 iChair and Banner delivery methods are not in exact agreement -- this error needs to be fixed!
         """
+
+    plaintext_message += """
+Number of classes scheduled in inactive rooms: {}
+        """.format(context["number_scheduled_classes_in_inactive_rooms"])
 
     plaintext_message += """
 Number of errors: {0}

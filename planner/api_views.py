@@ -96,6 +96,7 @@ def fetch_semesters_and_extra_departmental_courses(request):
             "semester_name": '{0} {1} (Banner code: {2}) {3} '.format(semester.name, semester.year, semester.banner_code, no_data_message),
             "id": semester.id,
             "banner_code": semester.banner_code,
+            "begin_on": semester.begin_on,
             "banner_data_exists": banner_data_exists_this_semester,
             "allow_room_requests": allow_room_requests_this_semester
         })
@@ -625,7 +626,6 @@ def banner_comparison_data(request):
         semester_sorter_dict[semester_id] = counter
         counter = counter+1
 
-    #print('semesters')
     #print(semester_sorter_dict)
 
     department = Department.objects.get(pk=department_id)
@@ -1159,7 +1159,9 @@ def banner_comparison_data(request):
 
     available_rooms = [{
         "id": room.id,
-        "short_name": room.short_name
+        "short_name": room.short_name,
+        "inactive_after": room.inactive_after,
+        "capacity": room.capacity
         } for room in Room.objects.all()]
 
     available_delivery_methods = [{
@@ -2113,7 +2115,8 @@ def construct_meeting_times_detail(course_offering, include_room = False):
                 new_meeting_times_element["rooms"].append({
                     "id": room.id,
                     "short_name": room.short_name,
-                    "capacity": room.capacity
+                    "capacity": room.capacity,
+                    "inactive_after": room.inactive_after
                 })
         meeting_times_detail.append(new_meeting_times_element)
     return meeting_times_detail

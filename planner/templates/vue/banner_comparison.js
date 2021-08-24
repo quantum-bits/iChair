@@ -123,6 +123,7 @@ var app = new Vue({
       editEnrollmentCap: null, // used to store enrollment data in the class schedule form
       editLoadAvailable: null, // used to store "load available" data in the edit intructors form
       editSemesterFraction: null, // used to store semester fraction data in the class schedule form
+      editSemesterId: null, // used to store semester data in the class schedule form
       editDeliveryMethodId: null, // used to store delivery method data in the class schedule form
       editComments: [], // used to store the data in the public comments form
       editCourseOfferingData: {}, // used to store some data that can be used upon submitting the class schedule and public comments forms
@@ -324,6 +325,7 @@ var app = new Vue({
             let noRoom = {
                 id: NO_ROOM_SELECTED_ID,
                 short_name: "-----",
+                inactive_after: null,
                 capacity: -1
               };
             let noDeliveryMethod = {
@@ -333,6 +335,8 @@ var app = new Vue({
             };
             _this.roomChoices = incomingData.available_rooms;
             _this.roomChoices.unshift(noRoom);
+            console.log("rooms: ", _this.roomChoices);
+            //console.log("semesters: ", _this.semesterChoices);
             _this.deliveryMethodChoices = incomingData.available_delivery_methods;
             _this.deliveryMethodChoices.unshift(noDeliveryMethod);
             incomingData.course_data.forEach(course => {
@@ -1201,8 +1205,6 @@ var app = new Vue({
       let dataForPost = {};
       if (item.bannerChoice === CREATE_NEW_COURSE_OFFERING) {
         console.log("request that the registrar create a new course offering!");
-        // WORKING HERE now need to create a new course offering
-
         dataForPost = {
           deltaMods: {
             instructors: true,
@@ -1391,14 +1393,16 @@ var app = new Vue({
           meeting.rooms.push({
             id: NO_ROOM_SELECTED_ID,
             short_name: "",
+            inactive_after: null,
             capacity: -1
           });
         }
-        // the id property can be edited in the dialog...and will get out of synch with the short_name and capacity, so those are
+        // the id property can be edited in the dialog...and will get out of sync with the short_name and capacity, so those are
         // being altered here.  There must be a better way to do this, but vue wants to set the v-model to a property of an object
         // that is being iterated over....  In any case, we will only use the id later on.
         meeting.rooms.forEach( room => {
           room.short_name = "";
+          room.inactive_after = null;
           room.capacity = -1; 
         })
       });
@@ -1414,6 +1418,7 @@ var app = new Vue({
       this.initialEnrollmentData = this.editEnrollmentCap;
       this.initialSemesterFractionData = this.editSemesterFraction;
       this.initialDeliveryMethodId = this.editDeliveryMethodId;
+      this.editSemesterId = courseInfo.semesterId;
     },
 
     editOfferingInstructors(courseInfo) {
@@ -2443,14 +2448,15 @@ var app = new Vue({
         begin_at: "",
         end_at: "",
         id: null,
-        room: {
-          id: NO_ROOM_SELECTED_ID,
-          short_name: "-----",
-          capacity: -1
-        },
+        //room: {
+        //  id: NO_ROOM_SELECTED_ID,
+        //  short_name: "-----",
+        //  capacity: -1
+        //},
         rooms: [{
           id: NO_ROOM_SELECTED_ID,
           short_name: "-----",
+          inactive_after: null,
           capacity: -1
         }]
       });
@@ -2464,6 +2470,7 @@ var app = new Vue({
       this.editEnrollmentCap = null;
       this.editSemesterFraction = null;
       this.editDeliveryMethodId = null;
+      this.editSemesterId = null;
     },
     submitMeetingsForm() {
       let meetingsToDelete = []; //list of ids
@@ -2890,23 +2897,42 @@ var app = new Vue({
     },
 
     filteredRoomChoices(roomId, rooms) {
-      //console.log(roomId);
-      //console.log(rooms);
       let otherUsedRoomIds = [];
       rooms.forEach( room => {
         if ((room.id !== roomId) && (room.id !== NO_ROOM_SELECTED_ID)) {
           otherUsedRoomIds.push(room.id);
         }
       });
-      //console.log(otherUsedRoomIds);
+      // need the semester start date so that we can filter out rooms that are no longer
+      // active at the beginning of the semester....
+      let semesterBeginOn;
+      this.semesterChoices.forEach( semester => {
+        if (semester.id === this.editSemesterId) {
+          semesterBeginOn = new Date(semester.begin_on);
+        }
+      })
+
+      let activeRoomsThisSemester = [];
+      this.roomChoices.forEach( room => {
+        if (room.inactive_after === null) {
+          activeRoomsThisSemester.push(room);
+        } else {
+          let roomInactiveAfter = new Date(room.inactive_after);
+          if (roomInactiveAfter >= semesterBeginOn) {
+            // there is an "inactive_after" date set for the room, but it is after the start of this semester, so we can still use this room
+            activeRoomsThisSemester.push(room);
+          }
+        }
+      });
       //https://stackoverflow.com/questions/33577868/filter-array-not-in-another-array#:~:text=You%20can%20simply%20run%20through,when%20the%20callback%20returns%20true%20.
-      return this.roomChoices.filter( roomOption => !otherUsedRoomIds.includes(roomOption.id));
+      return activeRoomsThisSemester.filter( roomOption => !otherUsedRoomIds.includes(roomOption.id));
     },
 
     addRoomToMeetingTime(rooms) {
       rooms.push({
         id: NO_ROOM_SELECTED_ID,
         capacity: -1,
+        inactive_after: null,
         short_name: ""
       })
     },

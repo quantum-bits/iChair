@@ -30,7 +30,15 @@ class Room(StampedModel):
     number = models.CharField(max_length=20)
     building = models.ForeignKey(Building, related_name='rooms', on_delete=models.CASCADE)
     capacity = models.PositiveIntegerField(default=20)
-    is_active = models.BooleanField(default=True)
+    #is_active = models.BooleanField(default=True)
+    # https://stackoverflow.com/questions/11351619/how-to-make-djangos-datetimefield-optional/11351690
+    # the following property, if set, indicates that the room is no longer active or usable; 
+    # we are not really using the inactive_after property in our version of the banner database (since
+    # all course offerings in this database are essentially scrapped every day, so we can just delete rooms 
+    # once they are no longer needed (e.g., if they are renamed)); however, it is convenient to have 
+    # the exact same fields in the Banner version of the Room model as in the iChair version; in the future
+    # we could potentially use the inactive_after property, as we do for the iChair data
+    inactive_after = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['building__name','number']

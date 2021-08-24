@@ -76,7 +76,7 @@ class BannerBuildingAdmin(MultiDBModelAdmin):
 
 class BannerRoomAdmin(MultiDBModelAdmin):
     search_fields = ('number', 'building',)
-    list_display = ('building', 'number', 'capacity','is_active',)
+    list_display = ('building', 'number', 'capacity','inactive_after',)
 
 class BannerDeliveryMethodAdmin(MultiDBModelAdmin):
     search_fields = ('code', 'description',)

@@ -5530,6 +5530,7 @@ def update_semester_for_course_offering(request, id):
                     #print(room, "active? ", room.is_active(revised_course_offering.semester))
                     if not room.is_active(revised_course_offering.semester):
                         sc.rooms.remove(room)
+                        sc.save()
 
             if department != course_department:
                 print('user making change does not own the course!')
