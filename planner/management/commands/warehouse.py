@@ -684,8 +684,14 @@ class Command(BaseCommand):
                     print(' ')
                     if len(banner_fm) == 1:
                         banner_fm_name = banner_fm[0].first_name + ' ' + banner_fm[0].last_name
-                        banner_faculty_without_perfect_match_in_ichair.append(banner_fm_name)
+                        banner_faculty_without_perfect_match_in_ichair.append({
+                            "name": banner_fm_name,
+                            "course_offerings": ["{0}{1} {2} ({3})".format( \
+                                co.course.subject.abbrev, co.course.number, co.course.title, co.term_code) \
+                                for co in banner_fm[0].course_offerings.all()]
+                            })
                         print('The following Banner faculty member does not have a perfect match in iChair: ', banner_fm_name)
+                        #print(banner_faculty_without_perfect_match_in_ichair)
                     else:
                         print('There is not exactly one banner faculty member with the following pidm: ', pidm)
                         number_errors += 1
@@ -858,7 +864,7 @@ The following faculty members have a pidm in iChair that does not appear in Bann
             plaintext_message += """
     {0}
             """.format(fm)
-
+            
     if len(context["adj_fac_w_pidm_not_in_adjunct_dept"]) > 0:
         plaintext_message += """
 One or more adjunct faculty members are not in the Adjunct department, even though they have pidms:
@@ -884,7 +890,14 @@ The following Banner faculty members do not have a perfect match in iChair:
         for fm in context["banner_faculty_without_perfect_match_in_ichair"]:
             plaintext_message += """
     {0}
-            """.format(fm)
+            """.format(fm["name"])
+            plaintext_message += """
+        Course Offerings:
+            """
+            for co in fm["course_offerings"]:
+                plaintext_message += """
+            {0}
+                """.format(co)
 
     plaintext_message += """
 Number of building or room errors (due to existence of multiple versions): {0}
