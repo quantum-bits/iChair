@@ -17,7 +17,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         
         for room in BannerRoom.objects.all():
-            ichair_rooms = Room.objects.filter(Q(building__abbrev=room.building.abbrev) & Q(number=room.number))
+            # only consider "active" rooms on the iChair side
+            ichair_rooms = Room.objects.filter(Q(building__abbrev=room.building.abbrev) & Q(number=room.number) & Q(inactive_after = None))
             if len(ichair_rooms) > 1:
                 print("More than one match in iChair for the following Banner room: ", room)
             elif len(ichair_rooms) == 0:
@@ -47,7 +48,9 @@ class Command(BaseCommand):
         num_rooms_missing_in_banner_db = 0
         num_rooms_missing_in_banner_db_but_in_dw = 0
         rooms_not_found = []
-        for room in Room.objects.all():
+        # only consider "active" rooms on the iChair side
+        for room in Room.objects.filter(inactive_after = None):
+            # there _is_ an inactive_after property for rooms in banner.db, but that property is currently not being used
             banner_rooms = BannerRoom.objects.filter(Q(building__abbrev=room.building.abbrev) & Q(number=room.number))
             if len(banner_rooms) > 1:
                 print("More than one match in Banner for the following iChair room: ", room)
