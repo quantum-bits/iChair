@@ -1046,6 +1046,14 @@ class ScheduledClass(StampedModel):
         FRIDAY: 'Friday'
     }
 
+    DAY_REVERSE_LOOKUP = {
+        'Monday': MONDAY,
+        'Tuesday': TUESDAY,
+        'Wednesday': WEDNESDAY,
+        'Thursday': THURSDAY,
+        'Friday': FRIDAY
+    }
+
 # in the view, should be able to use ...filter(day = ScheduledClass.MONDAY), etc.
 
     day = models.IntegerField(choices = DAY_CHOICES, default = MONDAY)
@@ -1066,10 +1074,17 @@ class ScheduledClass(StampedModel):
     def __str__(self):
         return '{0} ({1} {2})'.format(self.course_offering, self.day, self.begin_at)
 
+    class Meta:
+        ordering = ['begin_at']
+
     @property
     def day_string(self):
         """ returns the string corresponding to the day property """
         return self.DAY_LOOKUP[self.day]
+
+    @classmethod
+    def day_reverse_lookup(self):
+        return self.DAY_REVERSE_LOOKUP
 
 class UserPreferences(models.Model):
     # at some point might want to make this a one-to-one field; see here for a useful tutorial:
