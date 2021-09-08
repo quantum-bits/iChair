@@ -2080,6 +2080,8 @@ def room_schedule(request):
     idnum = 0
     roomid = 0
 
+    json_room_data = {}
+
     for room in user_preferences.rooms_to_view.all().order_by('building__name','number'):
         data_this_room = []
         roomid=roomid+1
@@ -2120,24 +2122,50 @@ def room_schedule(request):
                     if sc.end_at.hour > 16:
                         courses_after_five = True
 
+                # we work out the schedule both in a flexible-sized approach, as well as in a fixed-size approach....
                 schedule = initialize_canvas_data(courses_after_five, num_data_columns)
+                fixed_size_schedule = initialize_canvas_data(courses_after_five, num_data_columns)
 
-                grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, weekdays, 'MWF')
-                table_text_list.append([schedule['width']/2,schedule['border']/2,
-                                        table_title,
-                                        schedule['table_title_font'],
-                                        schedule['table_header_text_colour']])
-
-
+                fixed_size_grid_list, fixed_size_filled_row_list, fixed_size_table_text_list = create_schedule_grid(fixed_size_schedule, weekdays, 'MWF')
+                
+                ###
+                # begin flex schedule code
+                ###
+                master_dict={}
+                min_hour = 7
+                for day in weekdays:
+                    master_dict[day]={7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[],17:[],18:[],19:[],20:[],21:[],22:[],23:[]}
+                ###
+                # end flex schedule code
+                ###
+                
                 conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
-                box_list = []
-                box_label_list = []
+                fixed_size_box_list = []
+                fixed_size_box_label_list = []
                 offering_dict = {}
                 for sc in filtered_scheduled_classes:
-                    box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, sc, sc.day, sc.course_offering.is_full_semester())
-                    box_list.append(box_data)
-                    box_label_list.append(course_data)
-                    box_label_list.append(room_data)
+                    ###
+                    # begin flex schedule code
+                    ###
+                    half_sem_text = ''
+                    if not sc.course_offering.is_full_semester():
+                        half_sem_text = ' ('+'\u00BD'+' sem)'
+                    data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+half_sem_text]
+                    if sc.course_offering.crn is not None and sc.course_offering.crn != '':
+                        data_this_class.append('CRN: '+sc.course_offering.crn)
+                    for instructor in sc.course_offering.instructor.all():
+                        data_this_class.append(instructor.last_name)
+                    
+                    master_dict = update_master_dict(master_dict, sc, data_this_class, min_hour)
+                    ###
+                    # end flex schedule code
+                    ###
+
+                    fixed_size_box_data, course_data, room_data = rectangle_coordinates_schedule(fixed_size_schedule, sc, sc.day, sc.course_offering.is_full_semester())
+                    
+                    fixed_size_box_list.append(fixed_size_box_data)
+                    fixed_size_box_label_list.append(course_data)
+                    fixed_size_box_label_list.append(room_data)
                     conflict_check_dict[sc.day].append([sc.begin_at.hour*100+sc.begin_at.minute,
                                                         sc.end_at.hour*100+sc.end_at.minute,
                                                         sc.course_offering.course.subject.abbrev+' '+sc.course_offering.course.number])
@@ -2154,11 +2182,34 @@ def room_schedule(request):
                 # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
                 # format for text is: [xcenter, ycenter, text_string, font, text_colour]
     
-                json_box_list = simplejson.dumps(box_list)
-                json_box_label_list = simplejson.dumps(box_label_list)
-                json_grid_list = simplejson.dumps(grid_list)
-                json_filled_row_list = simplejson.dumps(filled_row_list)
-                json_table_text_list = simplejson.dumps(table_text_list)
+                #print(master_dict)
+
+                ###
+                # begin flex schedule code
+                ###
+                canvas_height, height_hour_blocks_dict = determine_schedule_heights(master_dict, schedule, \
+                        min_hour, courses_after_five)
+
+                schedule['height_hour_block_dict'] = height_hour_blocks_dict
+                schedule['height'] = canvas_height
+                # replace width by a greater width than normal            
+                #schedule['width_day'] = 2*schedule['width_day']
+                canvas_width = 2*schedule['border']+5*schedule['width_day']+schedule['width_hour_names']
+                schedule['width'] = canvas_width
+                grid_list, filled_row_list, table_text_list = create_flexible_schedule_grid(schedule, weekdays, 'MWF')
+                box_list, box_label_list = create_box_list(master_dict, schedule)
+                table_text_list.append([schedule['width']/2,schedule['border']/2,
+                        table_title,
+                        schedule['table_title_font'],
+                        schedule['table_header_text_colour']])
+                ###
+                # end flex schedule code
+                ###
+
+                fixed_size_table_text_list.append([fixed_size_schedule['width']/2,fixed_size_schedule['border']/2,
+                        table_title,
+                        fixed_size_schedule['table_title_font'],
+                        fixed_size_schedule['table_header_text_colour']])
 
                 overlap_dict = check_for_conflicts(conflict_check_dict)
                 error_messages=[]
@@ -2171,18 +2222,32 @@ def room_schedule(request):
                 data_this_room.append({'room_id':roomid,
                                     'room_name': room.building.abbrev+' '+room.number,
                                     'status': '' if room.inactive_after is None else '(...room no longer usable after {}...)'.format(room.inactive_after),
-                                    'json_box_list': json_box_list,
-                                    'json_box_label_list':json_box_label_list,
-                                    'json_grid_list': json_grid_list,
-                                    'json_filled_row_list': json_filled_row_list,
-                                    'json_table_text_list': json_table_text_list,
                                     'id':id,
                                     'schedule':schedule,
                                     'conflict':error_messages,
                                     'offerings': offering_list})
+                json_room_data[id] = {
+                    'box_list': box_list,
+                    'box_label_list':box_label_list,
+                    'grid_list': grid_list,
+                    'filled_row_list': filled_row_list,
+                    'table_text_list': table_text_list,
+                    'fixed_size_box_list': fixed_size_box_list,
+                    'fixed_size_box_label_list':fixed_size_box_label_list,
+                    'fixed_size_grid_list': fixed_size_grid_list,
+                    'fixed_size_filled_row_list': fixed_size_filled_row_list,
+                    'fixed_size_table_text_list': fixed_size_table_text_list,
+                    'schedule': schedule,
+                    'fixed_size_schedule': fixed_size_schedule
+                } 
         data_list.append(data_this_room)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={
+        'json_room_data': simplejson.dumps(json_room_data),
+        'data_list':data_list, 
+        'year':academic_year_string, 
+        'id': user_preferences.id, 
+        'department': user_preferences.department_to_view}
     return render(request, 'room_schedule.html', context)
 
 @login_required
@@ -2397,7 +2462,7 @@ def initialize_canvas_data(courses_after_five, num_data_columns):
     Creates a dictionary of data for the canvas for various schedules.
     """
 
-    width_day = 140
+    width_day = 150
     width_hour_names = 100
     height_day_names = 40
     height_hour_block = 60
@@ -2420,6 +2485,7 @@ def initialize_canvas_data(courses_after_five, num_data_columns):
                 'width_hour_names':width_hour_names,
                 'height_day_names':height_day_names,
                 'height_hour_block':height_hour_block,
+                'height_hour_block_dict': {},
                 'border':border,
                 'number_hour_blocks':number_hour_blocks,
                 'start_time':start_time,
@@ -5058,7 +5124,7 @@ def weekly_course_schedule_entire_dept(request):
     idnum = 0
 
     day_list = ['Monday','Tuesday','Wednesday','Thursday','Friday']
-    day_dict = {'Monday':0, 'Tuesday':1, 'Wednesday':2, 'Thursday':3, 'Friday':4}
+    day_dict = ScheduledClass.day_reverse_lookup() # {'Monday':0, 'Tuesday':1, 'Wednesday':2, 'Thursday':3, 'Friday':4}
 
     chapel_dict = {'Monday':'every', 'Tuesday':'none', 'Wednesday':'every', 'Thursday':'none', 'Friday':'every'}
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -5122,8 +5188,8 @@ def weekly_course_schedule_entire_dept(request):
 
             master_dict={}
             min_hour = 7
-            num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
-            num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
+            #num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
+            #num_lines_including_halves={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
 
             filtered_scheduled_classes = [sc for sc in scheduled_classes if sc.course_offering.is_in_semester_fraction(partial_semester['semester_fraction'])]
 
@@ -5181,125 +5247,27 @@ def weekly_course_schedule_entire_dept(request):
                     if len(profs_this_class)>0:
                         data_this_class.append(profs_this_class)
 
-                    begin_hour = sc.begin_at.hour
-                    if(sc.end_at.minute==0):
-                        end_hour = sc.end_at.hour - 1
-                    else:
-                        end_hour = sc.end_at.hour
+                    master_dict = update_master_dict(master_dict, sc, data_this_class, min_hour)
 
-                    hour_range=list(range(begin_hour,end_hour+1))
-                    for ii in range(len(hour_range)):
-                        local_data=[]
-                        for line in data_this_class:
-                            local_data.append(line)
-                        if ii == 0:
-                            if sc.begin_at.minute != 0:
-                                if sc.begin_at.minute<10:
-                                    local_data.append('(begins @ '+str(sc.begin_at.hour)+':0'+str(sc.begin_at.minute)+')')
-                                else:
-                                    local_data.append('(begins @ '+str(sc.begin_at.hour)+':'+str(sc.begin_at.minute)+')')
-                        if ii == len(hour_range)-1:
-                            if sc.end_at.minute != 50:
-                                if sc.end_at.minute<10:
-                                    local_data.append('(ends @ '+str(sc.end_at.hour)+':0'+str(sc.end_at.minute)+')')
-                                else:
-                                    local_data.append('(ends @ '+str(sc.end_at.hour)+':'+str(sc.end_at.minute)+')')
-
-                        if min(hour_range) >= min_hour:
-                            # times before 7 a.m. will not show up (or crash the page!)
-                            if len(master_dict[day][hour_range[ii]])>0:
-                                master_dict[day][hour_range[ii]].append('')
-                            for new_line in local_data:
-                                master_dict[day][hour_range[ii]].append(new_line)
-                        else:
-                            print('time outside of range!')
-                            print(sc)
-
-    #        print(master_dict)
-            
-            for hour in num_lines_in_hour:
-                for day in master_dict:
-                    if len(master_dict[day][hour])>num_lines_in_hour[hour]:
-                        num_lines_in_hour[hour]=len(master_dict[day][hour])
-                        num_lines_including_halves[hour]=num_lines_in_hour[hour]-1.0*(master_dict[day][hour].count(''))/2.0
-    #                    print(master_dict[day][hour],num_lines_including_halves[hour])
-
-    #        print num_lines_in_hour
-
+            print(master_dict)
             schedule = initialize_canvas_data(courses_after_five, num_data_columns)
-    #        print schedule['height']
-            
-            height_hour_blocks_dict={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
-            min_height_hour_block = 3*schedule['box_text_line_sep_pixels']
-
-            canvas_height=2*schedule['border']+schedule['height_day_names']
-            for hour in num_lines_in_hour:
-                height_this_block=(1+num_lines_including_halves[hour])*schedule['box_text_line_sep_pixels']
-                if height_this_block<min_height_hour_block:
-                    height_hour_blocks_dict[hour]=min_height_hour_block
-                else:
-                    height_hour_blocks_dict[hour]=height_this_block
-                if hour<17:
-                    canvas_height=canvas_height+height_hour_blocks_dict[hour]
-                else:
-                    if courses_after_five:
-                        canvas_height=canvas_height+height_hour_blocks_dict[hour]
-                        
-    #        print height_hour_blocks_dict
-            # replace 'height_hour_block' by a dictionary of heights and 'height' by the recalculated canvas_height and width
-            # by a greater width than normal            
-            schedule['height_hour_block']=height_hour_blocks_dict
+            canvas_height, height_hour_blocks_dict = determine_schedule_heights(master_dict, schedule, \
+                min_hour, courses_after_five)           
+            schedule['height_hour_block_dict']=height_hour_blocks_dict
             schedule['height']=canvas_height
+            # replace width by a greater width than normal
             schedule['width_day']=2*schedule['width_day']
-
-    #        print schedule
 
             canvas_width = 2*schedule['border']+5*schedule['width_day']+schedule['width_hour_names']
             schedule['width']=canvas_width
             grid_list, filled_row_list, table_text_list = create_flexible_schedule_grid(schedule, weekdays, 'MWF')
+            box_list, box_label_list = create_box_list(master_dict, schedule)
 
             table_text_list.append([schedule['width']/2,schedule['border']/2,
                                     table_title,
                                     schedule['table_title_font'],
                                     schedule['table_header_text_colour']])
             
-            b = schedule['border']
-            h_h_b = schedule['height_hour_block']
-            h_d_n = schedule['height_day_names']
-            n_h_b = schedule['number_hour_blocks']
-            start_time = schedule['start_time'] 
-            vertical_edges = [b,b+h_d_n]
-            current_edge = b+h_d_n
-            for ii in range(n_h_b):
-                hour = start_time+ii
-                current_edge = current_edge+h_h_b[hour]
-                vertical_edges.append(current_edge)
-
-            box_list = []
-            box_label_list = []
-            # now loop over the text in the master_dict, etc.
-            for day in master_dict:
-                for ii in range(n_h_b):
-                    hour = start_time+ii
-                    text_list = master_dict[day][hour]
-                    
-                    if len(text_list)>0:
-                        box_data, text_data = rectangle_coordinates_flexible_schedule(schedule, vertical_edges,
-                                                                                        text_list, day_dict[day], hour)
-    #                print box_data, text_data
-
-    #        box_data = [xleft, begin_height_pixels, w_d, height, schedule['box_fill_colour'],
-    #                schedule['box_line_width'], schedule['box_border_colour']]
-
-    #        text_data = [
-    #                     [xleft+w_d/2, row_height, line_of_text,
-    #                      schedule['box_font'],
-    #                      schedule['table_header_text_colour']],[...],...]
-
-                        box_list.append(box_data)
-                        for text_row in text_data:
-                            box_label_list.append(text_row)
-
             # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
             # format for text is: [xcenter, ycenter, text_string, font, text_colour]
 
@@ -5345,6 +5313,127 @@ def weekly_course_schedule_entire_dept(request):
     context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
     return render(request, 'weekly_schedule_dept_summary.html', context)
 
+def create_box_list(master_dict, schedule):
+    """ returns the box list and box label list for the given master_dict"""
+    day_dict = ScheduledClass.day_reverse_lookup()
+    b = schedule['border']
+    h_h_b = schedule['height_hour_block_dict']
+    h_d_n = schedule['height_day_names']
+    n_h_b = schedule['number_hour_blocks']
+    start_time = schedule['start_time'] 
+    vertical_edges = [b,b+h_d_n]
+    current_edge = b+h_d_n
+    for ii in range(n_h_b):
+        hour = start_time+ii
+        current_edge = current_edge+h_h_b[hour]
+        vertical_edges.append(current_edge)
+
+    box_list = []
+    box_label_list = []
+    # now loop over the text in the master_dict, etc.
+    for day in master_dict:
+        for ii in range(n_h_b):
+            hour = start_time+ii
+            text_list = master_dict[day][hour]
+            
+            if len(text_list)>0:
+                box_data, text_data = rectangle_coordinates_flexible_schedule(schedule, vertical_edges,
+                                                                                text_list, day_dict[day], hour)
+                box_list.append(box_data)
+                for text_row in text_data:
+                    box_label_list.append(text_row)
+    
+    return box_list, box_label_list
+
+def determine_schedule_heights(master_dict, schedule, min_hour, courses_after_five):
+    """
+    Uses the data in the master_dict to determine the canvas height and the heights of the various hour blocks.
+    """
+
+    box_text_line_sep_pixels = schedule['box_text_line_sep_pixels']
+    border = schedule['border']
+    height_heading_row = schedule['height_day_names']
+
+    num_lines_in_hour = {}
+    num_lines_including_halves = {}
+    height_hour_blocks_dict = {}
+    for hour in list(range(min_hour, 24)):
+        num_lines_in_hour[hour] = 0
+        num_lines_including_halves[hour] = 0
+        height_hour_blocks_dict[hour] = 0
+
+    for hour in num_lines_in_hour:
+        for day in master_dict:
+            if len(master_dict[day][hour])>num_lines_in_hour[hour]:
+                num_lines_in_hour[hour]=len(master_dict[day][hour])
+                num_lines_including_halves[hour]=num_lines_in_hour[hour]-1.0*(master_dict[day][hour].count(''))/2.0
+
+    min_height_hour_block = 3*box_text_line_sep_pixels
+    canvas_height = 2*border + height_heading_row
+    for hour in num_lines_in_hour:
+        height_this_block=(1+num_lines_including_halves[hour])*box_text_line_sep_pixels
+        if height_this_block<min_height_hour_block:
+            height_hour_blocks_dict[hour]=min_height_hour_block
+        else:
+            height_hour_blocks_dict[hour]=height_this_block
+        if hour<17:
+            canvas_height=canvas_height+height_hour_blocks_dict[hour]
+        else:
+            if courses_after_five:
+                canvas_height=canvas_height+height_hour_blocks_dict[hour]
+
+    return canvas_height, height_hour_blocks_dict
+
+def update_master_dict(master_dict, sc, data_this_class, min_hour):
+    """
+    Updates the master dict for a schedule.  Expects the following:
+
+    master_dict:        dictionary with [day][hour] entries that are lists of text
+    data_this_class:    basic data for a class, formatted how it is to be displayed (for example, ["PHY211 (1/2 sem)", "B. Davis"])
+    min_hour:           earliest hour in the master_dict dictionary
+    sc:                 scheduled_class object
+
+    Adds the following to master_dict:
+    - data_this_class gets added to all appropriate [day][hour] lists
+    - in addition, if a class starts after the beginning of the hour or ends before :50 of the hour, adds an appriate message
+    
+    Returns the updated master_dict
+    """
+    begin_hour = sc.begin_at.hour
+    if(sc.end_at.minute==0):
+        end_hour = sc.end_at.hour - 1
+    else:
+        end_hour = sc.end_at.hour
+
+    hour_range=list(range(begin_hour,end_hour+1))
+    for ii in range(len(hour_range)):
+        local_data=[]
+        for line in data_this_class:
+            local_data.append(line)
+        if ii == 0:
+            if sc.begin_at.minute != 0:
+                if sc.begin_at.minute<10:
+                    local_data.append('(begins @ '+str(sc.begin_at.hour)+':0'+str(sc.begin_at.minute)+')')
+                else:
+                    local_data.append('(begins @ '+str(sc.begin_at.hour)+':'+str(sc.begin_at.minute)+')')
+        if ii == len(hour_range)-1:
+            if sc.end_at.minute != 50:
+                if sc.end_at.minute<10:
+                    local_data.append('(ends @ '+str(sc.end_at.hour)+':0'+str(sc.end_at.minute)+')')
+                else:
+                    local_data.append('(ends @ '+str(sc.end_at.hour)+':'+str(sc.end_at.minute)+')')
+
+        if min(hour_range) >= min_hour:
+            # times before 7 a.m. will not show up (or crash the page!)
+            if len(master_dict[sc.day_string][hour_range[ii]])>0:
+                master_dict[sc.day_string][hour_range[ii]].append('')
+            for new_line in local_data:
+                master_dict[sc.day_string][hour_range[ii]].append(new_line)
+        else:
+            print('time outside of range!')
+            print(sc)
+    return master_dict
+
 def create_flexible_schedule_grid(schedule,column_titles,chapel):
     """
     returns the coordinates for the lines that form the schedule grid in the
@@ -5366,7 +5455,7 @@ def create_flexible_schedule_grid(schedule,column_titles,chapel):
     w_h_n = schedule['width_hour_names']
     w_d = schedule['width_day']
     n_h_b = schedule['number_hour_blocks']
-    h_h_b = schedule['height_hour_block']
+    h_h_b = schedule['height_hour_block_dict']
     # h_h_b is actually a dictionary in this case!!!
     h_d_n = schedule['height_day_names']
 
@@ -5438,7 +5527,7 @@ def rectangle_coordinates_flexible_schedule(schedule, vertical_edges, text_list,
     b = schedule['border']
     w_h_n = schedule['width_hour_names']
     w_d = schedule['width_day']
-    h_h_b = schedule['height_hour_block']
+    h_h_b = schedule['height_hour_block_dict']
     h_d_n = schedule['height_day_names']
 
     # base_hour is the earliest hour on the schedule

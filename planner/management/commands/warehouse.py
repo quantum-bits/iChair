@@ -892,7 +892,7 @@ The following Banner faculty members do not have a perfect match in iChair:
     {0}
             """.format(fm["name"])
             plaintext_message += """
-        Course Offerings:
+        Course Offering(s):
             """
             for co in fm["course_offerings"]:
                 plaintext_message += """
