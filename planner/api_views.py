@@ -450,7 +450,8 @@ def create_course_offering(request):
             classrooms_unassigned = True
         for room in meeting["rooms"]:
             banner_room = BannerRoom.objects.get(pk=room["id"])
-            ichair_rooms = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
+            ichair_rooms_including_inactive = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
+            ichair_rooms = [room for room in ichair_rooms_including_inactive if room.is_active(semester)]
             if len(ichair_rooms) > 1:
                 print("ERROR!!!  There appear to be more than one iChair room with the same name.")
                 classrooms_unassigned = True
@@ -3208,7 +3209,8 @@ def copy_course_offering_data_to_ichair(request):
                     #    sc.rooms.add(room)
                     ichair_rooms_to_add = []
                     for banner_room in banner_sc.rooms.all():
-                        ichair_rooms = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
+                        ichair_rooms_including_inactive = Room.objects.filter(Q(number=banner_room.number) & Q(building__abbrev=banner_room.building.abbrev))
+                        ichair_rooms = [room for room in ichair_rooms_including_inactive if room.is_active(ico.semester)]
                         if len(ichair_rooms) > 1:
                             print("ERROR!!!  There appear to be more than one iChair room with the same name.")
                         elif len(ichair_rooms) == 1:
