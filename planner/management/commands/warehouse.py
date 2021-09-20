@@ -61,7 +61,7 @@ class Command(BaseCommand):
                 FROM dw.dim_course_section dcs -- Use the course section dimension as base.
                     -- Comments
                     LEFT OUTER JOIN dbo.ssrtext ssr ON ((ssr.ssrtext_term_code = dcs.term) AND (ssr.ssrtext_crn = dcs.course_reference_number))
-                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP'))
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC'))
                     """.format(term_group, subject_group)).fetchall()
         
             course_offering_meetings = cursor.execute("""
@@ -88,7 +88,7 @@ class Command(BaseCommand):
                     LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                     LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
                     LEFT OUTER JOIN dw.dim_room dr ON (fcm.room_key = dr.room_key)
-                WHERE (({0}) AND ({1}) AND (dcs.campus = 'U' OR dcs.campus = 'OCD' OR dcs.campus = 'OCP'))
+                WHERE (({0}) AND ({1}) AND (dcs.campus = 'U' OR dcs.campus = 'OCD' OR dcs.campus = 'OCP' OR campus = 'ECC'))
                     """.format(term_group, subject_group)).fetchall()
 
             course_instructors = cursor.execute("""
@@ -100,13 +100,13 @@ class Command(BaseCommand):
                 FROM dw.dim_course_section dcs -- use the course section dimension as base.
                     LEFT OUTER JOIN dw.fact_faculty_course ffc ON (ffc.scheduled_course_key = dcs.course_section_key)
                     LEFT OUTER JOIN dw.dim_faculty df ON (ffc.faculty_key = df.faculty_key)
-                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP'))
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC'))
                     """.format(term_group, subject_group)).fetchall()
 
             course_offerings = cursor.execute("""
                 SELECT dcs.*
                 FROM dw.dim_course_section dcs -- use the course section dimension as base.
-                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP'))
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC'))
                     """.format(term_group, subject_group)).fetchall()
 
             faculty_pidms = cursor.execute("""
