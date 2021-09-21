@@ -88,7 +88,7 @@ class Command(BaseCommand):
                     LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                     LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
                     LEFT OUTER JOIN dw.dim_room dr ON (fcm.room_key = dr.room_key)
-                WHERE (({0}) AND ({1}) AND (dcs.campus = 'U' OR dcs.campus = 'OCD' OR dcs.campus = 'OCP' OR campus = 'ECC'))
+                WHERE (({0}) AND ({1}) AND (dcs.campus = 'U' OR dcs.campus = 'OCD' OR dcs.campus = 'OCP' OR dcs.campus = 'ECC'))
                     """.format(term_group, subject_group)).fetchall()
 
             course_instructors = cursor.execute("""
