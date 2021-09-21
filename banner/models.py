@@ -119,11 +119,13 @@ class CourseOffering(StampedModel):
     U = 'U'
     OCP = 'OCP'
     OCD = 'OCD'
+    ECC = 'ECC'
 
     CAMPUS_CHOICES = (
         (U, 'U'),
         (OCP, 'OCP'),
-        (OCD, 'OCD')
+        (OCD, 'OCD'),
+        (ECC, 'ECC')
     )
 
     course = models.ForeignKey(Course, related_name='offerings', on_delete=models.CASCADE)

@@ -382,7 +382,7 @@ def create_course_offering(request):
     max_enrollment = json_data['maxEnrollment']
     delivery_method = json_data['deliveryMethod']
     crn = json_data['crn']
-    campus = json_data['campus'] # should be one of 'U', 'OCD' or 'OCP'
+    campus = json_data['campus'] # should be one of 'U', 'OCD', 'OCP' or 'ECC'
     semester_id = json_data['semesterId']
     #load_available = json_data['loadAvailable']
     meetings = json_data['meetings']
@@ -423,8 +423,9 @@ def create_course_offering(request):
     print('is summer? ', semester.is_summer())
     print('campus is OCD? ', campus == BannerCourseOffering.OCD)
     print('campus is OCP? ', campus == BannerCourseOffering.OCP)
+    print('campus is ECC? ', campus == BannerCourseOffering.ECC)
 
-    if semester.is_summer() or campus == BannerCourseOffering.OCD or campus == BannerCourseOffering.OCP:
+    if semester.is_summer() or campus == BannerCourseOffering.OCD or campus == BannerCourseOffering.OCP or campus == BannerCourseOffering.ECC:
         load_available = 0
         print("zero load!")
     else:
