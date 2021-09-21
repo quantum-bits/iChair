@@ -153,6 +153,7 @@ class Command(BaseCommand):
             adj_fac_w_pidm_not_in_adjunct_dept = []
             number_OCD_sections = 0
             number_OCP_sections = 0
+            number_ECC_sections = 0
             
             #print("Checking faculty....")
             
@@ -199,6 +200,10 @@ class Command(BaseCommand):
                 if co.campus == 'OCP':
                     number_OCP_sections += 1
                     print('OCP section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
+                        co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
+                if co.campus == 'ECC':
+                    number_ECC_sections += 1
+                    print('ECC section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
                         co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
 
                 subjects = BannerSubject.objects.filter(abbrev=co.subject_code)
@@ -258,7 +263,7 @@ class Command(BaseCommand):
                         error_list.append(error_string)
                         raise CommandError(error_string)
 
-                    if (co.campus != BannerCourseOffering.U) and (co.campus != BannerCourseOffering.OCP) and (co.campus != BannerCourseOffering.OCD):
+                    if (co.campus != BannerCourseOffering.U) and (co.campus != BannerCourseOffering.OCP) and (co.campus != BannerCourseOffering.OCD) and (co.campus != BannerCourseOffering.ECC):
                         # this exits the course_offerings loop....
                         number_errors += 1
                         error_string = 'Unknown value for campus: '+co.campus+'; exiting....'
@@ -643,6 +648,9 @@ class Command(BaseCommand):
 
             print(' ')
             print('number of OCP course offerings: ', number_OCP_sections)
+
+            print(' ')
+            print('number of ECC course offerings: ', number_ECC_sections)
 
             print(' ')
             print('number of repeated rooms in meetings: ', len(repeated_room_in_meetings_list))
