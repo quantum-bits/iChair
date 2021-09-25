@@ -122,7 +122,7 @@ class CourseSelectForm(forms.ModelForm):
     
     class Meta:
         model = CourseOffering
-        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction',)
+        exclude = ('semester','instructor','load_available','max_enrollment', 'comment', 'crn', 'semester_fraction', 'delivery_method',)
 
     def clean(self):
         return self.cleaned_data
