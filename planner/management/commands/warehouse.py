@@ -154,6 +154,8 @@ class Command(BaseCommand):
             number_OCD_sections = 0
             number_OCP_sections = 0
             number_ECC_sections = 0
+            number_non_M_F_meetings = 0
+            non_M_F_list = []
             
             #print("Checking faculty....")
             
@@ -349,6 +351,7 @@ class Command(BaseCommand):
                     #      (co_meeting.CMP, co_meeting.CRN, co_meeting.COURSE, co_meeting.TITLE, co_meeting.DAY, co_meeting.STARTTIME, co_meeting.ENDTIME, co_meeting.MEETINGTIMEKEY))
                     #print('delivery type: ', co_meeting.INSTRUCTIONALTYPECODE,' ', co_meeting.INSTRUCTIONALTYPEDESCRIPTION, ' ', co_meeting.delivery_method_code, ' ', co_meeting.delivery_method)
 
+                    day_OK = True # for now just ignoring Saturday and Sunday meetings (i.e., not writing them to banner.db)
                     if co_meeting.DAY == 'M':
                         day_of_week = BannerScheduledClass.MONDAY
                     elif co_meeting.DAY == 'T':
@@ -360,10 +363,20 @@ class Command(BaseCommand):
                     elif co_meeting.DAY == 'F':
                         day_of_week = BannerScheduledClass.FRIDAY
                     else:
+                        day_OK = False
                         number_errors = number_errors +1
-                        error_string = 'Day of week is not M-F; it is '+co_meeting.DAY+'; exiting....'
-                        error_list.append(error_list)
-                        raise CommandError(error_string)
+                        error_string = 'Day of week is not M-F; it is '+co_meeting.DAY
+                        error_list.append(error_string)
+                        non_M_F_list.append({
+                                                'CRN': co_meeting.CRN,
+                                                'course': co_meeting.COURSE,
+                                                'term_code': co_meeting.term,
+                                                'day': co_meeting.DAY,
+                                                'begin_at': start_time,
+                                                'end_at': end_time
+                                            })
+                        number_non_M_F_meetings += 1      
+                        #raise CommandError(error_string)
                     
                     # https://stackoverflow.com/questions/20988835/how-to-get-the-first-2-letters-of-a-string-in-python/20989153
                     if len(co_meeting.STARTTIME) == 4:
@@ -512,7 +525,7 @@ class Command(BaseCommand):
                         else:
                             room = rooms[0]
                     
-                    if not class_meeting_repeated:
+                    if (not class_meeting_repeated) and day_OK: # only add to db if day is M-F
                         scheduled_class = BannerScheduledClass.objects.create(
                             day = day_of_week,
                             begin_at = start_time,
@@ -523,7 +536,7 @@ class Command(BaseCommand):
                             scheduled_class.rooms.add(room)
                         scheduled_class.save()
                         number_meetings += 1
-                    elif (class_meeting_repeated and (room is not None)):
+                    elif (class_meeting_repeated and (room is not None)) and day_OK: # only add to db if day is M-F
                         #print('we have a new room to add to an existing meeting...attempting to find the meeting and add the new room')
                         scheduled_classes = BannerScheduledClass.objects.filter(
                             Q(day = day_of_week) &
@@ -742,6 +755,13 @@ class Command(BaseCommand):
                 print(' ')
                 print('there are {} classes scheduled in inactive rooms'.format(number_scheduled_classes_in_inactive_rooms))
 
+            if number_non_M_F_meetings > 0:
+                print(' ')
+                print('There is (are) {} meeting(s) scheduled on a Saturday or Sunday:'.format(number_non_M_F_meetings))
+                print(' ')
+                for mtg in non_M_F_list:
+                    print(mtg)
+
             print(' ')
             print('total number of errors encountered: ', number_errors)
 
@@ -753,6 +773,8 @@ class Command(BaseCommand):
                 'number_scheduled_classes_in_inactive_rooms': number_scheduled_classes_in_inactive_rooms,
                 'number_meetings': number_meetings,
                 'repeated_room_in_meetings_list': repeated_room_in_meetings_list,
+                'number_non_M_F_meetings': number_non_M_F_meetings,
+                'non_M_F_list': non_M_F_list,
                 'classes_missing_scheduled_meeting_info': classes_missing_scheduled_meeting_info,
                 'number_errors': number_errors,
                 'num_no_mtgs_sched': num_no_mtgs_sched,
@@ -845,7 +867,21 @@ The following meeting times have more than one room assigned:
                 """.format(context["class_meeting_dict"][co_key]['CRN'], 
                 context["class_meeting_dict"][co_key]['term_code'], context["class_meeting_dict"][co_key]['course'],
                 scheduled_meeting["day"], scheduled_meeting["begin_at"], scheduled_meeting["end_at"], room_string)
-                
+
+    if context["number_non_M_F_meetings"] > 0:
+        plaintext_message += """
+The following meetings are scheduled on a Saturday or Sunday:
+    """
+        for mtg in context["non_M_F_list"]:
+            plaintext_message += """
+    CRN: {0}, term: {1} ({2}) - day (string): {3}, {4}-{5}
+                """.format(mtg['CRN'], 
+                mtg['term_code'], 
+                mtg['course'],
+                mtg["day"],
+                mtg["begin_at"],
+                mtg["end_at"])
+
     plaintext_message += """
 Number of classes with partial meeting info: {0}
         """.format(str(num_incomplete_schedule_info))
@@ -943,6 +979,10 @@ iChair and Banner delivery methods are not in exact agreement -- this error need
     plaintext_message += """
 Number of classes scheduled in inactive rooms: {}
         """.format(context["number_scheduled_classes_in_inactive_rooms"])
+
+    plaintext_message += """
+Number of meetings scheduled on Saturday or Sunday: {}
+    """.format(context["number_non_M_F_meetings"])
 
     plaintext_message += """
 Number of errors: {0}
