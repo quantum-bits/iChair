@@ -71,7 +71,31 @@ TIME_ZONE = 'America/Indiana/Indianapolis'
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = 'en-us'
 
+# some discussion on how SITE_ID is used: https://github.com/maxking/docker-mailman/issues/12
+# the site name is saved in the database
 SITE_ID = 1
+
+# this overrides the DEFAULT_FROM_EMAIL in global_settings.py
+DEFAULT_FROM_EMAIL = 'no-reply@taylor.edu'
+
+# https://docs.djangoproject.com/en/4.0/topics/auth/passwords/#password-validation
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 9,
+        }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.

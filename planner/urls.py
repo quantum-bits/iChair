@@ -3,6 +3,10 @@ from django.conf.urls import include, url
 from planner import views as myapp_views
 from planner import api_views
 
+from django.contrib.auth import views as auth_views
+from django.urls import path
+from django.urls import reverse_lazy
+
 urlpatterns = [
     #'planner.views',
     # https://stackoverflow.com/questions/38744285/django-urls-typeerror-view-must-be-a-callable-or-a-list-tuple-in-the-case-of-in
@@ -91,5 +95,30 @@ urlpatterns = [
     url(r'^ajax/load-courses/$', api_views.load_courses, name='ajax_load_courses'),
     url(r'^ajax/add-faculty-view-list/$', api_views.update_view_list, name='ajax_update_view_list'),
 
+    # https://ordinarycoders.com/blog/article/django-password-reset
+    # https://github.com/macropin/django-registration
+    path('password/reset/confirm/<uidb64>/<token>/',
+         auth_views.PasswordResetConfirmView.as_view(
+             success_url=reverse_lazy('auth_password_reset_complete')),
+         name='auth_password_reset_confirm'),
+
+
+    #path('password/change/',
+    #     auth_views.PasswordChangeView.as_view(
+    #         success_url=reverse_lazy('auth_password_change_done')),
+    #     name='auth_password_change'),
+    #path('password/change/done/',
+    #     auth_views.PasswordChangeDoneView.as_view(),
+    #     name='auth_password_change_done'),
+    path('password/reset/',
+         auth_views.PasswordResetView.as_view(
+             success_url=reverse_lazy('auth_password_reset_done')),
+         name='auth_password_reset'),
+    path('password/reset/complete/',
+         auth_views.PasswordResetCompleteView.as_view(),
+         name='auth_password_reset_complete'),
+    path('password/reset/done/',
+         auth_views.PasswordResetDoneView.as_view(),
+         name='auth_password_reset_done'),
 
 ]

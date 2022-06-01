@@ -12,6 +12,7 @@ urlpatterns = [#'',# is '' OK?
     url(r'^planner/', include('planner.urls')),
 
     url(r'^accounts/', include('django.contrib.auth.urls')),
+    #url(r'^accounts/login/', include('django.contrib.auth.urls')),
 
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
     url(r'^admin/', admin.site.urls),

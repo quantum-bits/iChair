@@ -15,6 +15,8 @@ import json as simplejson
 from django.core.mail import EmailMultiAlternatives
 from django.contrib.sites.models import Site
 
+from django.contrib.auth.forms import PasswordResetForm
+
 from .models import *
 from .forms import *
 from .helper_functions import *
@@ -130,7 +132,6 @@ def render_to_pdf(template_src, context_dict={}):
 
 #ALL_FACULTY_DIV_ID = 100001
 #UNDERASSIGNED_LOAD_DIV_ID = 100002
-
 
 @login_required
 def home(request):
