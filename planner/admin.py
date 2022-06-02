@@ -16,6 +16,19 @@ from banner.models import Building as BannerBuilding
 from banner.models import Room as BannerRoom
 from banner.models import DeliveryMethod as BannerDeliveryMethod
 
+from django.contrib import admin
+from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin
+
+# the following User registration code is taken/modified from https://realpython.com/manage-users-in-django-admin/
+# Unregister the provided model admin
+admin.site.unregister(User)
+
+# Register out own model admin, based on the default UserAdmin
+@admin.register(User)
+class CustomUserAdmin(UserAdmin):
+    list_display = ('username', 'email', 'last_name', 'first_name', 'is_active', 'is_staff', 'is_superuser', 'last_login',) 
+
 class MultiDBModelAdmin(admin.ModelAdmin):
     # https://docs.djangoproject.com/en/2.2/topics/db/multi-db/
     # A handy constant for the name of the alternate database.

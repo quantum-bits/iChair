@@ -101,15 +101,13 @@ urlpatterns = [
          auth_views.PasswordResetConfirmView.as_view(
              success_url=reverse_lazy('auth_password_reset_complete')),
          name='auth_password_reset_confirm'),
-
-
-    #path('password/change/',
-    #     auth_views.PasswordChangeView.as_view(
-    #         success_url=reverse_lazy('auth_password_change_done')),
-    #     name='auth_password_change'),
-    #path('password/change/done/',
-    #     auth_views.PasswordChangeDoneView.as_view(),
-    #     name='auth_password_change_done'),
+    path('password/change/',
+         auth_views.PasswordChangeView.as_view(
+             success_url=reverse_lazy('auth_password_change_done')),
+         name='auth_password_change'),
+    path('password/change/done/',
+         auth_views.PasswordChangeDoneView.as_view(),
+         name='auth_password_change_done'),
     path('password/reset/',
          auth_views.PasswordResetView.as_view(
              success_url=reverse_lazy('auth_password_reset_done')),

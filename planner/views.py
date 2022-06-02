@@ -1683,6 +1683,8 @@ def weekly_schedule(request):
     idnum = 0
     prof_id = 0
     
+    json_professor_data = {}
+
     for faculty_member in user_preferences.faculty_to_view.all().order_by('last_name'):
         #user_preferences.faculty_to_view.filter(department=department).order_by('last_name'):
         prof_id = prof_id + 1
@@ -1725,27 +1727,58 @@ def weekly_schedule(request):
                         if scheduled_class.end_at.hour > 16:
                             courses_after_five = True
 
+                # we work out the schedule both in a flexible-sized approach, as well as in a fixed-size approach....
                 schedule = initialize_canvas_data(courses_after_five, num_data_columns)
+                fixed_size_schedule = initialize_canvas_data(courses_after_five, num_data_columns)
 
-                grid_list, filled_row_list, table_text_list = create_schedule_grid(schedule, weekdays, 'MWF')
-                table_text_list.append([schedule['width']/2,schedule['border']/2,
+                fixed_size_grid_list, fixed_size_filled_row_list, fixed_size_table_text_list = create_schedule_grid(fixed_size_schedule, weekdays, 'MWF')
+                
+                 ###
+                # begin flex schedule code
+                ###
+                master_dict={}
+                min_hour = 7
+                for day in weekdays:
+                    master_dict[day]={7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[],17:[],18:[],19:[],20:[],21:[],22:[],23:[]}
+                ###
+                # end flex schedule code
+                ###
+                
+                fixed_size_table_text_list.append([fixed_size_schedule['width']/2, fixed_size_schedule['border']/2,
                                         table_title,
-                                        schedule['table_title_font'],
-                                        schedule['table_header_text_colour']])
+                                        fixed_size_schedule['table_title_font'],
+                                        fixed_size_schedule['table_header_text_colour']])
 
-                box_list = []
-                box_label_list = []
+                fixed_size_box_list = []
+                fixed_size_box_label_list = []
 
                 conflict_check_dict = {0:[],1:[],2:[],3:[],4:[]}
                 offering_dict = {}
                 for course_offering in filtered_course_offering_list:
                     co_id = str(course_offering.id)
                     for scheduled_class in course_offering.scheduled_classes.all():
-                        box_data, course_data, room_data = rectangle_coordinates_schedule(schedule, scheduled_class,
+                        ###
+                        # begin flex schedule code
+                        ###
+                        half_sem_text = ''
+                        if not scheduled_class.course_offering.is_full_semester():
+                            half_sem_text = ' ('+'\u00BD'+' sem)'
+                        data_this_class=[scheduled_class.course_offering.course.subject.abbrev+scheduled_class.course_offering.course.number+half_sem_text]
+                        if scheduled_class.course_offering.crn is not None and scheduled_class.course_offering.crn != '':
+                            data_this_class.append('CRN: '+scheduled_class.course_offering.crn)
+                        for instructor in scheduled_class.course_offering.instructor.all():
+                            data_this_class.append(instructor.last_name)
+                        
+                        master_dict = update_master_dict(master_dict, scheduled_class, data_this_class, min_hour)
+                        ###
+                        # end flex schedule code
+                        ###
+
+                        fixed_size_box_data, course_data, room_data = rectangle_coordinates_schedule(fixed_size_schedule, scheduled_class,
                                                                                         scheduled_class.day,course_offering.is_full_semester())
-                        box_list.append(box_data)
-                        box_label_list.append(course_data)
-                        box_label_list.append(room_data)
+                        fixed_size_box_list.append(fixed_size_box_data)
+                        fixed_size_box_label_list.append(course_data)
+                        fixed_size_box_label_list.append(room_data)
                         conflict_check_dict[scheduled_class.day].append([scheduled_class.begin_at.hour*100+scheduled_class.begin_at.minute,
                                                                         scheduled_class.end_at.hour*100+scheduled_class.end_at.minute,
                                                                         course_offering.course.subject.abbrev+' '+course_offering.course.number])
@@ -1760,6 +1793,28 @@ def weekly_schedule(request):
 
             # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
             # format for text is: [xcenter, ycenter, text_string, font, text_colour]
+
+                ###
+                # begin flex schedule code
+                ###
+                canvas_height, height_hour_blocks_dict = determine_schedule_heights(master_dict, schedule, \
+                        min_hour, courses_after_five)
+
+                schedule['height_hour_block_dict'] = height_hour_blocks_dict
+                schedule['height'] = canvas_height
+                # replace width by a greater width than normal            
+                #schedule['width_day'] = 2*schedule['width_day']
+                canvas_width = 2*schedule['border']+5*schedule['width_day']+schedule['width_hour_names']
+                schedule['width'] = canvas_width
+                grid_list, filled_row_list, table_text_list = create_flexible_schedule_grid(schedule, weekdays, 'MWF')
+                box_list, box_label_list = create_box_list(master_dict, schedule)
+                table_text_list.append([schedule['width']/2,schedule['border']/2,
+                        table_title,
+                        schedule['table_title_font'],
+                        schedule['table_header_text_colour']])
+                ###
+                # end flex schedule code
+                ###
 
                 json_box_list = simplejson.dumps(box_list)
                 json_box_label_list = simplejson.dumps(box_label_list)
@@ -1779,18 +1834,34 @@ def weekly_schedule(request):
 
                 data_this_professor.append({'prof_id': prof_id,
                                             'faculty_name': faculty_member.first_name[0]+'. '+faculty_member.last_name,
-                                            'json_box_list': json_box_list,
-                                            'json_box_label_list':json_box_label_list,
-                                            'json_grid_list': json_grid_list,
-                                            'json_filled_row_list': json_filled_row_list,
-                                            'json_table_text_list': json_table_text_list,
                                             'id':id,
                                             'schedule':schedule,
                                             'conflict':error_messages,
                                             'offerings': offering_list})
+                json_professor_data[id] = {
+                    'box_list': box_list,
+                    'box_label_list':box_label_list,
+                    'grid_list': grid_list,
+                    'filled_row_list': filled_row_list,
+                    'table_text_list': table_text_list,
+                    'fixed_size_box_list': fixed_size_box_list,
+                    'fixed_size_box_label_list':fixed_size_box_label_list,
+                    'fixed_size_grid_list': fixed_size_grid_list,
+                    'fixed_size_filled_row_list': fixed_size_filled_row_list,
+                    'fixed_size_table_text_list': fixed_size_table_text_list,
+                    'schedule': schedule,
+                    'fixed_size_schedule': fixed_size_schedule
+                } 
+
         data_list.append(data_this_professor)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={
+        'json_professor_data': simplejson.dumps(json_professor_data),
+        'data_list': data_list, 
+        'year': academic_year_string, 
+        'id': user_preferences.id, 
+        'department': user_preferences.department_to_view
+        }
     return render(request, 'weekly_schedule.html', context)
 
 @login_required

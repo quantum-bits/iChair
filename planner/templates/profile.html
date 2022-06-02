@@ -34,6 +34,7 @@
 	  <th>Academic Year (<a href="{% url 'update_year_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
 	  <td>{{ academic_year }}</td>
 	</tr>
+	<!--
 	<tr>
 	  <th>Faculty (<a href="{% url 'update_faculty_to_view' %}?next={{request.path|urlencode }}">Edit</a>)</th>
 	  <td>
@@ -54,7 +55,6 @@
 	    {% endfor %}
 	  </td>
 	</tr>
-	<!--
 	<tr>
 	  <th>Non-Teaching Loads (<a href="{% url 'update_loads_to_view' id %}?next={{request.path|urlencode }}">Edit</a>)</th>
 	  <td>
@@ -68,7 +68,11 @@
 	-->
       </tbody>
     </table>
- </div>
+</div>
+<div style="padding-bottom: 10px">
+	<a class="btn btn-info" href="{% url 'auth_password_change' %}?next={{ request.path|urlencode }}">
+		Update Password</a>
+</div>
   <script>
     $(window).load(function(){
     $("#nav-profile").addClass("current");

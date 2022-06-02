@@ -10,6 +10,14 @@
 <p><a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" class="btn btn-info" href="{% url 'update_faculty_to_view' %}?next={{ request.path|urlencode }}">Manage Faculty</a>
 </p>
 
+<script>
+  var showFlexibleSchedule = {};
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries
+  for ([key, value] of Object.entries({{json_professor_data|safe}})) {
+    showFlexibleSchedule[key] = true;
+  };
+</script>
+
  <div id="year-accordion" class="accordion">
 {% for prof_data in data_list %}
    <div class="accordion-group">
@@ -36,8 +44,9 @@
    {% endfor %}
 {% endif %}
       
+<div>
 {% if data.offerings and can_edit %}
-  <div class="dropdown">
+  <span class="dropdown">
     <button class="btn btn-info dropdown-toggle" type="button" data-toggle="dropdown">Edit Days, Times & Rooms
     <span class="caret"></span></button>
     <ul class="dropdown-menu">
@@ -45,21 +54,80 @@
       <li><a href="{% url 'update_class_schedule' course.id 0 %}?next={{ request.path|urlencode }}">{{course.name}}</a></li>
       {% endfor %}
     </ul>
-  </div>
+  </span>
 {% endif %}
+  <span>
+    <!-- https://stackoverflow.com/questions/23443579/how-to-stop-buttons-from-staying-depressed-with-bootstrap-3 -->
+    <button class="btn btn-info" onclick="drawSchedule('{{data.id}}')" onmousedown="event.preventDefault()" id="toggle-{{data.id}}">Schedule</button>
+  </span>
+</div>
       
-<canvas id="{{data.id}}" width="{{data.schedule.width}}" height="{{data.schedule.height}}"></canvas>
+<canvas id="{{data.id}}"></canvas>
 
   <script>
-    var canvas = document.getElementById("{{data.id}}");
+    $(function() {
+      drawSchedule("{{data.id}}", false);
+    });
+  </script>
+
+{% endfor %}
+
+</div>
+</div>
+</div>
+{% endfor %}
+</div>
+
+<script>
+  function drawSchedule(id, toggle = true) {
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Default_parameters
+    let professorData = {{json_professor_data|safe}};
+  
+    let line_list;
+    let filled_row_list;
+    let box_list;
+    let table_text_list;
+    let box_label_list;
+    let grid_line_width;
+    let grid_line_colour;
+    // https://stackoverflow.com/questions/7196212/how-to-create-dictionary-and-add-key-value-pairs-dynamically?rq=1
+    // https://stackoverflow.com/questions/9251480/set-canvas-size-using-javascript/9251497
+    
+    if (toggle) {
+      this.showFlexibleSchedule[id] = !this.showFlexibleSchedule[id];
+    }
+  
+    if (this.showFlexibleSchedule[id]) {
+      line_list = professorData[id].grid_list;
+      filled_row_list = professorData[id].filled_row_list;
+      box_list = professorData[id].box_list;
+      table_text_list = professorData[id].table_text_list;
+      box_label_list = professorData[id].box_label_list;
+      grid_line_width = professorData[id].schedule.grid_line_width;
+      grid_line_colour = professorData[id].schedule.grid_line_colour;
+      width = professorData[id].schedule.width;
+      height = professorData[id].schedule.height;
+      //https://www.w3schools.com/jsref/prop_html_innerhtml.asp
+      document.getElementById("toggle-"+id).innerHTML = "Switch to Fixed View";
+    } else {
+      line_list = professorData[id].fixed_size_grid_list;
+      filled_row_list = professorData[id].fixed_size_filled_row_list;
+      box_list = professorData[id].fixed_size_box_list;
+      table_text_list = professorData[id].fixed_size_table_text_list;
+      box_label_list = professorData[id].fixed_size_box_label_list;
+      grid_line_width = professorData[id].fixed_size_schedule.grid_line_width;
+      grid_line_colour = professorData[id].fixed_size_schedule.grid_line_colour;
+      width = professorData[id].fixed_size_schedule.width;
+      height = professorData[id].fixed_size_schedule.height;
+      document.getElementById("toggle-"+id).innerHTML = "Switch to Flexible View";
+    }
+    
+    var canvas = document.getElementById(id);
     var context = canvas.getContext('2d');
-
-    var line_list = {{data.json_grid_list|safe}};
-    var filled_row_list = {{data.json_filled_row_list|safe}};
-    var box_list = {{data.json_box_list|safe}};
-    var table_text_list = {{data.json_table_text_list|safe}};
-    var box_label_list = {{data.json_box_label_list|safe}};
-
+    // https://www.w3schools.com/TAGs/tryit.asp?filename=tryhtml5_canvas_height_width_clear
+    canvas.width = width;
+    canvas.height = height;
+  
     for(var n = 0; n < filled_row_list.length; n++) {
       context.beginPath();
       context.rect(filled_row_list[n][0], filled_row_list[n][1], filled_row_list[n][2], filled_row_list[n][3]);
@@ -69,17 +137,17 @@
       context.strokeStyle = filled_row_list[n][6];
       context.stroke();
       }
-
+  
     for(var n = 0; n < line_list.length; n++) {
       context.beginPath();
       context.moveTo(line_list[n][0], line_list[n][1]);
       context.lineTo(line_list[n][2], line_list[n][3]);
-      context.lineWidth = {{data.schedule.grid_line_width}};
-      context.strokeStyle = "{{data.schedule.grid_line_colour}}";
+      context.lineWidth = grid_line_width;
+      context.strokeStyle = grid_line_colour;
       context.lineCap = 'square';		
       context.stroke();
       }
-
+  
     for(var n = 0; n < box_list.length; n++) {
       context.beginPath();
       context.rect(box_list[n][0], box_list[n][1], box_list[n][2], box_list[n][3]);
@@ -89,7 +157,7 @@
       context.strokeStyle = box_list[n][6];
       context.stroke();
       }
-
+  
     for(var n = 0; n < box_label_list.length; n++) {
       context.textAlign = 'center';
       context.textBaseline = 'middle';		       
@@ -97,7 +165,7 @@
       context.font = box_label_list[n][3];
       context.fillText(box_label_list[n][2],box_label_list[n][0],box_label_list[n][1]);
       }
-
+  
     for(var n = 0; n < table_text_list.length; n++) {
       context.textAlign = 'center';
       context.textBaseline = 'middle';		       
@@ -105,15 +173,18 @@
       context.font = table_text_list[n][3];
       context.fillText(table_text_list[n][2],table_text_list[n][0],table_text_list[n][1]);
       }
-
+  
+  
+    //var canvas = document.getElementById("{{data.id}}");
+    //var roomsInUse = {{json_rooms_in_use|safe}};
+    //for (var n=0; n < roomsInUse.length; n++) {
+    //	document.getElementById('cboxtd'+roomsInUse[n]).style.backgroundColor = '#dff0d8';
+      //document.getElementById('use'+roomsInUse[n]).style.color = '#468847';
+    //};
+  };
   </script>
-{% endfor %}
+  
 
-</div>
-</div>
-</div>
-{% endfor %}
-</div>
 
 
   <script>
