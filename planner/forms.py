@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from .models import *
 from django.forms.widgets import RadioSelect
+from .constants import NO_OVERLAP_TIME_BLOCKS, ENDING_BEFORE_BEGINNING_TIME
 
 class RequirementForm(forms.ModelForm):
     class Meta:
@@ -320,15 +321,22 @@ class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
     class Meta:
         fields = "__all__"
     def clean(self):
-        if any(self.errors):
-            return
+
+        #if any(self.errors):
+        #    print(self.errors)
+        #    for subform in self.forms:
+        #        print(subform.errors)
+        #    don't let it return; needs to run to the end to see if there are any other errors....
+        #    return
+
         begin_times = []
         end_times = []
 
         day_schedules = {0:[], 1:[], 2:[], 3:[], 4:[]}
+
         for subform in self.forms:
-# need to do a "try/except" here b/c the form could have some blank rows if the user skips
-# down and enters data a few rows down....
+            # need to do a "try/except" here b/c the form could have some blank rows if the user skips
+            # down and enters data a few rows down....
             try:
                 begin_time = subform.cleaned_data['begin_at']
                 end_time = subform.cleaned_data['end_at']
@@ -336,13 +344,13 @@ class BaseClassScheduleFormset(forms.models.BaseInlineFormSet):
                 begin_time_decimal = convert_time_to_decimal(begin_time)
                 end_time_decimal = convert_time_to_decimal(end_time)
                 if end_time_decimal <= begin_time_decimal:
-                    raise forms.ValidationError("Ending time must be after beginning time.")
+                    raise forms.ValidationError(ENDING_BEFORE_BEGINNING_TIME)
 
                 for time_block in day_schedules[day]:
                     if (begin_time_decimal < time_block[1] and begin_time_decimal > time_block[0]
                         ) or (end_time_decimal < time_block[1] and end_time_decimal > time_block[0]
                         ) or (begin_time_decimal <= time_block[0] and end_time_decimal >= time_block[1]):
-                        raise forms.ValidationError("Time blocks for a given day within a course offering cannot overlap.")
+                        raise forms.ValidationError(NO_OVERLAP_TIME_BLOCKS)
 
                 day_schedules[day].append([begin_time_decimal, end_time_decimal])
             except KeyError:

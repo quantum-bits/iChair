@@ -2515,7 +2515,11 @@ var app = new Vue({
       }
 
       this.editMeetings.forEach(meeting => {
-        if (meeting.id !== null && meeting.delete === true) {
+        // https://www.w3schools.com/jsref/jsref_trim_string.asp
+        meeting.begin_at = meeting.begin_at.trim();
+        meeting.end_at = meeting.end_at.trim();
+        if (meeting.id !== null && (meeting.delete === true || (meeting.begin_at === "" && meeting.end_at === "")))  {
+          // if the user manually deletes both the start and end times, presumably they want to delete the meeting itself....
           meetingsToDelete.push(meeting.id);
         } else if (meeting.delete === false) {
           // check if need to make updates....

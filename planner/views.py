@@ -48,9 +48,7 @@ from django.core.files.base import ContentFile
 import io
 
 from four_year_plan.secret import ADMIN_EMAIL, NO_REPLY_EMAIL
-
-ALL_SEMESTERS_ID = -1
-NO_ROOM_SELECTED_ID = -1
+from .constants import NO_OVERLAP_TIME_BLOCKS, ENDING_BEFORE_BEGINNING_TIME, ALL_SEMESTERS_ID, NO_ROOM_SELECTED_ID
 
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
 def render_to_pdf(template_src, context_dict={}):
@@ -1523,18 +1521,40 @@ def update_class_schedule(request,id, daisy_chain):
 
         #print("after including request.POST....")
         #for subform in formset:
-        #    print(subform['id'].value(), type(subform['id'].value()), subform['day'].value())
-    
+        #    print('id: ',subform['id'].value(), type(subform['id'].value()), subform['day'].value())
 
         formset.is_valid()
         formset_error=formset.non_form_errors()
-
-        if formset.is_valid() and (not formset_error):
         
+        #print('non_form_errors as data: ', formset.non_form_errors().as_data())
+        return_to_form = False
+        for error in formset.non_form_errors().as_data():
+            # https://stackoverflow.com/questions/10307996/python-how-to-print-the-message-inside-validationerror
+            #print(error.message)
+            if error.message == NO_OVERLAP_TIME_BLOCKS:
+                return_to_form = True
+                #print('>>>>error! ', NO_OVERLAP_TIME_BLOCKS)
+            elif error.message == ENDING_BEFORE_BEGINNING_TIME:
+                return_to_form = True
+                #print('>>>>error! ', ENDING_BEFORE_BEGINNING_TIME)
+            else:
+                print(">>>> not sure what this error is!")
+
+        # if a user deletes both times for a given meeting, they presumably have in mind to delete
+        # the actual meeting, but it will result in an error
+        if not return_to_form and not formset.is_valid():
+            # check to see if there is an error in one of the subforms
             for subform in formset:
-                #print(subform.cleaned_data)
-                #print("delete?", subform.cleaned_data.get('DELETE'))
-                #print("changed? ",subform.has_changed())
+                if subform.errors:
+                    if not start_and_end_times_blank(subform):
+                        # ignore errors associated with both the start and end times being left blank...we interpret that as the user wanting to delete the scheduled class
+                        return_to_form = True
+                    #else:
+                    #    print('>>>>looks like user wanted to delete this meeting...!')
+        
+        #if formset.is_valid() and (not formset_error):
+        if not return_to_form:       
+            for subform in formset:
                 # get the rooms selected for this scheduled class, if any
                 room_id_list = []
                 # https://stackoverflow.com/questions/36719569/how-to-get-all-post-data-from-a-request-in-django/36724506
@@ -1542,12 +1562,11 @@ def update_class_schedule(request,id, daisy_chain):
                     if key.startswith(subform['day'].id_for_label + '-rooms-'):
                         if int(request.POST[key]) != NO_ROOM_SELECTED_ID:
                             room_id_list.append(int(request.POST[key]))
-                #print("rooms: ", room_id_list)
                 
                 # check that rooms are not repeated; if so, condense down to unique rooms (should never happen)
                 # https://www.tutorialspoint.com/check-if-list-contains-all-unique-elements-in-python
                 if(len(set(room_id_list)) != len(room_id_list)): # oops...!  one or more values are repeated
-                    #print("uh oh...!  looks like there are one or more repeaterd rooms...list: ", room_id_list)
+                    #print("uh oh...!  looks like there are one or more repeated rooms...list: ", room_id_list)
                     # https://www.geeksforgeeks.org/python-convert-set-into-a-list/
                     room_id_list = list(set(room_id_list))
                     #print("...fixed the problem; new list: ", room_id_list)
@@ -1555,26 +1574,31 @@ def update_class_schedule(request,id, daisy_chain):
                 if subform.has_changed():
                     #print('form id before update: ', subform["id"].value(), type(subform["id"].value()))
                     if (not subform.cleaned_data.get('DELETE')): # not marked for deletion
-                        scheduled_class = subform.save()
-                        # now update the rooms, in case they've been changed
-                        room_set_success = set_rooms_for_scheduled_class(scheduled_class, room_id_list)
-                        if not room_set_success:
-                            print("something went wrong with setting the rooms for this scheduled class! ", scheduled_class, room_id_list)
-                        
+                        # here we need to manually check if there are subform errors and then act accordingly
+                        if not subform.errors:
+                            # proceed as normal....
+                            scheduled_class = subform.save()
+                            # now update the rooms, in case they've been changed
+                            room_set_success = set_rooms_for_scheduled_class(scheduled_class, room_id_list)
+                            if not room_set_success:
+                                print("something went wrong with setting the rooms for this scheduled class! ", scheduled_class, room_id_list)
+                        elif start_and_end_times_blank(subform) and (subform.cleaned_data.get('id') is not None):
+                            # looks like the user wanted to delete this entry....
+                            deleted_scheduled_class = subform.cleaned_data.get('id').delete()
+                            #print(deleted_scheduled_class)
+                        elif not start_and_end_times_blank(subform):
+                            print(">>>>>>>>ERROR! It appears there were subform errors that did not get caught somehow!!!")
+                            print("    ", subform.errors.as_data())
+
                     elif subform.cleaned_data.get('id') is not None: # is marked for deletion; check if the scheduled class exists (if not, there's nothing to delete)
                         deleted_scheduled_class = subform.cleaned_data.get('id').delete()
-                        #print(deleted_scheduled_class)
                 else:
                     # subform has not "changed" as far as django is concerned, but django is not keeping track of the rooms, so we need to do some manual checking
-                    #print('form not changed; form id before update: ', subform["id"].value(), type(subform["id"].value()))
-                    #print('...and, rooms....: ', room_id_list)
                     if subform.cleaned_data.get('id') is not None:
                         # non-rooms part of form has not been changed, and scheduled class already exists
                         # (if non-rooms part of form has not been changed and there is no scheduled class, it means 
                         # a room has been assigned, but no time has been assigned...in that case we are simply ignoring
                         # the room request and failing silently....)
-                        #print("non-rooms part of form has not been changed, and scheduled class already exists")
-                        #print(subform["id"].value(), subform["id"])
                         scheduled_class = ScheduledClass.objects.get(pk=int(subform["id"].value()))
                         room_set_success = set_rooms_for_scheduled_class(scheduled_class, room_id_list)
                         if not room_set_success:
@@ -1619,13 +1643,25 @@ def update_class_schedule(request,id, daisy_chain):
                 errordict.update({'formset_error':formset_error})
             for subform in formset:
                 if subform.errors:
-                    errordict.update(subform.errors)
+                    if not start_and_end_times_blank(subform):
+                        errordict.update(subform.errors)
 
             return render(request, 'update_class_schedule.html', dict)
     else:
 
         # User is not submitting the form; show them the blank add create your own course form
         return render(request, 'update_class_schedule.html', dict)
+
+def start_and_end_times_blank(subform):
+    # this method check if the errors in a class schedule form are due to both the starting and ending times being left blank
+    # https://www.journaldev.com/23625/python-trim-string-rstrip-lstrip-strip
+    both_blank = False
+    if subform.errors:
+        errors_this_subform = subform.errors.as_data()
+        if 'begin_at' in errors_this_subform.keys() and 'end_at' in errors_this_subform.keys() and len(errors_this_subform.keys()):
+            if subform['begin_at'].value().strip() == "" and subform['end_at'].value().strip() == "":
+                both_blank = True
+    return both_blank
 
 def set_rooms_for_scheduled_class(sc, room_id_list):
     """
