@@ -567,6 +567,96 @@
 
                             <template>
                                 <div class="text-center">
+                                    <v-dialog persistent v-model="deleteIChairCourseOfferingDialog" width="800">
+                                        <v-card>
+                                            <v-card-title class="headline grey lighten-2" primary-title>
+                                                Delete iChair Course Offering
+                                            </v-card-title>
+                                            <v-card-text class="pb-0">
+                                                <v-container grid-list-md>
+                                                    <v-layout wrap>
+                                                        <v-flex xs12>
+                                                            <strong>Delete this course offering from iChair?</strong>
+                                                        </v-flex>
+                                                        <v-flex xs2 offset-xs1>
+                                                            Course:
+                                                        </v-flex>
+                                                        <v-flex xs8>
+                                                            [[deleteIChairCourseOfferingDialogCourseText]]
+                                                        </v-flex>
+                                                        <v-flex xs2 offset-xs1>
+                                                            Semester:
+                                                        </v-flex>
+                                                        <v-flex xs8>
+                                                            [[deleteIChairCourseOfferingDialogSemester]]
+                                                        </v-flex>
+                                                        <v-flex xs2 offset-xs1>
+                                                            Meeting(s):
+                                                        </v-flex>
+                                                        <v-flex xs8>
+                                                            <div v-for="meeting in deleteIChairCourseOfferingDialogMeetings">
+                                                                [[meeting]]
+                                                            </div>
+                                                        </v-flex>
+                                                        <v-flex xs2 offset-xs1>
+                                                            Instructor(s):
+                                                        </v-flex>
+                                                        <v-flex xs8>
+                                                            <div v-for="instructor in deleteIChairCourseOfferingDialogInstructors">
+                                                                [[instructor]]
+                                                            </div>
+                                                        </v-flex>
+                                                        <v-flex xs12>
+                                                            Are you sure that you want to delete this course offering from iChair, 
+                                                            including associated information about days, times, rooms and professors? 
+                                                            <strong>This action is not reversible.</strong>  
+                                                            Note that you will only be deleting this course offering from this semester, 
+                                                            not from all semesters.
+                                                        </v-flex>
+                                                        <v-flex xs12>
+                                                            <strong>Note:</strong> This will delete this course offering from 
+                                                            iChair (it will not affect anything in Banner).
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    <!--
+                                                        deleteIChairCourseOfferingDialogItem
+                                                    <v-layout wrap>
+                                                        <v-flex xs10 offset-xs1>
+                                                            <v-radio-group v-model="courseChoice">
+                                                                <v-radio v-for="choiceItem in courseChoices"
+                                                                    :key="choiceItem.selectionId"
+                                                                    :label="choiceItem.text"
+                                                                    :value="choiceItem.selectionId" color="success">
+                                                                </v-radio>
+                                                            </v-radio-group>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                    -->
+                                                    <v-layout text-center>
+                                                        <v-flex xs12>
+                                                            <div class="red--text">
+                                                                [[newCourseOfferingDialogErrorMessage]]</div>
+                                                        </v-flex>
+                                                    </v-layout>
+                                                </v-container>
+                                            </v-card-text>
+                                            <v-divider class="ma-0"></v-divider>
+                                            <v-card-actions>
+                                                <v-spacer></v-spacer>
+                                                <v-btn color="primary" text @click="cancelDeleteIChairCourseOfferingDialog()">
+                                                    Cancel
+                                                </v-btn>
+                                                <v-btn color="primary" text @click="deleteIChairCourseOffering()">
+                                                    Yes, delete it!
+                                                </v-btn>
+                                            </v-card-actions>
+                                        </v-card>
+                                    </v-dialog>
+                                </div>
+                            </template>
+
+                            <template>
+                                <div class="text-center">
                                     <v-dialog persistent v-model="newCourseOfferingDialog" width="800">
                                         <v-card>
                                             <v-card-title class="headline grey lighten-2" primary-title>

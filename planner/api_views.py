@@ -369,6 +369,20 @@ def update_instructors_for_course_offering(request):
     }
     return JsonResponse(data)
 
+@login_required
+@csrf_exempt
+def delete_course_offering(request):
+    """Delete an iChair course offering; the assumption is that there is no corresponding Banner course offering."""
+    # should really pass the id in as part of the url in this case(!)...but OK.... :/
+    json_data = json.loads(request.body)
+    course_offering_id = json_data['courseOfferingId']
+    course_offering = CourseOffering.objects.get(pk=course_offering_id)
+    course_offering.delete()
+    data = {
+        'delete_successful': True,
+        'course_offering_id': course_offering_id
+    }
+    return JsonResponse(data)
 
 
 @login_required

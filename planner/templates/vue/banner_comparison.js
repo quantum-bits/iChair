@@ -4,6 +4,7 @@ const DO_NOTHING = -1;
 
 const CREATE_NEW_COURSE_OFFERING = -2;
 const DELETE_BANNER_COURSE_OFFERING = -3;
+const DELETE_ICHAIR_COURSE_OFFERING = -4;
 
 const DELTA_ACTION_CREATE = "create"; // used for delta course offerings; note that these are actions that the registrar is being asked to
 const DELTA_ACTION_UPDATE = "update"; // perform, not the actions that are being performed here on the delta objects
@@ -107,6 +108,7 @@ var app = new Vue({
       courseOfferings: [],
       numberPrimaryInstructorsIncorrectDialog: false, // set to true in order to display a message about the number of primary instructors being incorrect
       newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
+      deleteIChairCourseOfferingDialog: false, // true when the delete iChair course offering dialog is being displayed
       publicCommentsDialog: false, // true when the public comments dialog is being displayed
       commentForRegistrarDialog: false, // true when the comment for registrar dialog is being displayed
       commentForRegistrar: "", // used to stored a comment for the registrar
@@ -115,6 +117,12 @@ var app = new Vue({
       newCourseOfferingDialogItem: null, // the courseOfferings 'item' relevant for the new course offering dialog
       newCourseOfferingDialogCourseText: "", // some text displayed in the new course offering dialog
       newCourseOfferingDialogErrorMessage: "", // error message used in the new course offering dialog
+      deleteIChairCourseOfferingDialogItem: null, // the courseOfferings 'item' relevant for the delete iChair course offering dialog
+      deleteIChairCourseOfferingDialogCourseText: "", // some text displayed in the delete iChair course offering dialog
+      //deleteIChairCourseOfferingDialogErrorMessage: "", // error message used in the delete iChair course offering dialog
+      deleteIChairCourseOfferingDialogSemester: "", // semester for the iChair course to be deleted (used for display in delete iChair course offering dialog)
+      deleteIChairCourseOfferingDialogMeetings: [], // meeting information for the iChair course to be deleted (used for display in delete iChair course offering dialog)
+      deleteIChairCourseOfferingDialogInstructors: [], // instructor information for the iChair course to be deleted (used for display in delete iChair course offering dialog)
       dialog: false, // true when the dialog is being displayed
       dialogTitle: "",
       editInstructorsDialog: false, // true when the dialog is being displayed
@@ -440,6 +448,11 @@ var app = new Vue({
                   text:
                     "Request that the registrar create a new course offering to match this iChair course offering"
                 });
+                bannerChoices.push({
+                  selectionId: DELETE_ICHAIR_COURSE_OFFERING, //assuming that course offering ids are always non-negative
+                  text:
+                    "Delete this course offering in iChair"
+                });
 
                 if (course.delta === null) {
                   showBannerRadioSelect = true;
@@ -635,6 +648,8 @@ var app = new Vue({
       if (item.ichairChoice === CREATE_NEW_COURSE_OFFERING) {
         console.log("create a new course offering!");
         this.getCoursesForCourseOffering(item);
+      //} else if (item.ichairChoice === DELETE_ICHAIR_COURSE_OFFERING) {
+      //  console.log("delete ichair course offering!");
       } else if (item.ichairChoice === DELETE_BANNER_COURSE_OFFERING) {
         console.log("delete banner course offering!");
         // create a delta "delete" object
@@ -792,6 +807,96 @@ var app = new Vue({
         }
       });
     },
+
+    launchDeleteIChairCourseOfferingDialog(item) {
+      console.log(item);
+      let creditText = item.ichair.credit_hours === 1 ? " credit hour)" : " credit hours)";
+      this.deleteIChairCourseOfferingDialogCourseText =
+              item.ichair.course +
+              " - " +
+              item.ichair.course_title +
+              " (" + 
+              item.ichair.credit_hours +
+              creditText;
+      this.deleteIChairCourseOfferingDialogItem = JSON.parse(JSON.stringify(item));
+      this.deleteIChairCourseOfferingDialogSemester =  item.semester;
+      this.deleteIChairCourseOfferingDialogMeetings = [];
+      // https://stackoverflow.com/questions/10179815/get-loop-counter-index-using-for-of-syntax-in-javascript
+      for (let i = 0; i < item.ichair.meeting_times.length; i++) {
+        this.deleteIChairCourseOfferingDialogMeetings.push(
+          item.ichair.meeting_times[i] + " / " + item.ichair.rooms[i]
+        );
+      }
+      this.deleteIChairCourseOfferingDialogInstructors = [];
+      item.ichair.instructors_detail.forEach(instructor => {
+        this.deleteIChairCourseOfferingDialogInstructors.push(instructor.name);
+      });
+      this.deleteIChairCourseOfferingDialog = true;
+    },
+
+    cancelDeleteIChairCourseOfferingDialog() {
+      //this.newCourseOfferingDialogErrorMessage = "";
+      this.deleteIChairCourseOfferingDialog = false;
+      this.deleteIChairCourseOfferingDialogSemester = "";
+      this.deleteIChairCourseOfferingDialogMeetings = [];
+      this.deleteIChairCourseOfferingDialogInstructors = [];
+      //reset the choice change that launched the dialog in the first place
+      this.courseOfferings.forEach(item => {
+        if (item.index === this.deleteIChairCourseOfferingDialogItem.index) {
+          item.bannerChoice = null;
+        }
+      })
+      this.deleteIChairCourseOfferingDialogItem = null; // we had made a copy of the item (using the JSON.parse() trick), so we're OK to set it to null
+    },
+
+    deleteIChairCourseOffering() {
+      console.log('delete the following:', this.deleteIChairCourseOfferingDialogItem.ichair.course_offering_id);
+      var _this = this;
+      $.ajax({
+        // first check to see which course objects are candidates for this course offering
+        type: "POST",
+        url: "/planner/ajax/delete-course-offering/",
+        dataType: "json",
+        data: JSON.stringify({
+          courseOfferingId: this.deleteIChairCourseOfferingDialogItem.ichair.course_offering_id
+        }),
+        success: function(jsonResponse) {
+          console.log("response: ", jsonResponse);
+          _this.removeUnlinkedIChairItemFromCourseOfferings(
+            null,
+            jsonResponse.course_offering_id
+          );
+          _this.cancelDeleteIChairCourseOfferingDialog();
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          //_this.showCreateUpdateErrorMessage();
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
+    },
+
+    /* submitCourseChoice() {
+      // stored the courseOfferings 'item' in this.newCourseOfferingDialogItem; 
+      // trick to copy the item....
+      let item = JSON.parse(JSON.stringify(this.newCourseOfferingDialogItem));
+      let choice = this.courseChoice;
+      if (choice === null) {
+        this.newCourseOfferingDialogErrorMessage = "Please select one of the options."
+      } else if (choice === CREATE_NEW_COURSE) {
+        console.log('creating a new course for this course offering....');
+        this.cancelCourseOfferingDialog();
+        this.createNewCourse(item);
+      } else {
+        console.log('all appears to be good...creating the course offering!');
+        // createNewCourseOffering with this item, but first do some clean-up
+        this.cancelCourseOfferingDialog();
+        this.createNewCourseOffering(item, choice);
+      }
+    },
+    */
 
     getCoursesForCourseOffering(item) {
       // find the iChair courses that could correspond to a course offering that we wish to create;
@@ -1141,20 +1246,24 @@ var app = new Vue({
     },
     removeChoicesAndOptions(bannerCourseOfferingId, iChairCourseOfferingId) {
       // used after a banner course offering and an iChair course offering have been linked;
-      // removes these course offerings from the list of options for other course offerings
-      this.courseOfferings.forEach(item => {
-        item.bannerChoices = item.bannerChoices.filter(
-          choice => !this.removeChoice(choice, bannerCourseOfferingId)
-        );
-      });
+      // removes these course offerings from the list of options for other course offerings;
+      // can also be used after deleting an unlinked iChair course offering; in this case, 
+      // bannerCourseOfferingId is passed in as null
+      if (bannerCourseOfferingId !== null) {
+        this.courseOfferings.forEach(item => {
+          item.bannerChoices = item.bannerChoices.filter(
+            choice => !this.removeChoice(choice, bannerCourseOfferingId)
+          );
+        });
+        this.courseOfferings.forEach(item => {
+          item.bannerOptions = item.bannerOptions.filter(
+            option => !this.removeOption(option, bannerCourseOfferingId)
+          );
+        });
+      };
       this.courseOfferings.forEach(item => {
         item.ichairChoices = item.ichairChoices.filter(
           choice => !this.removeChoice(choice, iChairCourseOfferingId)
-        );
-      });
-      this.courseOfferings.forEach(item => {
-        item.bannerOptions = item.bannerOptions.filter(
-          option => !this.removeOption(option, bannerCourseOfferingId)
         );
       });
       this.courseOfferings.forEach(item => {
@@ -1181,7 +1290,9 @@ var app = new Vue({
       // this method is used after an iChair course offering is linked up with a banner course offering;
       // the iChair course offering was previously in the list, but now it should be popped out;
       // also, the banner course offering should be deleted as a choice in bannerOptions (listing of banner course objects) and
-      // bannerChoices (listing used for a radio select), and likewise for the (now linked) iChair course offering
+      // bannerChoices (listing used for a radio select), and likewise for the (now linked) iChair course offering;
+      // can also be used after deleting an unlinked iChair course offering; in this case, 
+      // bannerCourseOfferingId is passed in as null
       console.log("popping iChair item that is now linked....");
       console.log("course offerings length: ", this.courseOfferings.length);
       this.courseOfferings = this.courseOfferings.filter(
@@ -1195,6 +1306,7 @@ var app = new Vue({
         bannerCourseOfferingId,
         iChairCourseOfferingId
       );
+      console.log("course offerings length: ", this.courseOfferings.length);
     },
     onBannerCourseOfferingOptionChosen(item) {
       console.log("banner course offering chosen!", item.bannerChoice);
@@ -1224,6 +1336,9 @@ var app = new Vue({
           includeRoomComparisons: item.includeRoomComparisons
         };
         item.showBannerCourseOfferingRadioSelect = false;
+      } else if (item.bannerChoice === DELETE_ICHAIR_COURSE_OFFERING) {
+        console.log("delete ichair course offering!");
+        this.launchDeleteIChairCourseOfferingDialog(item);
       } else {
         console.log("add existing Banner course offering");
         // now need to pop this item out of the list of this.courseOfferings
@@ -1272,57 +1387,59 @@ var app = new Vue({
         console.log("data for post: ", dataForPost);
       }
 
-      $.ajax({
-        // initialize an AJAX request
-        type: "POST",
-        url: "/planner/ajax/generate-update-delta/",
-        dataType: "json",
-        data: JSON.stringify(dataForPost),
-        success: function(jsonResponse) {
-          console.log("in success: ", dataForPost);
-          console.log("back in response: ", jsonResponse);
-          if (!jsonResponse.number_ichair_primary_instructors_OK) {
-            item.numberPrimaryInstructorsIncorrectMessage = "There should be one primary instructor for this course offering in iChair.  Please fix this before requesting an instructor update from the registrar.";
+      if (item.bannerChoice !== DELETE_ICHAIR_COURSE_OFFERING) {
+        $.ajax({
+          // initialize an AJAX request
+          type: "POST",
+          url: "/planner/ajax/generate-update-delta/",
+          dataType: "json",
+          data: JSON.stringify(dataForPost),
+          success: function(jsonResponse) {
+            console.log("in success: ", dataForPost);
+            console.log("back in response: ", jsonResponse);
+            if (!jsonResponse.number_ichair_primary_instructors_OK) {
+              item.numberPrimaryInstructorsIncorrectMessage = "There should be one primary instructor for this course offering in iChair.  Please fix this before requesting an instructor update from the registrar.";
+            }
+            item.delta = jsonResponse.delta;
+            item.enrollmentCapsMatch =
+              jsonResponse.agreement_update.max_enrollments_match ||
+              item.delta.request_update_max_enrollment;
+            item.deliveryMethodsMatch =
+              jsonResponse.agreement_update.delivery_methods_match ||
+              item.delta.request_update_delivery_method;
+            item.publicCommentsMatch =
+              jsonResponse.agreement_update.public_comments_match ||
+              item.delta.request_update_public_comments;
+            item.instructorsMatch =
+              jsonResponse.agreement_update.instructors_match ||
+              item.delta.request_update_instructors;
+            item.schedulesMatch =
+              jsonResponse.agreement_update.meeting_times_match ||
+              item.delta.request_update_meeting_times;
+            item.semesterFractionsMatch =
+              jsonResponse.agreement_update.semester_fractions_match ||
+              item.delta.request_update_semester_fraction;
+            item.allOK =
+              item.enrollmentCapsMatch &&
+              item.instructorsMatch &&
+              item.schedulesMatch &&
+              item.semesterFractionsMatch &&
+              item.publicCommentsMatch &&
+              item.deliveryMethodsMatch;
+            console.log("item after delta update!", item);
+            console.log("all course offerings: ", _this.courseOfferings);
+            //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
+          },
+          error: function(jqXHR, exception) {
+            // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+            console.log(jqXHR);
+            _this.showCreateUpdateErrorMessage();
+            console.log("in error: ", dataForPost);
+            //_this.meetingFormErrorMessage =
+            //  "Sorry, there appears to have been an error.";
           }
-          item.delta = jsonResponse.delta;
-          item.enrollmentCapsMatch =
-            jsonResponse.agreement_update.max_enrollments_match ||
-            item.delta.request_update_max_enrollment;
-          item.deliveryMethodsMatch =
-            jsonResponse.agreement_update.delivery_methods_match ||
-            item.delta.request_update_delivery_method;
-          item.publicCommentsMatch =
-            jsonResponse.agreement_update.public_comments_match ||
-            item.delta.request_update_public_comments;
-          item.instructorsMatch =
-            jsonResponse.agreement_update.instructors_match ||
-            item.delta.request_update_instructors;
-          item.schedulesMatch =
-            jsonResponse.agreement_update.meeting_times_match ||
-            item.delta.request_update_meeting_times;
-          item.semesterFractionsMatch =
-            jsonResponse.agreement_update.semester_fractions_match ||
-            item.delta.request_update_semester_fraction;
-          item.allOK =
-            item.enrollmentCapsMatch &&
-            item.instructorsMatch &&
-            item.schedulesMatch &&
-            item.semesterFractionsMatch &&
-            item.publicCommentsMatch &&
-            item.deliveryMethodsMatch;
-          console.log("item after delta update!", item);
-          console.log("all course offerings: ", _this.courseOfferings);
-          //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
-        },
-        error: function(jqXHR, exception) {
-          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
-          console.log(jqXHR);
-          _this.showCreateUpdateErrorMessage();
-          console.log("in error: ", dataForPost);
-          //_this.meetingFormErrorMessage =
-          //  "Sorry, there appears to have been an error.";
-        }
-      });
+        });
+      }
     },
 
     removeBannerCourseOffering(courseOffering, bannerCourseOfferingId) {
