@@ -327,12 +327,16 @@ def update_instructors_for_course_offering(request):
     #enrollment_caps_match = False
     #sem_fractions_match = False
     
-    if user_department != course_department:
+    if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
         revised_co_snapshot = ico.snapshot
         updated_fields = ["offering_instructors"]
         if original_co_snapshot["load_available"] != revised_co_snapshot["load_available"]:
             updated_fields.append("load_available")
-        create_message_course_offering_update(user.username, user_department, course_department, year,
+        if user_preferences.permission_level == UserPreferences.SUPER:
+            user_department_param = None
+        else:
+            user_department_param = user_department
+        create_message_course_offering_update(user.username, user_department_param, course_department, year,
                                     original_co_snapshot, revised_co_snapshot, updated_fields)
 
     delta_response = None
@@ -401,14 +405,13 @@ def delete_course_offering(request):
     print('term code: ', term_code)
 
     course_offering = CourseOffering.objects.get(pk=course_offering_id)
+    original_co_snapshot = course_offering.snapshot
+    course_department = course_offering.course.subject.department
     # determine the subject and semester for the iChair course offering before deleting the course offering; might need these later to search for ichair_options
     subject = course_offering.course.subject
     semester = course_offering.semester
     course_offering.delete()
 
-    #WORKING HERE
-    # if this is an extra-departmental course offering, need to send a message to the other department...!
-    
     banner_options_for_unlinked_ichair_course_offerings = []
     department = Department.objects.get(pk=department_id)
     if has_banner:
@@ -447,6 +450,18 @@ def delete_course_offering(request):
                         "ico_id": ico_id,
                         "banner_options": banner_options
                     })
+
+    # if this is an extra-departmental course offering, need to send a message to the other department...!
+    if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
+        updated_fields = ["semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "delivery_method"]
+        if original_co_snapshot["comment"] != None:
+            updated_fields.append("comment")
+        if user_preferences.permission_level == UserPreferences.SUPER:
+            user_department_param = None
+        else:
+            user_department_param = user_department
+        create_message_course_offering_update(user.username, user_department_param, course_department, academic_year,
+                                    original_co_snapshot, None, updated_fields)
 
     data = {
         'delete_successful': True,
@@ -506,6 +521,7 @@ def create_course_offering(request):
     # first get the course and semester objects
     course = Course.objects.get(pk=course_id)
     semester = Semester.objects.get(pk=semester_id)
+    year = semester.year
     ichair_delivery_methods = DeliveryMethod.objects.filter(code=delivery_method["code"])
 
     print('is summer? ', semester.is_summer())
@@ -598,7 +614,18 @@ def create_course_offering(request):
         )
         public_comment.save()
 
-
+    # if this is an extra-departmental course offering, need to send a message to the other department...!
+    course_department = course_offering.course.subject.department
+    if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
+        revised_co_snapshot = course_offering.snapshot
+        updated_fields = ["semester", "semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "delivery_method"]
+        if user_preferences.permission_level == UserPreferences.SUPER:
+            user_department_param = None
+        else:
+            user_department_param = user_department
+        create_message_course_offering_update(user.username, user_department_param, course_department, year,
+                                    None, revised_co_snapshot, updated_fields)
+    
     # now should do the delta stuff and return that, too
     # >>> Note: if the room list is ever included (as above), will need to be more careful about the sorting
     # >>> that is done below, since the room list order and the meeting times order are correlated!
@@ -2898,12 +2925,17 @@ def update_public_comments_api(request):
                 pc_match = delta_response["request_update_public_comments"]
 
     if course_offering:
-        if user_department != course_department:
+        if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
             revised_co_snapshot = course_offering.snapshot
-            create_message_course_offering_update(user.username, user_department, course_department, year,
+            if user_preferences.permission_level == UserPreferences.SUPER:
+                user_department_param = None
+            else:
+                user_department_param = user_department
+            create_message_course_offering_update(user.username, user_department_param, course_department, year,
                                         original_co_snapshot, revised_co_snapshot, ["public_comments"])
         if (len(delete_ids) > 0) or (len(update_dict) > 0) or (len(create_dict) > 0):
             snapshot["public_comments"] = original_co_snapshot["public_comments"]
+
     data = {
         'snapshot': snapshot,
         'updates_successful': updates_successful,
@@ -3079,7 +3111,7 @@ def update_class_schedule_api(request):
         max_enrollment = course_offering.max_enrollment
         semester_fraction = course_offering.semester_fraction
 
-        if user_department != course_department:
+        if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
             revised_co_snapshot = course_offering.snapshot
             updated_fields = []
             if original_co_snapshot["semester_fraction"] != revised_co_snapshot["semester_fraction"]:
@@ -3087,7 +3119,11 @@ def update_class_schedule_api(request):
             updated_fields.append("scheduled_classes")
             if original_co_snapshot["max_enrollment"] != revised_co_snapshot["max_enrollment"]:
                 updated_fields.append("max_enrollment")
-            create_message_course_offering_update(user.username, user_department, course_department, year,
+            if user_preferences.permission_level == UserPreferences.SUPER:
+                user_department_param = None
+            else:
+                user_department_param = user_department
+            create_message_course_offering_update(user.username, user_department_param, course_department, year,
                                         original_co_snapshot, revised_co_snapshot, updated_fields)
 
     else:
@@ -3573,7 +3609,7 @@ def copy_course_offering_data_to_ichair(request):
             "comments": ico.comment_list(),
             "delivery_method": create_delivery_method_dict(ico.delivery_method)}
 
-        if user_department != course_department:
+        if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
             revised_co_snapshot = ico.snapshot
             updated_fields = []
             if snapshot_from_db["semester_fraction"] != revised_co_snapshot["semester_fraction"]:
@@ -3590,7 +3626,11 @@ def copy_course_offering_data_to_ichair(request):
                 updated_fields.append("public_comments")
             if 'delivery_method' in properties_to_update:
                 updated_fields.append("delivery_method")
-            create_message_course_offering_update(user.username, user_department, course_department, academic_year,
+            if user_preferences.permission_level == UserPreferences.SUPER:
+                user_department_param = None
+            else:
+                user_department_param = user_department
+            create_message_course_offering_update(user.username, user_department_param, course_department, academic_year,
                                                 snapshot_from_db, revised_co_snapshot, updated_fields)
 
     data = {

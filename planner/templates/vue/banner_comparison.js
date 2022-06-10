@@ -92,6 +92,7 @@ var app = new Vue({
         { text: "Semester", value: "semester" },
         { text: "Code", value: "termCode" },
         { text: "CRN", value: "crn" },
+        { text: "Linked?", value: "linked"},
         { text: "CMP", value: "campus"},
         {
           text: "Number",
@@ -1389,7 +1390,6 @@ var app = new Vue({
               _this.addBannerTitle(courseOfferingItem.ichair.course_id, courseOfferingItem.banner.course_title);
             }
           });
-          // WORKING HERE
           // now need to pop the banner option out of the list for any unlinked iChair course offerings
           _this.removeChoicesAndOptions(jsonResponse.banner_course_offering_id, null);
         },

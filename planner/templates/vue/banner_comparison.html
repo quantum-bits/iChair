@@ -233,6 +233,16 @@
                         <td>[[item.semester]] </td>
                         <td>[[item.termCode]] </td>
                         <td>[[item.crn]] </td>
+                        <td>
+                            <v-tooltip v-if="item.linked" top>
+                                <template v-slot:activator="{ on }">
+                                    <v-icon class="green--text" v-on="on">
+                                        mdi-link-variant
+                                    </v-icon>
+                                </template>
+                                <span>Banner and iChair course offerings both exist and are linked together.</span>
+                            </v-tooltip>
+                        </td>
                         <td>[[item.campus]] </td>
                         <td class="text-xs-left">[[item.course]]</td>
                         <td class="text-xs-left">[[item.name]] </td>
