@@ -499,16 +499,6 @@ def create_course_offering(request):
     user_department = user_preferences.department_to_view
     faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
 
-    """
-    day_sorter_dict = {
-        'M': 0,
-        'T': 1,
-        'W': 2,
-        'R': 3,
-        'F': 4
-    }
-    """
-
     #print(course_id)
     #print(semester_fraction)
     #print(max_enrollment)
@@ -729,16 +719,6 @@ def banner_comparison_data(request):
     include_room_comparisons = json_data['includeRoomComparisons']
 
     #print("include room comparisons?", include_room_comparisons)
-
-    """
-    day_sorter_dict = {
-        'M': 0,
-        'T': 1,
-        'W': 2,
-        'R': 3,
-        'F': 4
-    }
-    """
 
     semester_sorter_dict = {}
     counter = 0
@@ -1029,56 +1009,7 @@ def banner_comparison_data(request):
                     # look for possible ichair course offering matches for this unlinked banner course offering
 
                     ichair_options = construct_ichair_options(bco, semester, subject, department, academic_year, faculty_to_view_ids)
-                    """
-                    unlinked_ichair_course_offerings = find_unlinked_ichair_course_offerings(
-                        bco, semester, subject)
-                    #print('bco...', bco)
-                    #print('some iChair options:')
-                    for unlinked_ico in unlinked_ichair_course_offerings:
-                        #print(unlinked_ico)
-                        presorted_ico_meeting_times_list, presorted_ico_room_list = class_time_and_room_summary(
-                            unlinked_ico.scheduled_classes.all(), new_format = True)
-                        # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
-                        ico_meeting_times_list = sorted(
-                            presorted_ico_meeting_times_list, key=lambda item: (day_sorter_dict[item[:1]]))
-                        # sort the rooms so that the sort order matches that of the meeting times....
-                        ico_room_list = sort_rooms(presorted_ico_meeting_times_list, ico_meeting_times_list, presorted_ico_room_list)
 
-                        ico_instructors = construct_instructor_list(
-                            unlinked_ico, True)
-                        ico_instructors_detail = construct_ichair_instructor_detail_list(unlinked_ico)
-                        available_instructors = department.available_instructors(academic_year, unlinked_ico, faculty_to_view_ids)
-
-                        meeting_times_detail = construct_meeting_times_detail(unlinked_ico, True)
-                        course_offering_item["ichair_options"].append({
-                            "course_title": unlinked_ico.course.title,
-                            "comments": unlinked_ico.comment_list(),
-                            "delivery_method": create_delivery_method_dict(unlinked_ico.delivery_method),
-                            "course": unlinked_ico.course.subject.abbrev+' '+unlinked_ico.course.number,
-                            "number": unlinked_ico.course.number,
-                            "credit_hours": unlinked_ico.course.credit_hours,
-                            "course_offering_id": unlinked_ico.id,
-                            "course_id": unlinked_ico.course.id,
-                            "meeting_times": ico_meeting_times_list,
-                            "meeting_times_detail": meeting_times_detail,
-                            "rooms": ico_room_list,
-                            "instructors": ico_instructors,
-                            "instructors_detail": ico_instructors_detail,
-                            "available_instructors": available_instructors,
-                            "snapshot": unlinked_ico.snapshot,
-                            "change_can_be_undone": {
-                                "max_enrollment": False,
-                                "comments": False,
-                                "semester_fraction": False,
-                                "instructors": False,
-                                "meeting_times": False,
-                                "delivery_method": False,
-                            },
-                            "load_available": unlinked_ico.load_available,
-                            "semester": unlinked_ico.semester.name.name,
-                            "semester_fraction": int(unlinked_ico.semester_fraction),
-                            "max_enrollment": int(unlinked_ico.max_enrollment)})
-                    """
                     course_offering_item["ichair_options"] = ichair_options
                     # now check to see if there is a delta object with requested_action being of the "delete" type
                     delta_objects = DeltaCourseOffering.objects.filter(
@@ -1133,54 +1064,6 @@ def banner_comparison_data(request):
 
                 meeting_times_detail = construct_meeting_times_detail(ico, True)
 
-                """
-                unlinked_banner_course_offerings = find_unlinked_banner_course_offerings(
-                    ico, term_code, subject)
-
-                banner_options = []
-                for unlinked_bco in unlinked_banner_course_offerings:
-                    #print(unlinked_bco)
-                    if not allow_room_requests_this_semester:
-                        presorted_bco_meeting_times_list = class_time_and_room_summary(
-                            unlinked_bco.scheduled_classes.all(), include_rooms=False, new_format = True)
-                        bco_meeting_times_list = sorted(
-                            presorted_bco_meeting_times_list, key=lambda item: (DAY_SORTER_DICT[item[:1]]))
-                        bco_room_list = ['---' for mt in bco_meeting_times_list]
-                    else:
-                        presorted_bco_meeting_times_list, presorted_bco_room_list = class_time_and_room_summary(
-                            unlinked_bco.scheduled_classes.all(), new_format = True)
-                        # do some sorting so that the meeting times (hopefully) come out in the same order for the bco and ico cases....
-                        bco_meeting_times_list = sorted(
-                            presorted_bco_meeting_times_list, key=lambda item: (DAY_SORTER_DICT[item[:1]]))
-                        # sort the rooms so that the sort order matches that of the meeting times....
-                        bco_room_list = sort_rooms(presorted_bco_meeting_times_list, bco_meeting_times_list, presorted_bco_room_list)
-
-                    bco_instructors = construct_instructor_list(
-                        unlinked_bco)
-                    bco_instructors_detail = construct_instructor_detail_list(
-                        unlinked_bco)
-                    bco_meeting_times_detail = construct_meeting_times_detail(
-                        unlinked_bco, True)
-
-                    banner_options.append({
-                        "crn": unlinked_bco.crn,
-                        "campus": unlinked_bco.campus,
-                        "course_title": unlinked_bco.course.title,
-                        "comments": unlinked_bco.comment_list(),
-                        "delivery_method": create_delivery_method_dict(unlinked_bco.delivery_method),
-                        "course": unlinked_bco.course.subject.abbrev+' '+unlinked_bco.course.number,
-                        "number": unlinked_bco.course.number,
-                        "credit_hours": unlinked_bco.course.credit_hours,
-                        "course_offering_id": unlinked_bco.id,
-                        "meeting_times": bco_meeting_times_list,
-                        "rooms": bco_room_list,
-                        "meeting_times_detail": bco_meeting_times_detail,
-                        "instructors": bco_instructors,
-                        "instructors_detail": bco_instructors_detail,
-                        "term_code": unlinked_bco.term_code,
-                        "semester_fraction": int(unlinked_bco.semester_fraction),
-                        "max_enrollment": int(unlinked_bco.max_enrollment)})
-                """
                 banner_options = construct_banner_options(ico, term_code, subject, department, academic_year, faculty_to_view_ids, allow_room_requests_this_semester)
                 # now check to see if there is a delta object with requested_action being of the "create" type
                 delta_objects = DeltaCourseOffering.objects.filter(
@@ -3206,16 +3089,6 @@ def copy_course_offering_data_to_ichair(request):
     user_department = user_preferences.department_to_view
 
     faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
-
-    """
-    day_sorter_dict = {
-        'M': 0,
-        'T': 1,
-        'W': 2,
-        'R': 3,
-        'F': 4
-    }
-    """
 
     json_data = json.loads(request.body)
 

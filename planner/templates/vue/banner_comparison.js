@@ -354,51 +354,6 @@ var app = new Vue({
 
               if (!course.has_ichair) {
                 ichairChoices = _this.constructIChairChoices(course.ichair_options);
-
-                /*
-                course.ichair_options.forEach(ichairOption => {
-                  let creditText =
-                    ichairOption.credit_hours === 1
-                      ? " credit hour"
-                      : " credit hours";
-                  let meetingTimes =
-                    ichairOption.meeting_times.length === 0 ? ")" : "; ";
-                  ichairOption.meeting_times.forEach(mT => {
-                    meetingTimes = meetingTimes + mT + "; ";
-                  });
-                  if (meetingTimes.length >= 2) {
-                    // https://tecadmin.net/remove-last-character-from-string-in-javascript/
-                    //console.log("meeting times:", meetingTimes);
-                    meetingTimes = meetingTimes.substring(
-                      0,
-                      meetingTimes.length - 2
-                    ); // get rid of last trailing "; "
-                    meetingTimes = meetingTimes + ")";
-                  }
-                  ichairChoices.push({
-                    selectionId: ichairOption.course_offering_id,
-                    text:
-                      "Link with: " +
-                      ichairOption.course +
-                      ": " +
-                      ichairOption.course_title +
-                      " (" +
-                      ichairOption.credit_hours +
-                      creditText +
-                      meetingTimes +
-                      " (it can be edited afterward)"
-                  });
-                });
-                ichairChoices.push({
-                  selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
-                  text:
-                    "Create a new iChair course offering to match the Registrar's version"
-                });
-                ichairChoices.push({
-                  selectionId: DELETE_BANNER_COURSE_OFFERING,
-                  text: "Request that the Registrar delete this course offering"
-                });
-                */
                 if (course.delta === null) {
                   showIChairRadioSelect = true;
                 } else if (
@@ -414,52 +369,6 @@ var app = new Vue({
               let showBannerRadioSelect = false;
               if (!course.has_banner) {
                 bannerChoices = _this.constructBannerChoices(course.banner_options);
-                /*
-                course.banner_options.forEach(bannerOption => {
-                  let creditText =
-                    bannerOption.credit_hours === 1
-                      ? " credit hour"
-                      : " credit hours";
-                  let meetingTimes =
-                    bannerOption.meeting_times.length === 0 ? ")" : "; ";
-                  bannerOption.meeting_times.forEach(mT => {
-                    meetingTimes = meetingTimes + mT + "; ";
-                  });
-                  if (meetingTimes.length >= 2) {
-                    // https://tecadmin.net/remove-last-character-from-string-in-javascript/
-                    //console.log("meeting times:", meetingTimes);
-                    meetingTimes = meetingTimes.substring(
-                      0,
-                      meetingTimes.length - 2
-                    ); // get rid of last trailing "; "
-                    meetingTimes = meetingTimes + ")";
-                  }
-                  bannerChoices.push({
-                    selectionId: bannerOption.course_offering_id,
-                    text:
-                      "Link with: " +
-                      bannerOption.course +
-                      ": " +
-                      bannerOption.course_title +
-                      " (CRN " +
-                      bannerOption.crn +
-                      "; " +
-                      bannerOption.credit_hours +
-                      creditText +
-                      meetingTimes
-                  });
-                });
-                bannerChoices.push({
-                  selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
-                  text:
-                    "Request that the registrar create a new course offering to match this iChair course offering"
-                });
-                bannerChoices.push({
-                  selectionId: DELETE_ICHAIR_COURSE_OFFERING, //assuming that course offering ids are always non-negative
-                  text:
-                    "Delete this course offering in iChair"
-                });
-                */
 
                 if (course.delta === null) {
                   showBannerRadioSelect = true;
@@ -471,30 +380,7 @@ var app = new Vue({
                   showBannerRadioSelect = true;
                 }
               }
-              /*
-              if (course.has_ichair) {
-                course.ichair.meeting_times_detail.forEach( mtd => {
-                  if (mtd.room === null) {
-                    mtd.room = {
-                      id: NO_ROOM_SELECTED_ID,
-                      short_name: "-----",
-                      capacity: -1
-                    };
-                  }
-                });
-              }
-              if (course.has_banner) {
-                course.banner.meeting_times_detail.forEach( mtd => {
-                  if (mtd.room === null) {
-                    mtd.room = {
-                      id: NO_ROOM_SELECTED_ID,
-                      short_name: "-----",
-                      capacity: -1
-                    };
-                  }
-                });
-              }
-              */
+              
               _this.courseOfferings.push({
                 semester: course.semester,
                 semesterId: course.semester_id,
@@ -1040,26 +926,6 @@ var app = new Vue({
         }
       });
     },
-
-    /* submitCourseChoice() {
-      // stored the courseOfferings 'item' in this.newCourseOfferingDialogItem; 
-      // trick to copy the item....
-      let item = JSON.parse(JSON.stringify(this.newCourseOfferingDialogItem));
-      let choice = this.courseChoice;
-      if (choice === null) {
-        this.newCourseOfferingDialogErrorMessage = "Please select one of the options."
-      } else if (choice === CREATE_NEW_COURSE) {
-        console.log('creating a new course for this course offering....');
-        this.cancelCourseOfferingDialog();
-        this.createNewCourse(item);
-      } else {
-        console.log('all appears to be good...creating the course offering!');
-        // createNewCourseOffering with this item, but first do some clean-up
-        this.cancelCourseOfferingDialog();
-        this.createNewCourseOffering(item, choice);
-      }
-    },
-    */
 
     getCoursesForCourseOffering(item) {
       // find the iChair courses that could correspond to a course offering that we wish to create;
