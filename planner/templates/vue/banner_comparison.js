@@ -962,7 +962,6 @@ var app = new Vue({
       return unlinkedIds;
     },
 
-    //WORKING HERE
     deleteIChairCourseOffering() {
       console.log('delete the following:', this.deleteIChairCourseOfferingDialogItem.ichair.course_offering_id);
       var _this = this;
@@ -1390,6 +1389,9 @@ var app = new Vue({
               _this.addBannerTitle(courseOfferingItem.ichair.course_id, courseOfferingItem.banner.course_title);
             }
           });
+          // WORKING HERE
+          // now need to pop the banner option out of the list for any unlinked iChair course offerings
+          _this.removeChoicesAndOptions(jsonResponse.banner_course_offering_id, null);
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
@@ -1411,7 +1413,11 @@ var app = new Vue({
       // used after a banner course offering and an iChair course offering have been linked;
       // removes these course offerings from the list of options for other course offerings;
       // can also be used after deleting an unlinked iChair course offering; in this case, 
-      // bannerCourseOfferingId is passed in as null
+      // bannerCourseOfferingId is passed in as null;
+      // can also be used after creating a new iChair course offering and immediately linking
+      // it with its corresponding Banner course offering; in this case, iChairCourseOfferingId
+      // is passed in as null (only want to remove the Banner course offering as a choice or 
+      // option for other iChair course offerings)
       if (bannerCourseOfferingId !== null) {
         this.courseOfferings.forEach(item => {
           item.bannerChoices = item.bannerChoices.filter(
@@ -1424,16 +1430,18 @@ var app = new Vue({
           );
         });
       };
-      this.courseOfferings.forEach(item => {
-        item.ichairChoices = item.ichairChoices.filter(
-          choice => !this.removeChoice(choice, iChairCourseOfferingId)
-        );
-      });
-      this.courseOfferings.forEach(item => {
-        item.ichairOptions = item.ichairOptions.filter(
-          option => !this.removeOption(option, iChairCourseOfferingId)
-        );
-      });
+      if (iChairCourseOfferingId !== null) {
+        this.courseOfferings.forEach(item => {
+          item.ichairChoices = item.ichairChoices.filter(
+            choice => !this.removeChoice(choice, iChairCourseOfferingId)
+          );
+        });
+        this.courseOfferings.forEach(item => {
+          item.ichairOptions = item.ichairOptions.filter(
+            option => !this.removeOption(option, iChairCourseOfferingId)
+          );
+        });
+      }
     },
     removeIChairCourseOffering(courseOffering, iChairCourseOfferingId) {
       let returnValue = false;

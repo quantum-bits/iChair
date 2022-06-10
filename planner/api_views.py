@@ -680,7 +680,8 @@ def create_course_offering(request):
         'ichair_course_offering_data': ichair_course_offering_data,
         'agreement_update': agreement_update,
         'load_manipulation_performed': load_manipulation_performed,
-        'classrooms_unassigned': classrooms_unassigned
+        'classrooms_unassigned': classrooms_unassigned,
+        'banner_course_offering_id': banner_course_offering_id
     }
     return JsonResponse(data)
 
