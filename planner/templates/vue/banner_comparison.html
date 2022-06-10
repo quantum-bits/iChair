@@ -836,7 +836,6 @@
                                             :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
                                         </v-radio>
                                     </v-radio-group>
-                                    </iChair>
                                 </v-flex>
                             </v-layout>
 
@@ -850,7 +849,6 @@
                                             :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
                                         </v-radio>
                                     </v-radio-group>
-                                    </iChair>
                                 </v-flex>
                             </v-layout>
 
@@ -861,8 +859,29 @@
                                         <thead>
                                             <tr>
                                                 <th></th>
-                                                <th class="text-center">iChair</th>
-                                                <th class="undo-icon-container"></th>
+                                                <th class="text-center">
+                                                    iChair
+                                                </th>
+                                                <th class="undo-icon-container">
+                                                    <div v-if="!item.hasIChair"
+                                                            class="text-center">
+                                                            <v-icon class="grey--text text--lighten-1">
+                                                                mdi-delete
+                                                            </v-icon>
+                                                    </div>
+                                                    <v-tooltip v-else bottom>
+                                                        <template v-slot:activator="{ on }">
+                                                            <div class="text-center">
+                                                                <v-icon class="include-pointer" color="primary"
+                                                                    @click="launchDeleteIChairCourseOfferingDialog(item)"
+                                                                    v-on="on">
+                                                                    mdi-delete
+                                                                </v-icon>
+                                                            </div>
+                                                        </template>
+                                                        <span>Delete this course offering from iChair</span>
+                                                    </v-tooltip>
+                                                </th>
                                                 <th class="text-center">Actions</th>
                                                 <th class="text-center">Registrar</th>
                                                 <th class="text-center">

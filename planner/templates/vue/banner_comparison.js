@@ -352,6 +352,9 @@ var app = new Vue({
               let showIChairRadioSelect = false;
 
               if (!course.has_ichair) {
+                ichairChoices = _this.constructIChairChoices(course.ichair_options);
+
+                /*
                 course.ichair_options.forEach(ichairOption => {
                   let creditText =
                     ichairOption.credit_hours === 1
@@ -394,7 +397,7 @@ var app = new Vue({
                   selectionId: DELETE_BANNER_COURSE_OFFERING,
                   text: "Request that the Registrar delete this course offering"
                 });
-
+                */
                 if (course.delta === null) {
                   showIChairRadioSelect = true;
                 } else if (
@@ -409,6 +412,8 @@ var app = new Vue({
               let bannerChoices = [];
               let showBannerRadioSelect = false;
               if (!course.has_banner) {
+                bannerChoices = _this.constructBannerChoices(course.banner_options);
+                /*
                 course.banner_options.forEach(bannerOption => {
                   let creditText =
                     bannerOption.credit_hours === 1
@@ -453,6 +458,7 @@ var app = new Vue({
                   text:
                     "Delete this course offering in iChair"
                 });
+                */
 
                 if (course.delta === null) {
                   showBannerRadioSelect = true;
@@ -540,6 +546,102 @@ var app = new Vue({
         });
       }
     },
+    constructIChairChoices(ichairOptions) {
+      let ichairChoices = [];
+      ichairOptions.forEach(ichairOption => {
+        let creditText =
+          ichairOption.credit_hours === 1
+            ? " credit hour"
+            : " credit hours";
+        let meetingTimes =
+          ichairOption.meeting_times.length === 0 ? ")" : "; ";
+        ichairOption.meeting_times.forEach(mT => {
+          meetingTimes = meetingTimes + mT + "; ";
+        });
+        if (meetingTimes.length >= 2) {
+          // https://tecadmin.net/remove-last-character-from-string-in-javascript/
+          //console.log("meeting times:", meetingTimes);
+          meetingTimes = meetingTimes.substring(
+            0,
+            meetingTimes.length - 2
+          ); // get rid of last trailing "; "
+          meetingTimes = meetingTimes + ")";
+        }
+        ichairChoices.push({
+          selectionId: ichairOption.course_offering_id,
+          text:
+            "Link with: " +
+            ichairOption.course +
+            ": " +
+            ichairOption.course_title +
+            " (" +
+            ichairOption.credit_hours +
+            creditText +
+            meetingTimes +
+            " (it can be edited afterward)"
+        });
+      });
+      ichairChoices.push({
+        selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
+        text:
+          "Create a new iChair course offering to match the Registrar's version"
+      });
+      ichairChoices.push({
+        selectionId: DELETE_BANNER_COURSE_OFFERING,
+        text: "Request that the Registrar delete this course offering"
+      });
+      return ichairChoices;
+    },
+
+    constructBannerChoices(bannerOptions) {
+      let bannerChoices = [];
+      bannerOptions.forEach(bannerOption => {
+        let creditText =
+          bannerOption.credit_hours === 1
+            ? " credit hour"
+            : " credit hours";
+        let meetingTimes =
+          bannerOption.meeting_times.length === 0 ? ")" : "; ";
+        bannerOption.meeting_times.forEach(mT => {
+          meetingTimes = meetingTimes + mT + "; ";
+        });
+        if (meetingTimes.length >= 2) {
+          // https://tecadmin.net/remove-last-character-from-string-in-javascript/
+          //console.log("meeting times:", meetingTimes);
+          meetingTimes = meetingTimes.substring(
+            0,
+            meetingTimes.length - 2
+          ); // get rid of last trailing "; "
+          meetingTimes = meetingTimes + ")";
+        }
+        bannerChoices.push({
+          selectionId: bannerOption.course_offering_id,
+          text:
+            "Link with: " +
+            bannerOption.course +
+            ": " +
+            bannerOption.course_title +
+            " (CRN " +
+            bannerOption.crn +
+            "; " +
+            bannerOption.credit_hours +
+            creditText +
+            meetingTimes
+        });
+      });
+      bannerChoices.push({
+        selectionId: CREATE_NEW_COURSE_OFFERING, //assuming that course offering ids are always non-negative
+        text:
+          "Request that the registrar create a new course offering to match this iChair course offering"
+      });
+      bannerChoices.push({
+        selectionId: DELETE_ICHAIR_COURSE_OFFERING, //assuming that course offering ids are always non-negative
+        text:
+          "Delete this course offering in iChair"
+      });
+      return bannerChoices;
+    },
+
     deactivateScheduleRightArrow(item) {
       if (item.delta !== null) {
         if (
@@ -849,23 +951,84 @@ var app = new Vue({
       this.deleteIChairCourseOfferingDialogItem = null; // we had made a copy of the item (using the JSON.parse() trick), so we're OK to set it to null
     },
 
+    unlinkedIChairCourseOfferingIds() {
+      // returns a list of course offering ids for all currently unlinked iChair course offerings
+      unlinkedIds = [];
+      this.courseOfferings.forEach( courseOffering => {
+        if (courseOffering.hasIChair && !courseOffering.hasBanner) {
+          unlinkedIds.push(courseOffering.ichair.course_offering_id);
+        }
+      });
+      return unlinkedIds;
+    },
+
+    //WORKING HERE
     deleteIChairCourseOffering() {
       console.log('delete the following:', this.deleteIChairCourseOfferingDialogItem.ichair.course_offering_id);
       var _this = this;
       $.ajax({
-        // first check to see which course objects are candidates for this course offering
         type: "POST",
         url: "/planner/ajax/delete-course-offering/",
         dataType: "json",
         data: JSON.stringify({
-          courseOfferingId: this.deleteIChairCourseOfferingDialogItem.ichair.course_offering_id
+          courseOfferingId: this.deleteIChairCourseOfferingDialogItem.ichair.course_offering_id,
+          hasBanner: this.deleteIChairCourseOfferingDialogItem.hasBanner,
+          unlinkedIChairCourseOfferingIds: this.unlinkedIChairCourseOfferingIds(),
+          bannerCourseOfferingId: this.deleteIChairCourseOfferingDialogItem.hasBanner === false ? null : this.deleteIChairCourseOfferingDialogItem.banner.course_offering_id,
+          departmentId: json_data.departmentId,
+          yearId: json_data.yearId,
+          termCode: this.deleteIChairCourseOfferingDialogItem.termCode
         }),
         success: function(jsonResponse) {
           console.log("response: ", jsonResponse);
-          _this.removeUnlinkedIChairItemFromCourseOfferings(
-            null,
-            jsonResponse.course_offering_id
-          );
+          if (!_this.deleteIChairCourseOfferingDialogItem.hasBanner) {
+            // in this case, the iChair course was not linked to a Banner course offering, 
+            // so it was in the courseOfferings list and now needs to be popped out....
+            _this.removeUnlinkedIChairItemFromCourseOfferings(
+              null,
+              jsonResponse.course_offering_id
+            );
+          } else {
+            // the iChair course offering was linked with a Banner course offering, so now need to do some clean-up....
+            // first, clean up the courseOffering item that now only contains the banner course offering....
+            _this.courseOfferings.forEach(courseOfferingItem => {
+              if (_this.deleteIChairCourseOfferingDialogItem.index === courseOfferingItem.index) {
+                // found the one we're working on
+                courseOfferingItem.allOK = false;
+                courseOfferingItem.deliveryMethodsMatch = false;
+                courseOfferingItem.delta = null;
+                courseOfferingItem.enrollmentCapsMatch = false;
+                courseOfferingItem.hasIChair = false;
+                courseOfferingItem.ichair = null;
+                courseOfferingItem.ichairChoice = null;
+                courseOfferingItem.ichairChoices = _this.constructIChairChoices(jsonResponse.ichair_options);
+                courseOfferingItem.ichairOptions = jsonResponse.ichair_options;
+                courseOfferingItem.instructorsMatch = false;
+                courseOfferingItem.linked = false;
+                courseOfferingItem.publicCommentsMatch = false;
+                courseOfferingItem.schedulesMatch = false;
+                courseOfferingItem.semesterFractionsMatch = false;
+                courseOfferingItem.showAllIChairComments = false;
+                courseOfferingItem.showCourseOfferingRadioSelect = true;
+              }
+            });
+            // now cycle through certain unlinked iChair course offerings to update their bannerOptions and bannerChoices, since now,
+            // for these particular unlinked ico's, there is a new unlinked bco (i.e., the one that we just deleted the ico for....)
+            jsonResponse.banner_options_for_unlinked_ichair_course_offerings.forEach( ico => {
+              console.log('unlinked ico: ', ico);
+              _this.courseOfferings.forEach(courseOfferingItem => {
+                if (courseOfferingItem.hasIChair) {
+                  console.log('course offering item id: ', courseOfferingItem.ichair.course_offering_id);
+                  if (courseOfferingItem.ichair.course_offering_id === ico.ico_id) {
+                    console.log('we have a winner!');
+                    courseOfferingItem.bannerOptions = ico.banner_options;
+                    courseOfferingItem.bannerChoices = _this.constructBannerChoices(ico.banner_options);
+                  };
+                }
+              });
+            });
+            console.log(_this.courseOfferings);
+          };
           _this.cancelDeleteIChairCourseOfferingDialog();
         },
         error: function(jqXHR, exception) {
