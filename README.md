@@ -6,3 +6,4 @@ A web-based app for planning and visualizing faculty loads.
 - Uses [Canvas2PDF](https://github.com/joshua-gould/canvas2pdf/), [PDFKit](http://pdfkit.org/) and [blob-stream](https://github.com/devongovett/blob-stream/) 
 to convert html canvas elements into pdf (these are licensed under the MIT license).
 - Poritons of code used from [django-registration](https://github.com/macropin/django-registration/), which is licenseced under the [MIT (BSD?) license]( https://github.com/macropin/django-registration/).
+- A [post](https://ordinarycoders.com/blog/article/django-password-reset) from <ORDINARY>CODERS was also found to be helpful when implementing the password reset functionality.
