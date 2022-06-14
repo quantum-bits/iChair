@@ -5304,6 +5304,8 @@ def weekly_course_schedule_entire_dept(request):
     chapel_dict = {'Monday':'every', 'Tuesday':'none', 'Wednesday':'every', 'Thursday':'none', 'Friday':'every'}
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
+    json_term_data = {}
+
     for semester_name in semester_list:
 
         # find this semester in this academic year....
@@ -5379,19 +5381,22 @@ def weekly_course_schedule_entire_dept(request):
                     if not sc.course_offering.is_full_semester():
                         half_sem_text = ' ('+'\u00BD'+' sem)'
 
-                    room_counter = 0
-                    if len(sc.rooms.all()) > 0:
-                        room_text = ''
-                        for room in sc.rooms.all():
-                            room_counter += 1
-                            if room_counter > 1:
-                                room_text += ' / '
-                            room_text += room.building.abbrev+room.number
-                    else:
-                        room_text = 'TBD'
+                    data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number]
+                    for room in sc.rooms.all():
+                        data_this_class.append(room.building.abbrev+room.number+half_sem_text)
+                    # room_counter = 0
+                    # if len(sc.rooms.all()) > 0:
+                    #     room_text = ''
+                    #     for room in sc.rooms.all():
+                    #         room_counter += 1
+                    #         if room_counter > 1:
+                    #             room_text += ' / '
+                    #         room_text += room.building.abbrev+room.number
+                    # else:
+                    #     room_text = 'TBD'
 
-                    data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+' - '+
-                                        room_text+half_sem_text]
+                    # data_this_class=[sc.course_offering.course.subject.abbrev+sc.course_offering.course.number+' - '+
+                    #                     room_text+half_sem_text]
 
                     for instructor in sc.course_offering.instructor.all():
                         if instructor.id not in list(instructor_conflict_check_dict.keys()):
@@ -5413,14 +5418,17 @@ def weekly_course_schedule_entire_dept(request):
 
                     if sc.end_at.hour > 16:
                         courses_after_five = True
-                    profs_this_class = ''
                     for instructor in sc.course_offering.instructor.all():
-                        if len(profs_this_class)>0:
-                            profs_this_class = profs_this_class+' / '+instructor.first_name[:1]+' '+instructor.last_name
-                        else:
-                            profs_this_class = instructor.first_name[:1]+' '+instructor.last_name
-                    if len(profs_this_class)>0:
-                        data_this_class.append(profs_this_class)
+                        data_this_class.append(instructor.first_name[:1]+' '+instructor.last_name)
+                    
+                    #profs_this_class = ''
+                    #for instructor in sc.course_offering.instructor.all():
+                    #    if len(profs_this_class)>0:
+                    #        profs_this_class = profs_this_class+' / '+instructor.first_name[:1]+' '+instructor.last_name
+                    #    else:
+                    #        profs_this_class = instructor.first_name[:1]+' '+instructor.last_name
+                    #if len(profs_this_class)>0:
+                    #    data_this_class.append(profs_this_class)
 
                     master_dict = update_master_dict(master_dict, sc, data_this_class, min_hour)
 
@@ -5430,7 +5438,7 @@ def weekly_course_schedule_entire_dept(request):
             schedule['height_hour_block_dict']=height_hour_blocks_dict
             schedule['height']=canvas_height
             # replace width by a greater width than normal
-            schedule['width_day']=2*schedule['width_day']
+            #schedule['width_day']=2*schedule['width_day']
 
             canvas_width = 2*schedule['border']+5*schedule['width_day']+schedule['width_hour_names']
             schedule['width']=canvas_width
@@ -5445,11 +5453,11 @@ def weekly_course_schedule_entire_dept(request):
             # format for filled rectangles is: [xleft, ytop, width, height, fillcolour, linewidth, bordercolour]
             # format for text is: [xcenter, ycenter, text_string, font, text_colour]
 
-            json_box_list = simplejson.dumps(box_list)
-            json_box_label_list = simplejson.dumps(box_label_list)
-            json_grid_list = simplejson.dumps(grid_list)
-            json_filled_row_list = simplejson.dumps(filled_row_list)
-            json_table_text_list = simplejson.dumps(table_text_list)
+            #json_box_list = simplejson.dumps(box_list)
+            #json_box_label_list = simplejson.dumps(box_label_list)
+            #json_grid_list = simplejson.dumps(grid_list)
+            #json_filled_row_list = simplejson.dumps(filled_row_list)
+            #json_table_text_list = simplejson.dumps(table_text_list)
 
             error_messages=[]
             for faculty_member_id in list(instructor_conflict_check_dict.keys()):
@@ -5470,22 +5478,75 @@ def weekly_course_schedule_entire_dept(request):
                                             row[0]+' conflicts with '+row[1]])
 
             id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
-            data_this_term = {'day_name': day,
-                            'json_box_list': json_box_list,
-                            'json_box_label_list':json_box_label_list,
-                            'json_grid_list': json_grid_list,
-                            'json_filled_row_list': json_filled_row_list,
-                            'json_table_text_list': json_table_text_list,
+            data_this_term = {
+                            #'day_name': day,
+                            #'json_box_list': json_box_list,
+                            #'json_box_label_list':json_box_label_list,
+                            #'json_grid_list': json_grid_list,
+                            #'json_filled_row_list': json_filled_row_list,
+                            #'json_table_text_list': json_table_text_list,
                             'id':id,
                             'schedule':schedule,
                             'error_messages':error_messages,
                             'semester':current_semester_string
                             }
             data_list.append(data_this_term)
+            json_term_data[id] = {
+                'box_list': box_list,
+                'box_label_list': box_label_list,
+                'grid_list': grid_list,
+                'filled_row_list': filled_row_list,
+                'table_text_list':table_text_list,
+                'schedule':schedule
+            }
 
 #    print data_list
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={
+        'json_term_data': simplejson.dumps(json_term_data),
+        'data_list':data_list,
+        'year':academic_year_string,
+        'id': user_preferences.id,
+        'department': user_preferences.department_to_view
+        }
     return render(request, 'weekly_schedule_dept_summary.html', context)
+
+"""
+id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
+
+                offering_list = construct_dropdown_list(offering_dict)
+
+                data_this_professor.append({'prof_id': prof_id,
+                                            'faculty_name': faculty_member.first_name[0]+'. '+faculty_member.last_name,
+                                            'id':id,
+                                            'schedule':schedule,
+                                            'conflict':error_messages,
+                                            'offerings': offering_list})
+                json_professor_data[id] = {
+                    'box_list': box_list,
+                    'box_label_list':box_label_list,
+                    'grid_list': grid_list,
+                    'filled_row_list': filled_row_list,
+                    'table_text_list': table_text_list,
+                    'fixed_size_box_list': fixed_size_box_list,
+                    'fixed_size_box_label_list':fixed_size_box_label_list,
+                    'fixed_size_grid_list': fixed_size_grid_list,
+                    'fixed_size_filled_row_list': fixed_size_filled_row_list,
+                    'fixed_size_table_text_list': fixed_size_table_text_list,
+                    'schedule': schedule,
+                    'fixed_size_schedule': fixed_size_schedule
+                } 
+
+        data_list.append(data_this_professor)
+
+    context={
+        'json_professor_data': simplejson.dumps(json_professor_data),
+        'data_list': data_list, 
+        'year': academic_year_string, 
+        'id': user_preferences.id, 
+        'department': user_preferences.department_to_view
+        }
+"""
+
 
 def create_box_list(master_dict, schedule, keys_are_day_strings = True, instructor_dict = {}):
     """ returns the box list and box label list for the given master_dict"""

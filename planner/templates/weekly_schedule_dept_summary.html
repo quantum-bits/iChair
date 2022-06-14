@@ -7,6 +7,36 @@
 	    Change Academic Year</a>
 </p>
 
+
+<script>
+  {% include "canvas2pdf/lib/pdfkit.js" %}
+  {% include "canvas2pdf/lib/blob-stream.js" %}
+  {% include "canvas2pdf/canvas2pdf.js" %}
+</script>
+
+<script>
+  var termData = {{json_term_data|safe}};
+  /*
+  according to http://pdfkit.org/docs/paper_sizes.html, Letter size is 612x792 postscript points;
+  according to https://www.unitconverters.net/typography/pixel-x-to-postscript-point.htm, this converts to 816x1056 px;
+  note: not completely sure that 1056 px is actually the max height on the page...seems like the printable region is a bit
+  larger than this, but OK....
+  */
+  var maxHeight = 1056;
+  var showFlexibleSchedule = {};
+  var showPdfSchedule = {};
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries
+  for ([key, value] of Object.entries({{json_term_data|safe}})) {
+    showFlexibleSchedule[key] = true;
+    showPdfSchedule[key] = false;
+  };
+</script>
+
+
+
+
+
+
 <div >
 
 {% for data in data_list %}
@@ -21,69 +51,212 @@
    {% endfor %}
 {% endif %}
 </div>
-<div class="content-center">
-<canvas id="{{data.id}}" width="{{data.schedule.width}}" height="{{data.schedule.height}}"></canvas>
 
-  <script>
-    var canvas = document.getElementById("{{data.id}}");
-    var context = canvas.getContext('2d');
+<div>
+  <span style="display: none;" id="span-switch-to-normal-{{data.id}}">
+    <!-- https://stackoverflow.com/questions/23443579/how-to-stop-buttons-from-staying-depressed-with-bootstrap-3 -->
+     <button class="btn btn-info" onclick="createSchedule('{{data.id}}', true)" onmousedown="event.preventDefault()" id="toggle-pdf-{{data.id}}">Stop Printable View</button>
+  </span>
+  <span class="dropdown" id="span-switch-to-pdf-{{data.id}}">
+    <button class="btn btn-info dropdown-toggle" type="button" data-toggle="dropdown" id="paperSize">Switch to Printable (PDF) View
+    <span class="caret"></span></button>
+    <ul class="dropdown-menu" style="position: absolute; right: 0px">
+      <li><a onclick="createSchedule('{{data.id}}', true)" onmousedown="event.preventDefault()" href="#">Letter</a></li>
+      <li><a onclick="createSchedule('{{data.id}}', true, 'LEGAL')" onmousedown="event.preventDefault()" href="#">Legal</a></li>
+    </ul>
+  </span>
+  <span style="display: none;" class="dropdown" id="span-switch-to-legal-{{data.id}}">
+    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, 'LEGAL')" onmousedown="event.preventDefault()">Switch to Legal Size</button>
+  </span>
+  <span style="display: none;" class="dropdown" id="span-switch-to-letter-{{data.id}}">
+    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false)" onmousedown="event.preventDefault()">Switch to Letter Size</button>
+  </span>
+</div>
 
-    var line_list = {{data.json_grid_list|safe}};
-    var filled_row_list = {{data.json_filled_row_list|safe}};
-    var box_list = {{data.json_box_list|safe}};
-    var table_text_list = {{data.json_table_text_list|safe}};
-    var box_label_list = {{data.json_box_label_list|safe}};
+<!--<div class="content-center">-->
+<!--<canvas id="{{data.id}}" width="{{data.schedule.width}}" height="{{data.schedule.height}}"></canvas>-->
+
+<!-- https://stackoverflow.com/questions/6910349/hiding-table-data-using-div-style-displaynone -->
+<canvas style="display: block" id="{{data.id}}"></canvas>
+<iframe style="display: none; margin-top: 20px; margin-bottom: 20px;" id="iframe-{{data.id}}">
+</iframe>
+
+<script>
+  $(function() {
+    createSchedule("{{data.id}}", false);
+  });
+</script>
+
+{% endfor %}
+</div>
+
+<script type="text/javascript">
+  function createSchedule(id, pdfScheduleToggle, paperSize = 'LETTER') {
+    if (pdfScheduleToggle) {
+      this.showPdfSchedule[id] = !this.showPdfSchedule[id];
+    }
+    let line_list;
+    let filled_row_list;
+    let box_list;
+    let table_text_list;
+    let box_label_list;
+    let grid_line_width;
+    let grid_line_colour;
+
+    line_list = this.termData[id].grid_list;
+    filled_row_list = this.termData[id].filled_row_list;
+    box_list = this.termData[id].box_list;
+    table_text_list = this.termData[id].table_text_list;
+    box_label_list = this.termData[id].box_label_list;
+    grid_line_width = this.termData[id].schedule.grid_line_width;
+    grid_line_colour = this.termData[id].schedule.grid_line_colour;
+    width = this.termData[id].schedule.width;
+    height = this.termData[id].schedule.height;
+
+    if (this.showPdfSchedule[id]) {
+      document.getElementById("span-switch-to-normal-"+id).style.display = "inline-block";
+      document.getElementById("span-switch-to-pdf-"+id).style.display = "none";
+      if (paperSize === "LEGAL") {
+        document.getElementById("span-switch-to-legal-"+id).style.display = "none";
+        document.getElementById("span-switch-to-letter-"+id).style.display = "inline-block";
+      } else {
+        document.getElementById("span-switch-to-legal-"+id).style.display = "inline-block";
+        document.getElementById("span-switch-to-letter-"+id).style.display = "none";
+      }
+    } else {
+      document.getElementById("span-switch-to-pdf-"+id).style.display = "inline-block";
+      document.getElementById("span-switch-to-normal-"+id).style.display = "none";
+      document.getElementById("span-switch-to-legal-"+id).style.display = "none";
+      document.getElementById("span-switch-to-letter-"+id).style.display = "none";
+    }
+
+    let stream;
+    let canvas = document.getElementById(id);
+    let iframe = document.getElementById("iframe-"+id);
+    let context;
+    let scale = 1;
+    let topMargin = 0;
+
+    if (this.showPdfSchedule[id]) {
+      //https://www.w3schools.com/howto/tryit.asp?filename=tryhow_js_toggle_hide_show
+      //https://allyjs.io/tutorials/hiding-elements.html
+      iframe.style.display = "block";
+      canvas.style.display = "none";
+      //console.log('showing iframe, but not canvas');
+      stream = blobStream();
+      context = new canvas2pdf.PdfContext(stream, {size: paperSize});
+      iframe.width = width;
+      iframe.height = height;
+      scale = 0.61;
+      //console.log('height: ', height);
+      // make the top margin a bit smaller if the schedule is long...it's still possible that the schedule will be
+      // too long and will go off the bottom of the printed page, though.
+      if (height > this.maxHeight) {
+        topMargin = 10;
+      } else {
+        topMargin = 60;
+      }
+      console.log('top margin: ', topMargin);
+    } else {
+      // https://allyjs.io/tutorials/hiding-elements.html
+      iframe.style.display = "none";
+      canvas.style.display = "block";
+      //console.log('showing canvas, but not iframe');
+      context = canvas.getContext('2d');
+      // https://www.w3schools.com/TAGs/tryit.asp?filename=tryhtml5_canvas_height_width_clear
+      canvas.width = width;
+      canvas.height = height;
+    }
 
     for(var n = 0; n < filled_row_list.length; n++) {
       context.beginPath();
-      context.rect(filled_row_list[n][0], filled_row_list[n][1], filled_row_list[n][2], filled_row_list[n][3]);
+      context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1]+topMargin, scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
       context.fillStyle = filled_row_list[n][4];
       context.fill();
       context.lineWidth = filled_row_list[n][5];
       context.strokeStyle = filled_row_list[n][6];
       context.stroke();
+      // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
+      // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
+      if (this.showPdfSchedule[id]) {
+        context.beginPath();
+      //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect
+        context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1]+topMargin, scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
+        context.lineWidth = filled_row_list[n][5];
+        context.strokeStyle = filled_row_list[n][6];
+        context.stroke();
       }
+    }
 
     for(var n = 0; n < line_list.length; n++) {
       context.beginPath();
-      context.moveTo(line_list[n][0], line_list[n][1]);
-      context.lineTo(line_list[n][2], line_list[n][3]);
-      context.lineWidth = {{data.schedule.grid_line_width}};
-      context.strokeStyle = "{{data.schedule.grid_line_colour}}";
+      context.moveTo(scale*line_list[n][0], scale*line_list[n][1]+topMargin);
+      context.lineTo(scale*line_list[n][2], scale*line_list[n][3]+topMargin);
+      context.lineWidth = grid_line_width;
+      context.strokeStyle = grid_line_colour;
       context.lineCap = 'square';		
       context.stroke();
       }
-
+  
     for(var n = 0; n < box_list.length; n++) {
       context.beginPath();
-      context.rect(box_list[n][0], box_list[n][1], box_list[n][2], box_list[n][3]);
+      context.rect(scale*box_list[n][0], scale*box_list[n][1]+topMargin, scale*box_list[n][2], scale*box_list[n][3]);
       context.fillStyle = box_list[n][4];
       context.fill();
       context.lineWidth = box_list[n][5];
       context.strokeStyle = box_list[n][6];
       context.stroke();
+      // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
+      // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
+      // https://jenkov.com/tutorials/html5-canvas/stroke-fill.html
+      if (this.showPdfSchedule[id]) {
+        context.beginPath();
+        context.rect(scale*box_list[n][0], scale*box_list[n][1]+topMargin, scale*box_list[n][2], scale*box_list[n][3]);
+        context.lineWidth = box_list[n][5];
+        context.strokeStyle = box_list[n][6];
+        context.stroke();
       }
-
+    }
+  
     for(var n = 0; n < box_label_list.length; n++) {
       context.textAlign = 'center';
       context.textBaseline = 'middle';		       
       context.fillStyle = box_label_list[n][4];
-      context.font = box_label_list[n][3];
-      context.fillText(box_label_list[n][2],box_label_list[n][0],box_label_list[n][1]);
+      if (!this.showPdfSchedule[id]) {
+        context.font = box_label_list[n][3];
+      } else {
+        context.font = "bold 10pt Helvetica";
       }
-
+      context.fillText(box_label_list[n][2],scale*box_label_list[n][0],scale*box_label_list[n][1]+topMargin);
+      }
+  
     for(var n = 0; n < table_text_list.length; n++) {
       context.textAlign = 'center';
       context.textBaseline = 'middle';		       
       context.fillStyle = table_text_list[n][4];
-      context.font = table_text_list[n][3];
-      context.fillText(table_text_list[n][2],table_text_list[n][0],table_text_list[n][1]);
+      if (!this.showPdfSchedule[id]) {
+        context.font = table_text_list[n][3];
+      } else {
+        context.font = "10pt Helvetica";
       }
+      context.fillText(table_text_list[n][2],scale*table_text_list[n][0],scale*table_text_list[n][1]+topMargin);
+    }
+  
+    if (this.showPdfSchedule[id]) {
+      context.end();
+      context.stream.on('finish', function () {
+        iframe.src = context.stream.toBlobURL('application/pdf');
+        // not sure what the following does....
+        //var blob = ctx.stream.toBlob('application/pdf');
+        //saveAs(blob, 'example.pdf', true);
+      });
+    }
+  };
+</script>
 
-  </script>
-</div>
-{% endfor %}
-</div>
+
+
+
   <script>
     $(window).load(function(){
     $("#nav-schedule").addClass("current");
