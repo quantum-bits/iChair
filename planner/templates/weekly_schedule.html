@@ -77,13 +77,27 @@
     <!-- https://stackoverflow.com/questions/23443579/how-to-stop-buttons-from-staying-depressed-with-bootstrap-3 -->
     <button class="btn btn-info" onclick="createSchedule('{{data.id}}', true, false)" onmousedown="event.preventDefault()" id="toggle-{{data.id}}">Schedule</button>
   </span>
-  <span>
+
+  <span style="display: none;" id="span-switch-to-normal-{{data.id}}">
     <!-- https://stackoverflow.com/questions/23443579/how-to-stop-buttons-from-staying-depressed-with-bootstrap-3 -->
-    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, true)" onmousedown="event.preventDefault()" id="toggle-pdf-{{data.id}}">PDF</button>
+     <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, true)" onmousedown="event.preventDefault()" id="toggle-pdf-{{data.id}}">Stop Printable View</button>
+  </span>
+  <span class="dropdown" id="span-switch-to-pdf-{{data.id}}">
+    <button class="btn btn-info dropdown-toggle" type="button" data-toggle="dropdown" id="paperSize">Switch to Printable (PDF) View
+    <span class="caret"></span></button>
+    <ul class="dropdown-menu" style="position: absolute; right: 0px">
+      <li><a onclick="createSchedule('{{data.id}}', false, true)" onmousedown="event.preventDefault()" href="#">Letter</a></li>
+      <li><a onclick="createSchedule('{{data.id}}', false, true, 'LEGAL')" onmousedown="event.preventDefault()" href="#">Legal</a></li>
+    </ul>
+  </span>
+  <span style="display: none;" class="dropdown" id="span-switch-to-legal-{{data.id}}">
+    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, false, 'LEGAL')" onmousedown="event.preventDefault()">Switch to Legal Size</button>
+  </span>
+  <span style="display: none;" class="dropdown" id="span-switch-to-letter-{{data.id}}">
+    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, false)" onmousedown="event.preventDefault()">Switch to Letter Size</button>
   </span>
 </div>
       
-
 <!-- https://stackoverflow.com/questions/6910349/hiding-table-data-using-div-style-displaynone -->
 <canvas style="display: block" id="{{data.id}}"></canvas>
 <iframe style="display: none; margin-top: 20px; margin-bottom: 20px;" id="iframe-{{data.id}}">
@@ -104,7 +118,7 @@
 </div>
 
 <script type="text/javascript">
-  function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle) {
+  function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize = 'LETTER') {
     if (flexibleScheduleToggle) {
       this.showFlexibleSchedule[id] = !this.showFlexibleSchedule[id];
     }
@@ -148,9 +162,21 @@
     }
     
     if (this.showPdfSchedule[id]) {
-      document.getElementById("toggle-pdf-"+id).innerHTML = "Stop Printable View";
+      document.getElementById("span-switch-to-normal-"+id).style.display = "inline-block";
+      document.getElementById("span-switch-to-pdf-"+id).style.display = "none";
+      if (paperSize === "LEGAL") {
+        document.getElementById("span-switch-to-legal-"+id).style.display = "none";
+        document.getElementById("span-switch-to-letter-"+id).style.display = "inline-block";
+      } else {
+        document.getElementById("span-switch-to-legal-"+id).style.display = "inline-block";
+        document.getElementById("span-switch-to-letter-"+id).style.display = "none";
+      }
     } else {
-      document.getElementById("toggle-pdf-"+id).innerHTML = "Switch to Printable (PDF) View";
+      console.log("asdf");
+      document.getElementById("span-switch-to-pdf-"+id).style.display = "inline-block";
+      document.getElementById("span-switch-to-normal-"+id).style.display = "none";
+      document.getElementById("span-switch-to-legal-"+id).style.display = "none";
+      document.getElementById("span-switch-to-letter-"+id).style.display = "none";
     }
 
     let stream;
@@ -167,7 +193,7 @@
       canvas.style.display = "none";
       //console.log('showing iframe, but not canvas');
       stream = blobStream();
-      context = new canvas2pdf.PdfContext(stream);
+      context = new canvas2pdf.PdfContext(stream, {size: paperSize});
       iframe.width = width;
       iframe.height = height;
       scale = 0.61;
