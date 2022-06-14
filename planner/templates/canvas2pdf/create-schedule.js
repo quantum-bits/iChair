@@ -3,7 +3,7 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     //flexibleToggle = '', spanSwitchToPdf = '', spanSwitchToNormal = '', spanSwitchToLegal = '', spanSwitchToLetter = '') {
     //console.log('show pdf schedule: ', showPdfSchedule);
     console.log(htmlElementIds.toggle+id);
-    flexibleToggle = htmlElementIds.toggle+id;
+    flexibleToggle = htmlElementIds.toggle === null ? null : htmlElementIds.toggle+id;
     spanSwitchToPdf = htmlElementIds.pdf+id;
     spanSwitchToNormal = htmlElementIds.normal+id;
     spanSwitchToLegal =  htmlElementIds.legal+id;
@@ -50,7 +50,9 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       width = scheduleData.schedule.width;
       height = scheduleData.schedule.height;
       //https://www.w3schools.com/jsref/prop_html_innerhtml.asp
-      document.getElementById(flexibleToggle).innerHTML = "Switch to Fixed View";
+      if (flexibleToggle !== null) {
+        document.getElementById(flexibleToggle).innerHTML = "Switch to Fixed View";
+      }
     } else {
       line_list = scheduleData.fixed_size_grid_list;
       filled_row_list = scheduleData.fixed_size_filled_row_list;
@@ -61,7 +63,9 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       grid_line_colour = scheduleData.fixed_size_schedule.grid_line_colour;
       width = scheduleData.fixed_size_schedule.width;
       height = scheduleData.fixed_size_schedule.height;
-      document.getElementById(flexibleToggle).innerHTML = "Switch to Flexible View";
+      if (flexibleToggle !== null) {
+        document.getElementById(flexibleToggle).innerHTML = "Switch to Flexible View";
+      }
     }
 
     if (showPdfSchedule[id]) {

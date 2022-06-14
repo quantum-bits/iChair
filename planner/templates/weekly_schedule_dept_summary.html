@@ -12,6 +12,7 @@
   {% include "canvas2pdf/lib/pdfkit.js" %}
   {% include "canvas2pdf/lib/blob-stream.js" %}
   {% include "canvas2pdf/canvas2pdf.js" %}
+  {% include "canvas2pdf/create-schedule.js" %}
 </script>
 
 <script>
@@ -30,11 +31,14 @@
     showFlexibleSchedule[key] = true;
     showPdfSchedule[key] = false;
   };
+  var htmlElementIds = {
+    toggle: null, 
+    pdf: "span-switch-to-pdf-",  
+    normal: "span-switch-to-normal-",
+    legal: "span-switch-to-legal-",  
+    letter: "span-switch-to-letter-"
+  };
 </script>
-
-
-
-
 
 
 <div >
@@ -55,21 +59,21 @@
 <div>
   <span style="display: none;" id="span-switch-to-normal-{{data.id}}">
     <!-- https://stackoverflow.com/questions/23443579/how-to-stop-buttons-from-staying-depressed-with-bootstrap-3 -->
-     <button class="btn btn-info" onclick="createSchedule('{{data.id}}', true)" onmousedown="event.preventDefault()" id="toggle-pdf-{{data.id}}">Stop Printable View</button>
+     <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, true, 'LETTER', termData['{{data.id}}'], showFlexibleSchedule, showPdfSchedule, htmlElementIds)" onmousedown="event.preventDefault()" id="toggle-pdf-{{data.id}}">Stop Printable View</button>
   </span>
   <span class="dropdown" id="span-switch-to-pdf-{{data.id}}">
     <button class="btn btn-info dropdown-toggle" type="button" data-toggle="dropdown" id="paperSize">Switch to Printable (PDF) View
     <span class="caret"></span></button>
     <ul class="dropdown-menu" style="position: absolute; right: 0px">
-      <li><a onclick="createSchedule('{{data.id}}', true)" onmousedown="event.preventDefault()" href="#">Letter</a></li>
-      <li><a onclick="createSchedule('{{data.id}}', true, 'LEGAL')" onmousedown="event.preventDefault()" href="#">Legal</a></li>
+      <li><a onclick="createSchedule('{{data.id}}', false, true, 'LETTER', termData['{{data.id}}'], showFlexibleSchedule, showPdfSchedule, htmlElementIds)" onmousedown="event.preventDefault()" href="#">Letter</a></li>
+      <li><a onclick="createSchedule('{{data.id}}', false, true, 'LEGAL', termData['{{data.id}}'], showFlexibleSchedule, showPdfSchedule, htmlElementIds)" onmousedown="event.preventDefault()" href="#">Legal</a></li>
     </ul>
   </span>
   <span style="display: none;" class="dropdown" id="span-switch-to-legal-{{data.id}}">
-    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, 'LEGAL')" onmousedown="event.preventDefault()">Switch to Legal Size</button>
+    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, false, 'LEGAL', termData['{{data.id}}'], showFlexibleSchedule, showPdfSchedule, htmlElementIds)" onmousedown="event.preventDefault()">Switch to Legal Size</button>
   </span>
   <span style="display: none;" class="dropdown" id="span-switch-to-letter-{{data.id}}">
-    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false)" onmousedown="event.preventDefault()">Switch to Letter Size</button>
+    <button class="btn btn-info" onclick="createSchedule('{{data.id}}', false, false, 'LETTER', termData['{{data.id}}'], showFlexibleSchedule, showPdfSchedule, htmlElementIds)" onmousedown="event.preventDefault()">Switch to Letter Size</button>
   </span>
 </div>
 
@@ -83,13 +87,14 @@
 
 <script>
   $(function() {
-    createSchedule("{{data.id}}", false);
+    createSchedule("{{data.id}}", false, false, 'LETTER', termData['{{data.id}}'], showFlexibleSchedule, showPdfSchedule, htmlElementIds);
   });
 </script>
 
 {% endfor %}
 </div>
 
+<!--
 <script type="text/javascript">
   function createSchedule(id, pdfScheduleToggle, paperSize = 'LETTER') {
     if (pdfScheduleToggle) {
@@ -253,7 +258,7 @@
     }
   };
 </script>
-
+-->
 
 
 
