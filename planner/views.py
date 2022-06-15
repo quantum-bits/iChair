@@ -5499,6 +5499,7 @@ def weekly_course_schedule_entire_dept(request):
                 'table_text_list':table_text_list,
                 'schedule':schedule
             }
+            print(table_text_list)
 
 #    print data_list
     context={
@@ -5509,44 +5510,6 @@ def weekly_course_schedule_entire_dept(request):
         'department': user_preferences.department_to_view
         }
     return render(request, 'weekly_schedule_dept_summary.html', context)
-
-"""
-id = 'id-'+str(idnum)+'-'+str(partial_semester['semester_fraction'])
-
-                offering_list = construct_dropdown_list(offering_dict)
-
-                data_this_professor.append({'prof_id': prof_id,
-                                            'faculty_name': faculty_member.first_name[0]+'. '+faculty_member.last_name,
-                                            'id':id,
-                                            'schedule':schedule,
-                                            'conflict':error_messages,
-                                            'offerings': offering_list})
-                json_professor_data[id] = {
-                    'box_list': box_list,
-                    'box_label_list':box_label_list,
-                    'grid_list': grid_list,
-                    'filled_row_list': filled_row_list,
-                    'table_text_list': table_text_list,
-                    'fixed_size_box_list': fixed_size_box_list,
-                    'fixed_size_box_label_list':fixed_size_box_label_list,
-                    'fixed_size_grid_list': fixed_size_grid_list,
-                    'fixed_size_filled_row_list': fixed_size_filled_row_list,
-                    'fixed_size_table_text_list': fixed_size_table_text_list,
-                    'schedule': schedule,
-                    'fixed_size_schedule': fixed_size_schedule
-                } 
-
-        data_list.append(data_this_professor)
-
-    context={
-        'json_professor_data': simplejson.dumps(json_professor_data),
-        'data_list': data_list, 
-        'year': academic_year_string, 
-        'id': user_preferences.id, 
-        'department': user_preferences.department_to_view
-        }
-"""
-
 
 def create_box_list(master_dict, schedule, keys_are_day_strings = True, instructor_dict = {}):
     """ returns the box list and box label list for the given master_dict"""

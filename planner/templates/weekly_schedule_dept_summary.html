@@ -3,7 +3,7 @@
 {% endblock %}
 {% block content %}
 
-<p> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
+<p style="margin-bottom: 40px;"> <a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
 	    Change Academic Year</a>
 </p>
 
@@ -31,6 +31,7 @@
     showFlexibleSchedule[key] = true;
     showPdfSchedule[key] = false;
   };
+  // the following must match the ids of the appropriate html elements in the template
   var htmlElementIds = {
     toggle: null, 
     pdf: "span-switch-to-pdf-",  
@@ -45,14 +46,17 @@
 
 {% for data in data_list %}
 
-<div>
+<div style="margin-bottom: 40px;"">
 {% if data.error_messages %}
    <p> 
-    <span class="label label-warning">Warning </span> <b>There are time conflicts in {{data.semester}}.</b>
+    <span class="label label-warning">Warning </span> <b>There are time conflicts in {{data.semester}}.</b> <a onclick="warningToggle('{{data.id}}')" onmousedown="event.preventDefault()" id="anchor-{{data.id}}" style="cursor: pointer;">(Show)</a>
   </p>
-   {% for warning in data.error_messages %}
-      <b>{{warning.0}}</b> {{warning.1}} </p>
+  <!--<button class="btn btn-info" onclick="hideWarnings('{{data.id}}')" onmousedown="event.preventDefault()">Hide Warnings </button>-->
+  <div id="warnings-{{data.id}}" style="display: none;">
+    {% for warning in data.error_messages %}
+      <p><b>{{warning.0}}</b> {{warning.1}}</p>
    {% endfor %}
+  </div>
 {% endif %}
 </div>
 
@@ -260,7 +264,17 @@
 </script>
 -->
 
-
+<script type="text/javascript">
+  function warningToggle(id) {
+    if (document.getElementById("warnings-"+id).style.display == "none") {
+      document.getElementById("warnings-"+id).style.display = "block";
+      document.getElementById("anchor-"+id).innerHTML = "(Hide)";
+    } else {
+      document.getElementById("warnings-"+id).style.display = "none";
+      document.getElementById("anchor-"+id).innerHTML = "(Show)";
+    }
+  }
+</script>
 
   <script>
     $(window).load(function(){

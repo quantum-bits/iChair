@@ -36,9 +36,33 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     let box_label_list;
     let grid_line_width;
     let grid_line_colour;
+    let oneInch = 72;
+
+    let stream;
+    let canvas = document.getElementById(id);
+    let iframe = document.getElementById("iframe-"+id);
+    let context;
+    let scale = 1;
+    let topMarginPDFCoords = oneInch;
+    let bottomMarginPDFCoords = oneInch;
+
   // https://stackoverflow.com/questions/7196212/how-to-create-dictionary-and-add-key-value-pairs-dynamically?rq=1
   // https://stackoverflow.com/questions/9251480/set-canvas-size-using-javascript/9251497
     
+    let horizontalLineYHTMLCoords = [];
+    // twoMins is used in the pdf case to store the vertical coordinates of the lines above and below the header row
+    let twoMinsHTMLCoords = {};
+    let headerLineList = [];
+    let headerTextList = [];
+    let currentPdfPage = 0;
+    let maxPdfPage = 0;
+    let pageDimensionsPDFCoords = {
+      yMin: 0,
+      yMax: Infinity
+    }
+
+    let verticalBreakPointsHTMLCoords = [];
+
     if (showFlexibleSchedule[id]) {
       line_list = scheduleData.grid_list;
       filled_row_list = scheduleData.filled_row_list;
@@ -87,12 +111,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       //document.getElementById("toggle-pdf-"+id).innerHTML = "Switch to Printable (PDF) View";
     }
 
-    let stream;
-    let canvas = document.getElementById(id);
-    let iframe = document.getElementById("iframe-"+id);
-    let context;
-    let scale = 1;
-    let topMargin = 0;
     //console.log('id: ', id);
     if (showPdfSchedule[id]) {
       //https://www.w3schools.com/howto/tryit.asp?filename=tryhow_js_toggle_hide_show
@@ -102,18 +120,73 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       //console.log('showing iframe, but not canvas');
       stream = blobStream();
       context = new canvas2pdf.PdfContext(stream, {size: paperSize});
+      //doc.addPage({size: 'A7'});
+
+      // make the top margin a bit smaller if the schedule is long...it's still possible that the schedule will be
+      // too long and will go off the bottom of the printed page, though.
+      //if (height > this.maxHeight) {
+      //  topMargin = oneInch;
+      //  bottomMargin = oneInch;
+      //} else {
+      //  topMargin = oneInch;
+      //  bottomMargin = oneInch;
+      //}
+
+      pageDimensionsPDFCoords = pageDimensionCalculator(oneInch, topMarginPDFCoords, bottomMarginPDFCoords, paperSize);
+      
+      console.log('page dimensions: ', pageDimensionsPDFCoords);
+
+      for(var n = 0; n < line_list.length; n++) {
+        if (isHorizontalLine(line_list[n])) {
+          horizontalLineYHTMLCoords.push(line_list[n][1]);
+        }
+      }
+
+      twoMinsHTMLCoords = minAndSecondMin(horizontalLineYHTMLCoords);
+      console.log('mins: ', twoMinsHTMLCoords);
+
+      //headerLineList = [];
+      //lheaderTextList = [];
+
+      for(var n = 0; n < line_list.length; n++) {
+        if (isHeaderLine(line_list[n], twoMinsHTMLCoords)) {
+          headerLineList.push(line_list[n]);
+        }
+      }
+
+      console.log('header lines: ', headerLineList);
+
+      for(var n = 0; n < table_text_list.length; n++) {
+        if (isHeaderText(table_text_list[n], twoMinsHTMLCoords)) {
+          headerTextList.push(table_text_list[n]);
+        }
+      }
+      console.log('header text: ', headerTextList);
+
+
+
+
+
+
+
+      context.addPage();
+
+
       iframe.width = width;
       iframe.height = height;
       scale = 0.61;
+
+
+      console.log(horizontalLineYHTMLCoords);
+      verticalBreakPointsHTMLCoords = verticalBreakPointCalculatorHTMLCoords(horizontalLineYHTMLCoords, twoMinsHTMLCoords, scale, pageDimensionsPDFCoords, currentPdfPage);
+
+      console.log(verticalBreakPointsHTMLCoords);
+
+
+
+
       //console.log('height: ', height);
-      // make the top margin a bit smaller if the schedule is long...it's still possible that the schedule will be
-      // too long and will go off the bottom of the printed page, though.
-      if (height > this.maxHeight) {
-        topMargin = 10;
-      } else {
-        topMargin = 60;
-      }
-      console.log('top margin: ', topMargin);
+      
     } else {
       // https://allyjs.io/tutorials/hiding-elements.html
       iframe.style.display = "none";
@@ -125,84 +198,100 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       canvas.height = height;
     }
     
-    for(var n = 0; n < filled_row_list.length; n++) {
+    /*
+    for(var n = 0; n < 11; n++) {
       context.beginPath();
-      //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect
-      context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1]+topMargin, scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
-      context.fillStyle = filled_row_list[n][4];
-      context.fill();
-      context.lineWidth = filled_row_list[n][5];
-      context.strokeStyle = filled_row_list[n][6];
+      context.moveTo(10,72*n);
+      context.lineTo(600,72*n);
+      context.strokeStyle = 'red';
       context.stroke();
-      // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
-      // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
-      if (this.showPdfSchedule[id]) {
+    }
+    */
+
+    let numPages = showPdfSchedule[id] ? verticalBreakPointsHTMLCoords.length : 1;
+    numPages = 1;
+    // FIX ABOVE LINE!!!
+    for(var page = 0; page < numPages; page++) {
+
+      for(var n = 0; n < filled_row_list.length; n++) {
         context.beginPath();
-      //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect
-        context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1]+topMargin, scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
+        //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect
+        context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1], scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
+        context.fillStyle = filled_row_list[n][4];
+        context.fill();
         context.lineWidth = filled_row_list[n][5];
         context.strokeStyle = filled_row_list[n][6];
         context.stroke();
+        // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
+        // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
+        if (this.showPdfSchedule[id]) {
+          context.beginPath();
+        //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect
+          context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1], scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
+          context.lineWidth = filled_row_list[n][5];
+          context.strokeStyle = filled_row_list[n][6];
+          context.stroke();
+        }
       }
-    }
-  
-    for(var n = 0; n < line_list.length; n++) {
-      context.beginPath();
-      context.moveTo(scale*line_list[n][0], scale*line_list[n][1]+topMargin);
-      context.lineTo(scale*line_list[n][2], scale*line_list[n][3]+topMargin);
-      context.lineWidth = grid_line_width;
-      context.strokeStyle = grid_line_colour;
-      context.lineCap = 'square';		
-      context.stroke();
-      }
-
-    for(var n = 0; n < box_list.length; n++) {
-      context.beginPath();
-      context.rect(scale*box_list[n][0], scale*box_list[n][1]+topMargin, scale*box_list[n][2], scale*box_list[n][3]);
-      context.fillStyle = box_list[n][4];
-      context.fill();
-      context.lineWidth = box_list[n][5];
-      context.strokeStyle = box_list[n][6];
-      context.stroke();
-      // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
-      // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
-      // https://jenkov.com/tutorials/html5-canvas/stroke-fill.html
-      if (this.showPdfSchedule[id]) {
+    
+      for(var n = 0; n < line_list.length; n++) {
         context.beginPath();
-        context.rect(scale*box_list[n][0], scale*box_list[n][1]+topMargin, scale*box_list[n][2], scale*box_list[n][3]);
+        context.moveTo(scale*line_list[n][0], scale*line_list[n][1]);
+        context.lineTo(scale*line_list[n][2], scale*line_list[n][3]);
+        context.lineWidth = grid_line_width;
+        context.strokeStyle = grid_line_colour;
+        context.lineCap = 'square';		
+        context.stroke();
+        }
+
+      for(var n = 0; n < box_list.length; n++) {
+        context.beginPath();
+        context.rect(scale*box_list[n][0], scale*box_list[n][1], scale*box_list[n][2], scale*box_list[n][3]);
+        context.fillStyle = box_list[n][4];
+        context.fill();
         context.lineWidth = box_list[n][5];
         context.strokeStyle = box_list[n][6];
         context.stroke();
+        // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
+        // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
+        // https://jenkov.com/tutorials/html5-canvas/stroke-fill.html
+        if (this.showPdfSchedule[id]) {
+          context.beginPath();
+          context.rect(scale*box_list[n][0], scale*box_list[n][1], scale*box_list[n][2], scale*box_list[n][3]);
+          context.lineWidth = box_list[n][5];
+          context.strokeStyle = box_list[n][6];
+          context.stroke();
+        }
+      }
+
+      for(var n = 0; n < box_label_list.length; n++) {
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';		       
+        context.fillStyle = box_label_list[n][4];
+        if (!this.showPdfSchedule[id]) {
+          context.font = box_label_list[n][3];
+        } else {
+          context.font = "bold 10pt Helvetica";
+        }
+        // console.log('font: ', box_label_list[n][3]);
+        // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText
+        context.fillText(box_label_list[n][2],scale*box_label_list[n][0],scale*box_label_list[n][1]);
+      }
+      
+      for(var n = 0; n < table_text_list.length; n++) {
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';		       
+        context.fillStyle = table_text_list[n][4];
+        //context.font = table_text_list[n][3];
+        if (!this.showPdfSchedule[id]) {
+          context.font = table_text_list[n][3];
+        } else {
+          context.font = "10pt Helvetica";
+        }
+        context.fillText(table_text_list[n][2],scale*table_text_list[n][0],scale*table_text_list[n][1]);
       }
     }
 
-    for(var n = 0; n < box_label_list.length; n++) {
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';		       
-      context.fillStyle = box_label_list[n][4];
-      if (!this.showPdfSchedule[id]) {
-        context.font = box_label_list[n][3];
-      } else {
-        context.font = "bold 10pt Helvetica";
-      }
-      // console.log('font: ', box_label_list[n][3]);
-      // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText
-      context.fillText(box_label_list[n][2],scale*box_label_list[n][0],scale*box_label_list[n][1]+topMargin);
-      }
-    
-    for(var n = 0; n < table_text_list.length; n++) {
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';		       
-      context.fillStyle = table_text_list[n][4];
-      //context.font = table_text_list[n][3];
-      if (!this.showPdfSchedule[id]) {
-        context.font = table_text_list[n][3];
-      } else {
-        context.font = "10pt Helvetica";
-      }
-      context.fillText(table_text_list[n][2],scale*table_text_list[n][0],scale*table_text_list[n][1]+topMargin);
-      }
-    
     if (showPdfSchedule[id]) {
       context.end();
       context.stream.on('finish', function () {
@@ -212,4 +301,256 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         //saveAs(blob, 'example.pdf', true);
       });
     }
+  }
+
+  function isHorizontalLine(lineData) {
+    // lines are in the form [x1, y1, x2, y2]; this returns true if y1 == y2, to within some tolerance
+    let eps = 1;
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/abs
+    return Math.abs(lineData[1]-lineData[3]) < eps;
+
+  }
+
+  function minAndSecondMin(yVals) {
+    // takes in an array of yVals: [y1, y2, ..., yn] and returns the min and second min;
+    // if two values are quite close, assumes them to be equal; the two mins must 
+    // be separated by at least eps
+    let eps = 1;
+    let min = Infinity;
+    let secondMin = Infinity;
+    yVals.forEach( y => {
+      if (y < min) {
+        min = y;
+      }
+    });
+
+    yVals.forEach( y => {
+      if (y < secondMin && y - min > eps) {
+        secondMin = y;
+      }
+    });
+
+    return {
+      min: min,
+      secondMin: secondMin
+    };
+  }
+
+  function isHeaderText(tableTextArray, twoMinsHTMLCoords) {
+    // tableTextArray has elements like: [230.0, 70.0, 'Monday', '12pt Arial', '#2f2f2f'], which are of the form [x, y1,....];
+    // this method compares the y coordinate to the data in the twoMins object and returns true if tableTextArray appears
+    // to be a header row
+    return  tableTextArray[1] > twoMinsHTMLCoords.min && tableTextArray[1] < twoMinsHTMLCoords.secondMin;
+  }
+
+  function isHeaderLine(lineData, twoMinsHTMLCoords) {
+    // lineData has the form [x1, y1, x2, y2]; this function returns true if the line in question
+    // appears to be a horizontal line that has coordinates consistent with either the min or the secondMin
+    let eps = 1;
+    //console.log(twoMinsHTMLCoords);
+    return isHorizontalLine(lineData) && ((Math.abs(lineData[1] - twoMinsHTMLCoords.min) <= eps) || (Math.abs(lineData[1] - twoMinsHTMLCoords.secondMin) <= eps));
+  }
+
+  function pageDimensionCalculator(oneInch, topMargin, bottomMargin, paperSize) {
+    // paperSize can be one of 'LETTER' or 'LEGAL'; topMargin and bottomMargin are assumed to be in PDF coordinates;
+    // returns pageDimensions in PDF coordinates
+    let length;
+    length = paperSize === 'LETTER' ? 11*oneInch : 14*oneInch;
+    return {
+      yMin: topMargin,
+      yMax: length - bottomMargin
+    };
+  }
+
+  function pdfVerticalPositionCalculator(yValHTMLCoords, twoMinsHTMLCoords, scale, pageDimensionsPDFCoords, pageNumber) {
+    // calculates the pdfVerticalPosition for a given yVal;
+    // assumes that pages after the initial page have an extra header row displayed
+    
+  }
+
+  function verticalBreakPointCalculatorHTMLCoords(horizontalLineYHTMLCoords, twoMinsHTMLCoords, scale, pageDimensionsPDFCoords, pageNumber) {
+    let page = 0;
+    let yValsByPageHTMLCoords = [];
+    let yMin;
+    let yMax;
+
+    //https://medium.com/coding-at-dawn/how-to-sort-an-array-numerically-in-javascript-2b22710e3958
+    horizontalLineYHTMLCoords.sort((a,b)=>a-b);
+    console.log(horizontalLineYHTMLCoords);
+
+    let yVal;
+    let yNextVal;
+    let firstValThisPage = true;
+    let conditionLHS;
+    let nMax = horizontalLineYHTMLCoords.length - 2;
+    for(var n = 0; n < nMax + 1; n++) {
+      yVal = horizontalLineYHTMLCoords[n];
+      yNextVal = horizontalLineYHTMLCoords[n+1];
+      console.log(n, yVal, yNextVal);
+      if (n == 0) {
+        yMin = yVal;
+      }
+      if (firstValThisPage) {
+        yMax = yNextVal;
+        console.log('first val this page', yMin, yMax);
+        firstValThisPage = false;
+      } 
+      if (page == 0) {
+        conditionLHS = yNextVal*scale + pageDimensionsPDFCoords.yMin
+      } else {
+        conditionLHS = (yNextVal-yMin)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
+      }
+      if (conditionLHS <= pageDimensionsPDFCoords.yMax) {
+        yMax = yNextVal;
+        console.log('we are still within the page margin.... yMin, yMax: ', yMin, yMax);
+        if (n == nMax) {
+          yValsByPageHTMLCoords.push({
+            page: page,
+            yMinHTMLCoords: yMin,
+            yMaxHTMLCoords: yMax
+          });
+        }
+      } else {
+        console.log('we wandered beyond the page margin.... yMin, yMax: ', yMin, yMax);
+        yValsByPageHTMLCoords.push({
+          page: page,
+          yMinHTMLCoords: yMin,
+          yMaxHTMLCoords: yMax
+        });
+        yMin = yMax;
+        page += 1;
+        firstValThisPage = true;
+      }
+    }
+
+    return yValsByPageHTMLCoords;
+      
+      
+     /* 
+      else {
+        console.log('we wandered beyond the page margin.... yMin, yMax: ', yMin, yMax);
+        if (firstValThisPage) {
+          // it's beyond the page margin, but we need to print it to this page anyway....
+          yValsByPageHTMLCoords.push({
+            page: page,
+            yMinHTMLCoords: yMin,
+            yMaxHTMLCoords: yMax
+          });
+        } 
+      else {
+        numValsThisPage += 1;
+        console.log('NOT first val this page');
+        if (page == 0) {
+          conditionLHS = yNextVal*scale + pageDimensionsPDFCoords.yMin
+        } else {
+          conditionLHS = (yNextVal-yMaxPreviousPage)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
+        }
+        if (conditionLHS <= pageDimensionsPDFCoords.yMax) {
+          yMax = yNextVal;
+          console.log('we are still within the page margin.... yMax: ', yMax);
+        } else {
+          console.log('we wandered beyond the page margin.... yMin, yMax: ', yMin, yMax);
+          if ()
+          yValsByPageHTMLCoords.push({
+            page: page,
+            yMinHTMLCoords: yMin,
+            yMaxHTMLCoords: yMax
+          });
+          yMaxPreviousPage = yNextVal;
+          page += 1;
+          firstValThisPage = true;
+        }
+      }
+    }
+    if (!firstValThisPage) {
+      // push the last yMin and yMax values, since those didn't get added to the array yet
+      yValsByPageHTMLCoords.push({
+        page: page,
+        yMinHTMLCoords: yMin,
+        yMaxHTMLCoords: yMax
+      });
+    }
+    console.log(yValsByPageHTMLCoords);
+
+    /*
+      if (page == 0) {
+        if (yVal*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
+          if (yValHTMLCoords < yMin) {
+            yMin = yValHTMLCoords;
+          }
+          if (yValHTMLCoords > yMax) {
+            yMax = yValHTMLCoords;
+          }
+        }
+      } else {
+        if ((yValHTMLCoords-yMaxPreviousPage)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
+          if (yValHTMLCoords > yMax) {
+            yMax = yValHTMLCoords;
+          }
+        }
+      }
+    }
+
+
+    horizontalLineYHTMLCoords.forEach( yValHTMLCoords => { 
+
+    });
+
+
+
+    // What if one block is so large that it simply cannot fit on a page?!? currently the routine is just truncating in that case, which isn't good...!
+    while (page < 10 & (!maxPageReached)) {
+      horizontalLineYHTMLCoords.forEach( yValHTMLCoords => { 
+        if (page == 0) {
+          if (yValHTMLCoords*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
+            if (yValHTMLCoords < yMin) {
+              yMin = yValHTMLCoords;
+            }
+            if (yValHTMLCoords > yMax) {
+              yMax = yValHTMLCoords;
+            }
+          }
+        } else {
+          if ((yValHTMLCoords-yMaxPreviousPage)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
+            if (yValHTMLCoords > yMax) {
+              yMax = yValHTMLCoords;
+            }
+          }
+        }
+      });
+      if (approximatelyEqual(yMin, yMax)) {
+        maxPageReached = true;
+      } else {
+        yValsByPageHTMLCoords.push({
+          page: page,
+          yMinHTMLCoords: yMin,
+          yMaxHTMLCoords: yMax
+        });
+      }
+      yMaxPreviousPage = yMax;
+      yMin = yMax; // yMin for the next page is yMax from the previous page, since we're going to need to draw this line again
+      yMax = -Infinity;
+      page += 1;
+    }
+    */
+    
+
+  }
+
+  function 
+
+
+  function approximatelyEqual(val1, val2) {
+    let eps = 1;
+    return Math.abs(val1-val2) <= eps;
+  }
+
+  function lessThanApprox(val1, val2) {
+    let eps = 1;
+    return val1 <= val2 + eps;
+  }
+
+  function greatThanApprox(val1, val2) {
+    let eps = 1;
+    return val1 >= val2 - eps;
   }

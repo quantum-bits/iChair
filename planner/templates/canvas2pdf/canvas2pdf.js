@@ -169,6 +169,14 @@
     this.strokeStyle = 'rgb(0,0,0)';
     this.fillStyle = 'rgb(0,0,0)';
   };
+
+  /* 
+  add by KK
+  */
+  canvas2pdf.PdfContext.prototype.addPage = function () {
+    this.doc.addPage();
+  };
+  
   canvas2pdf.PdfContext.prototype.end = function () {
     this.doc.end();
   };
