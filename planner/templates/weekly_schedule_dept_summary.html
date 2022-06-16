@@ -46,7 +46,7 @@
 
 {% for data in data_list %}
 
-<div style="margin-bottom: 40px;"">
+<div style="margin-bottom: 40px;" id="schedule-{{data.id}}">
 {% if data.error_messages %}
    <p> 
     <span class="label label-warning">Warning </span> <b>There are time conflicts in {{data.semester}}.</b> <a onclick="warningToggle('{{data.id}}')" onmousedown="event.preventDefault()" id="anchor-{{data.id}}" style="cursor: pointer;">(Show)</a>

@@ -5499,7 +5499,6 @@ def weekly_course_schedule_entire_dept(request):
                 'table_text_list':table_text_list,
                 'schedule':schedule
             }
-            print(table_text_list)
 
 #    print data_list
     context={

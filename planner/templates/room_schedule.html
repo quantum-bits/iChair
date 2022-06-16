@@ -60,6 +60,9 @@
 	<div class="accordion-inner">
 
 {% for data in room_data %}
+
+<div style="margin-bottom: 60px;" id="schedule-{{data.id}}"></div>
+
 {% if data.conflict %}
   <p> 
     <span class="label label-warning">Warning </span> There are overlapping course offerings.

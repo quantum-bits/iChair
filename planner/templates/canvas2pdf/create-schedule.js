@@ -1,33 +1,20 @@
 function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize = 'LETTER', 
     scheduleData, showFlexibleSchedule, showPdfSchedule, htmlElementIds = {}) {
-    //flexibleToggle = '', spanSwitchToPdf = '', spanSwitchToNormal = '', spanSwitchToLegal = '', spanSwitchToLetter = '') {
-    //console.log('show pdf schedule: ', showPdfSchedule);
-    //console.log(htmlElementIds.toggle+id);
+  
     flexibleToggle = htmlElementIds.toggle === null ? null : htmlElementIds.toggle+id;
     spanSwitchToPdf = htmlElementIds.pdf+id;
     spanSwitchToNormal = htmlElementIds.normal+id;
     spanSwitchToLegal =  htmlElementIds.legal+id;
     spanSwitchToLetter = htmlElementIds.letter+id;
-    //flexibleToggle = "toggle-" + id;
-    //spanSwitchToPdf = "span-switch-to-pdf-" + id;
-    //spanSwitchToNormal = "span-switch-to-normal-" + id;
-    //spanSwitchToLegal = "span-switch-to-legal-" + id;
-    //spanSwitchToLetter = "span-switch-to-letter-" + id;
-
-    //console.log('show flex schedule: ', showFlexibleSchedule);
-    //console.log('flexibleScheduleToggle', flexibleScheduleToggle);
+    
     if (flexibleScheduleToggle) {
         showFlexibleSchedule[id] = !showFlexibleSchedule[id];
     }
-    //console.log('show flex schedule: ', showFlexibleSchedule);
     if (pdfScheduleToggle) {
         showPdfSchedule[id] = !showPdfSchedule[id];
     }
 
-    //console.log(scheduleData);
-    //console.log(spanSwitchToPdf, spanSwitchToNormal, spanSwitchToLegal, spanSwitchToLetter);
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Default_parameters
-    //let roomData = {{json_room_data|safe}};
 
     let line_list;
     let filled_row_list;
@@ -96,7 +83,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     if (showPdfSchedule[id]) {
       document.getElementById(spanSwitchToNormal).style.display = "inline-block";
       document.getElementById(spanSwitchToPdf).style.display = "none";
-      //document.getElementById("toggle-pdf-"+id).innerHTML = "Stop Printable View";
       if (paperSize === "LEGAL") {
         document.getElementById(spanSwitchToLegal).style.display = "none";
         document.getElementById(spanSwitchToLetter).style.display = "inline-block";
@@ -109,34 +95,18 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       document.getElementById(spanSwitchToNormal).style.display = "none";
       document.getElementById(spanSwitchToLegal).style.display = "none";
       document.getElementById(spanSwitchToLetter).style.display = "none";
-      //document.getElementById("toggle-pdf-"+id).innerHTML = "Switch to Printable (PDF) View";
     }
 
-    //console.log('id: ', id);
     if (showPdfSchedule[id]) {
       //https://www.w3schools.com/howto/tryit.asp?filename=tryhow_js_toggle_hide_show
       //https://allyjs.io/tutorials/hiding-elements.html
       iframe.style.display = "block";
       canvas.style.display = "none";
-      //console.log('showing iframe, but not canvas');
       stream = blobStream();
       context = new canvas2pdf.PdfContext(stream, {size: paperSize});
-      //doc.addPage({size: 'A7'});
-
-      // make the top margin a bit smaller if the schedule is long...it's still possible that the schedule will be
-      // too long and will go off the bottom of the printed page, though.
-      //if (height > this.maxHeight) {
-      //  topMargin = oneInch;
-      //  bottomMargin = oneInch;
-      //} else {
-      //  topMargin = oneInch;
-      //  bottomMargin = oneInch;
-      //}
 
       pageDimensionsPDFCoords = pageDimensionCalculator(oneInch, topMarginPDFCoords, bottomMarginPDFCoords, paperSize);
       
-      //console.log('page dimensions: ', pageDimensionsPDFCoords);
-
       for(var n = 0; n < line_list.length; n++) {
         if (isHorizontalLine(line_list[n])) {
           horizontalLineYHTMLCoords.push(line_list[n][1]);
@@ -144,41 +114,28 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       }
 
       twoMinsHTMLCoords = minAndSecondMin(horizontalLineYHTMLCoords);
-      //console.log('mins: ', twoMinsHTMLCoords);
-
-      //headerLineList = [];
-      //lheaderTextList = [];
-
+     
       for(var n = 0; n < line_list.length; n++) {
         if (isHeaderLine(line_list[n], twoMinsHTMLCoords)) {
           headerLineList.push(line_list[n]);
         }
       }
 
-      //console.log('header lines: ', headerLineList);
-
       for(var n = 0; n < table_text_list.length; n++) {
         if (isHeaderText(table_text_list[n], twoMinsHTMLCoords)) {
           headerTextList.push(table_text_list[n]);
         }
       }
-      //console.log('header text: ', headerTextList);
 
       iframe.width = width;
-      iframe.height = height;
+      iframe.height = Math.min(height, 800);
       scale = 0.61;
 
-
-      //console.log(horizontalLineYHTMLCoords);
       verticalBreakPointsHTMLCoords = verticalBreakPointCalculatorHTMLCoords(horizontalLineYHTMLCoords, twoMinsHTMLCoords, scale, pageDimensionsPDFCoords, currentPdfPage);
-
-      console.log(verticalBreakPointsHTMLCoords);
       
       paginatedData = paginateData(line_list, filled_row_list, box_list, table_text_list, box_label_list, 
         headerTextList, headerLineList, scale, twoMinsHTMLCoords, verticalBreakPointsHTMLCoords, pageDimensionsPDFCoords);
-      
-      //console.log('height: ', height);
-      
+            
     } else {
       // the following is so we can keep the canvas and pdf code together...the canvas part will only have one "page"
       paginatedData = [
@@ -194,7 +151,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       // https://allyjs.io/tutorials/hiding-elements.html
       iframe.style.display = "none";
       canvas.style.display = "block";
-      //console.log('showing canvas, but not iframe');
       context = canvas.getContext('2d');
       // https://www.w3schools.com/TAGs/tryit.asp?filename=tryhtml5_canvas_height_width_clear
       canvas.width = width;
@@ -213,6 +169,8 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       let bll = paginatedData[page].boxLabelList;
       let ttl = paginatedData[page].tableTextList;
 
+      /*
+      // uncomment the following to show the top and bottom margins
       if (showPdfSchedule[id]) {
         context.beginPath();
         context.moveTo(10,pageDimensionsPDFCoords.yMin);
@@ -225,6 +183,7 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         context.strokeStyle = 'red';
         context.stroke();
       }
+      */
 
       for(var n = 0; n < frl.length; n++) {
         context.beginPath();
@@ -286,7 +245,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         } else {
           context.font = "bold 10pt Helvetica";
         }
-        // console.log('font: ', bll[n][3]);
         // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText
         context.fillText(bll[n][2],bll[n][0],bll[n][1]);
       }
@@ -313,6 +271,8 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         // not sure what the following does....
         //var blob = ctx.stream.toBlob('application/pdf');
         //saveAs(blob, 'example.pdf', true);
+        // https://stackoverflow.com/questions/3569329/javascript-to-make-the-page-jump-to-a-specific-location
+        document.getElementById("schedule-"+id).scrollIntoView({behavior: 'smooth'});
       });
     }
   }
@@ -368,7 +328,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     // lineData has the form [x1, y1, x2, y2]; this function returns true if the line in question
     // appears to be a horizontal line that has coordinates consistent with either the min or the secondMin
     let eps = 1;
-    //console.log(twoMinsHTMLCoords);
     return isHorizontalLine(lineData) && ((Math.abs(lineData[1] - twoMinsHTMLCoords.min) <= eps) || (Math.abs(lineData[1] - twoMinsHTMLCoords.secondMin) <= eps));
   }
 
@@ -397,32 +356,25 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
 
     //https://medium.com/coding-at-dawn/how-to-sort-an-array-numerically-in-javascript-2b22710e3958
     horizontalLineYHTMLCoords.sort((a,b)=>a-b);
-    //console.log(horizontalLineYHTMLCoords);
 
     let yVal;
     let yNextVal;
-    //let firstValThisPage = true;
     let conditionLHS;
     let nMax = horizontalLineYHTMLCoords.length - 2;
     let numDataRowsThisPage = 0;
     for(var n = 0; n < nMax + 1; n++) {
       yVal = horizontalLineYHTMLCoords[n];
       yNextVal = horizontalLineYHTMLCoords[n+1];
-      console.log(n, yVal, yNextVal);
       if (n == 0) {
         yMin = yVal;
       }
       if (page == 0) {
         conditionLHS = yNextVal*scale + pageDimensionsPDFCoords.yMin
       } else {
-        // WORKING HERE
-        console.log('yMin, yNextVal, twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min, pageDimensionsPDFCoords.yMin: ', yMin, yNextVal, twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min, pageDimensionsPDFCoords.yMin);
         conditionLHS = (yNextVal-yMin)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
-        console.log('conditionLHS, pageDimensionsPDFCoords.yMax: ', conditionLHS, pageDimensionsPDFCoords.yMax);
       }
       if (conditionLHS > pageDimensionsPDFCoords.yMax) {
         // the next value oversteps the boundary
-        console.log('the next value oversteps the boundary; num data rows this page: ', numDataRowsThisPage);
         if (numDataRowsThisPage >= 1) {
           // if we have at least one row of data on this page, then we can move on to the next page
           yValsByPageHTMLCoords.push({
@@ -443,7 +395,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
           }
         } else {
           // we're beyond the margin, but we don't yet have one row of data
-          console.log('we are beyond the margin, but we do not yet have one row of data');
           yMax = yNextVal;
           if (n > 0) {
             // if n == 0, the current row is the header row, so that doesn't count as a row of data
@@ -464,9 +415,7 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
           });
         }
       }
-    }
-    
-    console.log('DONE!', yValsByPageHTMLCoords);
+    }    
     return yValsByPageHTMLCoords;
   }
 
@@ -490,31 +439,22 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
 
     box_list.forEach(box => {
       pageObject = boxPageCalculator(box, verticalBreakPointsHTMLCoords);
-      //console.log(pageObject);
-      //console.log(pageObject.page, typeof pageObject.page);
-      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
       let yVal = yValCalculator(box[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
       paginatedData[pageObject.page].boxList.push([scale*box[0], yVal, scale*box[2], scale*box[3], box[4], box[5], box[6]]);
     });
 
     filled_row_list.forEach(box => {
       pageObject = boxPageCalculator(box, verticalBreakPointsHTMLCoords);
-      //console.log(pageObject);
-      //console.log(pageObject.page, typeof pageObject.page);
-      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
       let yVal = yValCalculator(box[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
       paginatedData[pageObject.page].filledRowList.push([scale*box[0], yVal, scale*box[2], scale*box[3], box[4], box[5], box[6]]);
     });
 
-
-    //(yNextVal-yMin)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
     // add header text to all pages after the first one
     for(var page = 1; page < verticalBreakPointsHTMLCoords.length; page++) {
       pageObject = verticalBreakPointsHTMLCoords[page];
       headerTextList.forEach(text => {
         // centering the header text manually....
         let yVal = 0.5*(twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
-        //console.log([scale*text[0], yVal, text[2], text[3], text[4]]);
         paginatedData[page].tableTextList.push([scale*text[0], yVal, text[2], text[3], text[4]]);
       });
     }
@@ -529,28 +469,19 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     }
     
     table_text_list.forEach(text => {
-      //console.log(text);
       pageObject = boxPageCalculator(text, verticalBreakPointsHTMLCoords);
-      //console.log(pageObject);
-      //console.log(pageObject.page, typeof pageObject.page);
-      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
       let yVal = yValCalculator(text[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
       paginatedData[pageObject.page].tableTextList.push([scale*text[0], yVal, text[2], text[3], text[4]]);
     });
 
     box_label_list.forEach(text => {
-      //console.log(text);
       pageObject = boxPageCalculator(text, verticalBreakPointsHTMLCoords);
-      //console.log(pageObject);
-      //console.log(pageObject.page, typeof pageObject.page);
-      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
       let yVal = yValCalculator(text[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
       paginatedData[pageObject.page].boxLabelList.push([scale*text[0], yVal, text[2], text[3], text[4]]);
     });
 
 
     line_list.forEach(line => {
-      //console.log(text);
       if (isHorizontalLine(line)) {
         // one line could show up at the end of one page and the beginning of the next
         pageObjects = horizontalLinePageCalculator(line, verticalBreakPointsHTMLCoords);
@@ -564,16 +495,11 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         if ((approximatelyEqual(line[1], yMinHTMLCoords) && approximatelyEqual(line[3], yMaxHTMLCoords)) || (approximatelyEqual(line[3], yMinHTMLCoords) && approximatelyEqual(line[1], yMaxHTMLCoords))) {
           // write line to list
           for(var page = 0; page < verticalBreakPointsHTMLCoords.length; page++) {
-            //let paginatedDataItem = verticalBreakPointsHTMLCoords[page];
-            //console.log(paginatedDataItem);
             if (page == 0) {
-              //twoMinsHTMLCoords
-              //twoMinsHTMLCoords.min, secondMin
               let yMinValPDFCoords = yValCalculator(verticalBreakPointsHTMLCoords[page].yMinHTMLCoords, verticalBreakPointsHTMLCoords[page], scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
               let yMaxValPDFCoords = scale*verticalBreakPointsHTMLCoords[page].yMaxHTMLCoords + pageDimensionsPDFCoords.yMin;
               paginatedData[page].lineList.push([scale*line[0], yMinValPDFCoords, scale*line[2], yMaxValPDFCoords]);
             } else {
-              //console.log('page: ', paginatedDataItem.page, 'break points', verticalBreakPointsHTMLCoords[paginatedDataItem.page]);
               let yMaxValPDFCoords = yValCalculator(verticalBreakPointsHTMLCoords[page].yMaxHTMLCoords, verticalBreakPointsHTMLCoords[page], scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
               paginatedData[page].lineList.push([scale*line[0], pageDimensionsPDFCoords.yMin, scale*line[2], yMaxValPDFCoords]);
             }
@@ -621,7 +547,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         numSolns += 1;
       }
     });
-    //console.log('numSolns: ', numSolns);
     if (numSolns > 1) {
       console.log('Warning!!!  numSolns is greater than 1: ', numSolns);
     }
@@ -638,42 +563,13 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         numSolns += 1;
       }
     });
-    console.log('numSolns: ', numSolns);
     return pageObjectsThisLine;
   }
-
-  /*
-  function verticalLinePageCalculator(verticalLineData, verticalBreakPointsHTMLCoords) {
-    let pageObjectsThisLine = [];
-    let numSolns = 0;
-    let eps = 1;
-    verticalBreakPointsHTMLCoords.forEach(pageObj => {
-      if ((verticalLineData[1] <= pageObj.yMaxHTMLCoords + eps) && (verticalLineData[1] >= pageObj.yMinHTMLCoords - eps)) {
-        pageObjectsThisLine.push(pageObj);   
-        numSolns += 1;
-      }
-    });
-    console.log('numSolns: ', numSolns);
-    return pageObjectsThisLine;
-  }
-  */
 
   function approximatelyEqual(val1, val2) {
     let eps = 1;
     return Math.abs(val1-val2) <= eps;
   }
-
-  /*
-  function lessThanApprox(val1, val2) {
-    let eps = 1;
-    return val1 <= val2 + eps;
-  }
-
-  function greaterThanApprox(val1, val2) {
-    let eps = 1;
-    return val1 >= val2 - eps;
-  }
-  */
 
   function yValCalculator(yHTML, pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords) {
     return pageObject.page == 0 ? scale*yHTML + pageDimensionsPDFCoords.yMin : scale*(yHTML-pageObject.yMinHTMLCoords) + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;

@@ -60,6 +60,8 @@
 
 {% for data in prof_data %}
 
+<div style="margin-bottom: 60px;" id="schedule-{{data.id}}"></div>
+
 {% if data.conflict %}
    <p> 
     <span class="label label-warning">Warning </span> There are overlapping course offerings.
@@ -68,7 +70,7 @@
       <p> <b>{{warning.0}}:</b> {{warning.1}} </p>
    {% endfor %}
 {% endif %}
-      
+
 <div>
 {% if data.offerings and can_edit %}
   <span class="dropdown">
