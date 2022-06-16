@@ -1,6 +1,10 @@
 function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize = 'LETTER', 
     scheduleData, showFlexibleSchedule, showPdfSchedule, htmlElementIds = {}) {
-  
+    
+    /* 
+      this function uses a slightly-edited version of the canvas2pdf package:
+      https://github.com/joshua-gould/canvas2pdf/blob/master/demo.html
+    */
     flexibleToggle = htmlElementIds.toggle === null ? null : htmlElementIds.toggle+id;
     spanSwitchToPdf = htmlElementIds.pdf+id;
     spanSwitchToNormal = htmlElementIds.normal+id;
