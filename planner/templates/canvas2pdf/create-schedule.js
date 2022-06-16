@@ -62,6 +62,7 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     }
 
     let verticalBreakPointsHTMLCoords = [];
+    let paginatedData = [];
 
     if (showFlexibleSchedule[id]) {
       line_list = scheduleData.grid_list;
@@ -163,15 +164,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       }
       console.log('header text: ', headerTextList);
 
-
-
-
-
-
-
-      context.addPage();
-
-
       iframe.width = width;
       iframe.height = height;
       scale = 0.61;
@@ -181,13 +173,24 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       verticalBreakPointsHTMLCoords = verticalBreakPointCalculatorHTMLCoords(horizontalLineYHTMLCoords, twoMinsHTMLCoords, scale, pageDimensionsPDFCoords, currentPdfPage);
 
       console.log(verticalBreakPointsHTMLCoords);
-
-
-
-
+      
+      paginatedData = paginateData(line_list, filled_row_list, box_list, table_text_list, box_label_list, 
+        headerTextList, headerLineList, scale, twoMinsHTMLCoords, verticalBreakPointsHTMLCoords, pageDimensionsPDFCoords);
+      
       //console.log('height: ', height);
       
     } else {
+      // the following is so we can keep the canvas and pdf code together...the canvas part will only have one "page"
+      paginatedData = [
+        {
+          lineList: line_list,
+          filledRowList: filled_row_list,
+          boxList: box_list,
+          tableTextList: table_text_list,
+          boxLabelList: box_label_list
+        }
+      ];
+      
       // https://allyjs.io/tutorials/hiding-elements.html
       iframe.style.display = "none";
       canvas.style.display = "block";
@@ -208,88 +211,98 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     }
     */
 
-    let numPages = showPdfSchedule[id] ? verticalBreakPointsHTMLCoords.length : 1;
-    numPages = 1;
-    // FIX ABOVE LINE!!!
-    for(var page = 0; page < numPages; page++) {
+    for(var page = 0; page < paginatedData.length; page++) {
 
-      for(var n = 0; n < filled_row_list.length; n++) {
+      let frl = paginatedData[page].filledRowList;
+      let ll = paginatedData[page].lineList;
+      let bl = paginatedData[page].boxList;
+      let bll = paginatedData[page].boxLabelList;
+      let ttl = paginatedData[page].tableTextList;
+      let y1;
+      let y2;
+
+      for(var n = 0; n < frl.length; n++) {
         context.beginPath();
         //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect
-        context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1], scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
-        context.fillStyle = filled_row_list[n][4];
+        context.rect(frl[n][0], frl[n][1], frl[n][2], frl[n][3]);
+        context.fillStyle = frl[n][4];
         context.fill();
-        context.lineWidth = filled_row_list[n][5];
-        context.strokeStyle = filled_row_list[n][6];
+        context.lineWidth = frl[n][5];
+        context.strokeStyle = frl[n][6];
         context.stroke();
         // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
         // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
         if (this.showPdfSchedule[id]) {
           context.beginPath();
         //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/rect
-          context.rect(scale*filled_row_list[n][0], scale*filled_row_list[n][1], scale*filled_row_list[n][2], scale*filled_row_list[n][3]);
-          context.lineWidth = filled_row_list[n][5];
-          context.strokeStyle = filled_row_list[n][6];
+          context.rect(frl[n][0], frl[n][1], frl[n][2], frl[n][3]);
+          context.lineWidth = frl[n][5];
+          context.strokeStyle = frl[n][6];
           context.stroke();
         }
       }
     
-      for(var n = 0; n < line_list.length; n++) {
+      for(var n = 0; n < ll.length; n++) {
         context.beginPath();
-        context.moveTo(scale*line_list[n][0], scale*line_list[n][1]);
-        context.lineTo(scale*line_list[n][2], scale*line_list[n][3]);
+        context.moveTo(ll[n][0], ll[n][1]);
+        context.lineTo(ll[n][2], ll[n][3]);
         context.lineWidth = grid_line_width;
         context.strokeStyle = grid_line_colour;
         context.lineCap = 'square';		
         context.stroke();
         }
 
-      for(var n = 0; n < box_list.length; n++) {
+      for(var n = 0; n < bl.length; n++) {
         context.beginPath();
-        context.rect(scale*box_list[n][0], scale*box_list[n][1], scale*box_list[n][2], scale*box_list[n][3]);
-        context.fillStyle = box_list[n][4];
+        context.rect(bl[n][0], bl[n][1], bl[n][2], bl[n][3]);
+        context.fillStyle = bl[n][4];
         context.fill();
-        context.lineWidth = box_list[n][5];
-        context.strokeStyle = box_list[n][6];
+        context.lineWidth = bl[n][5];
+        context.strokeStyle = bl[n][6];
         context.stroke();
         // From canvas2pdf docs: Calling fill and then stroke consecutively only executes fill;
         // to get around this, I'm constructing the rectangle a second time and only calling stroke the second time
         // https://jenkov.com/tutorials/html5-canvas/stroke-fill.html
         if (this.showPdfSchedule[id]) {
           context.beginPath();
-          context.rect(scale*box_list[n][0], scale*box_list[n][1], scale*box_list[n][2], scale*box_list[n][3]);
-          context.lineWidth = box_list[n][5];
-          context.strokeStyle = box_list[n][6];
+          context.rect(bl[n][0], bl[n][1], bl[n][2], bl[n][3]);
+          context.lineWidth = bl[n][5];
+          context.strokeStyle = bl[n][6];
           context.stroke();
         }
       }
 
-      for(var n = 0; n < box_label_list.length; n++) {
+      for(var n = 0; n < bll.length; n++) {
         context.textAlign = 'center';
         context.textBaseline = 'middle';		       
-        context.fillStyle = box_label_list[n][4];
+        context.fillStyle = bll[n][4];
         if (!this.showPdfSchedule[id]) {
-          context.font = box_label_list[n][3];
+          context.font = bll[n][3];
         } else {
           context.font = "bold 10pt Helvetica";
         }
-        // console.log('font: ', box_label_list[n][3]);
+        // console.log('font: ', bll[n][3]);
         // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText
-        context.fillText(box_label_list[n][2],scale*box_label_list[n][0],scale*box_label_list[n][1]);
+        context.fillText(bll[n][2],bll[n][0],bll[n][1]);
       }
       
-      for(var n = 0; n < table_text_list.length; n++) {
+      for(var n = 0; n < ttl.length; n++) {
         context.textAlign = 'center';
         context.textBaseline = 'middle';		       
-        context.fillStyle = table_text_list[n][4];
-        //context.font = table_text_list[n][3];
+        context.fillStyle = ttl[n][4];
+        //context.font = ttl[n][3];
         if (!this.showPdfSchedule[id]) {
-          context.font = table_text_list[n][3];
+          context.font = ttl[n][3];
         } else {
           context.font = "10pt Helvetica";
         }
-        context.fillText(table_text_list[n][2],scale*table_text_list[n][0],scale*table_text_list[n][1]);
+        context.fillText(ttl[n][2],ttl[n][0],ttl[n][1]);
       }
+
+      if (this.showPdfSchedule[id]) {
+        context.addPage();
+      }
+
     }
 
     if (showPdfSchedule[id]) {
@@ -537,7 +550,136 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
 
   }
 
-  function 
+  function paginateData(line_list, filled_row_list, box_list, table_text_list, box_label_list, headerTextList, headerLineList, scale, twoMinsHTMLCoords, verticalBreakPointsHTMLCoords, pageDimensionsPDFCoords) {
+    
+    let paginatedData = [];
+    let pageObject;
+    let pageObjects = [];
+    for(var page=0; page < verticalBreakPointsHTMLCoords.length; page++) {
+      paginatedData.push({
+        lineList: [],
+        filledRowList: [],
+        boxList: [],
+        tableTextList: [],
+        boxLabelList: []
+      });
+    }
+
+    box_list.forEach(box => {
+      pageObject = boxPageCalculator(box, verticalBreakPointsHTMLCoords);
+      //console.log(pageObject);
+      //console.log(pageObject.page, typeof pageObject.page);
+      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
+      let yVal = yValCalculator(box[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
+      paginatedData[pageObject.page].boxList.push([scale*box[0], yVal, scale*box[2], scale*box[3], box[4], box[5], box[6]]);
+    });
+
+    filled_row_list.forEach(box => {
+      pageObject = boxPageCalculator(box, verticalBreakPointsHTMLCoords);
+      //console.log(pageObject);
+      //console.log(pageObject.page, typeof pageObject.page);
+      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
+      let yVal = yValCalculator(box[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
+      paginatedData[pageObject.page].filledRowList.push([scale*box[0], yVal, scale*box[2], scale*box[3], box[4], box[5], box[6]]);
+    });
+
+    // add header text to all pages after the first one
+    for(var page = 1; page < verticalBreakPointsHTMLCoords.length; page++) {
+      console.log('PAGE!', page);
+      pageObject = verticalBreakPointsHTMLCoords[page];
+      console.log(pageObject);
+      console.log(pageObject.page, typeof pageObject.page);
+      console.log('paginated data, this page:', paginatedData[pageObject.page]);
+      headerTextList.forEach(text => {
+        let yVal = scale*text[1] + pageDimensionsPDFCoords.yMin
+        console.log([scale*text[0], yVal, text[2], text[3], text[4]]);
+        paginatedData[page].tableTextList.push([scale*text[0], yVal, text[2], text[3], text[4]]);
+      });
+    }
+    
+    table_text_list.forEach(text => {
+      //console.log(text);
+      pageObject = boxPageCalculator(text, verticalBreakPointsHTMLCoords);
+      //console.log(pageObject);
+      //console.log(pageObject.page, typeof pageObject.page);
+      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
+      let yVal = yValCalculator(text[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
+      paginatedData[pageObject.page].tableTextList.push([scale*text[0], yVal, text[2], text[3], text[4]]);
+    });
+
+    box_label_list.forEach(text => {
+      //console.log(text);
+      pageObject = boxPageCalculator(text, verticalBreakPointsHTMLCoords);
+      //console.log(pageObject);
+      //console.log(pageObject.page, typeof pageObject.page);
+      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
+      let yVal = yValCalculator(text[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
+      paginatedData[pageObject.page].boxLabelList.push([scale*text[0], yVal, text[2], text[3], text[4]]);
+    });
+
+    /*
+    line_list.forEach(line => {
+      //console.log(text);
+      if (isHorizontalLine(line)) {
+        pageObjects = linePageCalculator(line, verticalBreakPointsHTMLCoords);
+        [ could be one or two ]
+
+
+        WORKING HERE
+
+      }
+      
+      //console.log(pageObject);
+      //console.log(pageObject.page, typeof pageObject.page);
+      //console.log('paginated data, this page:', paginatedData[pageObject.page]);
+      let yVal = yValCalculator(text[1], pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords);
+      paginatedData[pageObject.page].boxLabelList.push([scale*text[0], yVal, text[2], text[3], text[4]]);
+    });
+    */
+    return paginatedData;
+  }
+
+
+  
+
+  function boxPageCalculator(boxData, verticalBreakPointsHTMLCoords) {
+    let pageObjectThisBox = {};
+    let numSolns = 0;
+    let eps = 1;
+    if (verticalBreakPointsHTMLCoords.length > 0) {
+      // there is one case where coordinates do not fall within the "usual" range dictated by the 
+      // the horizontal lines in the table, and that is the title that should go at the top of the first page
+      pageObjectThisBox = verticalBreakPointsHTMLCoords[0];
+    }
+    verticalBreakPointsHTMLCoords.forEach(pageObj => {
+
+      //if (approximatelyEqual(boxData[1], pageObj.yMaxHTMLCoords) || approximatelyEqual(boxData[1], pageObj.yMinHTMLCoords)) {
+      //  console.log('box is close to the boundary!', boxData[1], pageObj);
+      //}
+
+      if ((boxData[1] < pageObj.yMaxHTMLCoords - eps) && (boxData[1] >= pageObj.yMinHTMLCoords - eps)) {
+
+        pageObjectThisBox = pageObj;
+        //console.log('seletected page object: ', pageObj);
+        
+        numSolns += 1;
+      }
+    });
+    console.log('numSolns: ', numSolns);
+    return pageObjectThisBox;
+  }
+
+  function linePageCalculator(horizontalLineData, verticalBreakPointsHTMLCoords) {
+    let pageObjectsThisLine = []; // if a horizontal line is at the end of a page, it should also show up at the beginning of the next
+    
+    verticalBreakPointsHTMLCoords.forEach(pageObj => {
+      if (lessThanApprox(horizontalLineData[1], pageObj.yMaxHTMLCoords) && greaterThanApprox(horizontalLineData[1], pageObj.yMinHTMLCoords)) {
+        pageObjectsThisLine.push(pageObj);   
+      }
+    });
+    return pageObjectsThisLine;
+  }
+
 
 
   function approximatelyEqual(val1, val2) {
@@ -545,12 +687,18 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     return Math.abs(val1-val2) <= eps;
   }
 
+  /*
   function lessThanApprox(val1, val2) {
     let eps = 1;
     return val1 <= val2 + eps;
   }
 
-  function greatThanApprox(val1, val2) {
+  function greaterThanApprox(val1, val2) {
     let eps = 1;
     return val1 >= val2 - eps;
+  }
+  */
+
+  function yValCalculator(yHTML, pageObject, scale, pageDimensionsPDFCoords, twoMinsHTMLCoords) {
+    return pageObject.page == 0 ? scale*yHTML + pageDimensionsPDFCoords.yMin : scale*(yHTML-pageObject.yMinHTMLCoords) + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
   }
