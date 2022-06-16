@@ -127,7 +127,7 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         }
       }
 
-      iframe.width = width;
+      iframe.width = Math.min(width, 850);
       iframe.height = Math.min(height, 800);
       scale = 0.61;
 
