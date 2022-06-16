@@ -44,7 +44,7 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
     let context;
     let scale = 1;
     let topMarginPDFCoords = oneInch;
-    let bottomMarginPDFCoords = 3*oneInch;
+    let bottomMarginPDFCoords = oneInch;
 
   // https://stackoverflow.com/questions/7196212/how-to-create-dictionary-and-add-key-value-pairs-dynamically?rq=1
   // https://stackoverflow.com/questions/9251480/set-canvas-size-using-javascript/9251497
@@ -401,9 +401,10 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
 
     let yVal;
     let yNextVal;
-    let firstValThisPage = true;
+    //let firstValThisPage = true;
     let conditionLHS;
     let nMax = horizontalLineYHTMLCoords.length - 2;
+    let numDataRowsThisPage = 0;
     for(var n = 0; n < nMax + 1; n++) {
       yVal = horizontalLineYHTMLCoords[n];
       yNextVal = horizontalLineYHTMLCoords[n+1];
@@ -411,15 +412,6 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
       if (n == 0) {
         yMin = yVal;
       }
-      if (firstValThisPage) {
-        yMax = yNextVal;
-        //console.log('first val this page', yMin, yMax);
-        if (n > 0) {
-          // in the special case that n == 0, the first line will be associated with the header row;
-          // in that case we want a line that actually corresponds to data first....
-          firstValThisPage = false;
-        }
-      } 
       if (page == 0) {
         conditionLHS = yNextVal*scale + pageDimensionsPDFCoords.yMin
       } else {
@@ -428,9 +420,42 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
         conditionLHS = (yNextVal-yMin)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
         console.log('conditionLHS, pageDimensionsPDFCoords.yMax: ', conditionLHS, pageDimensionsPDFCoords.yMax);
       }
-      if (conditionLHS <= pageDimensionsPDFCoords.yMax) {
+      if (conditionLHS > pageDimensionsPDFCoords.yMax) {
+        // the next value oversteps the boundary
+        console.log('the next value oversteps the boundary; num data rows this page: ', numDataRowsThisPage);
+        if (numDataRowsThisPage >= 1) {
+          // if we have at least one row of data on this page, then we can move on to the next page
+          yValsByPageHTMLCoords.push({
+            page: page,
+            yMinHTMLCoords: yMin,
+            yMaxHTMLCoords: yMax
+          });
+          yMin = yMax;
+          yMax = yNextVal;
+          page += 1;
+          numDataRowsThisPage = 1; // the next page will automatically get the one that overstepped the boundary....
+          if (n == nMax) {
+            yValsByPageHTMLCoords.push({
+              page: page,
+              yMinHTMLCoords: yMin,
+              yMaxHTMLCoords: yMax
+            });
+          }
+        } else {
+          // we're beyond the margin, but we don't yet have one row of data
+          console.log('we are beyond the margin, but we do not yet have one row of data');
+          yMax = yNextVal;
+          if (n > 0) {
+            // if n == 0, the current row is the header row, so that doesn't count as a row of data
+            numDataRowsThisPage += 1;
+          }
+        }
+      } else {
         yMax = yNextVal;
-        console.log('we are still within the page margin.... yMin, yMax: ', yMin, yMax);
+        if (n > 0) {
+          // if n == 0, the current row is the header row, so that doesn't count as a row of data
+          numDataRowsThisPage += 1;
+        }
         if (n == nMax) {
           yValsByPageHTMLCoords.push({
             page: page,
@@ -438,131 +463,11 @@ function createSchedule(id, flexibleScheduleToggle, pdfScheduleToggle, paperSize
             yMaxHTMLCoords: yMax
           });
         }
-      } else {
-        console.log('we wandered beyond the page margin.... yMin, yMax: ', yMin, yMax);
-        yValsByPageHTMLCoords.push({
-          page: page,
-          yMinHTMLCoords: yMin,
-          yMaxHTMLCoords: yMax
-        });
-        yMin = yMax;
-        page += 1;
-        firstValThisPage = true;
       }
     }
-
-    return yValsByPageHTMLCoords;
-      
-      
-     /* 
-      else {
-        console.log('we wandered beyond the page margin.... yMin, yMax: ', yMin, yMax);
-        if (firstValThisPage) {
-          // it's beyond the page margin, but we need to print it to this page anyway....
-          yValsByPageHTMLCoords.push({
-            page: page,
-            yMinHTMLCoords: yMin,
-            yMaxHTMLCoords: yMax
-          });
-        } 
-      else {
-        numValsThisPage += 1;
-        console.log('NOT first val this page');
-        if (page == 0) {
-          conditionLHS = yNextVal*scale + pageDimensionsPDFCoords.yMin
-        } else {
-          conditionLHS = (yNextVal-yMaxPreviousPage)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin;
-        }
-        if (conditionLHS <= pageDimensionsPDFCoords.yMax) {
-          yMax = yNextVal;
-          console.log('we are still within the page margin.... yMax: ', yMax);
-        } else {
-          console.log('we wandered beyond the page margin.... yMin, yMax: ', yMin, yMax);
-          if ()
-          yValsByPageHTMLCoords.push({
-            page: page,
-            yMinHTMLCoords: yMin,
-            yMaxHTMLCoords: yMax
-          });
-          yMaxPreviousPage = yNextVal;
-          page += 1;
-          firstValThisPage = true;
-        }
-      }
-    }
-    if (!firstValThisPage) {
-      // push the last yMin and yMax values, since those didn't get added to the array yet
-      yValsByPageHTMLCoords.push({
-        page: page,
-        yMinHTMLCoords: yMin,
-        yMaxHTMLCoords: yMax
-      });
-    }
-    console.log(yValsByPageHTMLCoords);
-
-    /*
-      if (page == 0) {
-        if (yVal*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
-          if (yValHTMLCoords < yMin) {
-            yMin = yValHTMLCoords;
-          }
-          if (yValHTMLCoords > yMax) {
-            yMax = yValHTMLCoords;
-          }
-        }
-      } else {
-        if ((yValHTMLCoords-yMaxPreviousPage)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
-          if (yValHTMLCoords > yMax) {
-            yMax = yValHTMLCoords;
-          }
-        }
-      }
-    }
-
-
-    horizontalLineYHTMLCoords.forEach( yValHTMLCoords => { 
-
-    });
-
-
-
-    // What if one block is so large that it simply cannot fit on a page?!? currently the routine is just truncating in that case, which isn't good...!
-    while (page < 10 & (!maxPageReached)) {
-      horizontalLineYHTMLCoords.forEach( yValHTMLCoords => { 
-        if (page == 0) {
-          if (yValHTMLCoords*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
-            if (yValHTMLCoords < yMin) {
-              yMin = yValHTMLCoords;
-            }
-            if (yValHTMLCoords > yMax) {
-              yMax = yValHTMLCoords;
-            }
-          }
-        } else {
-          if ((yValHTMLCoords-yMaxPreviousPage)*scale + (twoMinsHTMLCoords.secondMin - twoMinsHTMLCoords.min)*scale + pageDimensionsPDFCoords.yMin <= pageDimensionsPDFCoords.yMax) {
-            if (yValHTMLCoords > yMax) {
-              yMax = yValHTMLCoords;
-            }
-          }
-        }
-      });
-      if (approximatelyEqual(yMin, yMax)) {
-        maxPageReached = true;
-      } else {
-        yValsByPageHTMLCoords.push({
-          page: page,
-          yMinHTMLCoords: yMin,
-          yMaxHTMLCoords: yMax
-        });
-      }
-      yMaxPreviousPage = yMax;
-      yMin = yMax; // yMin for the next page is yMax from the previous page, since we're going to need to draw this line again
-      yMax = -Infinity;
-      page += 1;
-    }
-    */
     
-
+    console.log('DONE!', yValsByPageHTMLCoords);
+    return yValsByPageHTMLCoords;
   }
 
   function paginateData(line_list, filled_row_list, box_list, table_text_list, box_label_list, headerTextList, headerLineList, scale, twoMinsHTMLCoords, verticalBreakPointsHTMLCoords, pageDimensionsPDFCoords) {
