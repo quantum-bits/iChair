@@ -228,9 +228,9 @@ CRONJOBS = [
 
 # email...
 # use this for production:
-#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # use this for development:
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+#EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 if run_mode.debug_toolbar:
     INSTALLED_APPS += ('debug_toolbar',)
