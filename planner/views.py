@@ -528,11 +528,11 @@ def collect_data_for_summary(request):
                 load_list[ii][0] = instructor_load
                 load_list[ii][1] = jj
                 faculty_summary_load_list[ii][jj] = faculty_summary_load_list[ii][jj]+instructor_load
-            else:
+            elif not ((course_offering_dict[key]['course_offering'] in outside_course_offerings) and (not instructor.instructor in department.faculty.all())):
+                # forget it if the course is outside the department and the instructor is outside the department; otherwise include
                 faculty_with_loads_are_being_viewed = False
                 if instructor.instructor not in faculty_not_being_viewed:
                     faculty_not_being_viewed.append(instructor.instructor)
-
 
         if len(instructor_list)==0:
             instructor_list = ['TBA']
