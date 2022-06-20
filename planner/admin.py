@@ -80,15 +80,16 @@ class BannerSubjectAdmin(MultiDBModelAdmin):
     list_display = ('abbrev',)
 
 class BannerCourseAdmin(MultiDBModelAdmin):
-    search_fields = ('subject', 'number', 'title',)
+    # https://code.djangoproject.com/ticket/2331
+    search_fields = ('subject__abbrev', 'number', 'title',)
     list_display = ('subject', 'number', 'title', 'credit_hours',)
 
 class BannerBuildingAdmin(MultiDBModelAdmin):
-    search_fields = ('abbrev',)
+    search_fields = ('abbrev', 'name',)
     list_display = ('abbrev', 'name',)
 
 class BannerRoomAdmin(MultiDBModelAdmin):
-    search_fields = ('number', 'building',)
+    search_fields = ('number', 'building__abbrev', 'building__name',)
     list_display = ('building', 'number', 'capacity','inactive_after',)
 
 class BannerDeliveryMethodAdmin(MultiDBModelAdmin):
@@ -118,19 +119,25 @@ class BannerCourseOfferingAdmin(MultiDBModelAdmin):
 
 class BannerScheduledClassAdmin(admin.ModelAdmin):
     list_display = ('course_offering','day','begin_at','end_at')
+    search_fields = ('course_offering__course__title', 'course_offering__course__number', 'course_offering__course__subject__abbrev', )
 
 class RequirementAdmin(admin.ModelAdmin):
     form = RequirementForm
 
 class DeltaCourseOfferingAdmin(admin.ModelAdmin):
-    list_display = ('crn', 'course_offering', 'semester', 'requested_action', 'update_meeting_times', 'update_instructors', 'update_semester_fraction','update_max_enrollment','update_delivery_method',)
+    list_display = ('crn', 'course_offering', 'semester', 'requested_action', 'updated_at', 'update_meeting_times', 'update_instructors', 'update_semester_fraction','update_max_enrollment','update_delivery_method',)
+    search_fields = ('crn', 'semester__name__name', 'semester__banner_code', 'course_offering__course__title', 'course_offering__course__number', 'course_offering__course__subject__abbrev', )    
 
 class SemesterAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'banner_code',)
 
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ('abbrev', 'name', 'department',)
+    search_fields = ('abbrev', 'name', 'department__abbrev', 'department__name',)
+
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'department','number', 'credit_hours',)
-    search_fields = ('title', 'number',)
+    list_display = ('title', 'department','subject', 'number', 'credit_hours',)
+    search_fields = ('subject__abbrev', 'title', 'number',)
     filter_horizontal = ('schedule_semester','prereqs','coreqs',)
 
 class BannerTitleAdmin(admin.ModelAdmin):
@@ -169,6 +176,10 @@ class OfferingInstructorInline(admin.TabularInline):
 class OfferingInstructorAdmin(admin.ModelAdmin):
     list_display = ('instructor','load_credit','course_offering',)
 
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ('abbrev', 'name', )
+    search_fields = ('abbrev', 'name', )
+
 class FacultyMemberAdmin(admin.ModelAdmin):
     list_display = ('last_name', 'first_name', 'pidm', 'department', 'number_course_offerings', 'created_at',)
     search_fields = ('last_name','first_name', 'pidm',)
@@ -188,6 +199,7 @@ class ClassMeetingAdmin(admin.ModelAdmin):
 
 class ScheduledClassAdmin(admin.ModelAdmin):
     list_display = ('course_offering','day','begin_at','end_at','comment',)
+    search_fields = ('course_offering__course__title', 'course_offering__course__number', 'course_offering__course__subject__abbrev', )
 
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('building','number','capacity','inactive_after',)
@@ -197,6 +209,7 @@ class DeliveryMethodAdmin(admin.ModelAdmin):
     list_display = ('description', 'code',)
 
 class BuildingAdmin(admin.ModelAdmin):
+    search_fields = ('abbrev', 'name',)
     list_display = ('name','abbrev',)
 
 class OtherLoadTypeAdmin(admin.ModelAdmin):
@@ -208,6 +221,7 @@ class OtherLoadAdmin(admin.ModelAdmin):
 
 class UserPreferencesAdmin(admin.ModelAdmin):
     list_display = ('user','department_to_view','academic_year_to_view','permission_level',)
+    search_fields = ('user__last_name', 'user__first_name', 'department_to_view__abbrev', 'department_to_view__name', )
     filter_horizontal = ('rooms_to_view','faculty_to_view','other_load_types_to_view',)
 
 class MessageFragmentAdmin(admin.ModelAdmin):
@@ -232,7 +246,7 @@ admin.site.register(CourseOfferingPublicComment)
 admin.site.register(CourseOffering, CourseOfferingAdmin)
 admin.site.register(DegreeProgram, DegreeProgramAdmin)
 admin.site.register(DegreeProgramCourse, DegreeProgramCourseAdmin)
-admin.site.register(Department)
+admin.site.register(Department, DepartmentAdmin)
 admin.site.register(FacultyMember, FacultyMemberAdmin)
 admin.site.register(Major, MajorAdmin)
 admin.site.register(Minor)
@@ -246,7 +260,7 @@ admin.site.register(ScheduledClass, ScheduledClassAdmin)
 admin.site.register(Semester, SemesterAdmin)
 admin.site.register(SemesterName)
 admin.site.register(Student, StudentAdmin)
-admin.site.register(Subject)
+admin.site.register(Subject, SubjectAdmin)
 admin.site.register(TransferCourse)
 admin.site.register(University)
 admin.site.register(Constraint)
