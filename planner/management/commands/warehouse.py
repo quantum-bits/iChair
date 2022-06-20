@@ -352,6 +352,7 @@ class Command(BaseCommand):
                     #print('delivery type: ', co_meeting.INSTRUCTIONALTYPECODE,' ', co_meeting.INSTRUCTIONALTYPEDESCRIPTION, ' ', co_meeting.delivery_method_code, ' ', co_meeting.delivery_method)
 
                     day_OK = True # for now just ignoring Saturday and Sunday meetings (i.e., not writing them to banner.db)
+                    day_of_week = None
                     if co_meeting.DAY == 'M':
                         day_of_week = BannerScheduledClass.MONDAY
                     elif co_meeting.DAY == 'T':
@@ -364,7 +365,7 @@ class Command(BaseCommand):
                         day_of_week = BannerScheduledClass.FRIDAY
                     else:
                         day_OK = False
-                        number_errors = number_errors +1
+                        #number_errors = number_errors +1
                         error_string = 'Day of week is not M-F; it is '+co_meeting.DAY
                         error_list.append(error_string)
                         non_M_F_list.append({
@@ -404,7 +405,7 @@ class Command(BaseCommand):
                     # https://stackoverflow.com/questions/1323410/should-i-use-has-key-or-in-on-python-dicts
                     if co_key in class_meeting_dict:
                         for mtg in class_meeting_dict[co_key]['scheduled_meetings']:
-                            if (mtg['day'] == day_of_week) and (mtg['begin_at'] == start_time) and (mtg['end_at'] == end_time):
+                            if (day_of_week is not None) and (mtg['day'] == day_of_week) and (mtg['begin_at'] == start_time) and (mtg['end_at'] == end_time):
                                 # We have a repeat; this can occur if a course offering is offered in two different rooms at the same
                                 # time and day, which is allowed in Banner (and also, now, in iChair).
                                 #print('A meeting time is being repeated!!!', co_meeting.CRN, co_meeting.term)
