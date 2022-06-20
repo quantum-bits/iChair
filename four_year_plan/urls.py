@@ -2,13 +2,13 @@ from django.conf.urls import include, url
 
 from django.contrib import admin
 
-from planner.views import home
+from planner.views import department_load_summary
 
 admin.autodiscover()
 
 urlpatterns = [#'',# is '' OK?
 
-    url(r'^$', home, name='home'), # is this right?
+    url(r'^$', department_load_summary, name='department_load_summary'),
     url(r'^planner/', include('planner.urls')),
 
     url(r'^accounts/', include('django.contrib.auth.urls')),

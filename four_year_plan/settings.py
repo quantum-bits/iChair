@@ -238,7 +238,7 @@ if run_mode.debug_toolbar:
     INTERNAL_IPS = ('127.0.0.1',) # if this is changed at some point, need to update a conditional block in views.add_faculty(...)
     DEBUG_TOOLBAR_CONFIG = { 'INTERCEPT_REDIRECTS': False }
 
-LOGIN_REDIRECT_URL = 'home'
+LOGIN_REDIRECT_URL = 'department_load_summary'
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to

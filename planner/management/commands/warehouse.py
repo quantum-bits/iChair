@@ -156,7 +156,7 @@ class Command(BaseCommand):
             number_OCD_sections = 0
             number_OCP_sections = 0
             number_ECC_sections = 0
-            number_cancelled_sections = 0
+            number_cancelled_inactive_sections = 0
             number_non_M_F_meetings = 0
             non_M_F_list = []
             
@@ -199,12 +199,9 @@ class Command(BaseCommand):
                 #print('type of credit hours: ', type(co.section_credit_hours))
                 # print(int(co.section_credit_hours))
 
-                if co.section_status_code == 'C':
-                    number_cancelled_sections += 1
-                    print('>>>> CANCELLED section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
-                        co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
-                elif co.section_status_code == 'I':
-                    print('>>>> I section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
+                if co.section_status_code == 'C' or co.section_status_code == 'I':
+                    number_cancelled_inactive_sections += 1
+                    print('CANCELLED or INACTIVE section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
                         co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
                 if co.campus == 'OCD':
                     number_OCD_sections += 1
@@ -681,7 +678,7 @@ class Command(BaseCommand):
             print('number of ECC course offerings: ', number_ECC_sections)
 
             print(' ')
-            print('number of cancelled course offerings (should be zero): ', number_cancelled_sections)
+            print('number of cancelled or inactive course offerings (should be zero): ', number_cancelled_inactive_sections)
 
             print(' ')
             print('number of repeated rooms in meetings: ', len(repeated_room_in_meetings_list))
@@ -792,6 +789,7 @@ class Command(BaseCommand):
                 'number_meetings': number_meetings,
                 'repeated_room_in_meetings_list': repeated_room_in_meetings_list,
                 'number_non_M_F_meetings': number_non_M_F_meetings,
+                'number_cancelled_inactive_sections': number_cancelled_inactive_sections,
                 'non_M_F_list': non_M_F_list,
                 'classes_missing_scheduled_meeting_info': classes_missing_scheduled_meeting_info,
                 'number_errors': number_errors,
@@ -1001,6 +999,10 @@ Number of classes scheduled in inactive rooms: {}
     plaintext_message += """
 Number of meetings scheduled on Saturday or Sunday: {}
     """.format(context["number_non_M_F_meetings"])
+
+    plaintext_message += """
+Number of cancelled or inactive meetings (should be zero): {}
+    """.format(context["number_cancelled_inactive_sections"])
 
     plaintext_message += """
 Number of errors: {0}
