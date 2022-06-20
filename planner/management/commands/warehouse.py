@@ -50,6 +50,8 @@ class Command(BaseCommand):
                     subject_group += " OR "
                 subject_group += "subject_code = '"+banner_subject.abbrev+"'"
             
+            # Note: section_status_code = 'A' means the course section is Active.  There is also 'C' for Cancelled and 'I' for Inactive.  We 
+            #       ignore Cancelled and Inactive course sections.
             course_offering_comments = cursor.execute("""
                 SELECT ssrtext_crn as COMMENTCRN
                     , ssrtext_term_code as COMMENTTERM
@@ -61,7 +63,7 @@ class Command(BaseCommand):
                 FROM dw.dim_course_section dcs -- Use the course section dimension as base.
                     -- Comments
                     LEFT OUTER JOIN dbo.ssrtext ssr ON ((ssr.ssrtext_term_code = dcs.term) AND (ssr.ssrtext_crn = dcs.course_reference_number))
-                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC'))
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC') AND (section_status_code = 'A'))
                     """.format(term_group, subject_group)).fetchall()
         
             course_offering_meetings = cursor.execute("""
@@ -88,7 +90,7 @@ class Command(BaseCommand):
                     LEFT OUTER JOIN dw.fact_course_meeting fcm ON (dcs.course_section_key = fcm.course_section_key)
                     LEFT OUTER JOIN dw.dim_meeting_time dmt ON (fcm.meeting_time_key = dmt.meeting_time_key)
                     LEFT OUTER JOIN dw.dim_room dr ON (fcm.room_key = dr.room_key)
-                WHERE (({0}) AND ({1}) AND (dcs.campus = 'U' OR dcs.campus = 'OCD' OR dcs.campus = 'OCP' OR dcs.campus = 'ECC'))
+                WHERE (({0}) AND ({1}) AND (dcs.campus = 'U' OR dcs.campus = 'OCD' OR dcs.campus = 'OCP' OR dcs.campus = 'ECC') AND (dcs.section_status_code = 'A'))
                     """.format(term_group, subject_group)).fetchall()
 
             course_instructors = cursor.execute("""
@@ -100,13 +102,13 @@ class Command(BaseCommand):
                 FROM dw.dim_course_section dcs -- use the course section dimension as base.
                     LEFT OUTER JOIN dw.fact_faculty_course ffc ON (ffc.scheduled_course_key = dcs.course_section_key)
                     LEFT OUTER JOIN dw.dim_faculty df ON (ffc.faculty_key = df.faculty_key)
-                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC'))
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC') AND (section_status_code = 'A'))
                     """.format(term_group, subject_group)).fetchall()
 
             course_offerings = cursor.execute("""
                 SELECT dcs.*
                 FROM dw.dim_course_section dcs -- use the course section dimension as base.
-                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC'))
+                WHERE (({0}) AND ({1}) AND (campus = 'U' OR campus = 'OCD' OR campus = 'OCP' OR campus = 'ECC') AND (section_status_code = 'A'))
                     """.format(term_group, subject_group)).fetchall()
 
             faculty_pidms = cursor.execute("""
@@ -154,6 +156,7 @@ class Command(BaseCommand):
             number_OCD_sections = 0
             number_OCP_sections = 0
             number_ECC_sections = 0
+            number_cancelled_sections = 0
             number_non_M_F_meetings = 0
             non_M_F_list = []
             
@@ -195,6 +198,14 @@ class Command(BaseCommand):
                 #                                      co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
                 #print('type of credit hours: ', type(co.section_credit_hours))
                 # print(int(co.section_credit_hours))
+
+                if co.section_status_code == 'C':
+                    number_cancelled_sections += 1
+                    print('>>>> CANCELLED section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
+                        co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
+                elif co.section_status_code == 'I':
+                    print('>>>> I section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
+                        co.subject_code, co.course_number, co.course, co.section_capacity, co.section_credit_hours))
                 if co.campus == 'OCD':
                     number_OCD_sections += 1
                     print('OCD section: %s %s %s %s %s %s %s %s' % (co.term, co.part_of_term, co.course_reference_number,
@@ -557,6 +568,9 @@ class Command(BaseCommand):
             print(' ')
             print('Number of course offerings without scheduled classes: ', num_no_mtgs_sched)
 
+            print(' ')
+            # https://bobbyhadz.com/blog/python-attributeerror-list-object-has-no-attribute-len
+            print('Total number of course offerings: ', len(course_offerings))
             #print('Assigning instructors....')
             current_banner_instructor_pidms = []
             for co_instructor in course_instructors:
@@ -665,6 +679,9 @@ class Command(BaseCommand):
 
             print(' ')
             print('number of ECC course offerings: ', number_ECC_sections)
+
+            print(' ')
+            print('number of cancelled course offerings (should be zero): ', number_cancelled_sections)
 
             print(' ')
             print('number of repeated rooms in meetings: ', len(repeated_room_in_meetings_list))
