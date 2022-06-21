@@ -30,6 +30,8 @@ const COPY_REGISTRAR_TO_ICHAIR_ALL = "all";
 const NO_ROOM_SELECTED_ID = Number.NEGATIVE_INFINITY;
 const NO_DELIVERY_METHOD_SELECTED_ID = Number.NEGATIVE_INFINITY;
 
+const HELP_MESSAGE_MANUAL_MARK_OK = 0;
+
 var app = new Vue({
   delimiters: ["[[", "]]"],
   el: "#app",
@@ -54,6 +56,10 @@ var app = new Vue({
       COPY_REGISTRAR_TO_ICHAIR_COMMENTS: COPY_REGISTRAR_TO_ICHAIR_COMMENTS,
       COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD: COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD,
       COPY_REGISTRAR_TO_ICHAIR_ALL: COPY_REGISTRAR_TO_ICHAIR_ALL,
+      HELP_MESSAGE_MANUAL_MARK_OK: HELP_MESSAGE_MANUAL_MARK_OK,
+      helpDialog: false, // set to true to display the help dialog
+      helpDialogTitle: '',
+      helpDialogMessages: [],
       semesterFractionsReverse: {}, // used to convert
       semesterFractions: {},
       semesterFractionsDropdown: [], // used for a drop-down menu
@@ -152,6 +158,52 @@ var app = new Vue({
     };
   },
   methods: {
+    launchHelpDialog(helpDialogType) {
+      if (helpDialogType === HELP_MESSAGE_MANUAL_MARK_OK) {
+        this.helpDialogTitle = "Manually mark as OK";
+        this.helpDialogMessages = [
+          {
+            isText: true,
+            text: "There is currently not perfect agreement between iChair and the Registrar's database for this course offering.  Nevertheless, you may wish to manually mark this course offering as OK, which will turn the ",
+            isAlert: false,
+            icon: ""
+          },
+          {
+            isText: false,
+            text: "",
+            isWarning: true,
+            icon: "mdi-alert"
+          },
+          {
+            isText: true,
+            text: " icon into ",
+            isAlert: false,
+            icon: ""
+          },
+          {
+            isText: false,
+            text: "",
+            isWarning: false,
+            icon: "mdi-alert"
+          },
+          {
+            isText: true,
+            text: " .  You may also wish to Add a Note to Self explaining why you are doing this.",
+            isAlert: false,
+            icon: ""
+          },
+
+        ];
+      }
+      this.helpDialog = true;
+    },
+
+    closeHelpDialog() {
+      this.helpDialogTitle = "";
+      this.helpDialogMessages = [];
+      this.helpDialog = false;
+    },
+
     launchSearchOtherCoursesDialog() {
       this.extraCourseDialogChoices = [{
         id: Number.NEGATIVE_INFINITY,

@@ -1,5 +1,11 @@
 <v-app>
 
+    <!--
+    <help-dialog 
+        :some-data = "`hey there`"
+        :help-dialog = "helpDialog"
+    ></help-dialog>
+    -->
     <template v-if="choosingSemesters && semesterChoices">
         <v-layout row wrap align-center>
             <v-flex xs10 offset-xs1>
@@ -67,6 +73,44 @@
 
     <template>
         <div class="text-center">
+            <v-dialog v-model="helpDialog" max-width="500">
+                <v-card>
+                    <v-card-title class="headline grey lighten-2" primary-title>
+                        [[helpDialogTitle]]
+                    </v-card-title>
+                    <v-card-text class="pb-0">
+                        <v-container grid-list-md>
+                            <v-layout wrap>
+                                <v-flex xs12>
+                                    <span v-for="messageItem in helpDialogMessages">
+                                        <span v-if="messageItem.isText">
+                                            [[messageItem.text]]
+                                        </span>
+                                        <span v-else>
+                                            <!-- https://vuejs.org/guide/essentials/class-and-style.html#binding-html-classes -->
+                                            <v-icon :class="[messageItem.isWarning ? `orange--text` : `green--text`]">
+                                            [[messageItem.icon]]
+                                            </v-icon>
+                                        </span>
+                                    </span>
+                                </v-flex>
+                            </v-layout>
+                        </v-container>
+                    </v-card-text>
+                    <v-divider class="ma-0"></v-divider>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="primary" text @click="closeHelpDialog()">
+                            Got it!
+                        </v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+        </div>
+    </template>
+
+    <template>
+        <div class="text-center">
             <v-dialog v-model="searchOtherCoursesDialog" max-width="600">
                 <v-card>
                     <v-card-title class="headline grey lighten-2" primary-title>
@@ -124,7 +168,7 @@
                     </v-card-actions>
                 </v-card>
             </v-dialog>
-            </v-row>
+        </div>
     </template>
 
     <template>
@@ -152,10 +196,8 @@
                     </v-card-actions>
                 </v-card>
             </v-dialog>
-            </v-row>
+        </div>
     </template>
-
-
 
     <template v-if="showLinearProgressBar">
         <v-layout row wrap align-top>
@@ -805,8 +847,8 @@
                                                         </v-flex>
                                                         <v-flex xs12>
                                                             <span class="orange--text">
-                                                                <strong>Note: </strong> If possible, please do not include comments such as 'Please delete this section'
-                                                                or 'Please change the time to MWF 9:00-9:50' or 'Please change the instructor to J. Smith'.  
+                                                                <strong>Note: </strong> If possible, please do not include comments such as 'Please delete this section',
+                                                                'Please change the time to MWF 9:00-9:50' or 'Please change the instructor to J. Smith'.  
                                                                 Instead, change those properties in the iChair
                                                                 version of the course (in the left column) and then use the 
                                                                 <v-icon color="primary">
@@ -846,8 +888,27 @@
                                 </div>
                             </template>
 
-                            <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
-
+                            <v-layout>
+                                <!-- https://vuetifyjs.com/en/api/v-flex/#props -->
+                                <v-flex xs8 shrink class="mt-0">
+                                    <strong>[[item.name]] - [[item.creditHours]] credit hour(s)</strong>
+                                </v-flex>
+                                <v-flex xs3 shrink class="mt-0">
+                                        <!-- https://vuetifyjs.com/en/api/v-switch/#props -->
+                                        <v-switch hide-details class="mt-0 mr-5 float-right"
+                                        v-model="switch1"
+                                        :label="`Manually mark as OK`"
+                                        ></v-switch>
+                                </v-flex>
+                                <v-flex xs1 shrink class="mt-0">
+                                    <v-icon 
+                                        class="green--text include-pointer"
+                                        @click="launchHelpDialog(HELP_MESSAGE_MANUAL_MARK_OK)">
+                                        mdi-help-circle
+                                    </v-icon>
+                                </v-flex>
+                            </v-layout>
+                        
                             <v-layout v-if="item.showCourseOfferingRadioSelect" row wrap>
                                 <v-flex xs10 offset-xs1 class="mt-5">
                                     This course offering exists in the Registrar's database, but it is currently
