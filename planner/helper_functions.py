@@ -1,6 +1,19 @@
 from .models import *
 import datetime
 
+def most_recent_delta_object(delta_objects):
+    """Returns the most recent delta object from among a list of delta objects."""
+    if len(delta_objects):
+        recent_delta_object = delta_objects[0]
+        for delta_object in delta_objects:
+            print(delta_object, delta_object.updated_at)
+            if delta_object.updated_at > recent_delta_object.updated_at:
+                recent_delta_object = delta_object
+                print('found more recent!', recent_delta_object.updated_at)  
+        return recent_delta_object
+    else:
+        return None
+
 def load_hour_rounder(load):
     """Rounds load if the load is close to an int"""
     if abs(round(load)-load)<0.01:

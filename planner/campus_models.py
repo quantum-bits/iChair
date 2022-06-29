@@ -911,16 +911,21 @@ class DeltaCourseOffering(StampedModel):
     CREATE = 0
     UPDATE = 1
     DELETE = 2
+    NO_ACTION = 3
 
     ACTION_CHOICES = (
         (CREATE, 'Create'),
         (UPDATE, 'Update'),
-        (DELETE, 'Delete')
+        (DELETE, 'Delete'),
+        (NO_ACTION, 'No Action'),
     )
 
     # CREATE: - only has a course_offering
     # UPDATE: - has both a crn and a course_offering (need both for the diff)
     # DELETE: - only has a crn
+    # NO_ACTION: - can have a crn or a course_offering, but not both; once the course offerings are linked, 
+    #              the requested_action will change to UPDATE; this option can be used if a user wants to (i) attach 
+    #              a note_to_self to an iChair or Banner course offering or (ii) manually mark one or the other as being "OK"
     #
     # could get messy in the UPDATE cases if the crn and course_offering fall out of sync with each other.  (We're aligning these dynamically, so it's conceivable.)
     #   - before submitting to the registrar, need to check that the crn/course offering (as applicable) of the "delta" object agree with 
@@ -932,6 +937,11 @@ class DeltaCourseOffering(StampedModel):
     course_offering = models.ForeignKey(CourseOffering, related_name='delta_offerings', blank=True, null=True, on_delete=models.CASCADE)
 
     extra_comment = models.CharField(max_length=500, blank=True, null=True, help_text="(optional comment for the registrar)")
+
+    # maybe notes to self can be merged if an ico is linked with a bco and they both have notes(?)  The combined 
+    # note could say something like: "Notes auto-merged when iChair and Banner course sections merged.  Original 
+    # iChair note: ....  Original Banner note: ....""
+    note_to_self = models.CharField(max_length=700, blank=True, null=True, help_text="(optional note to self)")
 
     # the action requested of the registrar
     requested_action = models.IntegerField(choices = ACTION_CHOICES, default = UPDATE)
@@ -945,6 +955,7 @@ class DeltaCourseOffering(StampedModel):
     update_max_enrollment = models.BooleanField(default=False)
     update_public_comments = models.BooleanField(default=False)
     update_delivery_method = models.BooleanField(default=False)
+    manually_marked_OK = models.BooleanField(default=False)
 
     def __str__(self):
         if self.course_offering is not None:
@@ -959,7 +970,8 @@ class DeltaCourseOffering(StampedModel):
         return {
             'create': cls.CREATE,
             'update': cls.UPDATE,
-            'delete': cls.DELETE
+            'delete': cls.DELETE,
+            'no_action': cls.NO_ACTION
         }
 
     @classmethod
@@ -970,6 +982,8 @@ class DeltaCourseOffering(StampedModel):
             return 'update'
         elif action_value == cls.DELETE:
             return 'delete'
+        elif action_value == cls.NO_ACTION:
+            return 'no_action'
         else:
             return None
     

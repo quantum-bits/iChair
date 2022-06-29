@@ -9,6 +9,7 @@ const DELETE_ICHAIR_COURSE_OFFERING = -4;
 const DELTA_ACTION_CREATE = "create"; // used for delta course offerings; note that these are actions that the registrar is being asked to
 const DELTA_ACTION_UPDATE = "update"; // perform, not the actions that are being performed here on the delta objects
 const DELTA_ACTION_DELETE = "delete";
+const DELTA_ACTION_NO_ACTION = "no_action";
 const DELTA_ACTION_SET = "deltaUpdateSet"; // turn off the update
 const DELTA_ACTION_UNSET = "deltaUpdateUnset"; // turn off the update
 
@@ -18,6 +19,7 @@ const DELTA_UPDATE_TYPE_SEMESTER_FRACTION = "semesterFraction";
 const DELTA_UPDATE_TYPE_ENROLLMENT_CAP = "enrollmentCap";
 const DELTA_UPDATE_TYPE_COMMENTS = "publicComments";
 const DELTA_UPDATE_TYPE_DELIVERY_METHOD = "deliveryMethod";
+const DELTA_UPDATE_TYPE_MARK_OK = "manuallyMarkedOK";
 
 const COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT = "enrollmentCap";
 const COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION = "semesterFraction";
@@ -31,6 +33,8 @@ const NO_ROOM_SELECTED_ID = Number.NEGATIVE_INFINITY;
 const NO_DELIVERY_METHOD_SELECTED_ID = Number.NEGATIVE_INFINITY;
 
 const HELP_MESSAGE_MANUAL_MARK_OK = 0;
+const HELP_MESSAGE_NOTE_FOR_REGISTRAR = 1;
+const HELP_MESSAGE_NOTE_TO_SELF = 2;
 
 var app = new Vue({
   delimiters: ["[[", "]]"],
@@ -44,11 +48,13 @@ var app = new Vue({
       DELTA_UPDATE_TYPE_ENROLLMENT_CAP: DELTA_UPDATE_TYPE_ENROLLMENT_CAP,
       DELTA_UPDATE_TYPE_COMMENTS: DELTA_UPDATE_TYPE_COMMENTS,
       DELTA_UPDATE_TYPE_DELIVERY_METHOD: DELTA_UPDATE_TYPE_DELIVERY_METHOD,
+      DELTA_UPDATE_TYPE_MARK_OK: DELTA_UPDATE_TYPE_MARK_OK,
       DELTA_ACTION_SET: DELTA_ACTION_SET,
       DELTA_ACTION_UNSET: DELTA_ACTION_UNSET,
       DELTA_ACTION_CREATE: DELTA_ACTION_CREATE,
       DELTA_ACTION_UPDATE: DELTA_ACTION_UPDATE,
       DELTA_ACTION_DELETE: DELTA_ACTION_DELETE,
+      DELTA_ACTION_NO_ACTION: DELTA_ACTION_NO_ACTION,
       COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT: COPY_REGISTRAR_TO_ICHAIR_ENROLLMENT,
       COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION: COPY_REGISTRAR_TO_ICHAIR_SEMESTER_FRACTION,
       COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS: COPY_REGISTRAR_TO_ICHAIR_INSTRUCTORS,
@@ -57,6 +63,8 @@ var app = new Vue({
       COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD: COPY_REGISTRAR_TO_ICHAIR_DELIVERY_METHOD,
       COPY_REGISTRAR_TO_ICHAIR_ALL: COPY_REGISTRAR_TO_ICHAIR_ALL,
       HELP_MESSAGE_MANUAL_MARK_OK: HELP_MESSAGE_MANUAL_MARK_OK,
+      HELP_MESSAGE_NOTE_FOR_REGISTRAR: HELP_MESSAGE_NOTE_FOR_REGISTRAR,
+      HELP_MESSAGE_NOTE_TO_SELF: HELP_MESSAGE_NOTE_TO_SELF,
       helpDialog: false, // set to true to display the help dialog
       helpDialogTitle: '',
       helpDialogMessages: [],
@@ -98,7 +106,7 @@ var app = new Vue({
         { text: "Semester", value: "semester" },
         { text: "Code", value: "termCode" },
         { text: "CRN", value: "crn" },
-        { text: "Linked?", value: "linked"},
+        { text: "Linked/Note", value: "linked"},
         { text: "CMP", value: "campus"},
         {
           text: "Number",
@@ -117,8 +125,10 @@ var app = new Vue({
       newCourseOfferingDialog: false, // true when the new course offering dialog is being displayed
       deleteIChairCourseOfferingDialog: false, // true when the delete iChair course offering dialog is being displayed
       publicCommentsDialog: false, // true when the public comments dialog is being displayed
-      commentForRegistrarDialog: false, // true when the comment for registrar dialog is being displayed
-      commentForRegistrar: "", // used to stored a comment for the registrar
+      commentForRegistrarOrSelfDialog: false, // true when the comment for registrar/self dialog is being displayed
+      commentForRegistrarOrSelf: "", // used to stored a comment for the registrar/self
+      isRegistrarNote: true, // true if the current comment (in the dialog) is for the registrar; false if it is a note to self
+      maxLengthRegistrarOrSelfNote: 500, // max number of characters for the note to the registrar or to self
       courseChoices: [], // used in the new course offering dialog when choosing which course to associate with a course offering that is about to be created
       courseChoice: null, // the course chosen in the new course offering dialog
       newCourseOfferingDialogItem: null, // the courseOfferings 'item' relevant for the new course offering dialog
@@ -164,35 +174,76 @@ var app = new Vue({
         this.helpDialogMessages = [
           {
             isText: true,
-            text: "There is currently not perfect agreement between iChair and the Registrar's database for this course offering.  Nevertheless, you may wish to manually mark this course offering as OK, which will turn the ",
-            isAlert: false,
+            text: "If there is not perfect agreement between iChair and the Registrar's database for this course offering, you may wish to manually mark this course offering as OK.  This will turn the ",
+            isWarning: false,
+            isPrimary: false,
             icon: ""
           },
           {
             isText: false,
             text: "",
             isWarning: true,
+            isPrimary: false,
             icon: "mdi-alert"
           },
           {
             isText: true,
             text: " icon into ",
-            isAlert: false,
+            isWarning: false,
+            isPrimary: false,
             icon: ""
           },
           {
             isText: false,
             text: "",
             isWarning: false,
+            isPrimary: false,
             icon: "mdi-alert"
           },
           {
             isText: true,
-            text: " .  You may also wish to Add a Note to Self explaining why you are doing this.",
-            isAlert: false,
+            text: " .  (That's all it does.)  You may also wish to Add a Note to Self explaining why you are doing this.",
+            isWarning: false,
+            isPrimary: false,
             icon: ""
           },
 
+        ];
+      } else if (helpDialogType === HELP_MESSAGE_NOTE_TO_SELF) {
+        this.helpDialogTitle = "Note to Self";
+        this.helpDialogMessages = [
+          {
+            isText: true,
+            text: "You can create a Note to Self to remind yourself why you did something or what you need to do at some point in the future.  Notes to Self will not be included in your Schedule Edits pdf.",
+            isWarning: false,
+            isPrimary: false,
+            icon: ""
+          },
+        ];
+      } else if (helpDialogType === HELP_MESSAGE_NOTE_FOR_REGISTRAR) {
+        this.helpDialogTitle = "Note for Registrar";
+        this.helpDialogMessages = [
+          {
+            isText: true,
+            text: "You can create a Note for the Registrar to let the registrar's office know something about this course section.  Please do not include requests such as 'Delete this section' or 'Change the time to MWF 9:00-9:50'. Instead, change those properties in the iChair version of the course (in the left column) and then use the ",
+            isWarning: false,
+            isPrimary: false,
+            icon: ""
+          },
+          {
+            isText: false,
+            text: "",
+            isWarning: false,
+            isPrimary: true,
+            icon: "mdi-arrow-right-bold-circle"
+          },
+          {
+            isText: true,
+            text: " icon to request that the registrar make the corresponding change.",
+            isWarning: false,
+            isPrimary: false,
+            icon: ""
+          }
         ];
       }
       this.helpDialog = true;
@@ -473,7 +524,8 @@ var app = new Vue({
                 errorMessage: "",
                 loadsAdjustedWarning: "",
                 classroomsUnassignedWarning: "",
-                numberPrimaryInstructorsIncorrectMessage: "" // used to display a message saying that the number of primary instructors is incorrect
+                numberPrimaryInstructorsIncorrectMessage: "", // used to display a message saying that the number of primary instructors is incorrect
+                manuallyMarkedOK: course.delta === null ? false : course.delta.manually_marked_OK
               });
             });
             _this.semesterFractionsReverse =
@@ -800,6 +852,7 @@ var app = new Vue({
               item.semesterFractionsMatch &&
               item.publicCommentsMatch &&
               item.deliveryMethodsMatch;
+            item.manuallyMarkedOK = item.delta === null ? false : item.delta.manually_marked_OK;
             console.log("item after delta update!", item);
             console.log("all course offerings: ", _this.courseOfferings);
             //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
@@ -910,6 +963,7 @@ var app = new Vue({
         dataType: "json",
         data: JSON.stringify({
           courseOfferingId: this.deleteIChairCourseOfferingDialogItem.ichair.course_offering_id,
+          deltaId: this.deleteIChairCourseOfferingDialogItem.delta === null ? null : this.deleteIChairCourseOfferingDialogItem.delta.id,
           hasBanner: this.deleteIChairCourseOfferingDialogItem.hasBanner,
           unlinkedIChairCourseOfferingIds: this.unlinkedIChairCourseOfferingIds(),
           bannerCourseOfferingId: this.deleteIChairCourseOfferingDialogItem.hasBanner === false ? null : this.deleteIChairCourseOfferingDialogItem.banner.course_offering_id,
@@ -934,7 +988,7 @@ var app = new Vue({
                 // found the one we're working on
                 courseOfferingItem.allOK = false;
                 courseOfferingItem.deliveryMethodsMatch = false;
-                courseOfferingItem.delta = null;
+                courseOfferingItem.delta = jsonResponse.delta_course_offering;
                 courseOfferingItem.enrollmentCapsMatch = false;
                 courseOfferingItem.hasIChair = false;
                 courseOfferingItem.ichair = null;
@@ -948,6 +1002,13 @@ var app = new Vue({
                 courseOfferingItem.semesterFractionsMatch = false;
                 courseOfferingItem.showAllIChairComments = false;
                 courseOfferingItem.showCourseOfferingRadioSelect = true;
+                courseOfferingItem.manuallyMarkedOK = false;
+                // clear out any error/warning messages that might have been displayed for the iChair course offering; 
+                // these are no longer relevant
+                courseOfferingItem.errorMessage = '';
+                courseOfferingItem.loadsAdjustedWarning = '';
+                courseOfferingItem.classroomsUnassignedWarning = '';
+                courseOfferingItem.numberPrimaryInstructorsIncorrectMessage = '';
               }
             });
             // now cycle through certain unlinked iChair course offerings to update their bannerOptions and bannerChoices, since now,
@@ -1255,6 +1316,7 @@ var app = new Vue({
             if (item.index === courseOfferingItem.index) {
               // found the one we're working on
               courseOfferingItem.delta = jsonResponse.delta;
+              courseOfferingItem.manuallyMarkedOK = courseOfferingItem.delta === null ? false : courseOfferingItem.delta.manually_marked_OK;
               courseOfferingItem.ichair = jsonResponse.ichair_course_offering_data;
               /*
               courseOfferingItem.ichair.meeting_times_detail.forEach( mtd => {
@@ -1415,7 +1477,9 @@ var app = new Vue({
             publicComments: true,
             deliveryMethod: true,
           }, // request all delta mods by default when issuing a "create" request to the registrar
-          deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
+          deltaId: null, // there could be a no_action delta, but set to null, since we have only just linked the Banner course offering with the iChair one
+          //bannerNoteToSelf: null,
+          //iChairNoteToSelf: item.delta === null ? null : item.delta.note_to_self, // could be there if these is a no_action delta; in this case, pass in a possible note_to_self
           action: DELTA_ACTION_CREATE,
           crn: null, // doesn't exist yet
           campus: null, // doesn't exist yet
@@ -1459,7 +1523,9 @@ var app = new Vue({
         // use the endpoint to check the agreement between the bco and the ico....
         dataForPost = {
           deltaMods: {}, // don't request any delta mods at this point, just create the delta object
-          deltaId: null, // shouldn't exist at this point, since we have only just linked the Banner course offering with the iChair one
+          deltaId: null, // there could be a no_action delta, but set to null, since we have only just linked the Banner course offering with the iChair one
+          //bannerNoteToSelf: null, // we are linking a bco to an ico; is there a way to get a possible bannerNoteToSelf to pass in?
+          //iChairNoteToSelf: item.delta === null ? null : item.delta.note_to_self, // could be there if these is a no_action delta; in this case, pass in a possible note_to_self
           action: DELTA_ACTION_UPDATE,
           crn: item.crn,
           campus: item.campus,
@@ -1515,6 +1581,7 @@ var app = new Vue({
               item.semesterFractionsMatch &&
               item.publicCommentsMatch &&
               item.deliveryMethodsMatch;
+            item.manuallyMarkedOK = item.delta === null ? false : item.delta.manually_marked_OK;
             console.log("item after delta update!", item);
             console.log("all course offerings: ", _this.courseOfferings);
             //_this.popUnlinkedItemFromCourseOfferings(item.ichair.course_offering_id);
@@ -1814,6 +1881,7 @@ var app = new Vue({
                 courseOfferingItem.ichair.instructors = jsonResponse.instructors;
                 courseOfferingItem.ichair.instructors_detail = jsonResponse.instructors_detail;
                 if (jsonResponse.has_delta) {
+                  //WORKING HERE: Cannot read properties of null (reading 'request_update_instructors'
                   courseOfferingItem.instructorsMatch = jsonResponse.instructors_match || jsonResponse.delta.request_update_instructors;
                 } else {
                   courseOfferingItem.instructorsMatch = jsonResponse.instructors_match;
@@ -1825,6 +1893,7 @@ var app = new Vue({
                   courseOfferingItem.semesterFractionsMatch &&
                   courseOfferingItem.publicCommentsMatch && 
                   courseOfferingItem.deliveryMethodsMatch;
+                courseOfferingItem.manuallyMarkedOK = courseOfferingItem.delta === null ? false : courseOfferingItem.delta.manually_marked_OK;
                 courseOfferingItem.numberPrimaryInstructorsIncorrectMessage = "";
                 courseOfferingItem.loadsAdjustedWarning = "";
                 courseOfferingItem.errorMessage = ""; // clear out any error that may have been there, since things are probably OK now....and if not, the user will see an error in the dialog
@@ -1860,17 +1929,35 @@ var app = new Vue({
     displayAddNoteButton(courseInfo) {
       // returns true or false, depending on whether one can add a note for the registrar for this course offering
       // conditions:
-      //  - if a delta object already exists, but there is not yet a comment, then true
-      //  - if no delta object exists yet:
+      //  - if a delta object of type 'delete', 'update' or 'create' already exists, but there is not yet a comment, then true
+      //  - if no delta object exists yet, or the one that does exist is of type 'no_action' (and there is not yet a comment):
       //    - if only have a course offering in iChair, then false (user needs to request that the Banner create a course offering first)
       //    - if only have a course offering in Banner, then false (user should request a "delete" or should copy the course offering over to iChair first)
       //    - if the course offering exists in iChair and in Banner, then true (and if the button is clicked, create a delta of "update" type)
-      if (courseInfo.delta !== null) {
-        // a delta object exists
-        return !courseInfo.delta.registrar_comment_exists;
-      } else {
+      if (courseInfo.delta === null) {
+        // a delta object does not exist
         return courseInfo.hasIChair && courseInfo.hasBanner;
+      } else if (courseInfo.delta.requested_action === DELTA_ACTION_NO_ACTION) {
+        // a delta object does exist and it is of type 'no_action' (the second part about the comment already existing
+        // shouldn't really ever happen, since when a comment is made, the requested_action will change to 'update'; also,
+        // the first part shouldn't happen, either, since this should be an 'update' action if we have both a bco and an ico....)
+        return (courseInfo.hasIChair && courseInfo.hasBanner) && (!courseInfo.delta.registrar_comment_exists);
+      } else {
+        return !courseInfo.delta.registrar_comment_exists;
       }
+    },
+
+    displayAddNoteToSelfButton(courseInfo) {
+      if (courseInfo.delta === null) {
+        // a delta object does not exist
+        return true;
+      } else {
+        return ((courseInfo.delta.note_to_self === null) || (courseInfo.delta.note_to_self === ''));
+      }
+    },
+
+    disableManuallyMarkAsOKOption(courseInfo) {
+      return courseInfo.allOK;
     },
 
     displayNote(courseInfo) {
@@ -1883,8 +1970,15 @@ var app = new Vue({
       }
     },
 
-    displayNoteForRegistrarDialog(courseInfo) {
-      console.log('display note!');
+    displayNoteDialog(courseInfo, isRegistrarNote) {
+      // if isRegistrarNote === true, then the dialog displays a "note for the Registrar" (to be included with the schedule edits pdf);
+      // otherwise, this is a "note to self"
+      if (isRegistrarNote) {
+        console.log('display registrar note!');
+      } else {
+        console.log('display note to self!');
+      }
+      
       let bannerId = null;
       let iChairId = null;
       if (courseInfo.hasBanner) {
@@ -1894,13 +1988,48 @@ var app = new Vue({
         iChairId = courseInfo.ichair.course_offering_id;
       }
       if (courseInfo.delta !== null) {
-        if (courseInfo.delta.registrar_comment_exists) {
-          this.commentForRegistrar = courseInfo.delta.registrar_comment;
+        if (isRegistrarNote) {
+          this.maxLengthRegistrarOrSelfNote = 500;
+          if (courseInfo.delta.registrar_comment_exists) {
+            this.commentForRegistrarOrSelf = courseInfo.delta.registrar_comment;
+          } else {
+            this.commentForRegistrarOrSelf = "";
+          }
         } else {
-          this.commentForRegistrar = "";
+          // if the note is for a "singleton" type of delta object (delete, create or no_action, allow 250 characters);
+          // if the notes is for an "update" delta object, allow the full 700 characters that are allowed by the data model;
+          // the reason for this is that if "singleton" delta objects are "combined" into an "update" object, the notes to self
+          // are merged, along with some explanatory text;
+          // this is not ideal, since the user could have a long note for an "update" delta, and then delete the ico, so that it
+          // converts to the shorter note length; the db will still allow the longer note, but if they go to edit it, they will
+          // be forced to shorten it before submitting...ah well....
+          // also going back and forth between delta types, and auto-merging notes to self could lead to a situation where two 
+          // longer notes get merged and the length is longer than the max lenght; fortunately the server handles this OK (it just
+          // truncates the string to the max length, which is OK....)
+          if (courseInfo.delta.requested_action === this.DELTA_ACTION_UPDAT) {
+            this.maxLengthRegistrarOrSelfNote = 700;
+          } else {
+            this.maxLengthRegistrarOrSelfNote = 250;
+          }
+          if ((courseInfo.delta.note_to_self !== null) && (courseInfo.delta.note_to_self !== '')) {
+            this.commentForRegistrarOrSelf = courseInfo.delta.note_to_self;
+          } else {
+            this.commentForRegistrarOrSelf = "";
+          }
         }
       } else {
-        this.commentForRegistrar = "";
+        this.commentForRegistrarOrSelf = "";
+        if (this.isRegistrarNote) {
+          this.maxLengthRegistrarOrSelfNote = 500;
+        } else {
+          // there is no delta object, so we need to infer which type of delta object will be created....
+          if (courseInfo.hasBanner && courseInfo.hasIChair) {
+            // dco will be of type "update", so allow 700 characters....
+            this.maxLengthRegistrarOrSelfNote = 700;
+          } else {
+            this.maxLengthRegistrarOrSelfNote = 250;
+          }
+        }
       }
       this.editCourseOfferingData = {
         courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
@@ -1911,19 +2040,22 @@ var app = new Vue({
         delta: courseInfo.delta,
         hasIChair: courseInfo.hasIChair,
         hasBanner: courseInfo.hasBanner,
-        includeRoomComparisons: courseInfo.includeRoomComparisons
+        includeRoomComparisons: courseInfo.includeRoomComparisons,
+        semesterId: courseInfo.semesterId
       };
       this.dialogTitle = courseInfo.course + ": " + courseInfo.name;
-      this.commentForRegistrarDialog = true;
+      this.commentForRegistrarOrSelfDialog = true;
+      this.isRegistrarNote = isRegistrarNote;
     },
 
-    deleteNoteForRegistrar(courseInfo) {
-      // used for deleting a note for the registrar on an existing delta object
+    deleteNoteForRegistrarOrSelf(courseInfo, isRegistrarNote) {
+      // used for deleting a note for the registrar or self on an existing delta object
       console.log('delete the note!');
       this.editCourseOfferingData = {
         courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
       };
       let noteInfo = {
+        isRegistrarNote: isRegistrarNote,
         deltaId: courseInfo.delta.id,
         hasDelta: true,
         action: 'delete',
@@ -1932,23 +2064,26 @@ var app = new Vue({
         bannerId: courseInfo.hasBanner ? courseInfo.banner.course_offering_id : null,
         hasIChair: courseInfo.hasIChair, // but doesn't matter
         hasBanner: courseInfo.hasBanner, // but doesn't matter
-        includeRoomComparisons: courseInfo.includeRoomComparisons
+        includeRoomComparisons: courseInfo.includeRoomComparisons,
+        semesterId: courseInfo.semesterId
       }
-      this.createUpdateDeleteNoteForRegistrar(noteInfo);
+      this.createUpdateDeleteNoteForRegistrarOrSelf(noteInfo);
     },
 
-    noteForRegistrarTooLong() {
-      return this.commentForRegistrar.length > 500;
+    noteForRegistrarOrSelfTooLong() {
+      return this.commentForRegistrarOrSelf.length > this.maxLengthRegistrarOrSelfNote;
     },
 
-    cancelNoteForRegistrarForm() {
-      console.log('cancel note for registrar dialog');
+    cancelNoteForRegistrarOrSelfForm() {
+      console.log('cancel note for registrar/self dialog');
       this.editCourseOfferingData = {};
       this.dialogTitle = "";
-      this.commentForRegistrarDialog = false;
-      this.commentForRegistrar = "";
+      this.commentForRegistrarOrSelfDialog = false;
+      this.commentForRegistrarOrSelf = "";
+      this.isRegistrarNote = true;
+      this.maxLengthRegistrarOrSelfNote = 500;
     },
-    submitNoteForRegistrar() {
+    submitNoteForRegistrarOrSelf() {
       // either submitting a new note or updating an existing one; if the user cleared a note by backspacing, may need to delete a note....
       console.log('submit note for registrar');
       let OKToSubmit = true;
@@ -1957,13 +2092,13 @@ var app = new Vue({
       if (hasDelta) {
         deltaId = this.editCourseOfferingData.delta.id;
       }
-      let text = this.commentForRegistrar;
+      let text = this.commentForRegistrarOrSelf;
       if (text === "") {// user wants to delete the note....
         if (hasDelta) {
           action = 'delete'; // delete the note, not the delta object itself....
         } else {
           OKToSubmit = false;
-          this.cancelNoteForRegistrarForm();
+          this.cancelNoteForRegistrarOrSelfForm();
         }
       } else { // text is not a blank string
         if (hasDelta) {
@@ -1973,6 +2108,7 @@ var app = new Vue({
         }
       }
       let noteInfo = {
+        isRegistrarNote: this.isRegistrarNote,
         deltaId: deltaId,
         hasDelta: hasDelta,
         action: action,
@@ -1981,20 +2117,21 @@ var app = new Vue({
         bannerId: this.editCourseOfferingData.bannerId,
         hasIChair: this.editCourseOfferingData.hasIChair,
         hasBanner: this.editCourseOfferingData.hasBanner,
-        includeRoomComparisons: this.editCourseOfferingData.includeRoomComparisons
+        includeRoomComparisons: this.editCourseOfferingData.includeRoomComparisons,
+        semesterId: this.editCourseOfferingData.semesterId
       }
       if (OKToSubmit) {
-        this.createUpdateDeleteNoteForRegistrar(noteInfo);
+        this.createUpdateDeleteNoteForRegistrarOrSelf(noteInfo);
       }
     },
 
-    createUpdateDeleteNoteForRegistrar(noteInfo) {
+    createUpdateDeleteNoteForRegistrarOrSelf(noteInfo) {
       console.log('note info: ', noteInfo);
       var _this = this;
       $.ajax({
         // initialize an AJAX request
         type: "POST",
-        url: "/planner/ajax/create-update-delete-note-for-registrar/",
+        url: "/planner/ajax/create-update-delete-note-for-registrar-or-self/",
         dataType: "json",
         data: JSON.stringify(noteInfo),
         success: function(jsonResponse) {
@@ -2004,7 +2141,7 @@ var app = new Vue({
               courseOfferingItem.delta = jsonResponse.delta_response;
             }
           });
-          _this.cancelNoteForRegistrarForm();
+          _this.cancelNoteForRegistrarOrSelfForm();
           //console.log('course offerings: ', _this.courseOfferings);
         },
         error: function(jqXHR, exception) {
@@ -2202,6 +2339,8 @@ var app = new Vue({
                   courseOfferingItem.semesterFractionsMatch &&
                   courseOfferingItem.publicCommentsMatch &&
                   courseOfferingItem.deliveryMethodsMatch;
+                courseOfferingItem.manuallyMarkedOK = courseOfferingItem.delta === null ? false : courseOfferingItem.delta.manually_marked_OK;
+
               }
             });
             _this.cancelCommentsForm();
@@ -2221,11 +2360,20 @@ var app = new Vue({
     deleteDelta(item) {
       // delete the delta object associated with the item;
       // this is used to delete delta objects that are of the "create" and "delete" type;
+      // one exception is if the delta object contains is of the "create" or "delete" type and it
+      // contains a "note_to_self"; in that case, we don't delete the delta object, but instead change
+      // it to the "no_action" type, so that we don't lose the notes;
       // at this point we don't bother deleting delta objects of the "update" variety, since all of their
-      // properties can just be set to false, and then they basically don't do anything
+      // properties can just be set to false, and then they basically don't do anything;
+      // we also delete other DeltaCourseOffering objects of the "create", "delete" and "no_action" types, basically
+      // to do some clean-up; otherwise, the next time the user loads the page, they may get inconsistent results (i.e.,
+      // an older Delta object may show up again)
       let deltaAction = item.delta.requested_action; // need this later in order to know the appropriate way to refresh the page....
       let dataForPost = {
-        deltaId: item.delta.id
+        deltaId: item.delta.id,
+        iChairCourseOfferingId: item.hasIChair ? item.ichair.course_offering_id : null,
+        crn: item.crn,
+        semesterId: item.semesterId
       };
       $.ajax({
         // initialize an AJAX request
@@ -2235,7 +2383,8 @@ var app = new Vue({
         data: JSON.stringify(dataForPost),
         success: function(jsonResponse) {
           console.log("response: ", jsonResponse);
-          item.delta = null;
+          item.delta = jsonResponse.delta_course_offering;
+          item.manuallyMarkedOK = false;
           item.enrollmentCapsMatch =
             jsonResponse.agreement_update.max_enrollments_match;
           item.deliveryMethodsMatch =
@@ -2283,14 +2432,13 @@ var app = new Vue({
       //  - DELTA_UPDATE_TYPE_SEMESTER_FRACTION
       //  - DELTA_UPDATE_TYPE_COMMENTS
       //  - DELTA_UPDATE_TYPE_DELIVERY_METHOD
+      //  - DELTA_UPDATE_TYPE_MARK_OK (updateSetOrUnset is ignored in this case)
       // updateOrUndo is DELTA_ACTION_UPDATE or DELTA_ACTION_UNDO_UPDATE
       //
       // https://www.w3schools.com/jsref/jsref_switch.asp
 
       //deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_SET)
       // 
-
-
 
       let updateTypeOK = true;
       let dataOK = true;
@@ -2335,6 +2483,11 @@ var app = new Vue({
               updateSetOrUnset === DELTA_ACTION_SET ? true : false
           };
           break;
+        case DELTA_UPDATE_TYPE_MARK_OK:
+          deltaMods = {
+            manuallyMarkedOK: item.manuallyMarkedOK
+          };
+          break;
         default:
           updateTypeOK = false;
       }
@@ -2372,21 +2525,26 @@ var app = new Vue({
     },
 
     generateUpdateDelta(item, deltaMods) {
-      // this method is used to generate a new delta object of requested_action "update" type, or to (confusingly) update an existing
-      // delta object of any requested_action type ("update", "create" or "delete");
+      // this method is used to generate a new delta object of requested_action "update" or "no_action" type, or to (confusingly) update an existing
+      // delta object of any requested_action type ("update", "create", "delete" or "no_action");
       // creating a new delta object of requested_action "create" type is handled in another method; likewise for the "delete" type
       //
-      // thus, if a delta object does not already exist in the item, we will generate a new one, with requested_action being "update"
+      // thus, if a delta object does not already exist in the item, we will generate a new one, with requested_action being "update" or "no_action"
       //
       // the delta object has information about what type delta "requested_action" type it is, if the delta object exists....
       // options for the requested action are:
       //  - DELTA_ACTION_CREATE
       //  - DELTA_ACTION_UPDATE
       //  - DELTA_ACTION_DELETE
+      //  - DELTA_ACTION_NO_ACTION
+
+      //WORKING HERE
+      //DELTA_UPDATE_TYPE_MARK_OK = "manuallyMarkedOK";
+      console.log(deltaMods);
 
       let dataForPost = {};
       if (item.delta !== null) {
-        // there is an existing delta object, so we are updating that object; it can be of requested_action type "create", "update" or "delete"
+        // there is an existing delta object, so we are updating that object; it can be of requested_action type "create", "update", "delete" or "no_action"
         if (item.delta.requested_action === DELTA_ACTION_UPDATE) {
           dataForPost = {
             deltaMods: deltaMods,
@@ -2411,23 +2569,40 @@ var app = new Vue({
             semesterId: item.semesterId,
             includeRoomComparisons: item.includeRoomComparisons
           };
+        } else if (item.delta.requested_action === DELTA_ACTION_NO_ACTION) {
+          // in this case the delta object could have either a crn or an iChair course offering (although probably/hopefully not both)
+          dataForPost = {
+            deltaMods: deltaMods,
+            deltaId: item.delta.id,
+            action: item.delta.requested_action, // action we are requesting of the registrar
+            crn: item.crn,
+            campus: item.campus,
+            iChairCourseOfferingId: item.hasIChair ? item.ichair.course_offering_id : null,
+            bannerCourseOfferingId: item.hasBanner ? item.banner.course_offering_id : null,
+            semesterId: item.semesterId,
+            includeRoomComparisons: item.includeRoomComparisons
+          };
         } else if (item.delta.requested_action === DELTA_ACTION_DELETE) {
           console.log("deleting!");
+        } else {
+          console.log("ERROR!!!  The requested action has not been recognized: ", item.delta.requested_action);
         }
       } else {
-        // if there is no delta object, we are adding a new delta object, with requested_action (of the registrar) being "update"
+        // if there is no delta object, we are adding a new delta object, with requested_action (of the registrar) being "update" or "no_action"
         dataForPost = {
           deltaMods: deltaMods,
           deltaId: null,
-          action: DELTA_ACTION_UPDATE, // action we are requesting of the registrar
+          action: (item.hasIChair && item.hasBanner) ? DELTA_ACTION_UPDATE : DELTA_ACTION_NO_ACTION, // we reserve the "no action" setting for cases in which the item only has an ico or a bco, but not both
           crn: item.crn,
           campus: item.campus,
-          iChairCourseOfferingId: item.ichair.course_offering_id,
-          bannerCourseOfferingId: item.banner.course_offering_id,
+          iChairCourseOfferingId: item.hasIChair ? item.ichair.course_offering_id : null,
+          bannerCourseOfferingId: item.hasBanner ? item.banner.course_offering_id : null,
           semesterId: item.semesterId,
           includeRoomComparisons: item.includeRoomComparisons
         };
       }
+
+      console.log('data for post: ', dataForPost);
 
       $.ajax({
         // initialize an AJAX request
@@ -2466,6 +2641,7 @@ var app = new Vue({
             item.semesterFractionsMatch &&
             item.publicCommentsMatch &&
             item.deliveryMethodsMatch;
+          item.manuallyMarkedOK = item.delta === null ? false : item.delta.manually_marked_OK;
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
@@ -2564,6 +2740,7 @@ var app = new Vue({
             item.semesterFractionsMatch &&
             item.publicCommentsMatch &&
             item.deliveryMethodsMatch;
+          item.manuallyMarkedOK = item.delta === null ? false : item.delta.manually_marked_OK;
           item.ichair = jsonResponse.course_offering_update;
           /*
           item.ichair.meeting_times_detail.forEach( mtd => {
@@ -2937,6 +3114,7 @@ var app = new Vue({
                   courseOfferingItem.semesterFractionsMatch &&
                   courseOfferingItem.publicCommentsMatch &&
                   courseOfferingItem.deliveryMethodsMatch;
+                courseOfferingItem.manuallyMarkedOK = courseOfferingItem.delta === null ? false : courseOfferingItem.delta.manually_marked_OK;
                 courseOfferingItem.classroomsUnassignedWarning = "";
               }
             });

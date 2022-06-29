@@ -3402,6 +3402,29 @@ def delete_course_offering(request, id):
     year = instance.semester.year
 
     if request.method == 'POST':
+        # before deleting, check if there are any delta course offering objects that are tied to this course offering via a foreign key;
+        # these dco objects will be cascade deleted automatically once the course offering object is deleted; if there are one or more that are
+        # of type "update", search for the most recent one and change it to type "no_action" and remove its FK to the course offering object;
+        # this way, it will still be tied to the banner course offering
+        delta_course_offering_actions = DeltaCourseOffering.actions()
+        delta_objects = DeltaCourseOffering.objects.filter(
+                            Q(course_offering=instance) &
+                            Q(requested_action=delta_course_offering_actions["update"]))
+
+        if len(delta_objects) > 0:
+            delta = most_recent_delta_object(delta_objects)                  
+            delta.course_offering = None
+            delta.update_meeting_times = False
+            delta.update_instructors = False
+            delta.update_semester_fraction = False
+            delta.update_max_enrollment = False
+            delta.update_public_comments = False
+            delta.update_delivery_method = False
+            delta.manually_marked_OK = False
+            delta.extra_comment = None
+            delta.requested_action = delta_course_offering_actions["no_action"]
+            delta.save()
+
         instance.delete()
         if user_department != course_department:
             updated_fields = ["semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "delivery_method"]
@@ -5820,7 +5843,7 @@ def update_semester_for_course_offering(request, id):
     instance = CourseOffering.objects.get(pk = id)
     course_department = instance.course.subject.department
     original_co_snapshot = instance.snapshot
-#    print instance
+    original_semester = instance.semester
 
     if request.method == 'POST':
         form = SemesterSelectForm(year, request.POST, instance=instance)
@@ -5828,6 +5851,11 @@ def update_semester_for_course_offering(request, id):
             form.save()
 
             revised_course_offering = CourseOffering.objects.get(pk = id)
+            if revised_course_offering.semester != original_semester:
+                # the semester has been changed
+                # if this course offering was tied to a CRN, that connection is no longer valid....
+                revised_course_offering.crn = None
+                revised_course_offering.save()
             # if a room that was previously active (during the "old" semester) is no longer
             # active, should drop that room
             for sc in revised_course_offering.scheduled_classes.all():
@@ -5842,6 +5870,52 @@ def update_semester_for_course_offering(request, id):
                 revised_co_snapshot = revised_course_offering.snapshot
                 create_message_course_offering_update(user.username, department, course_department, year,
                                             original_co_snapshot, revised_co_snapshot, ["semester", "semester_fraction"])
+
+            if revised_course_offering.semester != original_semester:
+                # if there was a delta object associated with the course offering, should do some clean-up:
+                # - if of type "update": make separate "no_action" version for both the bco and the ico
+                # - if of type "create": change to "no_action" (and fix semester)
+                # - if of type "no_action": fix semester
+                delta_course_offering_actions = DeltaCourseOffering.actions()
+                delta_objects = DeltaCourseOffering.objects.filter(Q(course_offering=instance))
+                if len(delta_objects) > 0:
+                    delta = most_recent_delta_object(delta_objects)
+                    if delta.requested_action == delta_course_offering_actions["update"]:
+                        # first set up the version of the delta object for the bco (which should keep the original semester):               
+                        delta.course_offering = None
+                        delta.update_meeting_times = False
+                        delta.update_instructors = False
+                        delta.update_semester_fraction = False
+                        delta.update_max_enrollment = False
+                        delta.update_public_comments = False
+                        delta.update_delivery_method = False
+                        delta.manually_marked_OK = False
+                        delta.extra_comment = None
+                        delta.requested_action = delta_course_offering_actions["no_action"]
+                        delta.save()
+                        # now make a copy of the delta for the ico:
+                        # https://books.agiliq.com/projects/django-orm-cookbook/en/latest/copy.html
+                        # the following is a trick for cloning the object....
+                        delta.pk = None
+                        delta.course_offering = revised_course_offering
+                        delta.crn = None
+                        delta.semester = revised_course_offering.semester
+                        delta.save()
+                    elif delta.requested_action == delta_course_offering_actions["create"]:
+                        delta.requested_action = delta_course_offering_actions["no_action"]
+                        delta.update_meeting_times = False
+                        delta.update_instructors = False
+                        delta.update_semester_fraction = False
+                        delta.update_max_enrollment = False
+                        delta.update_public_comments = False
+                        delta.update_delivery_method = False
+                        delta.manually_marked_OK = False
+                        delta.extra_comment = None
+                        delta.semester = revised_course_offering.semester
+                        delta.save()
+                    elif delta.requested_action == delta_course_offering_actions["no_action"]:
+                        delta.semester = revised_course_offering.semester
+                        delta.save()
 
             next = request.GET.get('next', 'home')
             return redirect(next)

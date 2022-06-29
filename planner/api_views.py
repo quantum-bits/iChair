@@ -351,13 +351,17 @@ def update_instructors_for_course_offering(request):
             delta_response = delta_update_status(bco, ico, dco, check_rooms = include_room_comparisons)
     elif (not(has_banner)) and ico:
         if has_delta:
-            # in this case we are talking about a delta requested action of "create"
+            # in this case we are talking about a delta requested action of "create" or "no_action"
+            print('inside update_instructors_for_course_offering....')
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
-            if dco.requested_action != delta_course_offering_actions["create"]:
-                print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
-            else:
+            if dco.requested_action == delta_course_offering_actions["create"]:
                 delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons)
                 inst_match = delta_response["request_update_instructors"]
+            elif dco.requested_action == delta_course_offering_actions["no_action"]:
+                delta_response = delta_no_action_status(None, ico, dco, check_rooms = include_room_comparisons)
+                inst_match = delta_response["request_update_instructors"]
+            else:
+                print('we have a problem!!! expecting that delta is of the create or no_action type, but it is not...!')
     
     snapshot["load_available"] = original_co_snapshot["load_available"]
     snapshot["offering_instructors"] = original_co_snapshot["offering_instructors"]
@@ -380,7 +384,8 @@ def delete_course_offering(request):
     """
     Delete an iChair course offering.  If the iChair course offering was linked to a Banner course offering, 
     the corresponding DeltaCourseOffering object is deleted automatically when the CourseOffering object is
-    deleted.
+    deleted.  If the delta course offering has a note_to_self, stop this by editing the dco first: drop the ico
+    in the dco and then set the requested_action property to 'no_action'.
     """
 
     user = request.user
@@ -395,6 +400,7 @@ def delete_course_offering(request):
     department_id = json_data['departmentId']
     year_id = json_data['yearId']
     term_code = json_data['termCode']
+    delta_id = json_data['deltaId']
 
     print('ico id: ', course_offering_id)
     print('has_banner: ', has_banner)
@@ -403,6 +409,34 @@ def delete_course_offering(request):
     print('department_id: ', department_id)
     print('year_id: ', year_id)
     print('term code: ', term_code)
+    print('delta_id: ', delta_id)
+
+    delta_response = None
+    if has_banner:
+        # deal with delta object, if it exists....; need to do this before deleting the ico(!)
+        bco = BannerCourseOffering.objects.get(pk=banner_course_offering_id)
+        if delta_id is not None:
+            delta = DeltaCourseOffering.objects.get(pk=delta_id)
+            # if the delta course offering is of the 'update' type (meaning a bco and ico are linked),
+            # then set the ico part to None and turn the dco into a 'no_action' one for the bco alone; 
+            # also, set all properties to False/None, etc.;
+            # now the delta object should not be cascade deleted when the course offering is deleted
+            delta_course_offering_actions = DeltaCourseOffering.actions()
+            if delta.requested_action == delta_course_offering_actions["update"]:
+                delta.course_offering = None
+                delta.update_meeting_times = False
+                delta.update_instructors = False
+                delta.update_semester_fraction = False
+                delta.update_max_enrollment = False
+                delta.update_public_comments = False
+                delta.update_delivery_method = False
+                delta.manually_marked_OK = False
+                delta.extra_comment = None
+                delta.requested_action = delta_course_offering_actions["no_action"]
+                delta.save()
+                delta_response = delta_no_action_status(bco, None, delta)
+
+    print('inside delete_course_offering; delta_reponse: ', delta_response)    
 
     course_offering = CourseOffering.objects.get(pk=course_offering_id)
     original_co_snapshot = course_offering.snapshot
@@ -414,13 +448,13 @@ def delete_course_offering(request):
 
     banner_options_for_unlinked_ichair_course_offerings = []
     department = Department.objects.get(pk=department_id)
+    academic_year = AcademicYear.objects.get(pk = year_id)
     if has_banner:
         # now need to come up with the iChair options for this Banner course offering
-        bco = BannerCourseOffering.objects.get(pk=banner_course_offering_id)
+        #bco = BannerCourseOffering.objects.get(pk=banner_course_offering_id) # already found bco above....
         bco.ichair_id = None
         bco.save()
 
-        academic_year = AcademicYear.objects.get(pk = year_id)
         faculty_to_view_ids = [fm.id for fm in user_preferences.faculty_to_view.all()]
         print("options:")
         for option in construct_ichair_options(bco, semester, subject, department, academic_year, faculty_to_view_ids):
@@ -450,7 +484,7 @@ def delete_course_offering(request):
                         "ico_id": ico_id,
                         "banner_options": banner_options
                     })
-
+        
     # if this is an extra-departmental course offering, need to send a message to the other department...!
     if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
         updated_fields = ["semester_fraction", "scheduled_classes", "offering_instructors", "load_available", "max_enrollment", "delivery_method"]
@@ -467,10 +501,10 @@ def delete_course_offering(request):
         'delete_successful': True,
         'course_offering_id': course_offering_id,
         'ichair_options': ichair_options if has_banner else [],
-        'banner_options_for_unlinked_ichair_course_offerings': banner_options_for_unlinked_ichair_course_offerings
+        'banner_options_for_unlinked_ichair_course_offerings': banner_options_for_unlinked_ichair_course_offerings,
+        'delta_course_offering': delta_response
     }
     return JsonResponse(data)
-
 
 @login_required
 @csrf_exempt
@@ -636,13 +670,20 @@ def create_course_offering(request):
 
     meeting_times_detail = construct_meeting_times_detail(course_offering, True)
 
+    # check first to see if there are any delta objects associated with this bco; if so, delete them, but
+    # keep note_to_self if there is one....
+    bco_note_to_self = None
+    if (crn is not None) and (crn != ''):
+        bco_note_to_self = delete_delta_course_offerings_by_crn(crn, semester_id)
+
     # don't state the requested_action, since the default is set to UPDATE anyways
     # also, don't set the various update options to True; the default is False, and that is fine...
     # no sense asking the registrar to change something just because we couldn't copy it correctly into iChair
     delta_object = DeltaCourseOffering.objects.create(
         crn=crn,
         semester=semester,
-        course_offering=course_offering
+        course_offering=course_offering,
+        note_to_self=bco_note_to_self
     )
     # now fetch the banner course offering object
     bco = BannerCourseOffering.objects.get(pk=banner_course_offering_id)
@@ -911,9 +952,13 @@ def banner_comparison_data(request):
                         # we're only interested in "update" types of delta objects, since
                         # they are the only ones that include a crn (for a banner course offering)
                         # and are tied to a course offering in the iChair database
-                        # (the create and delete deltas only have an iChair course offering and a crn, respectively)
-
+                        # (the no_action, create and delete deltas only have an iChair course offering and a crn, respectively);
+                        # at this point, the bco has is_linked == True; the linking was done dynamically in a previous step;
+                        # we give priority to delta_objects of "update" type, since that would presumably be from some
+                        # previous time that the user loaded the page and did some sort of work aligning the bco with
+                        # the ico....
                         delta_objects = DeltaCourseOffering.objects.filter(
+                            Q(semester__id=semester_id) &
                             Q(crn=bco.crn) &
                             Q(course_offering=ico) &
                             Q(requested_action=delta_course_offering_actions["update"]))
@@ -921,21 +966,53 @@ def banner_comparison_data(request):
                         delta_exists = False
                         if len(delta_objects) > 0:
                             delta_exists = True
-                            #print('delta object(s) found for', bco)
-                            recent_delta_object = delta_objects[0]
-                            for delta_object in delta_objects:
-                                #print(delta_object, delta_object.updated_at)
-                                if delta_object.updated_at > recent_delta_object.updated_at:
-                                    recent_delta_object = delta_object
-                                    #print('found more recent!',
-                                    #      recent_delta_object.updated_at)
-
+                            recent_delta_object = most_recent_delta_object(delta_objects)                  
                             delta_response = delta_update_status(
                                 bco, ico, recent_delta_object, check_rooms = include_room_comparisons_this_semester)
                             course_offering_item["delta"] = delta_response
+                        else:
+                            # there are not currently any delta objects of type "update" linking this bco with this ico;
+                            # if there are one or more "create" or "no_action" dco objects associated with the ico, get the
+                            # note_to_self associated with the most recent one;
+                            # if there are one or more "delete" or "no_action" dco objects associated with the bco, get the
+                            # note_to_self associated with the most recent one;
+                            # merge the notes to self (if they exist) and create a new "update" dco for this bco/ico pair;
+                            # if there are not notes to self, then don't bother.
+
+                            # bco first; this method call returns either a string or None:
+                            bco_note_to_self = delete_delta_course_offerings_by_crn(bco.crn, semester_id)
+
+                            # now ico; this method call returns either a string or None:
+                            ico_note_to_self = delete_delta_course_offerings_by_ico(ico.id)
+
+                            if not ((bco_note_to_self is None) and (ico_note_to_self is None)):
+                                # at least one of them has a note
+                                note_to_self = None
+                                if (bco_note_to_self is not None) and (ico_note_to_self is not None):
+                                    note_to_self = 'A note from an iChair course offering and a note from a Banner course offering were auto-merged; iChair note: ' + \
+                                        ico_note_to_self + '; Banner note: ' + bco_note_to_self
+                                elif ico_note_to_self is not None:
+                                    note_to_self = ico_note_to_self
+                                elif bco_note_to_self is not None:
+                                    note_to_self = bco_note_to_self
+                                if note_to_self is not None:
+                                    note_to_self = note_to_self.strip()[:700]
+
+                                # create a dco of "update" type
+                                print('auto-linked courses; no dco of update type existed; previous notes to self for bco and ico: ', note_to_self)
+                                dco = DeltaCourseOffering.objects.create(
+                                    course_offering=ico,
+                                    semester=semester,
+                                    crn=bco.crn,
+                                    requested_action=delta_course_offering_actions["update"],
+                                    note_to_self = note_to_self)
+                                dco.save()
+                                delta_exists = True
+                                delta_response = delta_update_status(
+                                    bco, ico, dco, check_rooms = include_room_comparisons_this_semester)
+                                course_offering_item["delta"] = delta_response
 
                         if delta_exists:
-                            # either these properties already match, or we are going to request a change from the registrar so that they do match
                             schedules_match = scheduled_classes_match(
                                 bco, ico, include_room_comparisons_this_semester) or delta_response["request_update_meeting_times"]
                             inst_match = instructors_match(
@@ -1007,15 +1084,17 @@ def banner_comparison_data(request):
 
                 else:
                     # look for possible ichair course offering matches for this unlinked banner course offering
-
                     ichair_options = construct_ichair_options(bco, semester, subject, department, academic_year, faculty_to_view_ids)
 
                     course_offering_item["ichair_options"] = ichair_options
-                    # now check to see if there is a delta object with requested_action being of the "delete" type
+                    # now check to see if there is a delta object with requested_action being of the "delete" or "no_action" type
+                    # for the bco (if there was one of the "update" type, then the bco and ico should (in theory) have gotten linked
+                    # automatically...not sure if it's possible to have this case (unlinked, with a dco of type "update"), but it 
+                    # seems like it should not be possible to do so; we assume that is not possible, at least for now....)
                     delta_objects = DeltaCourseOffering.objects.filter(
                         Q(crn=bco.crn) &
                         Q(semester=semester) &
-                        Q(requested_action=delta_course_offering_actions["delete"]))
+                        (Q(requested_action=delta_course_offering_actions["delete"]) | Q(requested_action=delta_course_offering_actions["no_action"])))
 
                     delta_exists = False
                     if len(delta_objects) > 0:
@@ -1031,19 +1110,30 @@ def banner_comparison_data(request):
                                 #      recent_delta_object.updated_at)
 
                     if delta_exists:
-                        delta_response = delta_delete_status(
-                            recent_delta_object)
+                        if recent_delta_object.requested_action == delta_course_offering_actions["delete"]:
+                            delta_response = delta_delete_status(recent_delta_object)
+                            # these will match after the course offering is deleted by the registrar
+                            course_offering_item["schedules_match"] = True
+                            course_offering_item["instructors_match"] = True
+                            course_offering_item["semester_fractions_match"] = True
+                            course_offering_item["enrollment_caps_match"] = True
+                            course_offering_item["public_comments_match"] = True
+                            course_offering_item["delivery_methods_match"] = True
 
-                        # these will match after the course offering is deleted by the registrar
-                        course_offering_item["schedules_match"] = True
-                        course_offering_item["instructors_match"] = True
-                        course_offering_item["semester_fractions_match"] = True
-                        course_offering_item["enrollment_caps_match"] = True
-                        course_offering_item["public_comments_match"] = True
-                        course_offering_item["delivery_methods_match"] = True
+                            course_offering_item["all_OK"] = True
+                            course_offering_item["delta"] = delta_response
+                        else:
+                            # recent_delta_object.requested_action == delta_course_offering_actions["no_action"]....
+                            delta_response = delta_no_action_status(bco, None, recent_delta_object)
+                            course_offering_item["schedules_match"] = False
+                            course_offering_item["instructors_match"] = False
+                            course_offering_item["semester_fractions_match"] = False
+                            course_offering_item["enrollment_caps_match"] = False
+                            course_offering_item["public_comments_match"] = False
+                            course_offering_item["delivery_methods_match"] = False
 
-                        course_offering_item["all_OK"] = True
-                        course_offering_item["delta"] = delta_response
+                            course_offering_item["all_OK"] = False
+                            course_offering_item["delta"] = delta_response
 
                 course_offering_data.append(course_offering_item)
 
@@ -1065,11 +1155,11 @@ def banner_comparison_data(request):
                 meeting_times_detail = construct_meeting_times_detail(ico, True)
 
                 banner_options = construct_banner_options(ico, term_code, subject, department, academic_year, faculty_to_view_ids, allow_room_requests_this_semester)
-                # now check to see if there is a delta object with requested_action being of the "create" type
+                # now check to see if there is a delta object with requested_action being of the "create" or "no_action" type
                 delta_objects = DeltaCourseOffering.objects.filter(
                     Q(crn__isnull=True) &
                     Q(course_offering=ico) &
-                    Q(requested_action=delta_course_offering_actions["create"]))
+                    (Q(requested_action=delta_course_offering_actions["create"]) | Q(requested_action=delta_course_offering_actions["no_action"]) | Q(requested_action=delta_course_offering_actions["update"])))
 
                 delta_exists = False
                 if len(delta_objects) > 0:
@@ -1084,14 +1174,48 @@ def banner_comparison_data(request):
                             #      recent_delta_object.updated_at)
 
                 if delta_exists:
-                    delta_response = delta_create_status(
-                        ico, recent_delta_object, check_rooms = include_room_comparisons_this_semester)
-                    schedules_match = delta_response["request_update_meeting_times"]
-                    inst_match = delta_response["request_update_instructors"]
-                    sem_fractions_match = delta_response["request_update_semester_fraction"]
-                    enrollment_caps_match = delta_response["request_update_max_enrollment"]
-                    comments_match = delta_response["request_update_public_comments"]
-                    del_methods_match = delta_response["request_update_delivery_method"]
+                    if recent_delta_object.requested_action == delta_course_offering_actions["create"]:
+                        delta_response = delta_create_status(
+                            ico, recent_delta_object, check_rooms = include_room_comparisons_this_semester)
+                        schedules_match = delta_response["request_update_meeting_times"]
+                        inst_match = delta_response["request_update_instructors"]
+                        sem_fractions_match = delta_response["request_update_semester_fraction"]
+                        enrollment_caps_match = delta_response["request_update_max_enrollment"]
+                        comments_match = delta_response["request_update_public_comments"]
+                        del_methods_match = delta_response["request_update_delivery_method"]
+                    elif recent_delta_object.requested_action == delta_course_offering_actions["no_action"]:
+                        delta_response = delta_no_action_status(None, ico, recent_delta_object)
+                        schedules_match = False
+                        inst_match = False
+                        sem_fractions_match = False
+                        enrollment_caps_match = False
+                        comments_match = False
+                        del_methods_match = False
+                    else:
+                        # recent_delta_object.requested_action == delta_course_offering_actions["update"] in this
+                        # case, the requested_action is presumably of the "update" type; this could possibly happen
+                        # if this ico was previously linked to a bco, but the bco was deleted by the registrar(?); or maybe
+                        # it became unlinked somehow (although I don't think that could happen if the ico and bco both exist
+                        # in the same semester, etc.); in any case, if this has happened, it's probably best to change the
+                        # requested action to "no_action" and set the crn property to None
+                        recent_delta_object.crn = None
+                        recent_delta_object.requested_action = delta_course_offering_actions["no_action"]
+                        update_meeting_times = False
+                        update_instructors = False
+                        update_semester_fraction = False
+                        update_max_enrollment = False
+                        update_public_comments = False
+                        update_delivery_method = False
+                        manually_marked_OK = False
+                        extra_comment = None
+                        recent_delta_object.save()
+                        delta_response = delta_no_action_status(None, ico, recent_delta_object)
+                        schedules_match = False
+                        inst_match = False
+                        sem_fractions_match = False
+                        enrollment_caps_match = False
+                        comments_match = False
+                        del_methods_match = False
                 else:
                     delta_response = None
                     schedules_match = False
@@ -1187,6 +1311,20 @@ def banner_comparison_data(request):
         "available_delivery_methods": available_delivery_methods,
     }
     return JsonResponse(data)
+
+"""
+def most_recent_delta_object(delta_objects):
+    if len(delta_objects):
+        recent_delta_object = delta_objects[0]
+        for delta_object in delta_objects:
+            print(delta_object, delta_object.updated_at)
+            if delta_object.updated_at > recent_delta_object.updated_at:
+                recent_delta_object = delta_object
+                print('found more recent!', recent_delta_object.updated_at)  
+        return recent_delta_object
+    else:
+        return None
+"""
 
 def construct_ichair_options(bco, semester, subject, department, academic_year, faculty_to_view_ids):
     unlinked_ichair_course_offerings = find_unlinked_ichair_course_offerings(bco, semester, subject)
@@ -1389,6 +1527,8 @@ def delta_update_status(bco, ico, delta, check_rooms = False):
         "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
         "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
+        "note_to_self": delta.note_to_self,
+        "manually_marked_OK": delta.manually_marked_OK,
         "messages_exist": False,
     }
 
@@ -1486,6 +1626,8 @@ def delta_create_status(ico, delta, check_rooms = False):
         "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
         "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
+        "note_to_self": delta.note_to_self,
+        "manually_marked_OK": delta.manually_marked_OK,
         "messages_exist": False
     }
 
@@ -1547,12 +1689,14 @@ def delta_create_status(ico, delta, check_rooms = False):
     return delta_response
 
 
-def delta_delete_status(delta):
+def delta_delete_status(delta, messages_exist = True):
     """
     Uses a delta "delete" type of object to generate a delta response for a banner course offering.
     No iChair course offering object exists in this case.  Also, we are actually generating a somewhat
-    generic response in a "delta response" format.  We don't both to fetch any banner course offering
+    generic response in a "delta response" format.  We don't bother to fetch any banner course offering
     data, since we don't really need it (all we need is the CRN, and we already have that).
+    We pass in messages_exist so that we can use this to create the delta_response for the "no_action" case
+    with either a bco or an ico (but not both).
     """
     # at this point it is assumed that the delta object is of the "request that the registrar delete a course offering" variety
 
@@ -1581,11 +1725,24 @@ def delta_delete_status(delta):
         "public_comments_summary": None,
         "registrar_comment": delta.extra_comment,
         "registrar_comment_exists": delta.extra_comment is not None, # if registrar_comment is None in python, it seems to translate to null in javascript, but not sure that's completely reliable; this seems safer
-        "messages_exist": True  # the message is simply going to be "delete this course offering"
+        "note_to_self": delta.note_to_self,
+        "manually_marked_OK": delta.manually_marked_OK,
+        "messages_exist": messages_exist  # the message is simply going to be "delete this course offering"
     }
 
     return delta_response
 
+def delta_no_action_status(bco, ico, delta, check_rooms = False):
+    if (bco is not None) and (ico is not None):
+        # this should not happen (if the bco and ico both exist, then the requested_action should be 'update'), but just in case....
+        print("ERROR!!!  requested_action is no_action, but there is both a bco and an ico!")
+        return delta_update_status(bco, ico, delta, check_rooms)
+    elif (bco is not None) or (ico is not None):
+        # we can use the method for the "delete" case, except that we want to say "messages_exist": False
+        return delta_delete_status(delta, False)
+    else:
+        # should never get here
+        return {}
 
 @login_required
 @csrf_exempt
@@ -2355,9 +2512,20 @@ def public_comments_match(banner_course_offering, ichair_course_offering):
 @login_required
 @csrf_exempt
 def delete_delta(request):
-    """Deletes an existing delta object."""
+    """
+    Deletes an existing delta object of type 'create' or 'delete'.  If that dco has a note_to_self, turn the dco into
+    one of type 'no_action' instead of actually deleting it.
+    """
     json_data = json.loads(request.body)
     delta_id = json_data['deltaId']
+
+    ichair_course_offering_id = json_data['iChairCourseOfferingId']
+    crn = json_data['crn']
+    semester_id = json_data['semesterId']
+
+    print('ico id: ', ichair_course_offering_id)
+    print('crn:', crn)
+    print('semester id: ', semester_id)
 
     delta_course_offering = DeltaCourseOffering.objects.get(pk=delta_id)
 
@@ -2368,11 +2536,52 @@ def delete_delta(request):
     #         Q(crn=delta_course_offering.crn))
     #     print(banner_course_offerings)
 
+    delta_response = None
+    if (delta_course_offering.note_to_self is not None) and (delta_course_offering.note_to_self != ''):
+        # we have a note_to_self, so instead of deleting this dco (currently of type 'delete' or 'create'), 
+        # convert it to type 'no_action' and send it back....
+        print('request was to delete this dco, but it had a note_to_self, so we are converting to a no_action dco instead....')
+        delta_course_offering_actions = DeltaCourseOffering.actions()
+        bco = None
+        ico = None
+        if (crn is not None) and (crn != ''):
+            banner_course_offerings = BannerCourseOffering.objects.filter(
+                Q(term_code=delta_course_offering.semester.banner_code) &
+                Q(crn=delta_course_offering.crn))
+            if len(banner_course_offerings) == 1:
+                # should just be the one!
+                bco = banner_course_offerings[0]
+            else:
+                print("ERROR: there is not exactly one bco...!")
+        if (ichair_course_offering_id is not None):
+            ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+        delta_course_offering.requested_action = delta_course_offering_actions["no_action"]
+        delta_course_offering.update_meeting_times = False
+        delta_course_offering.update_instructors = False
+        delta_course_offering.update_semester_fraction = False
+        delta_course_offering.update_max_enrollment = False
+        delta_course_offering.update_public_comments = False
+        delta_course_offering.update_delivery_method = False
+        delta_course_offering.manually_marked_OK = False
+        delta_course_offering.extra_comment = None
+        delta_course_offering.save()
+        delta_response = delta_no_action_status(bco, ico, delta_course_offering)
+    else:
+        delta_course_offering.delete()
+        deleted_dco = True
+        # now check if there are any other delta objects of type 'delete' or 'no_action' related to the corresponding bco or of type
+        # 'create' or 'no_action' related to the corresponding ico and delete those as well (to prevent the user from getting an inconsistent
+        # experience the next time the Schedule Edits page is loaded)
+
+        #delta_course_offering_actions = DeltaCourseOffering.actions()
+        if (crn is not None) and (crn != ''):
+            delete_delta_course_offerings_by_crn(crn, semester_id)
+
+        if ichair_course_offering_id is not None:
+            delete_delta_course_offerings_by_ico(ichair_course_offering_id)
+
     # we assume that the delta object has requested_action of the 'create' or 'delete' type, in which case deleting it means that
     # the instructors, etc., no longer match
-
-    delta_course_offering.delete()
-
     agreement_update = {
         "instructors_match": False,
         "meeting_times_match": False,
@@ -2383,10 +2592,89 @@ def delete_delta(request):
     }
 
     data = {
-        'agreement_update': agreement_update
+        'agreement_update': agreement_update,
+        'delta_course_offering': delta_response
     }
 
     return JsonResponse(data)
+
+def delete_delta_course_offerings_by_crn(crn, semester_id):
+    """
+    Delete DeltaCourseOffering objects of type 'delete' or 'no_action' related to a given crn and semester.
+    This method can be used as a clean-up method when linking up a bco with an ico.  The new dco will be of the 'update' variety
+    and will thus contain both a crn and a course offering id (i.e., it will link to a bco and an ico).  The bco might have some dco's
+    associated with it, and these should be deleted.
+
+    This method also checks to see if the most recent dco (which is about to be deleted) has a note_to_self; if so, that
+    should be returned so that the calling method can incorporate that note_to_self in the new note_to_self for the 'update' dco.
+
+    crn: crn for the banner course offering
+    semester_id: id for the semester object in the iChair database (not the one in the banner database)
+    """
+
+    note_to_self = None
+    if (crn is not None) and (crn != ''):
+        delta_course_offering_actions = DeltaCourseOffering.actions()
+        delta_course_offerings = DeltaCourseOffering.objects.filter(
+            Q(semester__id = semester_id) &
+            Q(crn = crn)
+        )
+        # before deleting these related delta objects, check if the most recent one of them has a note to self; if so, send it back
+        recent_delta_object = None
+        for dco in delta_course_offerings:
+            if (dco.requested_action == delta_course_offering_actions["delete"]) or (dco.requested_action == delta_course_offering_actions["no_action"]):
+                if recent_delta_object is None:
+                    recent_delta_object = dco
+                elif dco.updated_at > recent_delta_object.updated_at:
+                    recent_delta_object = dco
+        if recent_delta_object is not None:
+            note_to_self = recent_delta_object.note_to_self
+        print('inside delete_delta_course_offerings_by_crn; note to self from related dco(s): ', note_to_self)
+        for dco in delta_course_offerings:
+            print('found one or more other delta course offerings for this banner course offering: ', dco, dco.id, dco.requested_action)
+            if (dco.requested_action == delta_course_offering_actions["delete"]) or (dco.requested_action == delta_course_offering_actions["no_action"]):
+                print('deleting this one....')
+                dco.delete()
+    
+    return note_to_self
+
+def delete_delta_course_offerings_by_ico(ico_id):
+    """
+    Delete DeltaCourseOffering objects of type 'create' or 'no_action' related to a given iChair course offering.
+    This method can be used as a clean-up method when linking up a bco with an ico.  The new dco will be of the 'update' variety
+    and will thus contain both a crn and a course offering id (i.e., it will link to a bco and an ico).  The ico might have some dco's
+    associated with it, and these should be deleted.
+
+    Eventually, this method should see if the most recent dco (which is about to be deleted) has a note_to_self; if so, that
+    should be returned so that the calling method can incorporate that note_to_self in the new note_to_self for the 'update' dco.
+
+    ico_id: id for the iChair course offering
+    """
+
+    note_to_self = None
+    if ico_id is not None:
+        delta_course_offering_actions = DeltaCourseOffering.actions()
+        delta_course_offerings = DeltaCourseOffering.objects.filter(
+            Q(course_offering__id = ico_id)
+        )
+        # before deleting these related delta objects, check if the most recent one of them has a note to self; if so, send it back
+        recent_delta_object = None
+        for dco in delta_course_offerings:
+            if (dco.requested_action == delta_course_offering_actions["create"]) or (dco.requested_action == delta_course_offering_actions["no_action"]):
+                if recent_delta_object is None:
+                    recent_delta_object = dco
+                elif dco.updated_at > recent_delta_object.updated_at:
+                    recent_delta_object = dco
+        if recent_delta_object is not None:
+            note_to_self = recent_delta_object.note_to_self
+        print('inside delete_delta_course_offerings_by_ico; note to self from related dco(s): ', note_to_self)
+        for dco in delta_course_offerings:
+            print('found one or more other delta course offerings for this iChair course offering: ', dco, dco.id, dco.requested_action)
+            if (dco.requested_action == delta_course_offering_actions["create"]) or (dco.requested_action == delta_course_offering_actions["no_action"]):
+                print('deleting this one....')
+                dco.delete()
+
+    return note_to_self
 
 
 @login_required
@@ -2408,49 +2696,72 @@ def generate_update_delta(request):
     # None if null in the UI code (i.e., if creating a new delta)
     delta_id = json_data['deltaId']
 
-    #print(delta_mods)
+    print(delta_mods)
 
-    #print('action: ', action)
-    #print('crn: ', crn)
-    #print('ichair id: ', ichair_course_offering_id)
-    #print('banner id: ', banner_course_offering_id)
-    #print('semester_id: ', semester_id)
-    #print('delta id: ', delta_id)
+    print('action: ', action)
+    print('crn: ', crn)
+    print('ichair id: ', ichair_course_offering_id)
+    print('banner id: ', banner_course_offering_id)
+    print('semester_id: ', semester_id)
+    print('delta id: ', delta_id)
 
     delta_generation_successful = True
     number_ichair_primary_instructors_OK = True
 
+    # if there is no iChair/Banner course offering, we will simply leave ico/bco as None;
+    # in the case of creating a new dco in the database, it is appropriate to keep ico = None
+    # if, in fact, there is no ico
+    ico = None
+    bco = None
+    if ichair_course_offering_id is not None:
+        ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+    if banner_course_offering_id is not None:
+        bco = BannerCourseOffering.objects.get(pk=banner_course_offering_id)
     if delta_id is None:
         #print('creating a new delta!')
-        if action == 'delete':
-            # in this case, there is no iChair course offering, so we simply set ico to None (which is the appropriate value to send along when creating the object in the database)
-            ico = None
-            try:
-                semester = Semester.objects.get(pk=semester_id)
-            except:
-                delta_generation_successful = False
-                print("Problem finding the semester...!")
-        else:
-            # for the 'create' and 'update' cases there should be an iChair course offering, so fetch it
-            try:
-                semester = Semester.objects.get(pk=semester_id)
-                ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-            except:
-                delta_generation_successful = False
-                print("Problem finding the semester or iChair course offering...!")
-
+        try:
+            semester = Semester.objects.get(pk=semester_id)
+        except:
+            delta_generation_successful = False
+            print("Problem finding the semester...!")
+        
         # delta course offering actions from the model itself:
         delta_course_offering_actions = DeltaCourseOffering.actions()
 
+        ico_note_to_self = None
+        bco_note_to_self = None
         if action == 'create':
             requested_action = delta_course_offering_actions["create"]
+            # clean up some delta course offering objects that may exist (specifically, those of type 'create' 
+            # or 'no_action'...presumably there are not any of the former);
+            # there could be a recent no_action type dco with a note_to_self
+            ico_note_to_self = delete_delta_course_offerings_by_ico(ichair_course_offering_id) # will come back as a string or None
         elif action == 'update':
             requested_action = delta_course_offering_actions["update"]
+            # clean up 'create', 'delete' and 'no_action' delta course offering objects, but save the
+            # note_to_self entries to be combined into the new 'update' object
+            # maybe try to merge note_to_self from these...?
+            if (ichair_course_offering_id is not None):
+                ico_note_to_self = delete_delta_course_offerings_by_ico(ichair_course_offering_id)
+            if (crn is not None) and (crn != ''):
+                bco_note_to_self = delete_delta_course_offerings_by_crn(crn, semester_id)
         elif action == 'delete':
             requested_action = delta_course_offering_actions["delete"]
+            # clean up some delta course offering objects that may exist (specifically, those of type 'delete' 
+            # or 'no_action'...presumably there are not any of the former)
+            bco_note_to_self = delete_delta_course_offerings_by_crn(crn, semester_id)
+        elif action == 'no_action':
+            requested_action = delta_course_offering_actions["no_action"]
+            # there are probably not any delta course offering objects to clean up in this case, but go ahead
+            # and try anyways....
+            if (ichair_course_offering_id is not None) and ((crn is None) or (crn == '')):
+                ico_note_to_self = delete_delta_course_offerings_by_ico(ichair_course_offering_id)
+            elif (ichair_course_offering_id is None) and (crn is not None) and (crn != ''):
+                bco_note_to_self = delete_delta_course_offerings_by_crn(crn, semester_id)
         else:
             delta_generation_successful = False
 
+        print('creating new delta object, found the following bco and ico notes to self from related objects: ', bco_note_to_self, ico_note_to_self)
         #print(delta_course_offering_actions)
 
         if delta_generation_successful:
@@ -2494,6 +2805,22 @@ def generate_update_delta(request):
             else:
                 update_public_comments = False
 
+            if 'manuallyMarkedOK' in delta_mods.keys():
+                manually_marked_OK = delta_mods['manuallyMarkedOK']
+            else:
+                manually_marked_OK = False
+
+            note_to_self = None
+            if (bco_note_to_self is not None) and (ico_note_to_self is not None):
+                note_to_self = 'A note from an iChair course offering and a note from a Banner course offering were auto-merged; iChair note: ' + \
+                    ico_note_to_self + '; Banner note: ' + bco_note_to_self
+            elif ico_note_to_self is not None:
+                note_to_self = ico_note_to_self
+            elif bco_note_to_self is not None:
+                note_to_self = bco_note_to_self
+            if note_to_self is not None:
+                note_to_self = note_to_self.strip()[:700]
+
             dco = DeltaCourseOffering.objects.create(
                 course_offering=ico,
                 semester=semester,
@@ -2504,13 +2831,15 @@ def generate_update_delta(request):
                 update_semester_fraction=update_semester_fraction,
                 update_max_enrollment=update_max_enrollment,
                 update_public_comments=update_public_comments,
-                update_delivery_method=update_delivery_method)
+                update_delivery_method=update_delivery_method,
+                manually_marked_OK=manually_marked_OK,
+                note_to_self = note_to_self)
             dco.save()
 
     else:
         dco = DeltaCourseOffering.objects.get(pk=delta_id)
-        #print('got delta object!')
-        #print(dco)
+        print('got delta object!')
+        print(dco)
         if 'meetingTimes' in delta_mods.keys():
             dco.update_meeting_times = delta_mods['meetingTimes']
 
@@ -2529,17 +2858,18 @@ def generate_update_delta(request):
         if 'publicComments' in delta_mods.keys():
             dco.update_public_comments = delta_mods['publicComments']
 
+        if 'manuallyMarkedOK' in delta_mods.keys():
+            dco.manually_marked_OK = delta_mods['manuallyMarkedOK']
+
         dco.save()
 
     delta_response = {}
     if delta_generation_successful:
         if action == 'update':
             # in this case we should have both a banner id and an ichair id....
-            bco = BannerCourseOffering.objects.get(
-                pk=banner_course_offering_id)
-            ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
-
-            #WORKING HERE
+            #bco = BannerCourseOffering.objects.get(
+            #    pk=banner_course_offering_id)
+            #ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
             # update ico.crn and bco.ichair_id
             if (ico.crn != bco.crn):
                 print("ico crn is not equal to bco.crn: ", ico.crn, bco.crn)
@@ -2556,7 +2886,6 @@ def generate_update_delta(request):
             else:
                 print("bco ichair_id was already equal to ico.id")
 
-            delta_response = delta_update_status(bco, ico, dco, check_rooms = include_room_comparisons)
             agreement_update = {
                 "instructors_match": instructors_match(bco, ico),
                 "meeting_times_match": scheduled_classes_match(bco, ico, check_rooms = include_room_comparisons),
@@ -2565,9 +2894,17 @@ def generate_update_delta(request):
                 "public_comments_match": public_comments_match(bco, ico),
                 "delivery_methods_match": delivery_methods_match(bco, ico),
             }
+            # if everything agrees, then we should set manually_marked_OK to False...there's no need to have this an option in this case....
+            print('action is update....agreement_update: ', agreement_update)
+            # https://realpython.com/iterate-through-dictionary-python/
+            if set_manually_marked_OK_to_false(agreement_update, dco):
+                dco.manually_marked_OK = False
+                dco.save()
+            delta_response = delta_update_status(bco, ico, dco, check_rooms = include_room_comparisons)
+
         elif action == 'create':
             # in this case we only have an ichair id....
-            ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
+            #ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
             delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons)
             agreement_update = {
                 "instructors_match": False,
@@ -2590,7 +2927,30 @@ def generate_update_delta(request):
                 "delivery_methods_match": True,
             }
 
-        # WORKING HERE: need to add some other functionality for the delete' action....
+        elif action == 'no_action':
+            # in this case we may have a bco or an ico, but (hopefully!) not both (in that case, should be a requested_action of 'update')
+            delta_response = delta_no_action_status(bco, ico, dco, check_rooms = include_room_comparisons)
+            # these quantities _will_ match after the course offering is deleted
+            if (bco is not None) and (ico is not None):
+                # should not happen, but just in case....
+                agreement_update = {
+                    "instructors_match": instructors_match(bco, ico),
+                    "meeting_times_match": scheduled_classes_match(bco, ico, check_rooms = include_room_comparisons),
+                    "max_enrollments_match": max_enrollments_match(bco, ico),
+                    "semester_fractions_match": semester_fractions_match(bco, ico),
+                    "public_comments_match": public_comments_match(bco, ico),
+                    "delivery_methods_match": delivery_methods_match(bco, ico),
+                }
+            else:
+                # we have either a bco or an ico, but in either case we only have one, so nothing matches
+                agreement_update = {
+                    "instructors_match": False,
+                    "meeting_times_match": False,
+                    "max_enrollments_match": False,
+                    "semester_fractions_match": False,
+                    "public_comments_match": False,
+                    "delivery_methods_match": False,
+                }
 
     data = {
         'number_ichair_primary_instructors_OK': number_ichair_primary_instructors_OK,
@@ -2601,6 +2961,16 @@ def generate_update_delta(request):
 
     return JsonResponse(data)
 
+def set_manually_marked_OK_to_false(agreement_update, dco):   
+    """mimics the logic in the UI to determine if all is OK"""
+    # https://developer.rhino3d.com/guides/rhinopython/python-statements
+    return (agreement_update["instructors_match"] or dco.update_instructors) and \
+        (agreement_update["meeting_times_match"] or dco.update_meeting_times) and \
+        (agreement_update["max_enrollments_match"] or dco.update_max_enrollment) and \
+        (agreement_update["semester_fractions_match"] or dco.update_semester_fraction) and \
+        (agreement_update["public_comments_match"] or dco.update_public_comments) and \
+        (agreement_update["delivery_methods_match"] or dco.update_delivery_method)
+                
 def number_primary_instructors_OK(ico):
     """
     This method checks to the iChair instructors for this course offering.  It returns the following:
@@ -2623,9 +2993,9 @@ def number_primary_instructors_OK(ico):
 
 @login_required
 @csrf_exempt
-def create_update_delete_note_for_registrar_api(request):
+def create_update_delete_note_for_registrar_or_self_api(request):
     """
-    Update a note for the registrar for a course offering.  Can do any combination of delete, create and update.
+    Update a note for the registrar or self for a course offering.  Can do any combination of delete, create and update.
     Note:
         - 'update' means update a note on an existing delta object
         - 'create' means that no delta object exists, so a new one must be created (of 'update' type, with update_meeting_times, etc., set to false)
@@ -2642,13 +3012,35 @@ def create_update_delete_note_for_registrar_api(request):
     has_ichair = json_data["hasIChair"]
     has_banner = json_data["hasBanner"]
     include_room_comparisons = json_data['includeRoomComparisons']
+    is_registrar_note = json_data["isRegistrarNote"] # True if this is a note for the registrar; False if is a note_to_self
+    semester_id = json_data["semesterId"]
+    print('semester id: ', semester_id)
+
+    semester = Semester.objects.get(pk=semester_id)
+
+    # https://www.freecodecamp.org/news/python-strip-how-to-trim-a-string-or-line/
+    if text is None:
+        trimmed_text = text
+    else:
+        if is_registrar_note:
+            trimmed_text = text.strip()[:500] # trim white space, then take first 500 characters
+        else:
+            trimmed_text = text.strip()[:700]
+
+    if trimmed_text == '':
+        trimmed_text = None
     
     updates_successful = True
 
     if has_ichair:
         ico = CourseOffering.objects.get(pk=ichair_id)
+    else:
+        ico = None
+
     if has_banner:
-            bco = BannerCourseOffering.objects.get(pk=banner_id)
+        bco = BannerCourseOffering.objects.get(pk=banner_id)
+    else:
+        bco = None
     
     delta_course_offering_actions = DeltaCourseOffering.actions()
     delta_response = None
@@ -2657,34 +3049,75 @@ def create_update_delete_note_for_registrar_api(request):
         # delta exists, need to delete the comment
         if has_delta:
             dco = DeltaCourseOffering.objects.get(pk=delta_id)
-            dco.extra_comment = None
+            if is_registrar_note:
+                dco.extra_comment = None
+            else:
+                dco.note_to_self = None
             dco.save()
         else:
             updates_successful = False
-            print('trying to delete a delta extra_comment, but there is no delta object...!')
+            print('trying to delete a delta extra_comment or note_to_self, but there is no delta object...!')
     elif action == 'update':
         # delta exists, need to update the comment
         if has_delta:
             dco = DeltaCourseOffering.objects.get(pk=delta_id)
-            dco.extra_comment = text[:500]
+            if is_registrar_note:
+                dco.extra_comment = trimmed_text
+            else:
+                dco.note_to_self = trimmed_text
             dco.save()
         else:
             updates_successful = False
-            print('trying to delete a delta extra_comment, but there is no delta object...!')
+            print('trying to delete a delta extra_comment or note_to_self, but there is no delta object...!')
     else:
-        # no delta, so need to create one; there _should_ be a banner object, but not not necessarily an iChair one
-        
-        if has_ichair and has_banner:
-            dco = DeltaCourseOffering.objects.create(
-                course_offering=ico,
-                semester=ico.semester,
-                crn=bco.crn,
-                requested_action=delta_course_offering_actions["update"],
-                extra_comment=text[:500])
-            dco.save()
+        # no delta, so need to create one
+        if is_registrar_note:
+            # if this is a registrar note, then both an ico and a bco should exist and the requested action should be of the "update" type
+            if has_ichair and has_banner:
+                dco = DeltaCourseOffering.objects.create(
+                    course_offering=ico,
+                    semester=semester,
+                    crn=bco.crn,
+                    requested_action=delta_course_offering_actions["update"],
+                    extra_comment = trimmed_text
+                    )
+                dco.save()
+            else:
+                print('there should be both an iChair course offering and a banner course offering in this case...!')
+                updates_successful = False
         else:
-            print('there should be both an iChair course offering and a banner course offering in this case...!')
-            updates_successful = False
+            # this is a note_to_self; in this case, there could be a banner object and/or an iChair object; 
+            # if both exist, we create an "update" type of delta object; otherwise, we create a "no_action" type
+            if has_ichair and has_banner:
+                dco = DeltaCourseOffering.objects.create(
+                    course_offering=ico,
+                    semester=semester,
+                    crn=bco.crn,
+                    requested_action=delta_course_offering_actions["update"],
+                    note_to_self = trimmed_text
+                    )
+                dco.save()
+            elif has_ichair:
+                dco = DeltaCourseOffering.objects.create(
+                    course_offering=ico,
+                    semester=semester,
+                    crn=None,
+                    requested_action=delta_course_offering_actions["no_action"],
+                    note_to_self = trimmed_text
+                    )
+                dco.save()
+            elif has_banner:
+                dco = DeltaCourseOffering.objects.create(
+                    course_offering=None,
+                    semester=semester,
+                    crn=bco.crn,
+                    requested_action=delta_course_offering_actions["no_action"],
+                    note_to_self = trimmed_text
+                    )
+                dco.save()
+            else:
+                print('there is neither an iChair course offering nor a banner course offering...!')
+                updates_successful = False
 
     if dco:
         if dco.requested_action == delta_course_offering_actions["update"]:
@@ -2695,6 +3128,8 @@ def create_update_delete_note_for_registrar_api(request):
                 delta_response = delta_create_status(ico, dco, check_rooms = include_room_comparisons)
         elif dco.requested_action == delta_course_offering_actions["delete"]:
             delta_response = delta_delete_status(dco)
+        elif dco.requested_action == delta_course_offering_actions["no_action"]:
+            delta_response = delta_no_action_status(bco, ico, dco)
 
     data = {
         'updates_successful': updates_successful,
@@ -2799,13 +3234,17 @@ def update_public_comments_api(request):
             delta_response = delta_update_status(bco, course_offering, dco, check_rooms = include_room_comparisons)
     elif (not(has_banner)) and course_offering:
         if has_delta:
-            # in this case we are talking about a delta requested action of "create"
+            # in this case we are talking about a delta requested action of "create" or "no_action"
+            print('inside update_public_comments_api....')
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
-            if dco.requested_action != delta_course_offering_actions["create"]:
-                print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
-            else:
+            if dco.requested_action == delta_course_offering_actions["create"]:
                 delta_response = delta_create_status(course_offering, dco, check_rooms = include_room_comparisons)
                 pc_match = delta_response["request_update_public_comments"]
+            elif dco.requested_action == delta_course_offering_actions["no_action"]:
+                delta_response = delta_no_action_status(None, course_offering, dco, check_rooms = include_room_comparisons)
+                pc_match = delta_response["request_update_public_comments"]
+            else:
+                print('we have a problem!!! expecting that delta is of the create or no_action type, but it is not...!')
 
     if course_offering:
         if (user_department != course_department) or (user_preferences.permission_level == UserPreferences.SUPER):
@@ -3033,16 +3472,23 @@ def update_class_schedule_api(request):
             delta_response = delta_update_status(bco, course_offering, dco, check_rooms = include_room_comparisons)
     elif (not(has_banner)) and course_offering:
         if has_delta:
-            # in this case we are talking about a delta requested action of "create"
+            # in this case we are talking about a delta requested action of "create" or "no_action"
+            print('inside update_class_schedule_api....')
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
-            if dco.requested_action != delta_course_offering_actions["create"]:
-                print('we have a problem!!! expecting that delta is of the create type, but it is not...!')
-            else:
+            if dco.requested_action == delta_course_offering_actions["create"]:
                 delta_response = delta_create_status(course_offering, dco, check_rooms = include_room_comparisons)
                 schedules_match = delta_response["request_update_meeting_times"]
                 sem_fractions_match = delta_response["request_update_semester_fraction"]
                 enrollment_caps_match = delta_response["request_update_max_enrollment"]
                 del_methods_match = delta_response["request_update_delivery_method"]
+            elif dco.requested_action == delta_course_offering_actions["no_action"]:
+                delta_response = delta_no_action_status(None, course_offering, dco, check_rooms = include_room_comparisons)
+                schedules_match = delta_response["request_update_meeting_times"]
+                sem_fractions_match = delta_response["request_update_semester_fraction"]
+                enrollment_caps_match = delta_response["request_update_max_enrollment"]
+                del_methods_match = delta_response["request_update_delivery_method"]
+            else:
+                print('we have a problem!!! expecting that delta is of the create or no_action type, but it is not...!')
     if update_semester_fraction:
         snapshot["semester_fraction"] = original_co_snapshot["semester_fraction"]
     if update_enrollment_cap:
@@ -3442,6 +3888,16 @@ def copy_course_offering_data_to_ichair(request):
             "public_comments_match": comments_match if has_banner else False,
             "delivery_methods_match": del_methods_match if has_banner else False
         }
+
+        if has_banner:
+            if delta_id is not None:
+                # dco should exist
+                # if everything agrees, then we should set manually_marked_OK to False...there's no need to have this an option in this case....
+                if set_manually_marked_OK_to_false(agreement_update, dco):
+                    dco.manually_marked_OK = False
+                    dco.save()
+                    # manually fix delta_response object, too
+                    delta_response["manually_marked_OK"] = dco.manually_marked_OK
 
         # "change_can_be_undone" here is just looking locally at what has been done; the client can make a better judgement
         # about this than the server can, so some of these settings might be overruled by the client-side code....
