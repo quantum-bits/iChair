@@ -4401,6 +4401,7 @@ def copy_courses(request, id, check_all_flag):
     academic_year_copy_from = AcademicYear.objects.get(pk = id)
     academic_year_copy_to = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all()
+    outside_course_offerings = []
 
 #    print academic_year_copy_from
 #    print academic_year_copy_to
@@ -4415,7 +4416,7 @@ def copy_courses(request, id, check_all_flag):
         course_offerings_to_copy_id_list = request.POST.getlist('courses_to_copy')
         for co_id in course_offerings_to_copy_id_list:
             co = CourseOffering.objects.get(pk = co_id)
-
+            
             semester_name = co.semester.name
             semester_object_copy_to = Semester.objects.get(Q(name=semester_name)&Q(year=academic_year_copy_to))
 
@@ -4480,67 +4481,47 @@ def copy_courses(request, id, check_all_flag):
                                                                                 sequence_number = pc.sequence_number
                                                                                 )
                 new_public_comment.save()
+            
+            # check if the subject for this course offering is owned by another department
+            # WORKING HERE
+            course_department = new_co.course.subject.department
+            if department != course_department:
+                revised_co_snapshot = new_co.snapshot
+                updated_fields = ["semester", "semester_fraction", "load_available", "max_enrollment", "delivery_method", "scheduled_classes", "offering_instructors"]
+                if (new_co.comment != '') and (new_co.comment is not None):
+                    updated_fields.append("comment")
+                create_message_course_offering_update(user.username, department, course_department, academic_year_copy_to,
+                                            None, revised_co_snapshot, updated_fields)
 
 #        next = request.GET.get('next', 'profile')
         return redirect(next)
     else:
+        outside_course_offerings = department.outside_course_offerings_this_year(academic_year_copy_from)
+        print('outside course offerings this year:')
+        for co in outside_course_offerings:
+            print(co, co.id)
+
         missing_instructor = False
         data_list = []
         comment_list = []
         for subject in department.subjects.all():
             for course in subject.courses.all():
                 for course_offering in course.offerings.filter(semester__year = academic_year_copy_from):
-                    course_offerings_current_year = course.offerings.filter(Q(semester__year = academic_year_copy_to)&
-                                                                            Q(semester__name = course_offering.semester.name))
-                    instructor_list=[]
-                    note_list=[]
-                    missing_instructor_this_course = False
-                    for faculty in course_offering.offering_instructors.all():
-                        if faculty.instructor in faculty_to_view:
-                            instructor_list.append(faculty.instructor.last_name)
-                        else:
-                            instructor_list.append("("+faculty.instructor.last_name+")")
-                            missing_instructor = True
-                            missing_instructor_this_course = True
+                    missing_instructor_this_course, course_offering_data = data_this_course_offering(course_offering, \
+                        academic_year_copy_to, faculty_to_view)
                     if missing_instructor_this_course:
-                        note_list.append("missing instructor")
+                        missing_instructor = True
+                    data_list.append(course_offering_data)
 
-                    scheduled_classes = course_offering.scheduled_classes.all()
-                    if len(scheduled_classes)==0:
-                        meetings_scheduled = False
-                        meeting_times_list = ["---"]
-                        room_list = ["---"]
-                    else:
-                        meetings_scheduled = True
-                        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
-# now try to find "collisions" between current course offerings (in the "copy to" year) and
-# the course offerings in the year being copied from
-                    scheduled_classes_current_year=[]
-                    for cocy in course_offerings_current_year:
-                        # check if the semester fractions overlap
-                        if cocy.is_in_semester_fraction(course_offering.semester_fraction):
-                            for sc in cocy.scheduled_classes.all():
-                                scheduled_classes_current_year.append(sc)
-# at this point, scheduled_classes and scheduled_classes_current_year are both arrays of "ScheduledClass"
-# objects; one has the classes from the "copy from" year and one from the "copy to" year; now those need
-# to be compared to see if there is any overlap
-                    course_offering_already_exists = scheduled_classes_overlap(scheduled_classes, scheduled_classes_current_year)
-#                    if course_offering_already_exists:
-#                        note_list.append("similar schedule exists")
-                    data_list.append({'instructors':instructor_list,
-                                      'room_list': room_list,
-                                      'meeting_times': meeting_times_list,
-                                      'meetings_scheduled': meetings_scheduled,
-                                      'id':course_offering.id,
-                                      'note_list': note_list,
-                                      'exists':course_offering_already_exists,
-                                      'number':course_offering.course.subject.abbrev+' '+course_offering.course.number,
-                                      'name':course_offering.course.title,
-                                      'semester':course_offering.semester.name,
-                                      'semester_fraction':course_offering.semester_fraction_text()
-                                      })
+        for oco in outside_course_offerings:
+            missing_instructor_this_course, course_offering_data = data_this_course_offering(oco, \
+                academic_year_copy_to, faculty_to_view)
+            if missing_instructor_this_course:
+                missing_instructor = True
+            data_list.append(course_offering_data)
+
         if missing_instructor:
-            comment_list.append("One or more instructors is missing from the current academic year and will not be included in a course copy.  If this is unintentional, you can add instructors back in under Profile.")
+            comment_list.append("One or more instructors is missing from the current academic year and will not be included in a course copy.  If this is unintentional, you can add instructors back in by going to the Faculty Loads page and clicking on Manage Faculty.")
             
 #        form = CoursesToCopyForm(['heythere'])
 #        print 'got here'
@@ -4550,6 +4531,61 @@ def copy_courses(request, id, check_all_flag):
                    'academic_year_copy_to':academic_year_copy_to, 
                    'check_all': check_all, 'check_all_flag_table':check_all_flag_table, 'year_id': id}
         return render(request, 'copy_courses.html', context)
+
+def data_this_course_offering(course_offering, academic_year_copy_to, faculty_to_view):
+    course_offerings_current_year = course_offering.course.offerings.filter(Q(semester__year = academic_year_copy_to)&
+                                                                            Q(semester__name = course_offering.semester.name))
+    instructor_list=[]
+    note_list=[]
+    missing_instructor_this_course = False
+    for faculty in course_offering.offering_instructors.all():
+        if faculty.instructor in faculty_to_view:
+            instructor_list.append(faculty.instructor.last_name)
+        else:
+            instructor_list.append("("+faculty.instructor.last_name+")")
+            missing_instructor_this_course = True
+    if missing_instructor_this_course:
+        note_list.append("missing instructor")
+
+    scheduled_classes = course_offering.scheduled_classes.all()
+    if len(scheduled_classes)==0:
+        meetings_scheduled = False
+        meeting_times_list = ["---"]
+        room_list = ["---"]
+    else:
+        meetings_scheduled = True
+        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
+    # now try to find "collisions" between current course offerings (in the "copy to" year) and
+    # the course offerings in the year being copied from
+    scheduled_classes_current_year=[]
+    for cocy in course_offerings_current_year:
+        # check if the semester fractions overlap
+        if cocy.is_in_semester_fraction(course_offering.semester_fraction):
+            for sc in cocy.scheduled_classes.all():
+                scheduled_classes_current_year.append(sc)
+    # at this point, scheduled_classes and scheduled_classes_current_year are both arrays of "ScheduledClass"
+    # objects; one has the classes from the "copy from" year and one from the "copy to" year; now those need
+    # to be compared to see if there is any overlap
+    course_offering_already_exists = scheduled_classes_overlap(scheduled_classes, scheduled_classes_current_year)
+    #                    if course_offering_already_exists:
+    #                        note_list.append("similar schedule exists")
+
+    course_offering_data = {
+        'instructors':instructor_list,
+        'room_list': room_list,
+        'meeting_times': meeting_times_list,
+        'meetings_scheduled': meetings_scheduled,
+        'id':course_offering.id,
+        'note_list': note_list,
+        'exists':course_offering_already_exists,
+        'number':course_offering.course.subject.abbrev+' '+course_offering.course.number,
+        'name':course_offering.course.title,
+        'semester':course_offering.semester.name,
+        'semester_fraction':course_offering.semester_fraction_text()
+        }
+    return missing_instructor_this_course, course_offering_data
+
+
 
 
 @login_required

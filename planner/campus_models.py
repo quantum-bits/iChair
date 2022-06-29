@@ -75,6 +75,21 @@ class Department(models.Model):
         course_list.sort(key=lambda x: x.number)
         return course_list
 
+    def outside_course_offerings_this_year(self, academic_year_object):
+        """
+        Returns the course offerings taught by faculty in this department in this academic year, but only
+        includes those for which the department is a "trusted" department.
+        """
+        course_offering_list = []
+        for fac in self.faculty.all():
+            for co in fac.outside_course_offerings_this_year(academic_year_object):
+                if (co not in course_offering_list) and (self.is_trusted_by_subject(co.course.subject)):
+                    course_offering_list.append(co)
+        # https://stackoverflow.com/questions/403421/how-to-sort-a-list-of-objects-based-on-an-attribute-of-the-objects
+        # https://stackoverflow.com/questions/20145842/python-sorting-by-multiple-criteria
+        course_offering_list.sort(key=lambda x: (x.course.subject.abbrev, x.course.number))
+        return course_offering_list
+
     def outside_courses_any_year(self):
         course_list = []
         subject_id_list = [subj.id for subj in self.subjects.all()]
@@ -283,7 +298,7 @@ class FacultyMember(Person):
     
     def outside_course_offerings(self, semester_object):
         """
-        Returns the courses that the faculty member is teaching outside his or her home department this semester.
+        Returns the course offerings that the faculty member is teaching outside his or her home department this semester.
         """
         #Printself.offering_instructors.all()
         subject_list = self.department.subjects.all()
@@ -296,7 +311,7 @@ class FacultyMember(Person):
 
     def outside_course_offerings_this_year(self, academic_year_object):
         """
-        Returns the courses that the faculty member is teaching outside his or her home department this year.
+        Returns the course offerings that the faculty member is teaching outside his or her home department this year.
         """
         #Printself.offering_instructors.all()
         subject_list = self.department.subjects.all()
