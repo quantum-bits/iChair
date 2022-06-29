@@ -854,7 +854,7 @@
                                             </v-card-title>
                                             <v-card-text class="pb-0">
                                                 <v-container grid-list-md>
-                                                    <v-layout wrap>
+                                                    <v-layout v-if="isRegistrarNote" wrap>
                                                         <v-flex xs12>
                                                             <strong>Comments for the registrar about this course offering. </strong>These will be included on your Schedule Edits pdf.
                                                         </v-flex>
@@ -874,7 +874,11 @@
                                                             </span>
                                                         </v-flex>
                                                     </v-layout>
-
+                                                    <v-layout v-else wrap>
+                                                        <v-flex xs12>
+                                                            <strong>Notes to yourself about this course offering. </strong>Notes written here will not be included on your Schedule Edits pdf.
+                                                        </v-flex>
+                                                    </v-layout>
                                                     <v-layout>
                                                         <v-flex xs12>
                                                             <v-textarea v-model="commentForRegistrarOrSelf"></v-textarea>
