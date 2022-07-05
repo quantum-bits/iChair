@@ -4436,7 +4436,7 @@ def copy_courses(request, id, check_all_flag):
             num_eligible_instructors = 0
             num_primaries = 0
             for instructor in co.offering_instructors.all():
-                if instructor.instructor in faculty_to_view:
+                if instructor.instructor.is_active(academic_year_copy_to):
                     num_eligible_instructors += 1
                     if instructor.load_credit > max_load:
                         max_load = instructor.load_credit
@@ -4445,8 +4445,12 @@ def copy_courses(request, id, check_all_flag):
                         num_primaries += 1
 
             for instructor in co.offering_instructors.all():
-                # NOTE: instructors are only assigned to courses if they are currently listed as being "viewable"
-                if instructor.instructor in faculty_to_view:
+                # NOTE: instructors are only assigned to courses if they are active in the "copy to" year;
+                # previously, only faculty in the "faculty_to_view" list were copied over; this meant that
+                # if one department did the course copy, faculty from some other department would typically not get copied
+                # over; then, for a course like IAS110, which has faculty from multiple departments, those faculty would need
+                # to be added by hand after the fact
+                if instructor.instructor.is_active(academic_year_copy_to):
                     if num_primaries == 1:
                         is_primary = instructor.is_primary
                     elif (num_eligible_instructors == 1) or ((num_eligible_instructors > 1) and (instructor.instructor.id == id_max_load)):
@@ -4508,20 +4512,20 @@ def copy_courses(request, id, check_all_flag):
             for course in subject.courses.all():
                 for course_offering in course.offerings.filter(semester__year = academic_year_copy_from):
                     missing_instructor_this_course, course_offering_data = data_this_course_offering(course_offering, \
-                        academic_year_copy_to, faculty_to_view)
+                        academic_year_copy_to)
                     if missing_instructor_this_course:
                         missing_instructor = True
                     data_list.append(course_offering_data)
 
         for oco in outside_course_offerings:
             missing_instructor_this_course, course_offering_data = data_this_course_offering(oco, \
-                academic_year_copy_to, faculty_to_view)
+                academic_year_copy_to)
             if missing_instructor_this_course:
                 missing_instructor = True
             data_list.append(course_offering_data)
 
         if missing_instructor:
-            comment_list.append("One or more instructors is missing from the current academic year and will not be included in a course copy.  If this is unintentional, you can add instructors back in by going to the Faculty Loads page and clicking on Manage Faculty.")
+            comment_list.append("One or more instructors is no longer active in the current academic year and will not be included in a course copy.")
             
 #        form = CoursesToCopyForm(['heythere'])
 #        print 'got here'
@@ -4532,14 +4536,14 @@ def copy_courses(request, id, check_all_flag):
                    'check_all': check_all, 'check_all_flag_table':check_all_flag_table, 'year_id': id}
         return render(request, 'copy_courses.html', context)
 
-def data_this_course_offering(course_offering, academic_year_copy_to, faculty_to_view):
+def data_this_course_offering(course_offering, academic_year_copy_to):
     course_offerings_current_year = course_offering.course.offerings.filter(Q(semester__year = academic_year_copy_to)&
                                                                             Q(semester__name = course_offering.semester.name))
     instructor_list=[]
     note_list=[]
     missing_instructor_this_course = False
     for faculty in course_offering.offering_instructors.all():
-        if faculty.instructor in faculty_to_view:
+        if faculty.instructor.is_active(academic_year_copy_to):
             instructor_list.append(faculty.instructor.last_name)
         else:
             instructor_list.append("("+faculty.instructor.last_name+")")
