@@ -71,6 +71,18 @@ class AddStudentSemesterForm(forms.ModelForm):
         return courses
 """
 
+class AddSandboxYearForm(forms.ModelForm):
+
+    class Meta:
+        model = AcademicYear
+        exclude = ('begin_on', 'end_on', 'department', 'is_hidden')
+
+class UpdateSandboxYearForm(forms.ModelForm):
+
+    class Meta:
+        model = AcademicYear
+        exclude = ('begin_on', 'end_on', 'department')
+
 class AddNoteForm(forms.ModelForm):
 
     class Meta:
@@ -496,6 +508,11 @@ class UpdateRoomsToViewForm(forms.ModelForm):
                    'permission_level','other_load_types_to_view',)
 
 class UpdateYearToViewForm(forms.ModelForm):
+
+    def __init__(self, department, *args, **kwargs):
+        super (UpdateYearToViewForm, self).__init__(*args, **kwargs)
+        # filter out the 'sandbox' academic years
+        self.fields['academic_year_to_view'].queryset = AcademicYear.objects.filter(Q(department = None) | (Q(department = department) & Q(is_hidden = False)))
 
     class Meta:
         model = UserPreferences

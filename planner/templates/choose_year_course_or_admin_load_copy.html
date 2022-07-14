@@ -5,9 +5,9 @@
   {% if is_course_copy %}
     <p> Choose year from which to copy courses: </p>
   {% else %}
-    <p> Choose year from which to admin loads: </p>
+    <p> Choose year from which to copy admin loads: </p>
   {% endif %}
-  <table class="content-center">
+  <table class="content-center" style="width: 100%;">
     {% for year in year_list %}
       <tr>
 	<td>
@@ -30,6 +30,17 @@
       </tr>
       {% endfor %}
   </table>
+
+  <div>
+    <p style="margin-bottom: 5px; margin-top: 15px;">
+      Don't see a sandbox year that you created?  It might be hidden.
+    </p>
+    <p>  
+      Go to <a href="{% url 'manage_sandbox_years' %}">Manage Sandbox Years</a> to unhide it or to 
+      create a new sandbox year.
+    </p>
+   </div>
+
 </div>
 
    <script>

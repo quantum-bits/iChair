@@ -15,8 +15,11 @@ urlpatterns = [
     url(r'^profile/$', myapp_views.profile, name='profile'),
 
     url(r'^deptloadsummary/$', myapp_views.department_load_summary, name='department_load_summary'),
+    url(r'^addsandboxyear/$', myapp_views.add_sandbox_year, name='add_sandbox_year'),
+    url(r'^updatesandboxyear/(\d+)/$', myapp_views.update_sandbox_year, name='update_sandbox_year'),
+    url(r'^managesandboxyears/$', myapp_views.manage_sandbox_years, name='manage_sandbox_years'),
     url(r'^coursesummary/(\d+)/$', myapp_views.course_summary, name='course_summary'),
-     url(r'^coursesummary/(\d+)/(\d+)/$', myapp_views.course_summary, name='course_summary'),
+    url(r'^coursesummary/(\d+)/(\d+)/$', myapp_views.course_summary, name='course_summary'),
     url(r'^allowdeletecourseconfirmation/$', myapp_views.allow_delete_course_confirmation, name='allow_delete_course_confirmation'),
     url(r'^updatecourseoffering/(\d+)/(\d+)/$', myapp_views.update_course_offering, name='update_course_offering'),
     url(r'^managecourseofferings/(\d+)/$', myapp_views.manage_course_offerings, name='manage_course_offerings'),

@@ -92,14 +92,31 @@
 {% if not printer_friendly %}
 
 <div class="span3">
-	<div style="padding-bottom: 10px">
+	{% if can_edit %}
+	<a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
+		Academic Year
+		<span class="caret"></span>
+	</a>
+	<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+		<li>              
+		<a href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}"> Change Academic Year</a>
+		</li>
+		<li>              
+		<a title="Create, edit or hide sandbox years"
+			href="{% url 'manage_sandbox_years' %}?next={{ request.path|urlencode }}"> Manage Sandbox Years </a>
+		</li>
+	</ul>
+	{% else %}
+
+	<div>
 		<a class="btn btn-info" href="{% url 'update_year_to_view' id %}?next={{ request.path|urlencode }}">
-				Change Academic Year</a>
+			Change Academic Year</a>
 	</div>
-	<div style="padding-bottom: 10px">
+	{% endif %}
+	<div style="padding-bottom: 10px; padding-top: 10px;">
 		<a title = "Choose which faculty to display when looking at loads, schedules, etc." class="btn btn-info" href="{% url 'update_faculty_to_view' %}?next={{ request.path|urlencode }}">Manage Faculty</a>
   	</div>
-	<div style="padding-bottom: 20px" class="btn-group">
+	<div style="padding-bottom: 20px;" class="btn-group">
     <a class="btn btn-info dropdown-toggle" data-toggle="dropdown" href="#">
       Printer Friendly Version
       <span class="caret"></span>
@@ -122,7 +139,7 @@
 					Add </a> a course offering manually.
 			</div>
 			<div style="padding: 2px 2px 2px 2px"> <a href="{% url 'choose_year_course_copy' %}?next={{ request.path|urlencode }}">
-					Copy</a> one or more course offerings from a previous year.
+					Copy</a> one or more course offerings from another year.
 			</div>
 			<div style="padding: 2px 2px 8px 2px"> 
 				<a href="https://www.youtube.com/watch?v=wxKWqCRh7BA" target="_blank">Watch</a>
@@ -484,7 +501,7 @@ function launchSpinner() {
   <script>
     $(window).load(function(){
     $("#nav-registrarsummary").addClass("current");
-    $('.page-name').find('h1').replaceWith('<h1>Master Schedule View</h1> <h2>{{department}}, {{academic_year}}</h2>');
+    $('.page-name').find('h1').replaceWith('<h1>Master Schedule View</h1> <h2>{{dept_academic_year}}</h2>');
     $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
   </script>
 

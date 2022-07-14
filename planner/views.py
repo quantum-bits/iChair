@@ -48,7 +48,7 @@ from django.core.files.base import ContentFile
 import io
 
 from four_year_plan.secret import ADMIN_EMAIL, NO_REPLY_EMAIL
-from .constants import NO_OVERLAP_TIME_BLOCKS, ENDING_BEFORE_BEGINNING_TIME, ALL_SEMESTERS_ID, NO_ROOM_SELECTED_ID
+from .constants import *
 
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
 def render_to_pdf(template_src, context_dict={}):
@@ -144,7 +144,9 @@ def home(request):
             # this helps fix things up if a change has been made by someone else since the last time
             # the current user logged in
             user_preferences.faculty_to_view.remove(faculty)
-    return render(request, 'home.html')
+
+    context = {'dept_academic_year': create_dept_academic_year_string(user_preferences.department_to_view, user_preferences.academic_year_to_view)}
+    return render(request, 'home.html', context)
 
 @login_required
 def profile(request):
@@ -171,6 +173,7 @@ def profile(request):
 
     context = { 'department': user_preferences.department_to_view,
                 'academic_year': user_preferences.academic_year_to_view,
+                'dept_academic_year': create_dept_academic_year_string(user_preferences.department_to_view, user_preferences.academic_year_to_view),
                 'permission_level': user_preferences.permission_level,
                 'room_list': room_list,
                 'other_load_types': other_load_types,
@@ -232,10 +235,10 @@ def display_notes(request):
     user_preferences = user.user_preferences.all()[0]
 
     department = user_preferences.department_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    academic_year = user_preferences.academic_year_to_view
+    academic_year_string = str(academic_year.begin_on.year)+'-'+str(academic_year.begin_on.year+1)
 
-    temp_data = Note.objects.all().filter(Q(department__abbrev=department.abbrev)&Q(year__begin_on__year=academic_year))
+    temp_data = Note.objects.all().filter(Q(department__abbrev=department.abbrev)&Q(year=academic_year))
 
 #    print temp_data
 
@@ -262,9 +265,8 @@ def display_messages(request):
     user_preferences = user.user_preferences.all()[0]
 
     department = user_preferences.department_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
     academic_year_object = user_preferences.academic_year_to_view
+    academic_year_string = str(academic_year_object.begin_on.year)+'-'+str(academic_year_object.begin_on.year+1)
 
     messages = department.messages_this_year(academic_year_object, False)
     
@@ -375,9 +377,8 @@ def collect_data_for_summary(request):
 
     department = user_preferences.department_to_view
     academic_year_object = user_preferences.academic_year_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
-
+    # https://code.djangoproject.com/ticket/710
+    
     faculty_with_loads_are_being_viewed = True
     faculty_not_being_viewed = []
 
@@ -729,7 +730,7 @@ def collect_data_for_summary(request):
              'admin_data_list':admin_data_list,
              'total_load_hours':total_load_hours,
              'department':department,
-             'academic_year':academic_year_string,
+             'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
              'instructordict':instructordict,
              'instructorlist':instructor_id_list,
              'instructor_integer_list':instructor_integer_list,
@@ -743,6 +744,9 @@ def collect_data_for_summary(request):
              }
 
     return context
+
+def create_dept_academic_year_string(department, academic_year_object):
+    return department.__str__()+': '+str(academic_year_object.begin_on.year)+'-'+str(academic_year_object.begin_on.year+1) if not academic_year_object.is_sandbox else department.abbrev+' Sandbox Year: '+academic_year_object.name
 
 @login_required
 def export_data(request):
@@ -1699,8 +1703,8 @@ def weekly_schedule(request):
     full_semester = CourseOffering.full_semester()
 
     department = user_preferences.department_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    academic_year = user_preferences.academic_year_to_view
+    #academic_year_string = str(academic_year.begin_on.year)+'-'+str(academic_year.begin_on.year+1)
 
 #    department = Department.objects.filter(abbrev=u'PEN')[0]
 #    academic_year = 2013
@@ -1727,15 +1731,15 @@ def weekly_schedule(request):
         data_this_professor = []
         for semester_name in semester_list:
             if semester_name == semester_list[0]:
-                year_name = str(academic_year)
+                year_name = str(academic_year.begin_on.year)
             else:
-                year_name = str(academic_year+1)
+                year_name = str(academic_year.begin_on.year+1)
             idnum = idnum + 1
             course_offering_list_all_years = faculty_member.course_offerings.filter(semester__name__name=semester_name)
             course_offering_list = []
             all_courses_are_full_semester = True
             for co in course_offering_list_all_years:
-                if co.semester.year.begin_on.year == academic_year:
+                if co.semester.year == academic_year:
                     course_offering_list.append(co)
                     if not co.is_full_semester():
                         # we will need to split the semester schedule out into two separate schedules
@@ -1748,10 +1752,16 @@ def weekly_schedule(request):
 
             for partial_semester in partial_semester_list:
                 
-                if all_courses_are_full_semester:
-                    table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+year_name+')'
+                if not academic_year.is_sandbox:
+                    if all_courses_are_full_semester:
+                        table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+year_name+')'
+                    else:
+                        table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
                 else:
-                    table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
+                    if all_courses_are_full_semester:
+                        table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+') [Sandbox Year: '+academic_year.name+']'
+                    else:
+                        table_title = faculty_member.first_name[0]+'. '+faculty_member.last_name+' ('+semester_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+') [Sandbox Year: '+academic_year.name+']'
                 
                 courses_after_five = False
 
@@ -1890,9 +1900,10 @@ def weekly_schedule(request):
     context={
         'json_professor_data': simplejson.dumps(json_professor_data),
         'data_list': data_list, 
-        'year': academic_year_string, 
+        #'year': academic_year_string, 
         'id': user_preferences.id, 
-        'department': user_preferences.department_to_view
+        #'department': user_preferences.department_to_view,
+        'dept_academic_year': create_dept_academic_year_string(user_preferences.department_to_view, user_preferences.academic_year_to_view)
         }
     return render(request, 'weekly_schedule.html', context)
 
@@ -1908,8 +1919,8 @@ def daily_schedule(request):
     full_semester = CourseOffering.full_semester()
 
     department = user_preferences.department_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    academic_year = user_preferences.academic_year_to_view
+    #academic_year_string = str(academic_year.begin_on.year)+'-'+str(academic_year.begin_on.year+1)
 
 # things that are currently hard-coded and could/should be fixed:
 # - earliest course is 7 a.m.
@@ -1958,23 +1969,23 @@ def daily_schedule(request):
 #            room_conflict_check_dict[room.id] = {'Monday':[], 'Tuesday':[], 'Wednesday':[], 'Thursday':[], 'Friday':[]}
 
             if semester_name == semester_list[0]:
-                year_name = str(academic_year)
+                year_name = str(academic_year.begin_on.year)
             else:
-                year_name = str(academic_year+1)
+                year_name = str(academic_year.begin_on.year+1)
 
             idnum = idnum + 1
 
             # https://stackoverflow.com/questions/18819218/django-prefetch-related-from-model-with-multiple-manytomany-relationships/18819306
             scheduled_classes = [sc for sc in ScheduledClass.objects.filter(Q(day=day_dict[day])&
                                                     Q(course_offering__semester__name__name=semester_name)&
-                                                    Q(course_offering__semester__year__begin_on__year = academic_year)&
+                                                    Q(course_offering__semester__year = academic_year)&
                                                     Q(course_offering__course__subject__department = department)).select_related(
                                                         #'room__building',
                                                         'course_offering__semester__name',
                                                         'course_offering__semester__year',
                                                         'course_offering__course__subject').prefetch_related('rooms__building')]
 
-            semester_this_year = Semester.objects.filter(Q(name__name=semester_name)&Q(year__begin_on__year=academic_year))
+            semester_this_year = Semester.objects.filter(Q(name__name=semester_name)&Q(year=academic_year))
 
             if len(semester_this_year) == 1:
                 # there is exactly one of these...which is good
@@ -2003,12 +2014,20 @@ def daily_schedule(request):
                 for faculty_member in user_preferences.faculty_to_view.all():
                     instructor_conflict_check_dict[faculty_member.id] = {'today':[]}
 
-                if all_courses_are_full_semester:
-                    table_title = day+'s'+' ('+semester_name+', '+year_name+')'
-                    current_semester_string = semester_name+', '+year_name
+                if not academic_year.is_sandbox:
+                    if all_courses_are_full_semester:
+                        table_title = day+'s'+' ('+semester_name+', '+year_name+')'
+                        current_semester_string = semester_name+', '+year_name
+                    else:
+                        table_title = day+'s'+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
+                        current_semester_string = semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])
                 else:
-                    table_title = day+'s'+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
-                    current_semester_string = semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])
+                    if all_courses_are_full_semester:
+                        table_title = day+'s'+' ('+semester_name+') [Sandbox Year: '+academic_year.name+']'
+                        current_semester_string = semester_name+' [Sandbox Year: '+academic_year.name+']'
+                    else:
+                        table_title = day+'s'+' ('+semester_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+') [Sandbox Year: '+academic_year.name+']'
+                        current_semester_string = semester_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+' [Sandbox Year: '+academic_year.name+']'
 
                 filtered_scheduled_classes = [sc for sc in scheduled_classes if sc.course_offering.is_in_semester_fraction(partial_semester['semester_fraction'])]
 
@@ -2173,9 +2192,10 @@ def daily_schedule(request):
     context = {
         'json_daily_data': simplejson.dumps(json_daily_data),
         'data_list': data_list, 
-        'year': academic_year_string, 
+        #'year': academic_year_string, 
         'id': user_preferences.id, 
-        'department': user_preferences.department_to_view
+        #'department': user_preferences.department_to_view,
+        'dept_academic_year': create_dept_academic_year_string(user_preferences.department_to_view, user_preferences.academic_year_to_view)
         }
     return render(request, 'daily_schedule.html', context)
 
@@ -2231,8 +2251,8 @@ def room_schedule(request):
     full_semester = CourseOffering.full_semester()
 
     department = user_preferences.department_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    academic_year = user_preferences.academic_year_to_view
+    #academic_year_string = str(academic_year.begin_on.year)+'-'+str(academic_year.begin_on.year+1)
 
 # things that are currently hard-coded and could/should be fixed:
 # - earliest course is 7 a.m.
@@ -2266,7 +2286,7 @@ def room_schedule(request):
             # https://docs.djangoproject.com/en/3.2/topics/db/examples/many_to_many/
             scheduled_classes = ScheduledClass.objects.filter(Q(rooms = room)&
                                                     Q(course_offering__semester__name__name=semester_name)&
-                                                    Q(course_offering__semester__year__begin_on__year = academic_year))
+                                                    Q(course_offering__semester__year = academic_year))
 
             all_courses_are_full_semester = True
             for sc in scheduled_classes:
@@ -2282,15 +2302,21 @@ def room_schedule(request):
             
                 courses_after_five = False
                 if semester_name == semester_list[0]:
-                    year_name = str(academic_year)
+                    year_name = str(academic_year.begin_on.year)
                 else:
-                    year_name = str(academic_year+1)
+                    year_name = str(academic_year.begin_on.year+1)
 
-                if all_courses_are_full_semester:
-                    table_title = room.building.name+' '+room.number+' ('+semester_name+', '+year_name+')'
+                if not academic_year.is_sandbox:
+                    if all_courses_are_full_semester:
+                        table_title = room.building.name+' '+room.number+' ('+semester_name+', '+year_name+')'
+                    else:
+                        table_title = room.building.name+' '+room.number+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
                 else:
-                    table_title = room.building.name+' '+room.number+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
-
+                    if all_courses_are_full_semester:
+                        table_title = room.building.name+' '+room.number+' ('+semester_name+') [Sandbox Year: '+academic_year.name+']'
+                    else:
+                        table_title = room.building.name+' '+room.number+' ('+semester_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+') [Sandbox Year: '+academic_year.name+']'
+                
                 filtered_scheduled_classes = [sc for sc in scheduled_classes if sc.course_offering.is_in_semester_fraction(partial_semester['semester_fraction'])]
 
                 for sc in filtered_scheduled_classes:
@@ -2420,9 +2446,11 @@ def room_schedule(request):
     context={
         'json_room_data': simplejson.dumps(json_room_data),
         'data_list':data_list, 
-        'year':academic_year_string, 
+        #'year':academic_year_string, 
         'id': user_preferences.id, 
-        'department': user_preferences.department_to_view}
+        #'department': user_preferences.department_to_view
+        'dept_academic_year': create_dept_academic_year_string(user_preferences.department_to_view, academic_year)
+        }
     return render(request, 'room_schedule.html', context)
 
 @login_required
@@ -2437,8 +2465,8 @@ def course_schedule(request):
     full_semester = CourseOffering.full_semester()
 
     department = user_preferences.department_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    academic_year = user_preferences.academic_year_to_view
+    #academic_year_string = str(academic_year.begin_on.year)+'-'+str(academic_year.begin_on.year+1)
 
 # things that are currently hard-coded and could/should be fixed:
 # - earliest course is 7 a.m.
@@ -2483,8 +2511,8 @@ def course_schedule(request):
             # https://stackoverflow.com/questions/403421/how-to-sort-a-list-of-objects-based-on-an-attribute-of-the-objects
             course_list.sort(key=lambda x: x.number)
         
-        for course in course_list: #filter(offerings__semester__year__begin_on__year = academic_year):
-            co = course.offerings.filter(semester__year__begin_on__year = academic_year)
+        for course in course_list:
+            co = course.offerings.filter(semester__year = academic_year)
             if len(co) > 0:
                 co_semester_list=[]
                 for co_item in co:
@@ -2496,14 +2524,14 @@ def course_schedule(request):
 
                         scheduled_classes = ScheduledClass.objects.filter(Q(course_offering__course = course)&
                                                                 Q(course_offering__semester__name__name=semester_name)&
-                                                                Q(course_offering__semester__year__begin_on__year = academic_year))
+                                                                Q(course_offering__semester__year = academic_year))
                         
                         idnum = idnum + 1
 
                         if semester_name == semester_list[0]:
-                            year_name = str(academic_year)
+                            year_name = str(academic_year.begin_on.year)
                         else:
-                            year_name = str(academic_year+1)
+                            year_name = str(academic_year.begin_on.year+1)
                         
                         all_courses_are_full_semester = True
                         for sc in scheduled_classes:
@@ -2519,11 +2547,17 @@ def course_schedule(request):
 
                             courses_after_five = False
 
-                            if all_courses_are_full_semester:
-                                table_title = course.title+' ('+semester_name+', '+year_name+')'
+                            if not academic_year.is_sandbox:
+                                if all_courses_are_full_semester:
+                                    table_title = course.title+' ('+semester_name+', '+year_name+')'
+                                else:
+                                    table_title = course.title+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
                             else:
-                                table_title = course.title+' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
-
+                                if all_courses_are_full_semester:
+                                    table_title = course.title+' ('+semester_name+') [Sandbox Year: '+academic_year.name+']'
+                                else:
+                                    table_title = course.title+' ('+semester_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+') [Sandbox Year: '+academic_year.name+']'
+                            
                             filtered_scheduled_classes = [sc for sc in scheduled_classes if sc.course_offering.is_in_semester_fraction(partial_semester['semester_fraction'])]
                             
                             for sc in filtered_scheduled_classes:
@@ -2592,7 +2626,13 @@ def course_schedule(request):
                                             'offerings': []})
                 data_list.append(data_this_course)
 
-    context={'data_list':data_list, 'year':academic_year_string, 'id': user_preferences.id, 'department': user_preferences.department_to_view}
+    context={
+        'data_list':data_list, 
+        #'year':academic_year_string, 
+        'id': user_preferences.id, 
+        #'department': user_preferences.department_to_view,
+        'dept_academic_year': create_dept_academic_year_string(user_preferences.department_to_view, academic_year)
+        }
     return render(request, 'course_schedule.html', context)
 
 def check_for_conflicts(conflict_dict):
@@ -2833,8 +2873,8 @@ def course_summary(request, allow_delete, show_all_years='0'):
     close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+    academic_year_object = user_preferences.academic_year_to_view
+    academic_year_string = str(academic_year_object.begin_on.year)+'-'+str(academic_year_object.begin_on.year+1)
 
     if int(show_all_years) == 0:
         number_years_to_show = 7
@@ -2858,14 +2898,15 @@ def course_summary(request, allow_delete, show_all_years='0'):
     number_semesters = ii
 
     max_year = 2000 #probably safe....
-    for year in AcademicYear.objects.all():
+    # by selecting department to be None we are filtering out the sandbox years
+    for year in AcademicYear.objects.filter(Q(department = None)):
         if year.begin_on.year > max_year:
             max_year = year.begin_on.year
     
     year_list = []
     academic_year_dict=dict()
     ii = 0
-    for year in AcademicYear.objects.all():
+    for year in AcademicYear.objects.filter(Q(department = None)):
         if year.begin_on.year > max_year - number_years_to_show:
             year_list.append(str(year.begin_on.year)+'-'+str(year.begin_on.year + 1))
             academic_year_dict[year.begin_on.year] = ii
@@ -3092,7 +3133,7 @@ def new_class_schedule(request,id, daisy_chain):
         form = EasyDaySchedulerForm(course_offering.semester.id)
         return render(request, 'new_class_schedule.html', {'form':form, 'id':id, 'daisy_chaining': daisy_chaining, 'course':course_offering })
 
-
+@login_required
 def add_faculty(request):
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -3164,6 +3205,198 @@ Rank of new faculty member: {2}
         context = {'form': form, 'title': 'Add New Faculty Member', 'department': department }
         return render(request, 'add_faculty_member.html', context)
 
+@login_required
+def manage_sandbox_years(request):
+
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    year = user_preferences.academic_year_to_view
+
+    if request.method == 'POST':
+        #faculty_to_display_id_list = request.POST.getlist('faculty_to_display')
+        #user_preferences.faculty_to_view.clear()
+        #for faculty_id in faculty_to_display_id_list:
+        #    faculty = FacultyMember.objects.get(pk=faculty_id)
+        #    user_preferences.faculty_to_view.add(faculty)
+        next = request.GET.get('next', 'department_load_summary')
+        return redirect(next)
+    else:
+        sandbox_years = AcademicYear.objects.filter(Q(department=department))
+        context = {'sandbox_years': sandbox_years, 'user_preferences': user_preferences}
+        return render(request, 'manage_sandbox_years.html', context)
+
+
+
+
+@login_required
+def add_sandbox_year(request):
+    """
+    Allows the user to create a new 'sandbox' academic year.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+    department = user_preferences.department_to_view
+    faculty_to_view = user_preferences.faculty_to_view.all()
+
+    other_years = [{
+                'id': year.id, 
+                'year': year
+            } for year in AcademicYear.objects.filter(Q(department = None) | (Q(department = department) & Q(is_hidden = False)))]
+    # https://linuxhint.com/python-prepend-list/
+    other_years.insert(0,{
+        'id': NO_YEAR_SELECTED_ID,
+        'year': '--------------'
+    })
+
+    if request.method == 'POST':
+        form = AddSandboxYearForm(request.POST)
+ 
+        other_year_data_id = int(request.POST.get('other_year')) 
+        next = request.GET.get('next', 'department_load_summary')
+        if form.is_valid():
+            name = form.cleaned_data.get('name')
+            # create the new sandbox year
+            new_sandbox_year = AcademicYear.objects.create(
+                begin_on = SANDBOX_YEAR_BEGIN_ON,
+                end_on = SANDBOX_YEAR_END_ON,
+                department = department,
+                name = name
+                ) 
+            new_sandbox_year.save()
+            # create semesters to go along with the new year
+            summer_names = SemesterName.objects.filter(name=SEMESTER_NAME_SUMMER)
+            fall_names = SemesterName.objects.filter(name=SEMESTER_NAME_FALL)
+            jterm_names = SemesterName.objects.filter(name=SEMESTER_NAME_JTERM)
+            spring_names = SemesterName.objects.filter(name=SEMESTER_NAME_SPRING)
+
+            if (len(summer_names) != 1) or (len(fall_names) != 1) or (len(jterm_names) != 1) or (len(spring_names) != 1):
+                print('ERROR!  There should be exactly one name for each semester!')
+            else:
+                summer = Semester.objects.create(
+                    name = summer_names[0],
+                    year = new_sandbox_year,
+                    begin_on = SANDBOX_SUMMER_BEGIN_ON,
+                    end_on = SANDBOX_SUMMER_END_ON
+                )
+                summer.save()
+                fall = Semester.objects.create(
+                    name = fall_names[0],
+                    year = new_sandbox_year,
+                    begin_on = SANDBOX_FALL_BEGIN_ON,
+                    end_on = SANDBOX_FALL_END_ON
+                )
+                fall.save()
+                jterm = Semester.objects.create(
+                    name = jterm_names[0],
+                    year = new_sandbox_year,
+                    begin_on = SANDBOX_JTERM_BEGIN_ON,
+                    end_on = SANDBOX_JTERM_END_ON
+                )
+                jterm.save()
+                spring = Semester.objects.create(
+                    name = spring_names[0],
+                    year = new_sandbox_year,
+                    begin_on = SANDBOX_SPRING_BEGIN_ON,
+                    end_on = SANDBOX_SPRING_END_ON
+                )
+                spring.save()
+
+                if other_year_data_id != NO_YEAR_SELECTED_ID:
+                    other_year = AcademicYear.objects.get(pk=other_year_data_id)
+                    #print('copying data from the following year: ', other_year)
+                    all_course_offerings = []
+                    for subject in department.subjects.all():
+                        for course in subject.courses.all():
+                            for co in course.offerings.filter(semester__year = other_year):
+                                all_course_offerings.append(co)
+
+                    for oco in department.outside_course_offerings_this_year(other_year):
+                        all_course_offerings.append(oco)
+                    
+                    for co in all_course_offerings:
+                        #print('adding following course offering to ', new_sandbox_year, ': ', co)
+                        copy_course_offering_data_to_year(co, new_sandbox_year, user, department)
+                    
+                    # copy over non-teaching loads
+                    # get list of faculty in 'faculty_to_view' as well as any other faculty from the department
+                    # who may have non-teaching loads in the 'copy from' year
+                    faculty_member_ids=[faculty.id for faculty in faculty_to_view]
+                    #print('faculty member ids: ', faculty_member_ids)
+                    for fm in department.faculty.all():
+                        if fm.id not in faculty_member_ids:
+                            #print('found a faculty member from the department who was not in the list!', fm)
+                            faculty_member_ids.append(fm.id)
+                    #print('faculty member ids: ', faculty_member_ids)
+                    for other_load in OtherLoad.other_loads_this_year(academic_year=other_year, faculty_member_ids=faculty_member_ids):
+                        #print('non-teaching load found: ', other_load)
+                        semesters = Semester.objects.filter(Q(name=other_load.semester.name)&Q(year=new_sandbox_year))
+                        if other_load.instructor.is_active(new_sandbox_year) and len(semesters) == 1:
+                            # should be the case, since the sandbox years are set to be before the years containing actual data, 
+                            # and since there should only be one semester with each name....
+                            new_ol = OtherLoad.objects.create(
+                                load_type = other_load.load_type,
+                                semester = semesters[0],
+                                instructor = other_load.instructor,
+                                load_credit = other_load.load_credit)
+                            new_ol.save()
+            return redirect(next)
+        else:
+            context = {'form': form, 'has_errors': True}
+            return render(request, 'add_sandbox_year.html', context)
+    else:
+        form = AddSandboxYearForm()
+        context = {'form': form, 'other_years': other_years, 'has_errors': False}
+        return render(request, 'add_sandbox_year.html', context)
+
+@login_required
+def update_sandbox_year(request, id):
+    """
+    Allows the user to update properties of 'sandbox' academic year.
+    """
+    user = request.user
+# assumes that users each have exactly ONE UserPreferences object
+    user_preferences = user.user_preferences.all()[0]
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("home")
+    department = user_preferences.department_to_view
+    instance = AcademicYear.objects.get(pk = id)
+    print('here is the year!', instance)
+    year_to_view = user_preferences.academic_year_to_view
+
+    # WORKING HERE
+
+    if request.method == 'POST':
+        form = UpdateSandboxYearForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            next = request.GET.get('next', 'department_load_summary')
+            return redirect(next)
+
+            #return redirect(url_string)
+        else:
+            context = {
+                'form': form, 
+                'has_errors': True,
+                'viewing_this_year': year_to_view == instance,
+                'year_to_view_id': year_to_view.id
+                }
+            return render(request, 'update_sandbox_year.html', context)
+    else:
+        form = UpdateSandboxYearForm(instance=instance)
+        context = {
+            'form': form, 
+            'has_errors': False,
+            'viewing_this_year': year_to_view == instance,
+            'year_to_view_id': year_to_view.id,
+            'user_preferences_id': user_preferences.id
+            }
+        return render(request, 'update_sandbox_year.html', context)
+
 
 @login_required
 def select_course(request):
@@ -3198,7 +3431,7 @@ def select_course(request):
             context['never_alerted_before'] = True
         return render(request, 'select_course.html', context)
 
-
+@login_required
 def add_course(request, daisy_chain):
 # start is the start time in hours (7 for 7:00, etc.)
 # duration is the class duration in minutes
@@ -3513,10 +3746,8 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
     day_list = ['Monday','Tuesday','Wednesday','Thursday','Friday']
 
     department = user_preferences.department_to_view
-    year_to_view = user_preferences.academic_year_to_view.begin_on.year
-
-    academic_year_string = str(year_to_view)+'-'+str(year_to_view + 1)
     academic_year_object = user_preferences.academic_year_to_view
+    #academic_year_string = str(academic_year_object.begin_on.year)+'-'+str(academic_year_object.begin_on.year + 1)
 
     registrar_data_list = []
     faculty_time_conflicts = []
@@ -3558,7 +3789,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
         #for partial_semester in partial_semesters:
 
         # find this semester in this academic year....
-        semester_this_year = Semester.objects.filter(Q(name__name=semester.name)&Q(year__begin_on__year=year_to_view))
+        semester_this_year = Semester.objects.filter(Q(name__name=semester.name)&Q(year=academic_year_object))
 
         outside_course_offerings = []
         dept_faculty_list = FacultyMember.objects.filter(department=department)
@@ -3600,9 +3831,9 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                 course_name = course.title
 
                 if subject_is_in_dept:
-                    course_offerings = [co for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view))]
+                    course_offerings = [co for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year=academic_year_object))]
                 else:
-                    course_offerings_super = [co for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year__begin_on__year=year_to_view))]
+                    course_offerings_super = [co for co in course.offerings.filter(Q(semester__name__name=semester.name)&Q(semester__year=academic_year_object))]
                     course_offerings = []
                     # if the course comes from outside the dept, only include the offerings that are (co-)taught by someone in the dept
                     for cos in course_offerings_super:
@@ -3768,7 +3999,8 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
              'faculty_time_conflicts': faculty_time_conflicts,
              'room_conflicts': room_conflicts,
              'overbooked_rooms': overbooked_rooms,
-             'academic_year': academic_year_string, 'id': user_preferences.id,
+             'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
+             'id': user_preferences.id,
              'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large,
              'messages': department.messages_this_year(academic_year_object),
              'semester_options': semester_options,
@@ -3794,8 +4026,8 @@ def compare_with_banner(request):
         return redirect("home")
 
     department = user_preferences.department_to_view
-    year_to_view = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(year_to_view)+'-'+str(year_to_view + 1)
+    year_to_view = user_preferences.academic_year_to_view
+    academic_year_string = str(year_to_view.begin_on.year)+'-'+str(year_to_view.begin_on.year + 1)
 
     data = {
         'departmentId': department.id,
@@ -4102,7 +4334,8 @@ def update_faculty_to_view(request):
                    'json_faculty_with_loads': json_faculty_with_loads,
                    'json_faculty_without_loads': json_faculty_without_loads,
                    'department': department,
-                   'academic_year': year
+                   #'academic_year': year,
+                   'dept_academic_year': create_dept_academic_year_string(department, year)
         }
         return render(request, 'update_faculty_to_view.html', context)
 
@@ -4182,10 +4415,11 @@ def update_year_to_view(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     department_id = user_preferences.department_to_view.id
+    department = user_preferences.department_to_view
     instance = UserPreferences.objects.get(pk = id)
 
     if request.method == 'POST':
-        form = UpdateYearToViewForm(request.POST, instance=instance)
+        form = UpdateYearToViewForm(department, request.POST, instance=instance)
         if form.is_valid():
             form.save()
             user_preferences = user.user_preferences.all()[0]
@@ -4197,12 +4431,12 @@ def update_year_to_view(request, id):
                     # this faculty is not active in the new year that is being viewed, so should not be viewable
                     user_preferences.faculty_to_view.remove(faculty)
             
-            next = request.GET.get('next', 'home')
+            next = request.GET.get('next', 'department_load_summary')
             return redirect(next)
         else:
             return render(request, 'update_year_to_view.html', {'form': form})
     else:
-        form = UpdateYearToViewForm(instance=instance)
+        form = UpdateYearToViewForm(department, instance=instance)
         context = {'form': form}
         return render(request, 'update_year_to_view.html', context)
 
@@ -4417,6 +4651,9 @@ def copy_courses(request, id, check_all_flag):
         for co_id in course_offerings_to_copy_id_list:
             co = CourseOffering.objects.get(pk = co_id)
             
+            copy_course_offering_data_to_year(co, academic_year_copy_to, user, department)
+
+            """
             semester_name = co.semester.name
             semester_object_copy_to = Semester.objects.get(Q(name=semester_name)&Q(year=academic_year_copy_to))
 
@@ -4487,7 +4724,6 @@ def copy_courses(request, id, check_all_flag):
                 new_public_comment.save()
             
             # check if the subject for this course offering is owned by another department
-            # WORKING HERE
             course_department = new_co.course.subject.department
             if department != course_department:
                 revised_co_snapshot = new_co.snapshot
@@ -4496,6 +4732,7 @@ def copy_courses(request, id, check_all_flag):
                     updated_fields.append("comment")
                 create_message_course_offering_update(user.username, department, course_department, academic_year_copy_to,
                                             None, revised_co_snapshot, updated_fields)
+            """
 
 #        next = request.GET.get('next', 'profile')
         return redirect(next)
@@ -4535,6 +4772,91 @@ def copy_courses(request, id, check_all_flag):
                    'academic_year_copy_to':academic_year_copy_to, 
                    'check_all': check_all, 'check_all_flag_table':check_all_flag_table, 'year_id': id}
         return render(request, 'copy_courses.html', context)
+
+def copy_course_offering_data_to_year(course_offering, academic_year_copy_to, user, department):
+    semester_name = course_offering.semester.name
+    semester_object_copy_to = Semester.objects.get(Q(name=semester_name)&Q(year=academic_year_copy_to))
+
+    new_co = CourseOffering.objects.create(
+        course = course_offering.course,
+        semester = semester_object_copy_to,
+        semester_fraction = course_offering.semester_fraction,
+        load_available = course_offering.load_available,
+        max_enrollment = course_offering.max_enrollment,
+        delivery_method = course_offering.delivery_method,
+        comment = course_offering.comment
+        )
+    new_co.save()
+
+    id_max_load = None
+    max_load = -1
+    # try to make reasonable assignments on the is_primary property
+    num_eligible_instructors = 0
+    num_primaries = 0
+    for instructor in course_offering.offering_instructors.all():
+        if instructor.instructor.is_active(academic_year_copy_to):
+            num_eligible_instructors += 1
+            if instructor.load_credit > max_load:
+                max_load = instructor.load_credit
+                id_max_load = instructor.instructor.id
+            if instructor.is_primary:
+                num_primaries += 1
+
+    for instructor in course_offering.offering_instructors.all():
+        # NOTE: instructors are only assigned to courses if they are active in the "copy to" year;
+        # previously, only faculty in the "faculty_to_view" list were copied over; this meant that
+        # if one department did the course copy, faculty from some other department would typically not get copied
+        # over; then, for a course like IAS110, which has faculty from multiple departments, those faculty would need
+        # to be added by hand after the fact
+        if instructor.instructor.is_active(academic_year_copy_to):
+            if num_primaries == 1:
+                is_primary = instructor.is_primary
+            elif (num_eligible_instructors == 1) or ((num_eligible_instructors > 1) and (instructor.instructor.id == id_max_load)):
+                is_primary = True
+            else:
+                is_primary = False
+            new_offering_instructor = OfferingInstructor.objects.create(course_offering = new_co,
+                                                                        instructor = instructor.instructor,
+                                                                        load_credit = instructor.load_credit,
+                                                                        is_primary = is_primary
+                                                                        )
+            new_offering_instructor.save()
+
+    for sc in course_offering.scheduled_classes.all():
+        schedule_addition = ScheduledClass.objects.create(
+            course_offering = new_co,
+            day = sc.day,
+            begin_at = sc.begin_at,
+            end_at = sc.end_at,
+            comment = sc.comment
+            )            
+
+        # https://stackoverflow.com/questions/1182380/how-to-add-data-into-manytomany-field
+        for room in sc.rooms.all():
+            if room.is_active(new_co.semester):
+                # it's possible that the room was active in the "copy from" semester, but is no longer active in the "copy to" semester
+                schedule_addition.rooms.add(room)
+        schedule_addition.save()
+
+    for pc in course_offering.offering_comments.all():
+        new_public_comment = CourseOfferingPublicComment.objects.create(course_offering = new_co,
+                                                                        text = pc.text,
+                                                                        sequence_number = pc.sequence_number
+                                                                        )
+        new_public_comment.save()
+    
+    if not academic_year_copy_to.is_sandbox:
+        # check if the subject for this course offering is owned by another department
+        course_department = new_co.course.subject.department
+        if department != course_department:
+            revised_co_snapshot = new_co.snapshot
+            updated_fields = ["semester", "semester_fraction", "load_available", "max_enrollment", "delivery_method", "scheduled_classes", "offering_instructors"]
+            if (new_co.comment != '') and (new_co.comment is not None):
+                updated_fields.append("comment")
+            create_message_course_offering_update(user.username, department, course_department, academic_year_copy_to,
+                                        None, revised_co_snapshot, updated_fields)
+
+    return
 
 def data_this_course_offering(course_offering, academic_year_copy_to):
     course_offerings_current_year = course_offering.course.offerings.filter(Q(semester__year = academic_year_copy_to)&
@@ -4751,12 +5073,20 @@ def choose_year_admin_load_copy(request, faculty_id=None):
     academic_years = AcademicYear.objects.all()
     
     year_list =[]
-    for year in academic_years:
-        if year.begin_on.year < academic_year_copy_to.begin_on.year:
-            year_list.append({
-                    'year_name':year,
-                    'year_id':year.id
-                    })
+    if not academic_year_copy_to.is_sandbox:
+        for year in academic_years:
+            if (not year.is_sandbox and year.begin_on.year < academic_year_copy_to.begin_on.year) or (year.department == department and year.is_sandbox and not year.is_hidden):
+                year_list.append({
+                        'year_name':year,
+                        'year_id':year.id
+                        })
+    else:
+        for year in academic_years:
+            if (year != academic_year_copy_to) and ((not year.is_sandbox) or (year.department == department and year.is_sandbox and not year.is_hidden)):
+                year_list.append({
+                        'year_name':year,
+                        'year_id':year.id
+                        })
 
     # true for copying course offerings, false for copying admin loads; if gets more complicated
     # (i.e., more choices), should set some CONST values or something and choose from them
@@ -4784,13 +5114,21 @@ def choose_year_course_copy(request):
     academic_years = AcademicYear.objects.all()
     
     year_list =[]
-    for year in academic_years:
-        if year.begin_on.year < academic_year_copy_to.begin_on.year:
-            year_list.append({
-                    'year_name':year,
-                    'year_id':year.id
-                    })
-
+    if not academic_year_copy_to.is_sandbox:
+        for year in academic_years:
+            if (not year.is_sandbox and year.begin_on.year < academic_year_copy_to.begin_on.year) or (year.department == department and year.is_sandbox and not year.is_hidden):
+                year_list.append({
+                        'year_name':year,
+                        'year_id':year.id
+                        })
+    else:
+        for year in academic_years:
+            if (year != academic_year_copy_to) and ((not year.is_sandbox) or (year.department == department and year.is_sandbox and not year.is_hidden)):
+                year_list.append({
+                        'year_name':year,
+                        'year_id':year.id
+                        })
+        
     # true for copying course offerings, false for copying admin loads; if gets more complicated
     # (i.e., more choices), should set some CONST values or something and choose from them
     is_course_copy = True
@@ -4855,8 +5193,6 @@ def search_form(request):
             course_list_2 = Course.objects.filter(Q(subject__abbrev__icontains = subj)&
                                                   Q(number__icontains = number))
         
-        # WORKING HERE -------- now, find all offerings for the courses for the given year, and list those
-
         # create complete list of course objects
         course_list = []
         for course in course_list_1:
@@ -5339,8 +5675,9 @@ def weekly_course_schedule_entire_dept(request):
     full_semester = CourseOffering.full_semester()
 
     department = user_preferences.department_to_view
-    academic_year = user_preferences.academic_year_to_view.begin_on.year
-    academic_year_string = str(academic_year)+'-'+str(academic_year+1)
+
+    academic_year = user_preferences.academic_year_to_view
+    academic_year_string = str(academic_year.begin_on.year)+'-'+str(academic_year.begin_on.year+1)
 
 # things that are currently hard-coded and could/should be fixed:
 # - earliest course is 7 a.m.
@@ -5372,7 +5709,7 @@ def weekly_course_schedule_entire_dept(request):
     for semester_name in semester_list:
 
         # find this semester in this academic year....
-        semester_this_year = Semester.objects.filter(Q(name__name=semester_name)&Q(year__begin_on__year=academic_year))
+        semester_this_year = Semester.objects.filter(Q(name__name=semester_name)&Q(year=academic_year))
         outside_course_offerings = []
         dept_faculty_list = FacultyMember.objects.filter(department=department)
         if len(semester_this_year) == 1:
@@ -5384,12 +5721,12 @@ def weekly_course_schedule_entire_dept(request):
                         outside_course_offerings.append(outside_co)
 
         if semester_name == semester_list[0]:
-            year_name = str(academic_year)
+            year_name = str(academic_year.begin_on.year)
         else:
-            year_name = str(academic_year+1)
+            year_name = str(academic_year.begin_on.year+1)
 
         scheduled_classes = [sc for sc in ScheduledClass.objects.filter(Q(course_offering__semester__name__name=semester_name)&
-                                                    Q(course_offering__semester__year__begin_on__year = academic_year)&
+                                                    Q(course_offering__semester__year = academic_year)&
                                                     Q(course_offering__course__subject__department = department))]
         
         for oco in outside_course_offerings:
@@ -5419,13 +5756,21 @@ def weekly_course_schedule_entire_dept(request):
             idnum = idnum+1
             courses_after_five = False
 
-            if all_courses_are_full_semester:
-                current_semester_string = semester_name+', '+year_name
-                table_title = department.name +' ('+semester_name+', '+year_name+')'
+            if not academic_year.is_sandbox:
+                if all_courses_are_full_semester:
+                    current_semester_string = semester_name+', '+year_name
+                    table_title = department.name +' ('+semester_name+', '+year_name+')'
+                else:
+                    current_semester_string = semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])
+                    table_title = department.name +' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
             else:
-                current_semester_string = semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])
-                table_title = department.name +' ('+semester_name+', '+year_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+')'
-
+                if all_courses_are_full_semester:
+                    current_semester_string = semester_name+' [Sandbox Year: '+academic_year.name+']'
+                    table_title = department.name +' ('+semester_name+') [Sandbox Year: '+academic_year.name+']'
+                else:
+                    current_semester_string = semester_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+ ' [Sandbox Year: '+academic_year.name+']'
+                    table_title = department.name +' ('+semester_name+' - '+ CourseOffering.semester_fraction_name(partial_semester['semester_fraction'])+') [Sandbox Year: '+academic_year.name+']'
+            
             master_dict={}
             min_hour = 7
             #num_lines_in_hour={7:0,8:0,9:0,10:0,11:0,12:0,13:0,14:0,15:0,16:0,17:0,18:0,19:0,20:0,21:0,22:0,23:0}
@@ -5567,9 +5912,10 @@ def weekly_course_schedule_entire_dept(request):
     context={
         'json_term_data': simplejson.dumps(json_term_data),
         'data_list':data_list,
-        'year':academic_year_string,
+        #'year':academic_year_string,
         'id': user_preferences.id,
-        'department': user_preferences.department_to_view
+        #'department': user_preferences.department_to_view,
+        'dept_academic_year': create_dept_academic_year_string(user_preferences.department_to_view, academic_year)
         }
     return render(request, 'weekly_schedule_dept_summary.html', context)
 
@@ -5877,7 +6223,6 @@ def update_semester_for_course_offering(request, id):
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
         return redirect("home")
     department = user_preferences.department_to_view
-    year_to_view = user_preferences.academic_year_to_view.begin_on.year
     year = user_preferences.academic_year_to_view
 
     instance = CourseOffering.objects.get(pk = id)

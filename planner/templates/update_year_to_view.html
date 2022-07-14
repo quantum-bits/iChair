@@ -3,12 +3,21 @@
 {% block content %}
 
    <div class="content-center">
-     <form action=""  method="post">
+     <form style="margin-bottom: 10px;" action=""  method="post">
       {% csrf_token %}
 
       {{ form.as_table }}
       <p><input type="submit" value="Submit" /></p>
      </form>
+     <div>
+      <p style="margin-bottom: 5px;">
+        Don't see a sandbox year that you created?  It might be hidden.
+      </p>
+      <p>  
+        Go to <a href="{% url 'manage_sandbox_years' %}">Manage Sandbox Years</a> to unhide it or to 
+        create a new sandbox year.
+      </p>
+     </div>
    </div>
 
    <script>

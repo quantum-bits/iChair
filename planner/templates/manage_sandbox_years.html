@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+{% load static %}
+<link href='{% static "css/chosen.css" %}' media="screen" rel="stylesheet" type="text/css">
+<link href='{% static "css/ui.multiselect.css" %}' media="screen" rel="stylesheet" type="text/css">
+<link href='{% static "css/ui_multiselect_KK_additions.css" %}' media="screen" rel="stylesheet" type="text/css">
+<script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>
+  <script src="http://code.jquery.com/ui/1.9.2/jquery-ui.min.js"></script>
+
+  <script type="text/javascript" src='{% static "js/ui.multiselect.js" %}'></script>
+  <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.10/themes/smoothness/jquery-ui.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+  <style>
+  .warning-container {
+	  width: 300px;
+	  height: 40px;
+	  margin-left: auto;
+	  margin-right: auto;
+	  border-style: solid;
+	  border-width: 2px;
+	  color: #b94a48;
+	  background-color: #f2dede;
+	  border-color: #eed3d7;
+	  border-radius: 4px;
+	  padding: 15px;
+	  font-weight: normal;
+  }
+
+  div.alert.alert-student-info {
+  width: 700px!important;
+  margin-bottom: 0px;
+  }
+  .info-container {
+	width: 300px;
+  }
+  </style>
+  
+<div class="container">
+	<div class="row">
+		<div class="span5 offset4">
+				<a class="btn btn-info" href="{% url 'add_sandbox_year' %}?next={{ request.path|urlencode }}">Create New Sandbox Year</a>
+		
+		</div>
+	</div>
+</div>	
+
+<div class="content-center">
+	<h3>
+		Sandbox Years
+	</h3>
+
+	  <div class="alert alert-student-info wide">
+		<p>
+			You can use sandbox years to plan and brainstorm different scenarios.  They are not tied to any particular academic year.  
+		</p>
+		<p>
+			You can copy content to sandbox years from existing academic years or from other sandbox years; you can
+			also copy content from sandbox years into regular academic years.  
+		</p>
+		<p>
+			If you don't wish to see a particular sandbox year
+			in the list of available years, you can hide it by clicking on Edit in the table below.  You can 
+			always unhide it later if you change your mind.
+	  	</p>
+	  </div>
+	  <div style="margin-bottom: 5px;"></div>
+	  <br/>
+	  
+	  <!-- <div class="content-center">-->
+	  <!--<form action=""  method="post">-->
+		  {% csrf_token %}
+		  <!--<p><input type="submit" value="Submit"/></p>-->
+		  <div class="alert alert-student-info wide">
+		    
+			  <table class="table table-striped table-bordered table-hover">
+				  <thead>
+					  <tr>
+						<th> Name of Year </th>
+						<th style="text-align: center;"> Last Updated*</th>
+						<th style="text-align: center;"> Status </th>
+						<th style="text-align: center;"> Action</th>
+					  </tr>
+				  </thead>
+				  <tbody>
+					  {% for year in sandbox_years %}
+					  <tr id="row{{year.id}}">
+					    <td id="year{{year.id}}">
+							  {{ year.name }}
+						</td>
+						<td style="text-align: center;"> {{year.last_updated}}</td>
+						<td style="text-align: center;">{% if year.is_hidden %} hidden {% else %} active {% endif %}</td>
+						<td style="text-align: center;">
+							<a title = "Update properties of this sandbox year" href="{% url 'update_sandbox_year' year.id %}?next={{ request.path|urlencode }}">Edit</a>
+						</td>
+					  </tr>
+					  {% endfor %}
+				  </tbody>
+			  </table>
+			  
+		  </div>
+		  <p>*Last Updated is the last time a course offering, scheduled class, instructor or note was updated.</p>
+		  <!--<p><input type="submit" value="Submit"/></p>-->
+		<div>
+			All done?  You can return to the <a href="{% url 'department_load_summary' %}">Faculty Loads</a> or 
+			the <a href="{% url 'registrar_schedule' 0 %}">Master Schedule</a> page.  You can also <a href="{% url 'update_year_to_view' user_preferences.id %}">change to a different year</a>
+			first.
+		</div>
+	  <!--</form>-->
+  </div>
+
+
+   
+   <script>
+    $(window).load(function(){
+    $("#nav-coursesummary").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Manage Sandbox Years</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+   </script>
+
+{% endblock %}

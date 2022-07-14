@@ -128,6 +128,9 @@ class DeltaCourseOfferingAdmin(admin.ModelAdmin):
     list_display = ('crn', 'course_offering', 'semester', 'requested_action', 'updated_at', 'update_meeting_times', 'update_instructors', 'update_semester_fraction','update_max_enrollment','update_delivery_method',)
     search_fields = ('crn', 'semester__name__name', 'semester__banner_code', 'course_offering__course__title', 'course_offering__course__number', 'course_offering__course__subject__abbrev', )    
 
+class AcademicYearAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'begin_on', 'end_on', 'department', 'is_hidden', 'name',)
+
 class SemesterAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'banner_code',)
 
@@ -234,7 +237,7 @@ class MessageAdmin(admin.ModelAdmin):
     search_fields = ('department','year',)
     
 
-admin.site.register(AcademicYear)
+admin.site.register(AcademicYear, AcademicYearAdmin)
 admin.site.register(AdvisingNote)
 admin.site.register(Note, NoteAdmin)
 admin.site.register(Building, BuildingAdmin)

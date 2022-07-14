@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+   .banner-titles {
+      width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 20px;
+      font-weight: normal;
+   }
+
+   /*
+   .alert {
+      padding-left: 10px;
+   }
+   */
+   div.alert.alert-student-info {
+      width: 400px !important;
+   }
+   /*
+   .table {
+      margin-bottom: 0px !important;
+   }
+   */
+   /*
+   div.table.table.table-striped.table-bordered.table-hover {
+      margin-bottom: 0px !important;
+   }
+   */
+   input[type="text"] {
+      width: 400px;
+   }
+</style>
+<!-- https://www.techiedelight.com/set-width-input-textbox-html-css-javascript/ -->
+
+
+<div class="content-center">
+
+   <form action="" method="post">
+      {% csrf_token %}
+
+      <!-- https://docs.djangoproject.com/en/4.0/topics/forms/ -->
+      <div>
+         <label for="{{ form.name.id_for_label }}">Enter a descriptive name for this sandbox year:</label>
+         {{ form.name }}
+      </div>
+      
+      <div>
+         <!-- https://www.w3schools.com/tags/tag_select.asp -->
+         <label for="other_year">Copy data from another academic or sandbox year (optional):</label>
+         <select name="other_year" id="other_year">
+            {% for year in other_years %}
+            <option value="{{year.id}}">{{year.year}}</option>
+            {% endfor %}
+         </select>
+      </div>
+
+      <p><input type="submit" value="Submit" /></p>
+   </form>
+
+</div>
+
+<script>
+   $(window).load(function () {
+      $('.page-name').find('h1').replaceWith('<h1>Create New Sandbox Year</h1>');
+      $(".page-name").stop().animate({ opacity: 1, 'margin-left': '5%' }, 700);
+   });
+</script>
+
+{% endblock %}

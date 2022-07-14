@@ -8,6 +8,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
 from django.db.models import Q
 
+import datetime
+
 import logging
 logger = logging.getLogger(__name__)
 LOG_FILENAME = 'constraint.log'
@@ -217,16 +219,76 @@ class Minor(models.Model):
         return self.name
 
 class AcademicYear(models.Model):
+    """
+    An academic year, to which semesters can be associated.  If the department is not None, 
+    then this is not a 'real' academic year, but is actually a 'sandbox' year, created by a
+    department for planning purposes.  In that case, the begin_on and end_on fields should
+    be set to a year before iChair was actually being used.
+    """
     begin_on = models.DateField()
     end_on = models.DateField()
+    department = models.ForeignKey(Department, related_name='years', blank=True, null=True, on_delete=models.SET_NULL)
+    name = models.CharField(max_length=80, blank=True, null=True)
+    is_hidden = models.BooleanField(default = False)
 
     class Meta:
         ordering = [ 'begin_on' ]
 
     def __str__(self):
-        return '{0}-{1}'.format(self.begin_on.year, self.end_on.year)
+        return '{0}-{1}'.format(self.begin_on.year, self.end_on.year) if not self.is_sandbox else 'Sandbox Year: {0}'.format(self.name)
  
-    
+    @property
+    def is_sandbox(self):
+        """Returns true if the AcademicYear is associated with a department."""
+        return self.department is not None
+
+    @property
+    def last_updated(self):
+        """
+        Returns the date stamp for the time that the most recent of various things associated with this academic year (in particular, course offerings, 
+        offering instructors or scheduled classes) was updated.  Unfortunately, OtherLoad is not a "stamped model", so we don't
+        have access to a time stamp for the last update.
+
+        Note: we do not check time stamps for the following:
+        - OtherLoad objects (unavailable, unfortunately)
+        - CourseOfferingPublicComment objects
+        - DeltaCourseOffering objects
+
+        ...the reason for the latter two is that this method is primarily going to be used for "sandbox" academic years, and those
+        will not be compared to Banner, etc.
+        """
+        # https://www.w3schools.com/python/python_datetime.asp
+        # intialize to a date before we were using iChair....
+        # need to make the datetime object aware in order to be able to compare with Django's time stamps
+        # https://www.geeksforgeeks.org/how-to-make-a-timezone-aware-datetime-object-in-python/
+        # https://docs.python.org/3/library/datetime.html
+        most_recent_date = datetime.datetime(2000, 1, 1).replace(tzinfo=datetime.timezone.utc)
+        date_updated = False
+        for note in self.notes.all():
+            if note.updated_at > most_recent_date:
+                most_recent_date = note.updated_at
+                date_updated = True
+                #print('found a more recent note!', note, note.updated_at)
+        for semester in self.semesters.all():
+            for co in semester.offerings.all():
+                if co.updated_at > most_recent_date:
+                    most_recent_date = co.updated_at
+                    date_updated = True
+                    #print('found a more recent course offering!', co, co.updated_at)
+                for sc in co.scheduled_classes.all():
+                    if sc.updated_at > most_recent_date:
+                        most_recent_date = sc.updated_at
+                        date_updated = True
+                        #print('found a more recent scheduled class!', sc, sc.updated_at)
+                for oi in co.offering_instructors.all():
+                    if oi.updated_at > most_recent_date:
+                        most_recent_date = oi.updated_at
+                        date_updated = True
+                        #print('found a more recent offering instructor!', oi, oi.updated_at)
+
+        #print('most recent update: ', most_recent_date)
+        return most_recent_date if date_updated else '----'
+
 class FacultyMember(Person):
     ADJUNCT_RANK = 'Adj'
     RANK_CHOICES = (('Inst', 'Instructor'),
