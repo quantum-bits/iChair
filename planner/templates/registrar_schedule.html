@@ -417,7 +417,12 @@
       {% if not printer_friendly %}
       {% if can_edit %}
       <td style="text-align: center;"> 
-	  	<a title = "Delete this course offering" href="{% url 'delete_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Delete</a> |
+		{% if not is_sandbox_year %}
+	  		<a title = "Delete this course offering" href="{% url 'delete_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Delete</a>
+		{% else %}
+			<a title = "Delete this course offering" onclick="deleteCourseOffering({{course.course_offering_id}}, {{department.id}}, {{academic_year.id}})" href="#">Delete</a>
+		{% endif %}
+		|
 		<a title = "Make a copy of this course offering" href="{% url 'copy_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">Copy</a>  
 	  </td>
       {% endif %}
@@ -495,6 +500,38 @@ function launchSpinner() {
 	}
 </script>
 
+<script>
+	/*
+	This function is only being called for sandbox years (at least at this point), so there will not be
+	an associated Banner course offering, etc.
+	*/
+	function deleteCourseOffering(courseOfferingId, departmentId, yearId) {
+		console.log('deleting course offering', courseOfferingId, typeof courseOfferingId);
+		console.log(departmentId, yearId);
+		let dataForPost = {
+			courseOfferingId: courseOfferingId,
+			hasBanner: false,
+			unlinkedIChairCourseOfferingIds: [],
+			bannerCourseOfferingId: null,
+			departmentId: departmentId,
+			yearId: yearId,
+			termCode: '',
+			deltaId: null
+		};
+		$.ajax({
+          	// initialize an AJAX request
+          	type: "POST",
+          	url: "/planner/ajax/delete-course-offering/", // set the url of the request
+       		dataType: "json",
+        	data: JSON.stringify(dataForPost),
+        	success: function(incomingData) {
+			  	console.log(incomingData);
+			  	/* now reload the page; https://stackoverflow.com/questions/52949655/force-reload-on-clients-webpage-django */
+			  	location.reload();
+		  }
+		});
+	}
+</script>
 
 
 

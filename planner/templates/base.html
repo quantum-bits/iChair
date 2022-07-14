@@ -160,7 +160,9 @@ div.page-name h1 {
 	    </li>
       	<li title="View the course schedule in the Registrar's format" id="nav-registrarsummary"><a href="{% url 'registrar_schedule' 0 %}">Master Schedule</a><i></i></li>
 	  	{% if can_edit %}
+		{% if not is_sandbox_year %}
 		  <li title="Compare to Banner data and communicate with the Registrar" id="nav-bannercomparison"><a href="{% url 'compare_with_banner' %}">Schedule Edits</a><i></i></li>
+		{% endif %}
 		{% endif %}
 		<li title = "Edit course properties; view an overall summary of courses offered during different years" id="nav-coursesummary"><a href="{% url 'course_summary' 0 %}">Course Summary</a><i></i></li>
 

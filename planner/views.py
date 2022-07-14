@@ -730,6 +730,7 @@ def collect_data_for_summary(request):
              'admin_data_list':admin_data_list,
              'total_load_hours':total_load_hours,
              'department':department,
+             'academic_year': academic_year_object,
              'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
              'instructordict':instructordict,
              'instructorlist':instructor_id_list,
@@ -3995,16 +3996,20 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                     }
                 )
 
-    context={'registrar_data_list':registrar_data_list, 'department': department, 'check_conflicts': check_conflicts,
-             'faculty_time_conflicts': faculty_time_conflicts,
-             'room_conflicts': room_conflicts,
-             'overbooked_rooms': overbooked_rooms,
-             'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
-             'id': user_preferences.id,
-             'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large,
-             'messages': department.messages_this_year(academic_year_object),
-             'semester_options': semester_options,
-             'chosen_semester_id': chosen_semester_id
+    context={
+        'registrar_data_list':registrar_data_list, 
+        'department': department, 
+        'check_conflicts': check_conflicts,
+        'faculty_time_conflicts': faculty_time_conflicts,
+        'room_conflicts': room_conflicts,
+        'overbooked_rooms': overbooked_rooms,
+        'academic_year': academic_year_object,
+        'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
+        'id': user_preferences.id,
+        'pagesize':'letter', 'printer_friendly': printer_friendly, 'font_size_large': font_size_large,
+        'messages': department.messages_this_year(academic_year_object),
+        'semester_options': semester_options,
+        'chosen_semester_id': chosen_semester_id
     }
 
     if printer_friendly:
