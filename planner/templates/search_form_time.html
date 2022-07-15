@@ -83,9 +83,15 @@
 	<tr>
 	  <td>
 	  <div align="center">
+		<!-- https://www.geeksforgeeks.org/how-to-set-the-default-value-for-an-html-select-element/ -->
+		<!-- https://www.geeksforgeeks.org/how-to-set-the-default-value-for-an-html-select-element -->
 	  <select name="semester" id="semester">
 	    {% for semester in semester_list %}
-	      <option value={{semester.id}}>{{semester.name}}</option>
+			{% if semester.selected %}
+	      		<option value={{semester.id}} selected>{{semester.name}}</option>
+			{% else %}
+				<option value={{semester.id}}>{{semester.name}}</option>
+			{% endif %}
 	    {% endfor %}
 	  </select>
 	  </div>

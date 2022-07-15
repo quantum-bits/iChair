@@ -5160,23 +5160,14 @@ def search_form(request):
     
     request.session["return_to_page"] = "/planner/search-form/"
 
-    # https://stackoverflow.com/questions/4260280/if-else-in-a-list-comprehension
-    # https://tutorial.eyehunts.com/python/python-list-comprehension-if-without-else-example-code/
-    #all_years_in_db = [ac_year.begin_on.year for ac_year in AcademicYear.objects.all() if not ac_year.is_sandbox]
-
     if not academic_year.is_sandbox:
         current_year = academic_year.begin_on.year
     else:
         current_year = datetime.datetime.now().year
 
-    academic_year_list = []
-    #academic_year_list = [{
-    #                        'year_name':year_name,
-    #                        'id': ii,
-    #                        'begin_on':ay}(ac_year.is_sandbox and (not ac_year.is_hidden) and ac_year.department == department))for ac_year in AcademicYear.objects.all()]
-
     start_years = [current_year-4+ii for ii in range(6)]
 
+    academic_year_list = []
     for ay in AcademicYear.objects.all():
         if not ay.is_sandbox:
             if ay.begin_on.year in start_years:
@@ -5189,22 +5180,10 @@ def search_form(request):
                     'year_name': ay.__str__(),
                     'id': ay.id})
 
-    #for ii in range(6):
-    #    ay = current_year-4+ii
-    #    if ay in all_years_in_db:
-    #        year_name = str(ay)+'-'+str(ay+1)
-    #        academic_year_list.append({'year_name':year_name,
-    #                                'id': ii,
-    #                                'begin_on':ay})
-
     if request.method == 'POST':
         search_term = request.POST.getlist('course_search')[0]
         year_id_list= [int(list_item) for list_item in request.POST.getlist('years_for_search')]
-        print(year_id_list)
-
-        #academic_year_short_list = []
-        #for year in year_begin_on_list:
-        #    academic_year_short_list.append(int(year))
+        #print(year_id_list)
 
         # first, assume that the text is part of the course title....
         if len(search_term)>0:
@@ -5297,20 +5276,41 @@ def search_form_time(request):
     request.session["return_to_page"] = "/planner/search-form-time/"
 
     all_depts_list = []
-    for dept in Department.objects.all().order_by('name'):
+    for dept in Department.objects.filter(is_active = True).order_by('name'):
         all_depts_list.append({'name':dept.name,'id':dept.id})
 
-    current_year = academic_year.begin_on.year
+    if not academic_year.is_sandbox:
+        current_year = academic_year.begin_on.year
+    else:
+        current_year = datetime.datetime.now().year
 
     semesters_all = Semester.objects.all()
     semester_list = []
     ii = 0
+    selected_set = False
     for semester in semesters_all:
-        if (semester.year.begin_on.year >= current_year-2) and (semester.year.begin_on.year <= current_year+1):
+        if ((semester.year.begin_on.year >= current_year-2) and (semester.year.begin_on.year <= current_year+1) and not semester.year.is_sandbox):
             ii = ii+1
-            semester_list.append({'name':semester.name.name+' '+str(semester.year.begin_on.year)+'-'+str(semester.year.end_on.year),
-                                  'id':semester.id})
+            # want to make sure we don't set more than one element to be selected
+            selected = (semester.name.name == SEMESTER_NAME_FALL and semester.year == academic_year) and not selected_set
+            if selected:
+                selected_set = True
+            semester_list.append({'name':semester,#.name.name+' '+str(semester.year.begin_on.year)+'-'+str(semester.year.end_on.year),
+                                  'id':semester.id,
+                                  'selected': selected})
+    for semester in semesters_all:
+        if (semester.year.is_sandbox and (not semester.year.is_hidden) and semester.year.department == department):
+            ii = ii+1
+            # want to make sure we don't set more than one element to be selected
+            selected = (semester.name.name == SEMESTER_NAME_FALL and semester.year == academic_year) and not selected_set
+            if selected:
+                selected_set = True
+            semester_list.append({'name':semester,#.name.name+' '+str(semester.year.begin_on.year)+'-'+str(semester.year.end_on.year),
+                                  'id':semester.id,
+                                  'selected': selected})
     
+    #print(semester_list)
+
     if request.method == 'POST':
         depts_for_search= request.POST.getlist('depts_for_search')
         start_hour_string= request.POST.getlist('start_time')[0]
@@ -5318,7 +5318,7 @@ def search_form_time(request):
         days_for_search = request.POST.getlist('days_for_search')
         semester_id = int(request.POST.getlist('semester')[0])
         semester = Semester.objects.get(pk = semester_id)
-        year_for_search = semester.year.begin_on.year
+        #year_for_search = semester.year.begin_on.year
         
         day_dict={0:'M',1:'T',2:'W',3:'R',4:'F'}
         day_string = ''
@@ -5341,9 +5341,9 @@ def search_form_time(request):
             for course in course_list:
                 for course_offering in course.offerings.filter(semester__id = semester_id):
                     can_edit = False
-                    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER and year_for_search == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
+                    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER and course_offering.semester.year == academic_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
                         can_edit = True
-                    elif user_preferences.permission_level == UserPreferences.SUPER and year_for_search == current_year:
+                    elif user_preferences.permission_level == UserPreferences.SUPER and course_offering.semester.year == academic_year:
                         can_edit = True
 
                     scheduled_classes = course_offering.scheduled_classes.all()
@@ -5383,7 +5383,7 @@ def search_form_time(request):
                                                      'instructor_list': instructor_list
                                                      })
         
-        search_details = 'courses in '+semester.name.name+' '+str(semester.year.begin_on.year)+'-'+str(extract_two_digits(semester.year.begin_on.year+1))+' that occur between '+start_string+' and '+end_string+' on the following day(s): '+day_string
+        search_details = 'courses in '+semester.__str__()+' that occur between '+start_string+' and '+end_string+' on the following day(s): '+day_string
         context = {'search_term': search_details, 'course_offering_list':course_offering_list,
                    'next':'search-form-time'}
         return render(request, 'search_results.html', context)

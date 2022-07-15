@@ -46,6 +46,7 @@ class Department(models.Model):
     school = models.ForeignKey(School, related_name='departments', on_delete=models.CASCADE)
     chair = models.OneToOneField('FacultyMember', blank=True, null=True,
                                  related_name='department_chaired', on_delete=models.SET_NULL)
+    is_active = models.BooleanField(default = True)
 
     class Meta:
         ordering = ['name']

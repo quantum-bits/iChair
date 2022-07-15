@@ -547,6 +547,10 @@ class UpdateDepartmentToViewForm(forms.ModelForm):
         exclude = ('user','faculty_to_view','rooms_to_view','academic_year_to_view',
                    'permission_level','other_load_types_to_view',)
 
+    def __init__(self, *args, **kwargs):
+        super (UpdateDepartmentToViewForm,self).__init__(*args, **kwargs)
+        self.fields['department_to_view'].queryset = Department.objects.filter(is_active = True)
+
 
 class AddFacultyForm(forms.ModelForm):
 
