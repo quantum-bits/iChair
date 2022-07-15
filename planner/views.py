@@ -377,6 +377,7 @@ def collect_data_for_summary(request):
 
     department = user_preferences.department_to_view
     academic_year_object = user_preferences.academic_year_to_view
+    academic_year_string = str(academic_year_object.begin_on.year)+'-'+str(extract_two_digits(academic_year_object.begin_on.year+1)) if not academic_year_object.is_sandbox else academic_year_object.name
     # https://code.djangoproject.com/ticket/710
     
     faculty_with_loads_are_being_viewed = True
@@ -731,7 +732,7 @@ def collect_data_for_summary(request):
              'total_load_hours':total_load_hours,
              'department':department,
              'academic_year': academic_year_object,
-             #WORKING HERE was 'academic_year' previously a string?!? this is turning into a 
+             'academic_year_string': academic_year_string,
              'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
              'instructordict':instructordict,
              'instructorlist':instructor_id_list,
@@ -5518,7 +5519,7 @@ def prepare_excel_summary(context):
         sheet.col(col).width = width
         col = col+1
         
-    sheet.write_merge(0,0,0,6,'Load Summary -- Department of '+context['department'].name+' ('+context['academic_year']+')',xlwt.easyxf(styles['bold_title']))
+    sheet.write_merge(0,0,0,6,'Load Summary -- Department of '+context['department'].name+' ('+context['academic_year_string']+')',xlwt.easyxf(styles['bold_title']))
     # https://stackoverflow.com/questions/19672760/how-to-write-a-cell-with-multiple-columns-in-xlwt/19673269
     sheet.write_merge(2,3,0,0,'Number',style_calibri_bold_bordered_v_h)
     sheet.write_merge(2,3,1,1,'Name',style_calibri_bold_bordered_v_h)
