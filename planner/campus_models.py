@@ -421,7 +421,7 @@ class Semester(models.Model):
         ordering = ['year', 'begin_on']
 
     def __str__(self):
-        return '{0} {1}'.format(self.name, self.year) if self.banner_code == None else '{0} {1} ({2})'.format(self.name, self.year, self.banner_code)
+        return '{0}, {1}'.format(self.name, self.year) if self.banner_code == None else '{0}, {1} ({2})'.format(self.name, self.year, self.banner_code)
 
 
     def is_summer(self):

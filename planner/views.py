@@ -5160,24 +5160,51 @@ def search_form(request):
     
     request.session["return_to_page"] = "/planner/search-form/"
 
-    all_years_in_db = [academic_year.begin_on.year for academic_year in AcademicYear.objects.all()]
+    # https://stackoverflow.com/questions/4260280/if-else-in-a-list-comprehension
+    # https://tutorial.eyehunts.com/python/python-list-comprehension-if-without-else-example-code/
+    #all_years_in_db = [ac_year.begin_on.year for ac_year in AcademicYear.objects.all() if not ac_year.is_sandbox]
 
-    current_year = academic_year.begin_on.year
+    if not academic_year.is_sandbox:
+        current_year = academic_year.begin_on.year
+    else:
+        current_year = datetime.datetime.now().year
+
     academic_year_list = []
-    for ii in range(5):
-        ay = current_year-3+ii
-        if ay in all_years_in_db:
-            year_name = str(ay)+'-'+str(ay+1)
-            academic_year_list.append({'year_name':year_name,
-                                    'id': ii,
-                                    'begin_on':ay})
+    #academic_year_list = [{
+    #                        'year_name':year_name,
+    #                        'id': ii,
+    #                        'begin_on':ay}(ac_year.is_sandbox and (not ac_year.is_hidden) and ac_year.department == department))for ac_year in AcademicYear.objects.all()]
+
+    start_years = [current_year-4+ii for ii in range(6)]
+
+    for ay in AcademicYear.objects.all():
+        if not ay.is_sandbox:
+            if ay.begin_on.year in start_years:
+                academic_year_list.append({
+                    'year_name': ay.__str__(),
+                    'id': ay.id})
+        else:
+            if (not ay.is_hidden) and ay.department == department:
+                academic_year_list.append({
+                    'year_name': ay.__str__(),
+                    'id': ay.id})
+
+    #for ii in range(6):
+    #    ay = current_year-4+ii
+    #    if ay in all_years_in_db:
+    #        year_name = str(ay)+'-'+str(ay+1)
+    #        academic_year_list.append({'year_name':year_name,
+    #                                'id': ii,
+    #                                'begin_on':ay})
 
     if request.method == 'POST':
         search_term = request.POST.getlist('course_search')[0]
-        year_begin_on_list= request.POST.getlist('years_for_search')
-        academic_year_short_list = []
-        for year in year_begin_on_list:
-            academic_year_short_list.append(int(year))
+        year_id_list= [int(list_item) for list_item in request.POST.getlist('years_for_search')]
+        print(year_id_list)
+
+        #academic_year_short_list = []
+        #for year in year_begin_on_list:
+        #    academic_year_short_list.append(int(year))
 
         # first, assume that the text is part of the course title....
         if len(search_term)>0:
@@ -5207,45 +5234,44 @@ def search_form(request):
             course_list.append(course)
 
         course_offering_list = []
-        for year in academic_year_short_list:
-            for course in course_list:
-                for course_offering in course.offerings.all():
-                    if course_offering.semester.year.begin_on.year == year:
-                        can_edit = False
-                        if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER and year == current_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
-                            can_edit = True
-                        elif user_preferences.permission_level == UserPreferences.SUPER and year == current_year:
-                            can_edit = True
+        for course in course_list:
+            for course_offering in course.offerings.all():
+                if course_offering.semester.year.id in year_id_list:
+                    can_edit = False
+                    if user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER and course_offering.semester.year == academic_year and (course.subject.department==department or department.is_trusted_by_subject(course.subject)):
+                        can_edit = True
+                    elif user_preferences.permission_level == UserPreferences.SUPER and course_offering.semester.year == academic_year:
+                        can_edit = True
 
-                        scheduled_classes = course_offering.scheduled_classes.all()
-                        if len(scheduled_classes)==0:
-                            meetings_scheduled = False
-                            meeting_times_list = ["---"]
-                            room_list = ["---"]
-                        else:
-                            meetings_scheduled = True
-                            meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
+                    scheduled_classes = course_offering.scheduled_classes.all()
+                    if len(scheduled_classes)==0:
+                        meetings_scheduled = False
+                        meeting_times_list = ["---"]
+                        room_list = ["---"]
+                    else:
+                        meetings_scheduled = True
+                        meeting_times_list, room_list = class_time_and_room_summary(scheduled_classes, new_format = True)
 
 
-                        instructor_list=[]
+                    instructor_list=[]
 
-                        for instructor in course_offering.offering_instructors.all():
-                            instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name)
+                    for instructor in course_offering.offering_instructors.all():
+                        instructor_list.append(instructor.instructor.first_name[:1]+' '+instructor.instructor.last_name)
 
-                        if len(instructor_list)==0:
-                            instructor_list = ['TBA']
+                    if len(instructor_list)==0:
+                        instructor_list = ['TBA']
 
-                        course_offering_list.append({'name':course.title, 
-                                                     'number': course.subject.abbrev+' '+course.number,
-                                                     'course_id':course.id,
-                                                     'offering_id':course_offering.id,
-                                                     'semester':course_offering.semester,
-                                                     'rooms':room_list,
-                                                     'meeting_times':meeting_times_list,
-                                                     'meetings_scheduled':meetings_scheduled,
-                                                     'instructor_list':instructor_list,
-                                                     'can_edit':can_edit
-                                                     })
+                    course_offering_list.append({'name':course.title, 
+                                                    'number': course.subject.abbrev+' '+course.number,
+                                                    'course_id':course.id,
+                                                    'offering_id':course_offering.id,
+                                                    'semester':course_offering.semester,
+                                                    'rooms':room_list,
+                                                    'meeting_times':meeting_times_list,
+                                                    'meetings_scheduled':meetings_scheduled,
+                                                    'instructor_list':instructor_list,
+                                                    'can_edit':can_edit
+                                                    })
 
         context = {'search_term': search_term, 'course_offering_list':course_offering_list,
                    'next':'search-form'}
