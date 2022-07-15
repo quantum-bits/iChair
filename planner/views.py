@@ -731,6 +731,7 @@ def collect_data_for_summary(request):
              'total_load_hours':total_load_hours,
              'department':department,
              'academic_year': academic_year_object,
+             #WORKING HERE was 'academic_year' previously a string?!? this is turning into a 
              'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
              'instructordict':instructordict,
              'instructorlist':instructor_id_list,
@@ -784,11 +785,11 @@ def export_data(request):
 
     year_string = str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1))
     if load_sheet_type == 'actual':
-        due_date = 'March 12, '+str(academic_year.begin_on.year+1)
-        file_name = 'ActualLoads_'+year_string+'.xls'       
+        due_date = ' by March 12, '+str(academic_year.begin_on.year+1) if not academic_year.is_sandbox else ''
+        file_name = 'ActualLoads_'+year_string+'.xls' if not academic_year.is_sandbox else 'ActualLoads_SandboxYear.xls'
     else:
-        due_date = 'February 26, '+str(academic_year.begin_on.year)
-        file_name = 'ProjectedLoads_'+year_string+'.xls'
+        due_date = ' by February 26, '+str(academic_year.begin_on.year) if not academic_year.is_sandbox else ''
+        file_name = 'ProjectedLoads_'+year_string+'.xls' if not academic_year.is_sandbox else 'ProjectedLoads_SandboxYear.xls'
 
     faculty_data_list = []
     for faculty_id in faculty_export_list:
@@ -882,16 +883,16 @@ def export_data(request):
     
     # the following list is used later on to check if there are two people with the same last name
     faculty_last_names = [faculty_data['last_name'] for faculty_data in final_faculty_data_list]
-        
+
     data_dict ={'school':department.school.name, 
                 'load_sheet_type': load_sheet_type, 
                 'department': department.name,
                 'prepared_by': name_preparer,
                 'date': date_string,
-                'academic_year': str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1)),
+                'academic_year': str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1)) if not academic_year.is_sandbox else academic_year.name,
                 'due_date': due_date,
-                'two_digit_year_fall': str(extract_two_digits(academic_year.begin_on.year)),
-                'two_digit_year_spring': str(extract_two_digits(academic_year.begin_on.year+1)),
+                'two_digit_year_fall': str(extract_two_digits(academic_year.begin_on.year)) if not academic_year.is_sandbox else '',
+                'two_digit_year_spring': str(extract_two_digits(academic_year.begin_on.year+1)) if not academic_year.is_sandbox else '',
                 'faculty_last_names':faculty_last_names
                 }
     book = prepare_excel_workbook(final_faculty_data_list,data_dict)
@@ -1133,7 +1134,7 @@ def prepare_excel_workbook(faculty_list_dict, global_data):
         sheet.write_merge(9,9,0,7,'Instructions:   Use one sheet per faculty member.  Include all assignments for which load credit is granted.  Non-teaching load (e.g. department',xlwt.easyxf(styles['calibri_font']+'border: top thin, right thin, left thin;'))
         sheet.write_merge(10,10,0,7,'chair duties) should be included and clearly identified.  DO NOT include independent studies/practicums.  For adjuncts, use one sheet with a',xlwt.easyxf(styles['calibri_font']+'border: right thin, left thin;'))
         sheet.write_merge(11,11,0,7,'combined total of load credit for each applicable term',xlwt.easyxf(styles['calibri_font']+'border: right thin, left thin;'))
-        sheet.write_merge(12,12,0,7,'Forms should be emailed to your School Administrative Assistant by '+global_data['due_date']+'.',xlwt.easyxf(styles['calibri_centered']+'border: bottom thin, right thin, left thin;'))
+        sheet.write_merge(12,12,0,7,'Forms should be emailed to your School Administrative Assistant'+global_data['due_date']+'.',xlwt.easyxf(styles['calibri_centered']+'border: bottom thin, right thin, left thin;'))
         sheet.write_merge(13,13,2,5,table_title,xlwt.easyxf(styles['calibri_bold_bordered_centered']))
         sheet.write(14,0,'Faculty Member',xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin, left thin;'))
         sheet.write_merge(15,16,0,0,faculty['first_name']+' '+faculty['last_name'],xlwt.easyxf(styles['calibri_centered']+'border: top thin, right thin, bottom thin, left thin;'))
