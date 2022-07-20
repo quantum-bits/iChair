@@ -509,10 +509,14 @@ class UpdateRoomsToViewForm(forms.ModelForm):
 
 class UpdateYearToViewForm(forms.ModelForm):
 
-    def __init__(self, department, *args, **kwargs):
+    def __init__(self, department, is_superuser, *args, **kwargs):
         super (UpdateYearToViewForm, self).__init__(*args, **kwargs)
         # filter out the 'sandbox' academic years
-        self.fields['academic_year_to_view'].queryset = AcademicYear.objects.filter(Q(department = None) | (Q(department = department) & Q(is_hidden = False)))
+        if not is_superuser:
+            # regular department members and department schedulers
+            self.fields['academic_year_to_view'].queryset = AcademicYear.objects.filter(Q(department = None) | (Q(department = department) & Q(is_hidden = False)))
+        else:
+            self.fields['academic_year_to_view'].queryset = AcademicYear.objects.filter(department = None) 
 
     class Meta:
         model = UserPreferences

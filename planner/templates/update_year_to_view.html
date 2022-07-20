@@ -9,6 +9,7 @@
       {{ form.as_table }}
       <p><input type="submit" value="Submit" /></p>
      </form>
+     {% if can_edit %}
      <div>
       <p style="margin-bottom: 5px;">
         Don't see a sandbox year that you created?  It might be hidden.
@@ -18,6 +19,7 @@
         create a new sandbox year.
       </p>
      </div>
+     {% endif %}
    </div>
 
    <script>

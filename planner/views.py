@@ -255,6 +255,7 @@ def display_notes(request):
         'datablock': datablock,
         'year': academic_year_string,
         'id': user_preferences.id,
+        'dept_academic_year': create_dept_academic_year_string(department, academic_year)
         }
     return render(request, 'notes.html', context)
 
@@ -275,6 +276,7 @@ def display_messages(request):
         'messages': messages,
         'year': academic_year_string,
         'id': user_preferences.id,
+        'dept_academic_year': create_dept_academic_year_string(department, academic_year_object)
         }
     return render(request, 'messages.html', context)
 
@@ -2986,6 +2988,7 @@ def course_summary(request, allow_delete, show_all_years='0'):
              'year':academic_year_string, 
              'id': user_preferences.id, 
              'department': user_preferences.department_to_view,
+             'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
              'allow_delete': int(allow_delete),
              'showing_all_years': showing_all_years}
     return render(request, 'course_summary.html', context)
@@ -4426,7 +4429,7 @@ def update_year_to_view(request, id):
     instance = UserPreferences.objects.get(pk = id)
 
     if request.method == 'POST':
-        form = UpdateYearToViewForm(department, request.POST, instance=instance)
+        form = UpdateYearToViewForm(department, user_preferences.permission_level == UserPreferences.SUPER, request.POST, instance=instance)
         if form.is_valid():
             form.save()
             user_preferences = user.user_preferences.all()[0]
@@ -4443,7 +4446,7 @@ def update_year_to_view(request, id):
         else:
             return render(request, 'update_year_to_view.html', {'form': form})
     else:
-        form = UpdateYearToViewForm(department, instance=instance)
+        form = UpdateYearToViewForm(department, user_preferences.permission_level == UserPreferences.SUPER, instance=instance)
         context = {'form': form}
         return render(request, 'update_year_to_view.html', context)
 
@@ -5177,7 +5180,7 @@ def search_form(request):
                     'year_name': ay.__str__(),
                     'id': ay.id})
         else:
-            if (not ay.is_hidden) and ay.department == department:
+            if (not ay.is_hidden) and (ay.department == department) and (not user_preferences.permission_level == UserPreferences.SUPER):
                 academic_year_list.append({
                     'year_name': ay.__str__(),
                     'id': ay.id})
@@ -5301,7 +5304,7 @@ def search_form_time(request):
                                   'id':semester.id,
                                   'selected': selected})
     for semester in semesters_all:
-        if (semester.year.is_sandbox and (not semester.year.is_hidden) and semester.year.department == department):
+        if (semester.year.is_sandbox and (not semester.year.is_hidden) and semester.year.department == department and (not user_preferences.permission_level == UserPreferences.SUPER)):
             ii = ii+1
             # want to make sure we don't set more than one element to be selected
             selected = (semester.name.name == SEMESTER_NAME_FALL and semester.year == academic_year) and not selected_set
