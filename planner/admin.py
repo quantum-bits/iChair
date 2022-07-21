@@ -129,7 +129,7 @@ class DeltaCourseOfferingAdmin(admin.ModelAdmin):
     search_fields = ('crn', 'semester__name__name', 'semester__banner_code', 'course_offering__course__title', 'course_offering__course__number', 'course_offering__course__subject__abbrev', )    
 
 class AcademicYearAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'begin_on', 'end_on', 'department', 'is_hidden', 'name',)
+    list_display = ('__str__', 'begin_on', 'end_on', 'department', 'is_hidden', 'is_marked_as_deleted', 'name',)
 
 class SemesterAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'banner_code',)

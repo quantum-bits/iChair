@@ -285,7 +285,7 @@ def delete_message(request, id):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     instance = Message.objects.get(pk = id)
 
@@ -300,7 +300,7 @@ def add_new_note(request):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view
@@ -329,7 +329,7 @@ def update_note(request, id):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     instance = Note.objects.get(pk = id)
 #    print instance.note
@@ -919,7 +919,7 @@ def export_data_form(request):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view
@@ -1317,12 +1317,12 @@ def update_course_offering(request,id, daisy_chain):
     if "return_to_page" in request.session:
         next = request.session["return_to_page"]
     else:
-        next = "home"
+        next = "department_load_summary"
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     user_department = user_preferences.department_to_view
 
@@ -1417,7 +1417,7 @@ def update_course_offering(request,id, daisy_chain):
             if "return_to_page" in request.session:
                 next = request.session["return_to_page"]
             else:
-                next = "home"
+                next = "department_load_summary"
                 return redirect(next)
 
             return redirect(next)
@@ -1458,7 +1458,7 @@ def update_class_schedule(request,id, daisy_chain):
     user_department = user_preferences.department_to_view
 
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     if int(daisy_chain):
         daisy_chaining = True
@@ -1628,7 +1628,7 @@ def update_class_schedule(request,id, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "home"
+                    next = "department_load_summary"
                 return redirect(next)
             else:
                 url_string = '/planner/updatecourseoffering/'+str(instance.id)+'/1/'
@@ -3068,7 +3068,7 @@ def new_class_schedule(request,id, daisy_chain):
     user_preferences = user.user_preferences.all()[0]
     user_department = user_preferences.department_to_view
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     if int(daisy_chain):
         daisy_chaining = True
@@ -3126,7 +3126,7 @@ def new_class_schedule(request,id, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "home"
+                    next = "department_load_summary"
                 return redirect(next)
             else:
                 url_string = '/planner/updatecourseoffering/'+str(course_offering.id)+'/1/'
@@ -3145,7 +3145,7 @@ def add_faculty(request):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     department = user_preferences.department_to_view
     university = department.school.university
@@ -3229,12 +3229,43 @@ def manage_sandbox_years(request):
         next = request.GET.get('next', 'department_load_summary')
         return redirect(next)
     else:
-        sandbox_years = AcademicYear.objects.filter(Q(department=department))
+        sandbox_years = AcademicYear.objects.filter(Q(department=department) & Q(is_marked_as_deleted = False))
         context = {'sandbox_years': sandbox_years, 'user_preferences': user_preferences}
         return render(request, 'manage_sandbox_years.html', context)
 
+@login_required
+def mark_sandbox_year_as_deleted(request, id):
+    """
+    This method marks a sandbox year as being "deleted", without actually deleting anything.  If a sandbox is marked as deleted it will
+    no longer show up in views, although it will still be in the database (along with its associated course offerings, etc.)
+    """
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
 
+    if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
+        return redirect("department_load_summary")
+    instance = AcademicYear.objects.get(pk = id)
+    
+    if not instance.is_sandbox:
+        # oops...!  Don't want to mark a regular academic year as being 'deleted'....
+        return redirect('department_load_summary')
+    
+    academic_year = user_preferences.academic_year_to_view
 
+    next = request.GET.get('next', 'manage_sandbox_years')
+
+    if request.method == 'POST':
+        instance.is_marked_as_deleted = True
+        instance.is_hidden = True
+        instance.save()
+        return redirect(next)
+    else:
+        context = {
+            'academic_year_to_delete': instance,
+            'viewing_this_year': academic_year == instance,
+            'user_preferences_id': user_preferences.id,
+            'next': next}
+        return render(request, 'delete_sandbox_year_confirmation.html', context)
 
 @login_required
 def add_sandbox_year(request):
@@ -3245,7 +3276,7 @@ def add_sandbox_year(request):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     department = user_preferences.department_to_view
     faculty_to_view = user_preferences.faculty_to_view.all()
 
@@ -3368,19 +3399,16 @@ def update_sandbox_year(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     department = user_preferences.department_to_view
     instance = AcademicYear.objects.get(pk = id)
-    print('here is the year!', instance)
     year_to_view = user_preferences.academic_year_to_view
-
-    # WORKING HERE
 
     if request.method == 'POST':
         form = UpdateSandboxYearForm(request.POST, instance=instance)
         if form.is_valid():
             form.save()
-            next = request.GET.get('next', 'department_load_summary')
+            next = request.GET.get('next', 'manage_sandbox_years')
             return redirect(next)
 
             #return redirect(url_string)
@@ -3413,7 +3441,7 @@ def select_course(request):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     department = user_preferences.department_to_view
     # https://simpleisbetterthancomplex.com/tutorial/2018/01/29/how-to-implement-dependent-or-chained-dropdown-list-with-django.html
     if request.method == 'POST':
@@ -3449,7 +3477,7 @@ def add_course(request, daisy_chain):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     department_id = user_preferences.department_to_view.id
     
@@ -3470,7 +3498,7 @@ def add_course(request, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "home"
+                    next = "department_load_summary"
                 return redirect(next)
             else:
                 url_string = '/planner/addcourseoffering/'+str(course.id)+'/1/'
@@ -3492,7 +3520,7 @@ def add_course_offering(request, course_id, daisy_chain):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
 #    department_id = user_preferences.department_to_view.id
     academic_year_id = user_preferences.academic_year_to_view.id
@@ -3533,7 +3561,7 @@ def add_course_offering(request, course_id, daisy_chain):
                 if "return_to_page" in request.session:
                     next = request.session["return_to_page"]
                 else:
-                    next = "home"
+                    next = "department_load_summary"
                 return redirect(next)
             else:
                 url_string = '/planner/newclassschedule/'+str(new_course_offering.id)+'/1/'
@@ -3556,7 +3584,7 @@ def update_course(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     department_id = user_preferences.department_to_view.id
 
@@ -3601,7 +3629,7 @@ def update_course_original(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     department_id = user_preferences.department_to_view.id
 
     instance = Course.objects.get(pk = id)
@@ -3627,13 +3655,13 @@ def delete_course_offering(request, id):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     user_department = user_preferences.department_to_view
 
     if "return_to_page" in request.session:
         sending_page = request.session["return_to_page"]
     else:
-        sending_page = "home"
+        sending_page = "department_load_summary"
 
     instance = CourseOffering.objects.get(pk = id)
     course_department = instance.course.subject.department
@@ -4033,7 +4061,7 @@ def compare_with_banner(request):
     user = request.user
     user_preferences = user.user_preferences.all()[0]
     if (user_preferences.permission_level == UserPreferences.VIEW_ONLY) or (user_preferences.permission_level == UserPreferences.SUPER):
-        return redirect("home")
+        return redirect("department_load_summary")
 
     department = user_preferences.department_to_view
     year_to_view = user_preferences.academic_year_to_view
@@ -4064,7 +4092,7 @@ def update_other_load_this_faculty(request,id):
     #user_department = user_preferences.department_to_view
 
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     instance = FacultyMember.objects.get(pk = id)
     year = user_preferences.academic_year_to_view
@@ -4113,7 +4141,7 @@ def update_other_load(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     instance = OtherLoadType.objects.get(pk = id)
 #    print instance
 
@@ -4397,7 +4425,7 @@ def update_faculty_member(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     instance = FacultyMember.objects.get(pk = id)
     # if the faculty member's pidm is None, his or her data has not yet been aligned with Banner, so allow for name editing
@@ -4534,7 +4562,7 @@ def copy_course_offering(request, id):
     year = user_preferences.academic_year_to_view
 
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     co = CourseOffering.objects.get(pk = id)
     course_department = co.course.subject.department
@@ -4632,13 +4660,13 @@ def copy_courses(request, id, check_all_flag):
     if "return_to_page" in request.session:
         next = request.session["return_to_page"]
     else:
-        next = "home"
+        next = "department_load_summary"
 
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     department = user_preferences.department_to_view
 
@@ -4934,13 +4962,13 @@ def copy_admin_loads(request, year_id, faculty_id=None):
     if "return_to_page" in request.session:
         next = request.session["return_to_page"]
     else:
-        next = "home"
+        next = "department_load_summary"
 
     user = request.user
     # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
 
     department = user_preferences.department_to_view
     if faculty_id is not None:
@@ -6230,7 +6258,7 @@ def add_course_confirmation(request, daisy_chaining):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     department = user_preferences.department_to_view
 
     if request.method == 'POST':
@@ -6257,7 +6285,7 @@ def update_semester_for_course_offering(request, id):
 # assumes that users each have exactly ONE UserPreferences object
     user_preferences = user.user_preferences.all()[0]
     if user_preferences.permission_level == UserPreferences.VIEW_ONLY:
-        return redirect("home")
+        return redirect("department_load_summary")
     department = user_preferences.department_to_view
     year = user_preferences.academic_year_to_view
 

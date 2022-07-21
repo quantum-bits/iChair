@@ -95,6 +95,8 @@
 						<td style="text-align: center;">{% if year.is_hidden %} hidden {% else %} active {% endif %}</td>
 						<td style="text-align: center;">
 							<a title = "Update properties of this sandbox year" href="{% url 'update_sandbox_year' year.id %}?next={{ request.path|urlencode }}">Edit</a>
+							|
+							<a title = "Delete this sandbox year" href="{% url 'delete_sandbox_year' year.id %}?next={{ request.path|urlencode }}">Delete</a>
 						</td>
 					  </tr>
 					  {% endfor %}

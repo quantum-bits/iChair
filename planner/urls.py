@@ -18,6 +18,7 @@ urlpatterns = [
     url(r'^addsandboxyear/$', myapp_views.add_sandbox_year, name='add_sandbox_year'),
     url(r'^updatesandboxyear/(\d+)/$', myapp_views.update_sandbox_year, name='update_sandbox_year'),
     url(r'^managesandboxyears/$', myapp_views.manage_sandbox_years, name='manage_sandbox_years'),
+    url(r'^deletesandboxyear/(\d+)/$', myapp_views.mark_sandbox_year_as_deleted, name='delete_sandbox_year'),
     url(r'^coursesummary/(\d+)/$', myapp_views.course_summary, name='course_summary'),
     url(r'^coursesummary/(\d+)/(\d+)/$', myapp_views.course_summary, name='course_summary'),
     url(r'^allowdeletecourseconfirmation/$', myapp_views.allow_delete_course_confirmation, name='allow_delete_course_confirmation'),

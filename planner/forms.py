@@ -75,13 +75,13 @@ class AddSandboxYearForm(forms.ModelForm):
 
     class Meta:
         model = AcademicYear
-        exclude = ('begin_on', 'end_on', 'department', 'is_hidden')
+        exclude = ('begin_on', 'end_on', 'department', 'is_hidden', 'is_marked_as_deleted')
 
 class UpdateSandboxYearForm(forms.ModelForm):
 
     class Meta:
         model = AcademicYear
-        exclude = ('begin_on', 'end_on', 'department')
+        exclude = ('begin_on', 'end_on', 'department', 'is_marked_as_deleted')
 
 class AddNoteForm(forms.ModelForm):
 

@@ -231,6 +231,7 @@ class AcademicYear(models.Model):
     department = models.ForeignKey(Department, related_name='years', blank=True, null=True, on_delete=models.SET_NULL)
     name = models.CharField(max_length=80, blank=True, null=True)
     is_hidden = models.BooleanField(default = False)
+    is_marked_as_deleted = models.BooleanField(default = False)
 
     class Meta:
         ordering = [ 'begin_on' ]

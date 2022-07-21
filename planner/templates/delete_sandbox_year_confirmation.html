@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+  .alert.alert-student-info {
+    width: 400px!important;
+  }
+</style>
+<form action="" method="post">
+      {% csrf_token %}
+
+<div class="content-center">
+<h2> Are you sure? </h2>
+<p>
+<!--
+<div class="alert alert-student-info">  
+  <div>  
+    Are you sure that you want to <b> delete </b> 
+    the following course offering, including associated information about days, times, rooms and professors?<br> <br>
+    While <b>this action is not reversible, </b>note that you are only deleting this course offering
+    from this semester, not from all semesters.
+  </div> 
+</div>
+-->
+
+<div class="alert alert-student-info">  
+  <div>  
+    Are you sure that you want to <b> delete </b> 
+    the following sandbox year, including associated information about course offerings and loads?<br> <br>
+
+    <p> <b> {{academic_year_to_delete}} </b> </p><br>
+
+    <p>(This action is reversible, at least in the near term -- talk to the iChair 
+      administrator if you need to recover a sandbox year after deleting it....)</p>
+  </div> 
+</div>
+
+</p>
+
+<p></p>
+
+<p> <a class="btn btn-success" href="{{next}}">No! It's all been a terrible mistake!</a></p>
+
+{% if viewing_this_year %}
+  <p><input class="btn btn-warning" type="submit" value="Delete this sandbox year" disabled></p>
+  <div style="margin-bottom: 10px;">
+    <p style="margin-bottom: 0px;">
+       <strong>
+          This year cannot be deleted because you are currently viewing it.
+       </strong>
+    </p>
+    <p style="margin-top: 0px;">
+       If you want to delete this sandbox year, you can first  
+       <a href="{% url 'update_year_to_view' user_preferences_id %}?next={{ request.path|urlencode }}"> change</a>
+       which academic year you are viewing.
+    </p>
+ </div>
+{% else %}
+  <p><input class="btn btn-warning" type="submit" value="Delete this sandbox year"></p>
+{% endif %}
+
+</form>
+
+   <script>
+    $(window).load(function(){
+    $("#nav-coursesummary").addClass("current");
+    $('.page-name').find('h1').replaceWith('<h1>Delete {{academic_year_to_delete}}</h1>');
+    $(".page-name").stop().animate({opacity: 1,'margin-left': '5%'}, 700);});
+   </script>
+
+{% endblock %}
