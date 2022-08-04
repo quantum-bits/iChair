@@ -415,7 +415,7 @@ class="btn btn-warning"
 									{% if can_edit %}
 									<td colspan="5" style="text-align: right;"> Load Summary </td>
 									{% else %}
-									<td colspan="4" style="text-align: right;"> Load Summary </td>
+									<td colspan="5" style="text-align: right;"> Load Summary </td>
 									{% endif %}
 									{% for loadelement in instructor_row.load_summary %}
 									<td style="text-align: center;">
@@ -434,7 +434,7 @@ class="btn btn-warning"
 									{% if can_edit %}
 									<td colspan="5" style="text-align: right;"> Total </td>
 									{% else %}
-									<td colspan="4" style="text-align: right;"> Total </td>
+									<td colspan="5" style="text-align: right;"> Total </td>
 									{% endif %}
 									<td colspan="4" style="text-align: center;">
 										{{instructor_row.total_load_hours}}

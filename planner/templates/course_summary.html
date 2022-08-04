@@ -13,9 +13,9 @@
 <p> 
 	<a class="btn btn-info" href="{% url 'add_course' 0 %}">Add a New Course</a>
 	{% if showing_all_years %}
-		<a class="btn btn-info" href="{% url 'course_summary' 0 %}">Hide Earlier Years</a>
+		<a class="btn btn-info" href="{% url 'course_summary'%}">Hide Earlier Years</a>
 	{% else %}
-		<a class="btn btn-info" href="{% url 'course_summary' 0 1 %}">Show All Years</a>
+		<a class="btn btn-info" href="{% url 'course_summary' 1 %}">Show All Years</a>
 	{% endif %}
 </p>
 {% endif %}
@@ -40,13 +40,8 @@
 		{% endfor %}
 		{% if can_edit %}
 	       <td style="text-align: center"> 
-		 {% if not allow_delete %}
-		 <a class="btn btn-warning" href="{% url 'allow_delete_course_confirmation' %}"> Allow Course Deletion</a>  
-		 {% else %}
-		 <a class="btn btn-success" href="{% url 'course_summary' 0 %}"> Do Not Allow Course Deletion</a>  
-		 {% endif %}
 	       </td>
-	        {% endif %}
+	    {% endif %}
 	       </tr>
 	     </thead>
 	     <tbody>
@@ -71,10 +66,7 @@
       {% endfor %}
 		{% if can_edit %}
 			{% if course.subject_in_department%}
-				<td style="text-align: center"><a title="Edit properties of the course itself, such as the title, course number or number of credit hours" href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">Edit Course Properties</a> 
-				{% if allow_delete %} | 
-				<a href="{% url 'delete_course_confirmation' course.id %}">Delete Course</a> 
-				{% endif %}
+				<td style="text-align: center"><a title="Edit properties of the course itself, such as the title, course number or number of credit hours" href="{% url 'update_course' course.id %}?next={{ request.path|urlencode }}">Edit Course Properties</a>
 				</td>
 			{% else %}
 			<td></td>
@@ -90,14 +82,6 @@
 {% if courses_from_other_departments %}
 *Course from another department.
 {% endif %}
-
-<!-- <script>
-   document.getElementsByName("allow_delete_button").onmouseover = myAlertFunction();
-   function myAlertFunction(){
-     alert("Are you CRAZY?!?");
-   }
- </script>
--->
 
   <script>
     $(window).load(function(){

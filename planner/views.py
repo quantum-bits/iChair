@@ -2867,14 +2867,14 @@ def convert_time_to_pixels(height_hour_block, base_hour, time_hour, time_minute)
 
 
 @login_required
-def course_summary(request, allow_delete, show_all_years='0'):
+def course_summary(request, show_all_years='0'):
     """Display courses for the department and semesters in which they are taught"""
-# allow_delete == 0 => cannot delete courses
-# allow_delete == 1 => can delete courses
+# allow_delete == 0 => cannot delete courses (option no longer allowed)
+# allow_delete == 1 => can delete courses (option no longer allowed)
 # https://stackoverflow.com/questions/14351048/django-optional-url-parameters
 # show_all_years == 0 => truncate # of years shown (this is the default)
 # show_all_years == 1 => show data for all years (is a bit crowded, but might want to see data from the early years)
-    request.session["return_to_page"] = "/planner/coursesummary/0/"
+    request.session["return_to_page"] = "/planner/coursesummary/"
     close_all_divs(request)
     user = request.user
     user_preferences = user.user_preferences.all()[0]
@@ -2989,7 +2989,6 @@ def course_summary(request, allow_delete, show_all_years='0'):
              'id': user_preferences.id, 
              'department': user_preferences.department_to_view,
              'dept_academic_year': create_dept_academic_year_string(department, academic_year_object),
-             'allow_delete': int(allow_delete),
              'showing_all_years': showing_all_years}
     return render(request, 'course_summary.html', context)
 
@@ -3034,7 +3033,7 @@ def manage_course_offerings(request,id):
         if formset.is_valid() and not formset_error:
 #            form.save()
             formset.save()
-            url_string="/planner/coursesummary/0/"
+            url_string="/planner/coursesummary/"
             return redirect(url_string)
         else:
             dict["formset"]=formset
@@ -3722,30 +3721,6 @@ def delete_course_offering(request, id):
         return render(request, 'delete_course_offering_confirmation.html', context)
 
 #    return redirect('dept_load_summary')
-
-@login_required
-def delete_course_confirmation(request, id):
-    course = Course.objects.get(pk = id)
-
-    offering_list=[]
-    for offering in course.offerings.all():
-        offering_list.append(offering)
-
-    context ={'course': course,'offering_list':offering_list}
-    return render(request, 'delete_course_confirmation.html', context)
-
-@login_required
-def delete_course(request, id):
-    instance = Course.objects.get(pk = id)
-    instance.delete()
-    url_string = '/planner/coursesummary/0/'
-    return redirect(url_string)
-#    return redirect('course_summary')
-
-@login_required
-def allow_delete_course_confirmation(request):
-    context ={}
-    return render(request, 'allow_delete_course_confirmation.html', context)
 
 @login_required
 def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0'):
