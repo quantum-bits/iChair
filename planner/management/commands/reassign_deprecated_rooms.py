@@ -10,6 +10,8 @@ This command can be run after a room number becomes deprecated for some reason (
 the physical room disappears or it is assigned a new number).
 
 Do the following before running this script:
+- change the semesters to copy to be only for the year in question (to avoid possible mix-ups with distinct rooms that have the same room number in the old and new systems)
+- run the warehouse command to update banner.db
 - assign an inactive_after date for the room(s) in iChair that have been deprecated; this date should be 
   before the beginning of the term when the room first becomes unusable (mid-summer if the room 
   can no longer be used in the fall, for example)
@@ -31,37 +33,49 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         
         old_room_to_new_room_map = {
-            'AYRES 215': {
-                'building': 'AYRES',
-                'number': '214'
-            },
-            'READE 118': {
+            'READE 211': {
                 'building': 'READE',
-                'number': '130'
+                'number': '220'
             },
-            'READE 119': {
+            'READE 212': {
                 'building': 'READE',
-                'number': '132'
+                'number': '222'
             },
-            'READE 120': {
+            'READE 218': {
                 'building': 'READE',
-                'number': '134'
+                'number': '240'
             },
-            'READE 127': {
+            'READE 220': {
                 'building': 'READE',
-                'number': '140'
+                'number': '246'
             },
-            'READE 128': {
+            'READE 221': {
                 'building': 'READE',
-                'number': '142'
+                'number': '248'
             },
-            'READE 140': {
+            'READE 234': {
                 'building': 'READE',
-                'number': '137'
+                'number': '247'
             },
-            'READE 143': {
+            'READE 235': {
                 'building': 'READE',
-                'number': '133'
+                'number': '245'
+            },
+            'READE 238': {
+                'building': 'READE',
+                'number': '227'
+            },
+            'READE 239': {
+                'building': 'READE',
+                'number': '225'
+            },
+            'READE 240': {
+                'building': 'READE',
+                'number': '223'
+            },
+            'READE 241': {
+                'building': 'READE',
+                'number': '221'
             },
         }
 
@@ -122,9 +136,22 @@ class Command(BaseCommand):
                                                         print('zero or multiple rooms?!? ', new_room)
                                                         multiple_room_error +=1
                                                 else:
-                                                    print('         .....looks like there are more than one banner room')
+                                                    print('         .....looks like there are more than one banner room:')
+                                                    for br in banner_sc[0].rooms.all():
+                                                        print('         ...', br)
                                     else:
-                                        print('       no unique match for this scheduled class in banner')
+                                        print('       no unique match for this scheduled class in banner; number of banner scheduled classes: ', len(banner_sc))
+                                        delete_room = input('Drop the room? (y/n)')
+                                        if delete_room == 'y':
+                                            success = drop_room(sc, room)
+                                            number_rooms_dropped_manually += 1
+                                        elif key in old_room_to_new_room_map.keys():
+                                            proceed = input("assign room according to dictionary? new room will be {} (y/n)".format(old_room_to_new_room_map[key]["building"]+' '+old_room_to_new_room_map[key]["number"]))
+                                            if proceed == 'y':
+                                                success = add_room_according_to_dictionary(sc, room, old_room_to_new_room_map[key]["building"], old_room_to_new_room_map[key]["number"])
+                                                if success:
+                                                    number_changed_manually += 1
+
 
                                 else:
                                     print('          looks like the room has been deleted...?')
@@ -139,7 +166,17 @@ class Command(BaseCommand):
                                             success = drop_room(sc, room)
                                             number_rooms_dropped_manually += 1
                             else:
-                                print('     no unique match found!')
+                                print('     no unique match found! number banner course offerings: ', len(bco))
+                                delete_room = input('Drop the room? (y/n)')
+                                if delete_room == 'y':
+                                    success = drop_room(sc, room)
+                                    number_rooms_dropped_manually += 1
+                                elif key in old_room_to_new_room_map.keys():
+                                    proceed = input("assign room according to dictionary? new room will be {} (y/n)".format(old_room_to_new_room_map[key]["building"]+' '+old_room_to_new_room_map[key]["number"]))
+                                    if proceed == 'y':
+                                        success = add_room_according_to_dictionary(sc, room, old_room_to_new_room_map[key]["building"], old_room_to_new_room_map[key]["number"])
+                                        if success:
+                                            number_changed_manually += 1
                         else:
                             print('   course offering has no CRN')
                             key = room.building.abbrev+' '+room.number
