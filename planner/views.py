@@ -47,7 +47,7 @@ import math
 from django.core.files.base import ContentFile
 import io
 
-from four_year_plan.secret import ADMIN_EMAIL, NO_REPLY_EMAIL
+from four_year_plan.secret import ADMIN_EMAIL, NO_REPLY_EMAIL, ACTUAL_LOADS_DUE_DATE, PROJECTED_LOADS_DUE_DATE
 from .constants import *
 
 # https://www.codingforentrepreneurs.com/blog/html-template-to-pdf-in-django
@@ -788,10 +788,10 @@ def export_data(request):
 
     year_string = str(academic_year.begin_on.year)+'-'+str(extract_two_digits(academic_year.begin_on.year+1))
     if load_sheet_type == 'actual':
-        due_date = ' by March 12, '+str(academic_year.begin_on.year+1) if not academic_year.is_sandbox else ''
+        due_date = ' by '+ ACTUAL_LOADS_DUE_DATE+', '+str(academic_year.begin_on.year+1) if not academic_year.is_sandbox else ''
         file_name = 'ActualLoads_'+year_string+'.xls' if not academic_year.is_sandbox else 'ActualLoads_SandboxYear.xls'
     else:
-        due_date = ' by February 26, '+str(academic_year.begin_on.year) if not academic_year.is_sandbox else ''
+        due_date = ' by '+ PROJECTED_LOADS_DUE_DATE+', '+str(academic_year.begin_on.year) if not academic_year.is_sandbox else ''
         file_name = 'ProjectedLoads_'+year_string+'.xls' if not academic_year.is_sandbox else 'ProjectedLoads_SandboxYear.xls'
 
     faculty_data_list = []
