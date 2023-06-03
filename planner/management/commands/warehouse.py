@@ -32,7 +32,7 @@ class Command(BaseCommand):
     help = "Manage data warehouse information"
 
     def handle(self, *args, **options):
-        #try:
+        try:
             connection = pyodbc.connect(
                 f'DSN=warehouse;UID={DW["user"]};PWD={DW["password"]}')
             cursor = connection.cursor()
@@ -826,7 +826,6 @@ class Command(BaseCommand):
                 [ADMIN_EMAIL]
             )
             msg.send()
-            """
         except:
             msg = EmailMultiAlternatives(
                 # title:
@@ -839,7 +838,6 @@ class Command(BaseCommand):
                 [ADMIN_EMAIL]
             )
             msg.send()
-            """
 
 def banner_updated_message(context):
     #print(context)
