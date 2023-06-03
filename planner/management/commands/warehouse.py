@@ -159,6 +159,7 @@ class Command(BaseCommand):
             number_cancelled_inactive_sections = 0
             number_non_M_F_meetings = 0
             non_M_F_list = []
+            number_part_of_term_not_OK = 0
             
             #print("Checking faculty....")
             
@@ -257,6 +258,7 @@ class Command(BaseCommand):
                 # apparently the CRN+term combination is guaranteed to be a unique identifier....
                 banner_course_offerings = BannerCourseOffering.objects.filter(Q(crn = co.course_reference_number)&Q(term_code = co.term))
 
+                part_of_term_OK = True
                 if len(banner_course_offerings) == 0:
                     # create new course offering
                     #print('creating new course offering!')
@@ -266,6 +268,12 @@ class Command(BaseCommand):
                         semester_fraction = BannerCourseOffering.FIRST_HALF_SEMESTER
                     elif (co.part_of_term == 'H2') or (co.part_of_term == '3'): # '3' is used for June session if the semester is 'Summer'
                         semester_fraction = BannerCourseOffering.SECOND_HALF_SEMESTER
+                    elif (co.part_of_term == '4'): # '4' is used for online courses in June/July (according to the registrar);
+                        # at this point, at the direction of the registrar's office, we are simply ignoring these course offerings and
+                        # not using them for schedule edits
+                        part_of_term_OK = False
+                        number_part_of_term_not_OK += 1
+                        print('  >>> This is an online June/July course section and is excluded from Schedule Edits (for now).')
                     else:
                         # this exits the course_offerings loop....
                         number_errors = number_errors +1
@@ -778,6 +786,8 @@ class Command(BaseCommand):
                     print(mtg)
 
             print(' ')
+            print('Number of course offerings being offered as online classes during June/July (these are being ignored): ', number_part_of_term_not_OK)
+            print(' ')
             print('total number of errors encountered: ', number_errors)
 
             if len(error_list) > 0:
@@ -803,8 +813,9 @@ class Command(BaseCommand):
                 'repeated_ichair_pidms': repeated_ichair_pidms,
                 'banner_faculty_without_perfect_match_in_ichair': banner_faculty_without_perfect_match_in_ichair,
                 'class_meeting_dict': class_meeting_dict,
-                'adj_fac_w_pidm_not_in_adjunct_dept': adj_fac_w_pidm_not_in_adjunct_dept
-                }
+                'adj_fac_w_pidm_not_in_adjunct_dept': adj_fac_w_pidm_not_in_adjunct_dept,
+                'number_part_of_term_not_OK': number_part_of_term_not_OK
+            }
 
             # In the following I can use just "banner_import_report.txt" (without the path) if I'm running the warehouse command at the 
             # command line, but if I'm running it as a cron job, it apparently doesn't know where the template lives (that is set in 
@@ -998,6 +1009,10 @@ Number of classes scheduled in inactive rooms: {}
     plaintext_message += """
 Number of meetings scheduled on Saturday or Sunday: {}
     """.format(context["number_non_M_F_meetings"])
+
+    plaintext_message += """
+Number of course offerings being offered as online classes during June/July (these are being ignored): {}
+    """.format(context["number_part_of_term_not_OK"])
 
     plaintext_message += """
 Number of cancelled or inactive meetings (should be zero): {}
