@@ -794,6 +794,8 @@ def banner_comparison_data(request):
     #           - course itself agrees (subject, number, credit hours, title or banner_title)
     #           - semester agrees
     #           - iChair course has not already been assigned a CRN
+    #           - ...we also do some checking of the course offering time and instructor in the case that there
+    #                there are more than one bco that fit a given ico....
     #       - if multiple iChair course offerings match according to the above criteria, find the "best" fit, based on days, times and instructors
     #           - if there is an exact fit on days and times, assign the CRN to the iChair offering
     #           - if multiple fits on days and times, proceed to check instructors
@@ -852,9 +854,18 @@ def banner_comparison_data(request):
             # then we should sort the list so the order doesn't seem crazy
 
             for bco in banner_course_offerings:
+                # start by unlinking all of the banner course offerings in this group
+                bco.ichair_id = None
+                bco.save()
+
+            for bco in banner_course_offerings:
                 #print(bco," ", bco.term_code, " ", bco.crn)
                 # attempt to assign an iChair course offering to the banner one
                 find_ichair_course_offering(bco, semester, subject)
+                # WORKING HERE:
+                #   If there are more bco's than ico's, this process can fail when we get to the last
+                #   step, where there is only one ico left.  It can get put with whichever bco is next, even
+                #   if that's not the best match!
 
             # now we cycle through all the banner course offerings and add them to the list
             for bco in banner_course_offerings:
@@ -928,6 +939,9 @@ def banner_comparison_data(request):
                     "campus": bco.campus
                 }
                 index = index + 1
+
+                if bco.crn == '10050':
+                    print('found CRN 10050; bco.is_linked: ', bco.is_linked)
 
                 if bco.is_linked:
                     # get the corresponding iChair course offering
@@ -1969,7 +1983,7 @@ def generate_pdf(request):
             if item["delta"]["instructors"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Instructor(s): ", item["delta"]["instructors"], data_in_list = True)
             if item["delta"]["meeting_times"] is not None:
-                print(item["delta"]["meeting_times"])
+                #print(item["delta"]["meeting_times"])
                 y, imgDoc = render_creates(imgDoc, y, layout, "Meeting Times: ", item["delta"]["meeting_times"], data_in_list = True)
             if item["delta"]["max_enrollment"] is not None:
                 y, imgDoc = render_creates(imgDoc, y, layout, "Enrollment Cap: ", item["delta"]["max_enrollment"], data_in_list = False)
@@ -2178,7 +2192,7 @@ def find_unlinked_ichair_course_offerings(bco, semester, subject):
             Q(crn__isnull=True))
 
 
-def find_unlinked_banner_course_offerings(ico, term_code, subject):
+def find_unlinked_banner_course_offerings(ico, term_code, subject, restrict_bco_number = False, bco_number = ''):
     """Find the unlinked banner course offerings that could correspond to a particular (unlinked) iChair course offering."""
     if ico.crn is not None:
         print('something is wrong...this ico should not have a CRN, but it does...!')
@@ -2186,11 +2200,22 @@ def find_unlinked_banner_course_offerings(ico, term_code, subject):
     else:
         # we don't include the title or banner title in the filter, since we will eventually let the user decide
         # whether or not to link one of these courses to the iChair course
-        candidate_banner_course_offerings = BannerCourseOffering.objects.filter(
-            Q(term_code=term_code) &
-            Q(course__subject__abbrev=subject.abbrev) &
-            Q(course__credit_hours=ico.course.credit_hours) &
-            Q(ichair_id__isnull=True))
+        if not restrict_bco_number:
+            candidate_banner_course_offerings = BannerCourseOffering.objects.filter(
+                Q(term_code=term_code) &
+                Q(course__subject__abbrev=subject.abbrev) &
+                Q(course__credit_hours=ico.course.credit_hours) &
+                Q(ichair_id__isnull=True))
+        else:
+            # when we call this method in the case that we have a bco and one matching ico, and then we want to see if there
+            # are other matching bco's, we want to implement a tighter restriction on the matching of the course number....
+            # (this can come into play when the banner course numbers have option, for example, like 121H and 121)
+            candidate_banner_course_offerings = BannerCourseOffering.objects.filter(
+                Q(term_code=term_code) &
+                Q(course__subject__abbrev=subject.abbrev) &
+                Q(course__credit_hours=ico.course.credit_hours) &
+                Q(ichair_id__isnull=True) & 
+                Q(course__number=bco_number))
         # print('finding unlinked banner course offerings for: ', ico)
         # print('found some possibilities: ', len(
         #    candidate_banner_course_offerings))
@@ -2206,9 +2231,10 @@ def find_unlinked_banner_course_offerings(ico, term_code, subject):
 def find_ichair_course_offering(bco, semester, subject):
     """Start the process of linking up this banner course offering (bco) with one in iChair."""
 
+    # the following is now done separately, before this method is called....
     # start by unlinking the banner course offering
-    bco.ichair_id = None
-    bco.save()
+    #bco.ichair_id = None
+    #bco.save()
 
     # search for candidate course offerings
     # https://stackoverflow.com/questions/844556/filtering-for-empty-or-null-names-in-a-queryset
@@ -2229,11 +2255,43 @@ def find_ichair_course_offering(bco, semester, subject):
 
     if len(candidate_ichair_matches) == 1:
         ichair_course_offering = candidate_ichair_matches[0]
-        # if only one potential match at this stage, link the banner course to the ichair one
-        bco.ichair_id = ichair_course_offering.id
-        bco.save()
-        ichair_course_offering.crn = bco.crn
-        ichair_course_offering.save()
+        # at this point, it could be the case that while there is only one good ico match for the current bco, that
+        # ico is actually a better match to a different bco.  In that case, we want to pass here, so that the ico
+        # can get picked up by a bco for which it is a better match
+
+        print('>>> Exactly one candidate ico match for this bco...now check if there might be a different bco that is a better match....')
+        print('    bco: ', bco)
+        print('    ico: ', ichair_course_offering )
+        term_code = semester.banner_code
+        # pass in the bco course number and require a full match at this point, otherwise can get some false matches;
+        # for example, the bco could be 121H and the ico is also 121H, but if we use the "default" version of the following
+        # method, the returned bco matches could be 121 and 121H, leading to possibly a worse match(!)
+        candidate_banner_matches = find_unlinked_banner_course_offerings(ichair_course_offering, term_code, subject, restrict_bco_number = True, bco_number = bco.course.number)
+        
+        if len(candidate_banner_matches) == 1:
+            if candidate_banner_matches[0].id == bco.id:
+                # hopefully this is the case...!  We started with a bco and found only one matching ico; if there is only
+                # one matching bco for this ico, then presumably that bco is the one we started with
+                # link the banner course to the ichair one
+                print('>>>>> There is also only one bco that matches the ico, so we will match them up!')
+                bco.ichair_id = ichair_course_offering.id
+                bco.save()
+                ichair_course_offering.crn = bco.crn
+                ichair_course_offering.save()
+            else:
+                print('There seems to be a problem!  This bco had one ico that was a match; likewise, the ico had one bco match, but it is different than the one we started with!')
+        else:
+            print('>>>>> There are more than one bco that match the ico...need to see if the current bco is, in fact, the best match....')
+            print('bco candidates for this ico: ', candidate_banner_matches)
+            if current_bco_best_match_for_ico(ichair_course_offering, bco, candidate_banner_matches):
+                print('>>>>> The current bco is the best match; linking....')
+                bco.ichair_id = ichair_course_offering.id
+                bco.save()
+                ichair_course_offering.crn = bco.crn
+                ichair_course_offering.save()
+            else:
+                print('>>>>> The current bco does not seem to be the best match; pass for now; ico should get picked up by a better match later')
+
         # print('>>> Exactly one candidate match...banner course offering is now linked to corresponding iChair course offering!')
         # print('>>> scheduled classes agree: ', scheduled_classes_match(bco, ichair_course_offering))
     elif len(candidate_ichair_matches) > 1:
@@ -2242,6 +2300,119 @@ def find_ichair_course_offering(bco, semester, subject):
 
     return None
 
+def current_bco_best_match_for_ico(ichair_course_offering, bco, candidate_banner_matches):
+    # criteria to consider:
+    # 1. if there is a delta object linking the ico to one of the candidated bco's, and if the most
+    #    recent one is the current bco, then return true
+    # 2. else, if the course times exactly match for only the current bco, then return true
+    # 3. else look at instructors as well
+    # ...if pass for the current bco, it may be that one of the other bco's will match better and possibly get linked
+
+    delta_related_bco = delta_matched_bco_for_ico(ichair_course_offering, candidate_banner_matches)
+    if delta_related_bco is None:
+        # there doesn't appear to be a delta object for this ico...proceed to check schedules and professors
+        print("there is no delta object linking the ico to any of the candidate bco's, so let's look at schedules....")
+        schedule_matched_bcos = schedule_matched_bcos_for_ico(ichair_course_offering, candidate_banner_matches)
+        if len(schedule_matched_bcos) == 1:
+            # one of the bco schedules matches the ico....
+            if schedule_matched_bcos[0].id == bco.id:
+                print('the schedule of the current bco is the only match for the ico...link them', bco)
+                return True
+            else:
+                print('the schedule of another bco matches the ico...do not link the current bco', bco)
+                return False
+        else:
+            print("the number of bco schedules matching that of the ico is: ", len(schedule_matched_bcos))
+            print("proceeding to check instructors....")
+            # either zero or more than one bco schedules match the ico; in either case, check instructors next
+            instructor_matched_bcos = instructor_matched_bcos_for_ico(ichair_course_offering, schedule_matched_bcos, candidate_banner_matches)
+            print("instructor_matched_bcos: ", instructor_matched_bcos)
+            
+            if len(instructor_matched_bcos) == 1:
+                if instructor_matched_bcos[0].id == bco.id:
+                    print('the instructor of the current bco is the only match for the ico...link them', bco)
+                    return True
+                else:
+                    print("the instructor of a different bco matches the ico, so do not link the current bco")
+                    return False
+            elif len(instructor_matched_bcos) == 0:
+                print("the number of bco's that match the ico in terms of instructors is: ", len(instructor_matched_bcos))
+                # at this point, the current bco does not match in terms of class schedule or instructor, so give up
+                return False
+            else:
+                print("the number of bco's that match the ico in terms of instructors is: ", len(instructor_matched_bcos))
+                # check if the current bco is in the list of matching bco's; if we find it in the list, return True; else False
+                for matching_bco in instructor_matched_bcos:
+                    if matching_bco.id == bco.id:
+                        return True
+                return False
+
+    elif delta_related_bco.id == bco.id:
+        # the current bco is related to the ico by the most recent delta object, so we have a match
+        print("We have a delta object relating the current bco to the ico, so let's link them up....")
+        return True
+    else:
+        print("It appears that another bco is linked via a delta object to the current bco, so don't link up the bco and ico")
+        return False
+
+def delta_matched_bco_for_ico(ichair_course_offering, candidate_banner_matches):
+    """
+    This method is used when several bco's are candidate matches for one ico.  This method
+    checks candidate banner course matches for this iChair course offering and finds the most 
+    recent delta object linking the iChair course offering to a bco.
+    """
+    # delta course offering actions from the model itself:
+    delta_course_offering_actions = DeltaCourseOffering.actions()
+
+    recent_delta_object = None
+    chosen_banner_match = None
+    for banner_match in candidate_banner_matches:
+        delta_objects = DeltaCourseOffering.objects.filter(
+            Q(crn=banner_match.crn) &
+            Q(course_offering=ichair_course_offering) &
+            Q(requested_action=delta_course_offering_actions["update"]))
+        if len(delta_objects) > 0:
+            print('delta object(s) found for', banner_match)
+            if recent_delta_object is None:
+                recent_delta_object = delta_objects[0]
+                chosen_banner_match = banner_match
+            for delta_object in delta_objects:
+                # print(delta_object, delta_object.updated_at)
+                if delta_object.updated_at > recent_delta_object.updated_at:
+                    recent_delta_object = delta_object
+                    chosen_banner_match = banner_match
+                    # print('found more recent!',
+                    #      recent_delta_object.updated_at)
+    return chosen_banner_match
+
+def schedule_matched_bcos_for_ico(ichair_course_offering, candidate_banner_matches):
+    """Returns the subset of candidate banner matches whose schedule matches the ico."""
+    bco_matching_schedule_list = []
+    for banner_match in candidate_banner_matches:
+        # print(ichair_match)
+        # print('banner_title of iChair course:', ichair_match.course.banner_title)
+        if scheduled_classes_match(banner_match, ichair_course_offering):
+            bco_matching_schedule_list.append(banner_match)
+    
+    return bco_matching_schedule_list
+
+def instructor_matched_bcos_for_ico(ichair_course_offering, schedule_matched_bcos, candidate_banner_matches):
+    """Returns the subset of schedule-matched bcos (or candidate banner matches) whose instructor(s) match those of the ico."""
+    bco_matching_instructor_list = []
+    if len(schedule_matched_bcos) == 0:
+        # if no schedules matched during the previous check, use the (larger) set of original candidate bco matches
+        bco_list = candidate_banner_matches
+    else:
+        #...otherwise use the (possibly more restricted) schedule-matched list
+        bco_list = schedule_matched_bcos
+
+    for banner_match in bco_list:
+        # print(ichair_match)
+        # print('banner_title of iChair course:', ichair_match.course.banner_title)
+        if instructors_match(banner_match, ichair_course_offering):
+            bco_matching_instructor_list.append(banner_match)
+    
+    return bco_matching_instructor_list
 
 def choose_course_offering_second_cut(bco, candidate_ichair_matches):
     """Check candidate iChair course matches for this banner course offering, and possibly choose one based on agreement of weekly schedules."""
@@ -2500,12 +2671,17 @@ def public_comments_match(banner_course_offering, ichair_course_offering):
     else:
         comments_agree = True
         for ii in range(len(bco_comments["comment_list"])):
-            #print(ii)
-            #print(bco_comments["comment_list"][ii]["text"])
-            #print(ico_comments["comment_list"][ii]["text"])
-            #print('agree: ', bco_comments["comment_list"][ii]["text"] != ico_comments["comment_list"][ii]["text"])
-
-            if bco_comments["comment_list"][ii]["text"] != ico_comments["comment_list"][ii]["text"]:
+            # https://www.geeksforgeeks.org/python-string-split/
+            # https://stackoverflow.com/questions/12453580/how-to-concatenate-join-items-in-a-list-to-a-single-string
+            # the following deletes all spaces from the comment strings for the purpose of comparison;
+            # that way, the folowing will be considered equivalent: '  hi,   there ' and 'hi,there' (for example);
+            # this makes the comparison a bit more forgiving
+            bco_comment_shortened = ''.join(bco_comments["comment_list"][ii]["text"].split(' '))
+            ico_comment_shortened = ''.join(ico_comments["comment_list"][ii]["text"].split(' '))
+            #print('bco: ', bco_comment_shortened)
+            #print('ico: ', ico_comment_shortened)
+            # ...could also look at removing punctuation and/or capitalization for the purpose of the comparison....
+            if bco_comment_shortened != ico_comment_shortened:
                 comments_agree = False
         return comments_agree
 
@@ -2523,9 +2699,9 @@ def delete_delta(request):
     crn = json_data['crn']
     semester_id = json_data['semesterId']
 
-    print('ico id: ', ichair_course_offering_id)
-    print('crn:', crn)
-    print('semester id: ', semester_id)
+    #'ico id: ', ichair_course_offering_id)
+    #print('crn:', crn)
+    #print('semester id: ', semester_id)
 
     delta_course_offering = DeltaCourseOffering.objects.get(pk=delta_id)
 
@@ -2540,7 +2716,7 @@ def delete_delta(request):
     if (delta_course_offering.note_to_self is not None) and (delta_course_offering.note_to_self != ''):
         # we have a note_to_self, so instead of deleting this dco (currently of type 'delete' or 'create'), 
         # convert it to type 'no_action' and send it back....
-        print('request was to delete this dco, but it had a note_to_self, so we are converting to a no_action dco instead....')
+        #print('request was to delete this dco, but it had a note_to_self, so we are converting to a no_action dco instead....')
         delta_course_offering_actions = DeltaCourseOffering.actions()
         bco = None
         ico = None
@@ -2629,11 +2805,11 @@ def delete_delta_course_offerings_by_crn(crn, semester_id):
                     recent_delta_object = dco
         if recent_delta_object is not None:
             note_to_self = recent_delta_object.note_to_self
-        print('inside delete_delta_course_offerings_by_crn; note to self from related dco(s): ', note_to_self)
+        #print('inside delete_delta_course_offerings_by_crn; note to self from related dco(s): ', note_to_self)
         for dco in delta_course_offerings:
-            print('found one or more other delta course offerings for this banner course offering: ', dco, dco.id, dco.requested_action)
+            #print('found one or more other delta course offerings for this banner course offering: ', dco, dco.id, dco.requested_action)
             if (dco.requested_action == delta_course_offering_actions["delete"]) or (dco.requested_action == delta_course_offering_actions["no_action"]):
-                print('deleting this one....')
+                #print('deleting this one....')
                 dco.delete()
     
     return note_to_self
@@ -2667,11 +2843,11 @@ def delete_delta_course_offerings_by_ico(ico_id):
                     recent_delta_object = dco
         if recent_delta_object is not None:
             note_to_self = recent_delta_object.note_to_self
-        print('inside delete_delta_course_offerings_by_ico; note to self from related dco(s): ', note_to_self)
+        #print('inside delete_delta_course_offerings_by_ico; note to self from related dco(s): ', note_to_self)
         for dco in delta_course_offerings:
-            print('found one or more other delta course offerings for this iChair course offering: ', dco, dco.id, dco.requested_action)
+            #print('found one or more other delta course offerings for this iChair course offering: ', dco, dco.id, dco.requested_action)
             if (dco.requested_action == delta_course_offering_actions["create"]) or (dco.requested_action == delta_course_offering_actions["no_action"]):
-                print('deleting this one....')
+                #print('deleting this one....')
                 dco.delete()
 
     return note_to_self
@@ -2696,14 +2872,14 @@ def generate_update_delta(request):
     # None if null in the UI code (i.e., if creating a new delta)
     delta_id = json_data['deltaId']
 
-    print(delta_mods)
+    #print(delta_mods)
 
-    print('action: ', action)
-    print('crn: ', crn)
-    print('ichair id: ', ichair_course_offering_id)
-    print('banner id: ', banner_course_offering_id)
-    print('semester_id: ', semester_id)
-    print('delta id: ', delta_id)
+    #print('action: ', action)
+    #print('crn: ', crn)
+    #print('ichair id: ', ichair_course_offering_id)
+    #print('banner id: ', banner_course_offering_id)
+    #print('semester_id: ', semester_id)
+    #print('delta id: ', delta_id)
 
     delta_generation_successful = True
     number_ichair_primary_instructors_OK = True
@@ -2761,7 +2937,7 @@ def generate_update_delta(request):
         else:
             delta_generation_successful = False
 
-        print('creating new delta object, found the following bco and ico notes to self from related objects: ', bco_note_to_self, ico_note_to_self)
+        #'creating new delta object, found the following bco and ico notes to self from related objects: ', bco_note_to_self, ico_note_to_self)
         #print(delta_course_offering_actions)
 
         if delta_generation_successful:
@@ -2838,8 +3014,8 @@ def generate_update_delta(request):
 
     else:
         dco = DeltaCourseOffering.objects.get(pk=delta_id)
-        print('got delta object!')
-        print(dco)
+        #print('got delta object!')
+        #print(dco)
         if 'meetingTimes' in delta_mods.keys():
             dco.update_meeting_times = delta_mods['meetingTimes']
 
@@ -2872,15 +3048,15 @@ def generate_update_delta(request):
             #ico = CourseOffering.objects.get(pk=ichair_course_offering_id)
             # update ico.crn and bco.ichair_id
             if (ico.crn != bco.crn):
-                print("ico crn is not equal to bco.crn: ", ico.crn, bco.crn)
-                print("fixing....")
+                #print("ico crn is not equal to bco.crn: ", ico.crn, bco.crn)
+                #print("fixing....")
                 ico.crn = bco.crn
                 ico.save()
             else:
                 print("ico crn was already equal to bco.crn")
             if (bco.ichair_id != ico.id):
-                print("bco ichair_id is not equal to ico.id: ", bco.ichair_id, ico.id)
-                print("fixing....")
+                #print("bco ichair_id is not equal to ico.id: ", bco.ichair_id, ico.id)
+                #print("fixing....")
                 bco.ichair_id = ico.id
                 bco.save()
             else:
@@ -2895,7 +3071,7 @@ def generate_update_delta(request):
                 "delivery_methods_match": delivery_methods_match(bco, ico),
             }
             # if everything agrees, then we should set manually_marked_OK to False...there's no need to have this an option in this case....
-            print('action is update....agreement_update: ', agreement_update)
+            #print('action is update....agreement_update: ', agreement_update)
             # https://realpython.com/iterate-through-dictionary-python/
             if set_manually_marked_OK_to_false(agreement_update, dco):
                 dco.manually_marked_OK = False
@@ -3014,7 +3190,7 @@ def create_update_delete_note_for_registrar_or_self_api(request):
     include_room_comparisons = json_data['includeRoomComparisons']
     is_registrar_note = json_data["isRegistrarNote"] # True if this is a note for the registrar; False if is a note_to_self
     semester_id = json_data["semesterId"]
-    print('semester id: ', semester_id)
+    #print('semester id: ', semester_id)
 
     semester = Semester.objects.get(pk=semester_id)
 
@@ -3174,7 +3350,7 @@ def update_public_comments_api(request):
         #print("year: ", year)
     except:
         course_offering = None
-        print('could not find the course offering....')
+        #print('could not find the course offering....')
 
     # delete comments
     deletes_successful = True
@@ -3183,8 +3359,8 @@ def update_public_comments_api(request):
             pc = CourseOfferingPublicComment.objects.get(pk=delete_id)
             pc.delete()
         except CourseOfferingPublicComment.DoesNotExist:
-            print('unable to delete comment id = ', delete_id,
-                  '; it may be that the object no longer exists.')
+            #print('unable to delete comment id = ', delete_id,
+            #      '; it may be that the object no longer exists.')
             deletes_successful = False
 
     # updates first....
@@ -3197,7 +3373,7 @@ def update_public_comments_api(request):
             pc.save()
         except:
             updates_successful = False
-            print('not able to complete comment updates')
+            #print('not able to complete comment updates')
 
     # now create new comments
     creates_successful = True
@@ -3235,7 +3411,7 @@ def update_public_comments_api(request):
     elif (not(has_banner)) and course_offering:
         if has_delta:
             # in this case we are talking about a delta requested action of "create" or "no_action"
-            print('inside update_public_comments_api....')
+            #print('inside update_public_comments_api....')
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
             if dco.requested_action == delta_course_offering_actions["create"]:
                 delta_response = delta_create_status(course_offering, dco, check_rooms = include_room_comparisons)
@@ -3326,7 +3502,7 @@ def update_class_schedule_api(request):
         #print(original_co_snapshot)
     except:
         course_offering = None
-        print('could not find the course offering....')
+        #print('could not find the course offering....')
 
     if delivery_method_id == None:
         delivery_method = None
@@ -3334,7 +3510,7 @@ def update_class_schedule_api(request):
         try:
             delivery_method = DeliveryMethod.objects.get(pk=delivery_method_id)
         except:
-            print('unable to find the delivery method with id = ', delivery_method_id)
+            #print('unable to find the delivery method with id = ', delivery_method_id)
             delivery_method = None
 
     if course_offering:
@@ -3356,8 +3532,8 @@ def update_class_schedule_api(request):
             sc = ScheduledClass.objects.get(pk=delete_id)
             sc.delete()
         except ScheduledClass.DoesNotExist:
-            print('unable to delete scheduled class id = ', delete_id,
-                  '; it may be that the object no longer exists.')
+            #print('unable to delete scheduled class id = ', delete_id,
+            #      '; it may be that the object no longer exists.')
             deletes_successful = False
 
     # define a regular expression to use for matching times....
@@ -3395,7 +3571,7 @@ def update_class_schedule_api(request):
                 updates_successful = False
         except:
             updates_successful = False
-            print('not able to complete class schedule updates')
+            #print('not able to complete class schedule updates')
 
     # now create new scheduled classes
     if course_offering:
@@ -3421,7 +3597,7 @@ def update_class_schedule_api(request):
                 sc.save()
             else:
                 creates_successful = False
-                print('not able to create new scheduled classes')
+                #print('not able to create new scheduled classes')
     else:
         creates_successful = False
 
@@ -3473,7 +3649,7 @@ def update_class_schedule_api(request):
     elif (not(has_banner)) and course_offering:
         if has_delta:
             # in this case we are talking about a delta requested action of "create" or "no_action"
-            print('inside update_class_schedule_api....')
+            #print('inside update_class_schedule_api....')
             dco = DeltaCourseOffering.objects.get(pk=delta["id"])
             if dco.requested_action == delta_course_offering_actions["create"]:
                 delta_response = delta_create_status(course_offering, dco, check_rooms = include_room_comparisons)
@@ -3657,8 +3833,8 @@ def copy_course_offering_data_to_ichair(request):
 
                 for ichair_oi in ichair_offering_instructors:
                     if (ichair_oi.instructor.pidm is None) or (ichair_oi.instructor.pidm == ''):
-                        print(
-                            'one of the iChair instructors does not have a pidm...bailing!')
+                        #print(
+                        #    'one of the iChair instructors does not have a pidm...bailing!')
                         offering_instructors_copied_successfully = False
                         #break
                     elif ichair_oi.instructor.pidm not in banner_instructor_pidms:
@@ -3697,8 +3873,8 @@ def copy_course_offering_data_to_ichair(request):
                             pidm=boi.instructor.pidm)
                         if len(ichair_instructors) != 1:
                             offering_instructors_copied_successfully = False
-                            print(
-                                'there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
+                            #print(
+                            #    'there seem to be more than one iChair instructor with this pidm: ', boi.instructor.pidm)
                         else:
                             instructor = ichair_instructors[0]
                             if instructor.is_active(academic_year):
@@ -3767,7 +3943,7 @@ def copy_course_offering_data_to_ichair(request):
                         for banner_sc in banner_scheduled_classes:
                             if (ichair_sc.day == banner_sc.day) and (ichair_sc.begin_at == banner_sc.begin_at) and (ichair_sc.end_at == banner_sc.end_at):
                                 banner_match = banner_sc
-                                print('found a banner match!', banner_match)
+                                #print('found a banner match!', banner_match)
                         if banner_match is None:
                             #print(
                             #    'no corresponding banner match; deleting iChair meeting time....')
@@ -3832,7 +4008,7 @@ def copy_course_offering_data_to_ichair(request):
                         )
                     for room in sc["rooms"]:
                         room = Room.objects.get(pk=int(room["id"]))
-                        print("found room in snapshot!", room)
+                        #print("found room in snapshot!", room)
                         isc.rooms.add(room)
                     isc.save()
                     

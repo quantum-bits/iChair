@@ -173,7 +173,7 @@ class CourseOffering(StampedModel):
         
 
     def __str__(self):
-        return "{0} ({1})".format(self.course, self.term_code)
+        return "{0} ({1}; CRN: {2})".format(self.course, self.term_code, self.crn)
 
     @property
     def is_linked(self):
@@ -209,12 +209,12 @@ class CourseOffering(StampedModel):
                             Q(term_code=term_code) & 
                             Q(course__credit_hours = course["credit_hours"]) & 
                             Q(course__number = course_num)):
-                            print('>>>>>found the following: ', co, ' ', co.id)
+                            #print('>>>>>found the following: ', co, ' ', co.id)
                             list_contains_co = False
                             for collected_co in course_offerings:
                                 if co.id == collected_co.id:
                                     list_contains_co = True
-                                    print('Yikes!  Almost copied this one twice!!!')
+                                    #print('Yikes!  Almost copied this one twice!!!')
                             if not list_contains_co:
                                 course_offerings.append(co)
             #print('>>>>>>>extra-departmental course offerings found: ', course_offerings)

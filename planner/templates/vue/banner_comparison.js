@@ -2247,11 +2247,12 @@ var app = new Vue({
           // check if need to make updates....
           // if the id is null, check if there is any text; if so, create a new comment
           // if the id is not null, check if there has been a change; if so, do an update (but only if there is some text -- otherwise do a delete)
+          // trimming white space: https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_trim
           if (comment.id === null) {
-            if (comment.text !== '') {
+            if (comment.text.trim() !== '') {
               commentsToCreate.push({
                 sequence_number: comment.sequence_number,
-                text: comment.text
+                text: comment.text.trim()
               });
             }
           } else { //comment.id is not null, so check if should do an update, or possibly a delete
@@ -2276,18 +2277,24 @@ var app = new Vue({
                 sequence_number: comment.sequence_number,
                 text: comment.text
               });
-            } else if (comment.text === '') {// user erased the comment, presumably meaning to delete it
+            } else if (comment.text.trim() === '') {// user erased the comment, presumably meaning to delete it
               commentsToDelete.push(comment.id);
             } else {
               commentsToUpdate.push({
                 id: comment.id,
                 sequence_number: comment.sequence_number,
-                text: comment.text
+                text: comment.text.trim()
               });
             }
           }
         }
       });
+
+      console.log('comments to delete:', commentsToDelete);
+      console.log('comments to comments update:', commentsToUpdate);
+      console.log('comments to create:', commentsToCreate);
+      console.log('comments to leave:', commentsToLeave);
+
       let numChanges =
         commentsToCreate.length +
         commentsToUpdate.length +

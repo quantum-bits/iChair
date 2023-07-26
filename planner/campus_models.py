@@ -181,7 +181,7 @@ class Department(models.Model):
         for message in self.messages.all().filter(year = academic_year):
             #print('got a message!')
             if (non_dismissed_only and not message.dismissed) or (not non_dismissed_only):
-                print('inside if!')
+                #print('inside if!')
                 fragments = []
                 for fragment in message.fragments.all():
                     fragments.append({
