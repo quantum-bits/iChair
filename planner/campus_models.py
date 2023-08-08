@@ -1028,6 +1028,10 @@ class DeltaCourseOffering(StampedModel):
     # the following are used for UPDATEs and CREATEs, and specify which of the course offering fields should be aligned with the iChair versions
     # (some may not need to be updated, others could be updated/created, but the user is not electing to do so at present)
 
+    ###
+    ### NOTE: If add new properties to this class, may need to update the noPropertiesStagedForUpdate(...) method in banner_comparison.js ###
+    ###
+    
     update_meeting_times = models.BooleanField(default=False)
     update_instructors = models.BooleanField(default=False)
     update_semester_fraction = models.BooleanField(default=False)

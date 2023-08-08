@@ -862,10 +862,6 @@ def banner_comparison_data(request):
                 #print(bco," ", bco.term_code, " ", bco.crn)
                 # attempt to assign an iChair course offering to the banner one
                 find_ichair_course_offering(bco, semester, subject)
-                # WORKING HERE:
-                #   If there are more bco's than ico's, this process can fail when we get to the last
-                #   step, where there is only one ico left.  It can get put with whichever bco is next, even
-                #   if that's not the best match!
 
             # now we cycle through all the banner course offerings and add them to the list
             for bco in banner_course_offerings:
@@ -1317,7 +1313,16 @@ def banner_comparison_data(request):
         "description": delivery_method.description
     } for delivery_method in DeliveryMethod.objects.all()]
 
+    #stale_registrar_notes = []
+    #for co in sorted_course_offerings:
+    #    stale_note_data = stale_registrar_note_data(co)
+    #    if stale_note_data is not None:
+    #        stale_registrar_notes.append(stale_note_data)
+
+    #print('stale notes:', stale_registrar_notes)
+
     data = {
+        #"stale_registrar_notes": stale_registrar_notes,
         "course_data": sorted_course_offerings,  # course_offering_data,
         "semester_fractions": semester_fractions,
         "semester_fractions_reverse": semester_fractions_reverse,
@@ -1327,17 +1332,50 @@ def banner_comparison_data(request):
     return JsonResponse(data)
 
 """
-def most_recent_delta_object(delta_objects):
-    if len(delta_objects):
-        recent_delta_object = delta_objects[0]
-        for delta_object in delta_objects:
-            print(delta_object, delta_object.updated_at)
-            if delta_object.updated_at > recent_delta_object.updated_at:
-                recent_delta_object = delta_object
-                print('found more recent!', recent_delta_object.updated_at)  
-        return recent_delta_object
+def stale_registrar_note_data(co):
+    if co["delta"] is None:
+        return None
+    elif not co["delta"]["registrar_comment_exists"]:
+        return None
+    elif no_properties_staged_for_update(co["delta"]):
+        # there is a registrar comment, but no other properties are staged for an update at this point;
+        # in this situation, users can become confused, because there could be an old note (from a previous edit, perhaps)
+        # that they don't recall writing, and now it will end up on the schedule edits pdf....
+        print('!!! possibly have a stale note....', co["delta"])
+        # https://www.programiz.com/python-programming/datetime/current-datetime
+        now = datetime.date.today()
+        delta = DeltaCourseOffering.objects.get(pk=co["delta"]["id"])
+        # https://stackoverflow.com/questions/35300460/get-date-from-a-django-datetimefield
+        date_diff = now-delta.updated_at.date()
+        if date_diff.days >= 4:
+            print('registrar comment is stale!', delta.updated_at.date())
+            # https://www.programiz.com/python-programming/datetime/strftime
+            return {
+                'id': delta.id,
+                'delta_updated_at': delta.updated_at.strftime("%B %d, %Y"),
+                'delta_updated_days_ago': date_diff.days,
+                'text': delta.extra_comment,
+                'index': co["index"],
+                'crn': co["crn"],
+                'course': co["course"], 
+                'credit_hours': co["credit_hours"],
+                'course_title': co["course_title"],
+                'semester': co["semester"]
+            }
+        else:
+            return None
     else:
         return None
+
+def no_properties_staged_for_update(delta):
+    #returns True if there are no properties that are staged for updates
+    return (delta["meeting_times"] is None) and \
+        (delta["instructors"] is None) and \
+        (delta["semester_fraction"] is None) and \
+        (delta["max_enrollment"] is None) and \
+        (delta["delivery_method"] is None) and \
+        (delta["public_comments"] is None) and \
+        (delta["public_comments_summary"] is None)
 """
 
 def construct_ichair_options(bco, semester, subject, department, academic_year, faculty_to_view_ids):
@@ -1517,8 +1555,11 @@ def delta_update_status(bco, ico, delta, check_rooms = False):
     """Uses a delta object to compare the current status of a banner course offering compared to its corresponding iChair course offering."""
     # at this point it is assumed that the delta object is of the "request that the registrar do an update" variety
 
+    # Note: if add new properties here, will need to update the list of properties checked in the no_properties_staged_for_update method
+
     delta_response = {
         "id": delta.id,
+        "updated_at": delta.updated_at,
         "requested_action": DeltaCourseOffering.actions_reverse_lookup(delta.requested_action),
         # True if this update is being requested by the user
         "request_update_meeting_times": delta.update_meeting_times,

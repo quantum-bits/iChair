@@ -74,6 +74,7 @@ var app = new Vue({
       choosingSemesters: true, // set to false once semesters have been chosen to work on
       semesterChoices: [], // filled in via an ajax request after the component is mounted
       roomRequestsAllowed: false, // true if room requests are allowed for one of the chosen semesters
+      showStaleMessagesDialog: false,
       includeRoomComparisons: true, // can be set to true by the user if they would like to request room edits
       facultyChoices: [], // faculty available to teach courses
       roomChoices: [], // rooms available for course offerings
@@ -95,13 +96,21 @@ var app = new Vue({
       expanded: [],
       singleExpand: true,
       message: "Hello Vue!",
-      search: "",
+      search: '',
       json_data: json_data,
       page: 1,
       pageCount: 0,
       itemsPerPage: 15,
       showAllCourses: false,
       buttonRipple: false,
+      staleMessagesHeaders: [
+        { text: "Course", value: "course", width:"110px" },
+        { text: "CRN", value: "crn", width:"80px" },
+        { text: "Semester", value: "semester", width:"60px" },
+        { text: "Last Update", value: "deltaUpdatedAt", width:"160px"},
+        { text: "Message", value: "text", width:"250px" },
+        { text: "Actions", value: "", width:"150px"}
+      ],
       headers: [
         { text: "Semester", value: "semester" },
         { text: "Code", value: "termCode" },
@@ -112,11 +121,11 @@ var app = new Vue({
           text: "Number",
           align: "left",
           sortable: true,
-          value: "number"
+          value: "course"
         },
         { text: "Name", value: "name", align: "left" },
         { text: "Credit Hours", value: "creditHours", align: "left" },
-        { text: "Status", value: "status", align: "center" }
+        { text: "Status", value: "", sortable: false, align: "center" }
       ],
       showLinearProgressBar: false,
       courseOfferingAlignmentPhaseReady: false, // set to true once we're ready to start comparing course offerings
@@ -253,6 +262,55 @@ var app = new Vue({
       this.helpDialogTitle = "";
       this.helpDialogMessages = [];
       this.helpDialog = false;
+    },
+
+    launchStaleMessagesDialog() {
+      this.showStaleMessagesDialog = true;
+    },
+
+    deleteNoteForRegistrar(item) {
+      // deletes a note for the registrar
+      console.log(item);
+      this.courseOfferings.forEach(courseOfferingItem => {
+        if (item.index === courseOfferingItem.index) {
+          let courseInfo = JSON.parse(JSON.stringify(courseOfferingItem));
+          this.deleteNoteForRegistrarOrSelf(courseInfo, true);
+        }
+      });
+    },
+
+    refreshNoteForRegistrar(item) {
+      // resets the time stamp for a note for the registrar so that it disappears from the "stale messages" list for a few days
+      console.log(item);
+      // WORKING HERE
+      let courseInfo = null;
+      this.courseOfferings.forEach(courseOfferingItem => {
+        if (item.index === courseOfferingItem.index) {
+          courseInfo = JSON.parse(JSON.stringify(courseOfferingItem));
+        }
+      });
+      if (courseInfo !== null) {
+        console.log('refresh the note!', courseInfo);
+        this.editCourseOfferingData = {
+          courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
+        };
+        let noteInfo = {
+          isRegistrarNote: true,
+          deltaId: courseInfo.delta.id,
+          hasDelta: true,
+          action: DELTA_ACTION_UPDATE,
+          text: item.text,
+          iChairId: courseInfo.hasIChair ? courseInfo.ichair.course_offering_id : null,
+          bannerId: courseInfo.hasBanner ? courseInfo.banner.course_offering_id : null,
+          hasIChair: courseInfo.hasIChair, // but doesn't matter
+          hasBanner: courseInfo.hasBanner, // but doesn't matter
+          includeRoomComparisons: courseInfo.includeRoomComparisons,
+          semesterId: courseInfo.semesterId
+        }
+        this.createUpdateDeleteNoteForRegistrarOrSelf(noteInfo);
+      } else {
+        console.log('ERROR!  Could not refresh the note....');
+      }
     },
 
     launchSearchOtherCoursesDialog() {
@@ -1881,7 +1939,6 @@ var app = new Vue({
                 courseOfferingItem.ichair.instructors = jsonResponse.instructors;
                 courseOfferingItem.ichair.instructors_detail = jsonResponse.instructors_detail;
                 if (jsonResponse.has_delta) {
-                  //WORKING HERE: Cannot read properties of null (reading 'request_update_instructors'
                   courseOfferingItem.instructorsMatch = jsonResponse.instructors_match || jsonResponse.delta.request_update_instructors;
                 } else {
                   courseOfferingItem.instructorsMatch = jsonResponse.instructors_match;
@@ -2050,7 +2107,7 @@ var app = new Vue({
 
     deleteNoteForRegistrarOrSelf(courseInfo, isRegistrarNote) {
       // used for deleting a note for the registrar or self on an existing delta object
-      console.log('delete the note!');
+      console.log('delete the note!', courseInfo);
       this.editCourseOfferingData = {
         courseOfferingIndex: courseInfo.index,//useful for fetching the course offering item back later on, in order to make changes
       };
@@ -2058,7 +2115,7 @@ var app = new Vue({
         isRegistrarNote: isRegistrarNote,
         deltaId: courseInfo.delta.id,
         hasDelta: true,
-        action: 'delete',
+        action: DELTA_ACTION_DELETE,
         text: null, // unimportant, since the note is going to be deleted anyways
         iChairId: courseInfo.hasIChair ? courseInfo.ichair.course_offering_id : null,
         bannerId: courseInfo.hasBanner ? courseInfo.banner.course_offering_id : null,
@@ -3347,7 +3404,46 @@ var app = new Vue({
     toggle(col) {
       let tempSelected = this.headers.find(h => h.value === col).selected;
       this.headers.find(h => h.value === col).selected = !tempSelected;
+    },
+
+    registrarNoteIsStale(delta) {
+      if (!delta.registrar_comment_exists) {
+        return false;
+      } else if (this.noPropertiesStagedForUpdate(delta)) {
+        // there is a registrar comment, but no other properties are staged for an update at this point;
+        // in this situation, users can become confused, because there could be an old note (from a previous edit, perhaps)
+        // that they don't recall writing, and now it will end up on the schedule edits pdf....
+        console.log('!!! possibly have a stale note....', delta);
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now
+        let now = Date.now()
+        //delta = DeltaCourseOffering.objects.get(pk=co["delta"]["id"])
+        // https://stackoverflow.com/questions/35300460/get-date-from-a-django-datetimefield
+        //date_diff = now-delta.updated_at.date()
+        let updatedAt = Date.parse(delta.updated_at);
+        let oneDay = 24*60*60*1000; //one day in milliseconds
+        console.log('now:', now);
+        console.log('updatedAt:', updatedAt);
+        let dateDiffDays = (now-updatedAt)/oneDay;
+        console.log('diff:', dateDiffDays);
+        return dateDiffDays >= 4;
+      } else {
+        return false;
+      }
+    },
+
+    noPropertiesStagedForUpdate(delta) {
+      //returns true if there are no properties that are staged for updates
+      return (delta.meeting_times === null) &&
+          (delta.instructors === null) &&
+          (delta.semester_fraction === null) &&
+          (delta.max_enrollment === null) &&
+          (delta.delivery_method === null) &&
+          (delta.public_comments === null) &&
+          (delta.public_comments_summary === null)
     }
+    
+
+
   },
   // https://stackoverflow.com/questions/44309464/hide-table-column-with-vue-js
   computed: {
@@ -3368,6 +3464,29 @@ var app = new Vue({
         ...item
       }));
       return indexedCourseOfferings.filter(item => !item.hidden);
+    },
+    staleMessages() {
+      let messageArray = [];
+      this.courseOfferings.forEach((courseOfferingItem) => {
+        if (courseOfferingItem.delta !== null) {
+          console.log('delta!', courseOfferingItem.delta);
+          // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#the_epoch_timestamps_and_invalid_date
+          let updatedDate = new Date(Date.parse(courseOfferingItem.delta.updated_at));
+          if (this.registrarNoteIsStale(courseOfferingItem.delta)) {
+            messageArray.push({
+              id: courseOfferingItem.delta.id,
+              deltaUpdatedAt: updatedDate.toDateString(),
+              text: courseOfferingItem.delta.registrar_comment,
+              index: courseOfferingItem.index,
+              crn: courseOfferingItem.crn,
+              course: courseOfferingItem.course, 
+              courseTitle: courseOfferingItem.name,
+              semester: courseOfferingItem.semester
+            });
+          }
+        }
+      });
+      return messageArray;
     }
   },
   mounted: function() {
