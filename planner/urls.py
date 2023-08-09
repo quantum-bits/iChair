@@ -1,11 +1,16 @@
 from django.conf.urls import include, url
 
 from planner import views as myapp_views
-from planner import api_views
+from planner import api_views, api_viewsets
 
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from django.urls import reverse_lazy
+
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register(r'api/users', api_viewsets.UserViewSet)
 
 urlpatterns = [
     #'planner.views',
@@ -122,3 +127,5 @@ urlpatterns = [
          name='auth_password_reset_done'),
 
 ]
+
+urlpatterns += router.urls

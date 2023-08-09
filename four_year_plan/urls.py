@@ -1,4 +1,5 @@
 from django.conf.urls import include, url
+from django.urls import path
 
 from django.contrib import admin
 
@@ -16,4 +17,10 @@ urlpatterns = [#'',# is '' OK?
 
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
     url(r'^admin/', admin.site.urls),
+]
+
+# the following is to allow login/logout from the browsable api
+urlpatterns += [
+    url(r'^api-auth/', include('rest_framework.urls',
+                               namespace='rest_framework')),
 ]

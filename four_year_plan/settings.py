@@ -1,7 +1,7 @@
 # Django settings for iGrad project.
 
 from .run_mode import RunMode
-from .secret import SECRET_KEY, BANNER_DB, ICHAIR_DB
+from .secret import SECRET_KEY, BANNER_DB, ICHAIR_DB, PROD_CORS_ALLOWED_ORIGINS
 from django.conf import global_settings
 import os.path
 
@@ -155,6 +155,7 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -178,6 +179,17 @@ ROOT_URLCONF = 'four_year_plan.urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'four_year_plan.wsgi.application'
+
+if run_mode.dev:
+    CORS_ALLOWED_ORIGINS = [
+        "http://127.0.0.1:3000",
+    ]
+elif run_mode.prod:
+    CORS_ALLOWED_ORIGINS = PROD_CORS_ALLOWED_ORIGINS
+else:
+    raise RuntimeError("CORS allowed origins not configured correctly.")
+
+print('CORS_ALLOWED_ORIGINS', CORS_ALLOWED_ORIGINS)
 
 #TEMPLATE_DIRS = (
 #    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -220,7 +232,18 @@ INSTALLED_APPS = (
     'planner',
     'banner',
     'django_crontab',
+    'rest_framework',
+    'corsheaders',
 )
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
+
 
 CRONJOBS = [
     ('0 4 * * *', 'django.core.management.call_command', ['warehouse'], {}, '>> warehouse.log')
