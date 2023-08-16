@@ -1,8 +1,8 @@
 from rest_framework import viewsets
 
-from .serializers import UserSerializer
+from .serializers import DeltaCourseOfferingSerializer, RoomSerializer
 
-from .models import User
+from .models import DeltaCourseOffering, Room
 
 # authentication, etc., code taken from: https://blog.devgenius.io/django-rest-knox-token-authentication-f134760a4a7b
 #from rest_framework import generics, authentication, permissions
@@ -17,12 +17,22 @@ from .models import User
 #from knox.auth import TokenAuthentication
 
 # local apps import
-from .serializers import UserSerializer
 
 #from rest_framework.authentication import SessionAuthentication
 
 # https://www.django-rest-framework.org
 # ViewSets define the view behavior.
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+
+class DeltaCourseOfferingViewSet(viewsets.ModelViewSet):
+    queryset = DeltaCourseOffering.objects.all()
+    serializer_class = DeltaCourseOfferingSerializer
+
+class RoomViewSet(viewsets.ModelViewSet):
+    # https://stackoverflow.com/questions/844556/how-to-filter-empty-or-null-names-in-a-queryset
+    queryset = Room.objects.filter(inactive_after__isnull=True)
+    serializer_class = RoomSerializer
+
+

@@ -189,7 +189,6 @@ elif run_mode.prod:
 else:
     raise RuntimeError("CORS allowed origins not configured correctly.")
 
-print('CORS_ALLOWED_ORIGINS', CORS_ALLOWED_ORIGINS)
 
 #TEMPLATE_DIRS = (
 #    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".

@@ -10,7 +10,9 @@ from django.urls import reverse_lazy
 from rest_framework import routers
 
 router = routers.DefaultRouter()
-router.register(r'api/users', api_viewsets.UserViewSet)
+#router.register(r'api/users', api_viewsets.UserViewSet)
+router.register(r'api/delta-course-offerings', api_viewsets.DeltaCourseOfferingViewSet)
+router.register(r'api/rooms', api_viewsets.RoomViewSet)
 
 urlpatterns = [
     #'planner.views',
