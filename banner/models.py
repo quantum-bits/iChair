@@ -84,6 +84,7 @@ class FacultyMember(StampedModel):
     last_name = models.CharField(max_length=60)
     formal_first_name = models.CharField(max_length=60, blank=True, null=True)
     middle_name = models.CharField(max_length=60, blank=True, null=True)
+    external_system_id = models.IntegerField(default=None, blank=True, null=True)
     
     def __str__(self):
         return "{0} {1}".format(self.first_name, self.last_name)

@@ -303,7 +303,8 @@ class FacultyMember(Person):
     department = models.ForeignKey(Department, related_name='faculty', on_delete=models.CASCADE)
     rank = models.CharField(max_length=8, choices=RANK_CHOICES)
     inactive_starting = models.ForeignKey(AcademicYear, related_name='faculty', blank=True, null=True, on_delete=models.SET_NULL)
-    
+    external_system_id = models.IntegerField(default=None, blank=True, null=True)
+
     class Meta:
         ordering = ['last_name','first_name']
 

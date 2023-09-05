@@ -616,7 +616,8 @@ class Command(BaseCommand):
                             first_name = co_instructor.first_name,
                             formal_first_name = co_instructor.formal_first_name,
                             middle_name = co_instructor.middle_name,
-                            pidm = co_instructor.pidm)
+                            pidm = co_instructor.pidm,
+                            external_system_id = co_instructor.external_system_id)
                         instructor.save()
                         #print('created instructor.... ')
                     

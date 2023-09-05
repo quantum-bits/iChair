@@ -70,7 +70,9 @@ class CourseOfferingSerializer(serializers.HyperlinkedModelSerializer):
                     "id": instructor.id,
                     "last_name": instructor.instructor.last_name,
                     "first_name": instructor.instructor.first_name,
-                    "is_primary": instructor.is_primary
+                    "is_primary": instructor.is_primary,
+                    "pidm": instructor.instructor.pidm,
+                    "external_system_id": instructor.instructor.external_system_id
                     } for instructor in obj.offering_instructors.all()]
 
     def get_scheduled_classes(self, obj):
