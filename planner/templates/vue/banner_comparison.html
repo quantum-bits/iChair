@@ -117,7 +117,10 @@
                 max-width="900"
                 scrollable
             >
-                <!--WORKING HERE-->
+                <!--
+                    WORKING HERE
+                    TODO: add ability to convert a note to the registrar to a note to self
+                -->
                 <v-card>
                     <v-card-title class="headline grey lighten-2" primary-title>
                         Some course sections appear to have old notes to the registrar
@@ -131,7 +134,13 @@
                                     These notes will show up when you generate a pdf for the registrar, possibly leading to confusion.
                                 </v-flex>
                                 <v-flex xs12>
-                                    For each note you can choose to <strong>delete it</strong>, <strong>keep it</strong> as is or <strong>convert it</strong> to a "note to self" (which won't be added to your schedule edits pdf).
+                                    For each note you can choose to <strong>delete it</strong> or
+                                    <strong>keep it</strong> as is.
+                                    <!--
+                                    For each note you can choose to <strong>delete it</strong>, 
+                                    <strong>keep it</strong> as is or <strong>convert it</strong> 
+                                    to a "note to self" (which won't be added to your schedule edits pdf).
+                                    -->
                                 </v-flex>
                             </v-layout>
                         </v-container>
@@ -173,6 +182,7 @@
                                                 </template>
                                                 <span>Keep this note for the registrar -- it's still relevant</span>
                                             </v-tooltip>
+                                            <!--
                                             <v-tooltip bottom>
                                                 <template v-slot:activator="{ on }">
                                                     <v-icon class="include-pointer" color="primary"
@@ -183,6 +193,7 @@
                                                 </template>
                                                 <span>Convert this note to a note to self</span>
                                             </v-tooltip>
+                                            -->
                                         </td>
                                     </tr>
                                 </template>
