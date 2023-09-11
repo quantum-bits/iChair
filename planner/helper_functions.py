@@ -130,12 +130,12 @@ def start_end_time_string(start_hour,start_minute,end_hour,end_minute):
 # given starting and ending data, returns a string such as '9-9:50' or '9:15-10:30'
 
     time = str(start_hour)
-    if 0<start_minute < 9:
+    if 0<start_minute <= 9:
         time = time+':0'+str(start_minute)
     elif start_minute>9:
         time = time+':'+str(start_minute)
     time = time+'-'+str(end_hour)
-    if 0<end_minute < 9:
+    if 0<end_minute <= 9:
         time = time+':0'+str(end_minute)
     elif end_minute > 9:
         time = time+':'+str(end_minute)
