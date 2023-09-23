@@ -59,11 +59,12 @@ class CourseOfferingSerializer(serializers.HyperlinkedModelSerializer):
     delivery_method = DeliveryMethodSerializer()
     instructors = serializers.SerializerMethodField()
     scheduled_classes = serializers.SerializerMethodField()
+    offering_comments = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseOffering
         fields = ['course', 'crn', 'max_enrollment', 'semester', 'semester_fraction', \
-            'delivery_method', 'instructors', 'scheduled_classes']
+            'delivery_method', 'instructors', 'scheduled_classes', 'offering_comments']
 
     def get_instructors(self, obj):
         return [{
@@ -87,6 +88,14 @@ class CourseOfferingSerializer(serializers.HyperlinkedModelSerializer):
                                 "room_number": room.number
                                 } for room in sc.rooms.all()]
                     } for sc in obj.scheduled_classes.all()]
+
+    def get_offering_comments(self, obj):
+        return [{
+                    "id": pc.id,
+                    "text": pc.text,
+                    "sequence_number": pc.sequence_number
+                    } for pc in obj.offering_comments.all()]
+
 
 # https://www.django-rest-framework.org/api-guide/serializers/#dealing-with-nested-objects
 # https://stackoverflow.com/questions/20550598/django-rest-framework-could-not-resolve-url-for-hyperlinked-relationship-using
