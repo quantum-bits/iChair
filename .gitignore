@@ -10,3 +10,4 @@ static_root/*
 venv/
 .idea/
 .vscode/
+pdf/

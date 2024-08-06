@@ -182,7 +182,8 @@ WSGI_APPLICATION = 'four_year_plan.wsgi.application'
 
 if run_mode.dev:
     CORS_ALLOWED_ORIGINS = [
-        "http://127.0.0.1:3000",
+        #"http://127.0.0.1:3000",
+        "http://localhost:3000",
     ]
 elif run_mode.prod:
     CORS_ALLOWED_ORIGINS = PROD_CORS_ALLOWED_ORIGINS
