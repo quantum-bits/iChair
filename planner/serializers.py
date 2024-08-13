@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 #from django.contrib.auth.models import User
-from .models import DeltaCourseOffering, Semester, CourseOffering, Course, DeliveryMethod, ScheduledClass, Room
+from .models import DeltaCourseOffering, Semester, CourseOffering, Course, \
+    DeliveryMethod, ScheduledClass, Room, Department
 #from django.contrib.auth import  authenticate
 
 # https://www.django-rest-framework.org
@@ -123,3 +124,10 @@ class DeltaCourseOfferingSerializer(serializers.HyperlinkedModelSerializer):
             'update_meeting_times', 'update_instructors', 'update_semester_fraction', 'update_max_enrollment', \
             'update_public_comments', 'update_delivery_method', 'id']
 
+# https://www.django-rest-framework.org/api-guide/serializers/#dealing-with-nested-objects
+# https://stackoverflow.com/questions/20550598/django-rest-framework-could-not-resolve-url-for-hyperlinked-relationship-using
+class DepartmentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Department
+        fields = ['id', 'abbrev', 'name', 'is_active']
