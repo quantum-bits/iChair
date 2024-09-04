@@ -52,6 +52,20 @@
 
    <h3>If the course does not exist in the above list,<br>
       go ahead and create the course:</h3>
+
+   {% else %}
+   <h3>
+      Are you sure that you want to update this course's properties?
+   </h3>
+   <div class="alert alert-student-info">  
+      <div>  
+         Updating a course's properties changes them for all past and future
+         offerings of the course.  If you need a course with, for example, a different number
+         of credit hours or title, you may want to create a new course instead.<br><br>
+         You can exit this page by using your browser's back button.
+      </div> 
+   </div>
+
    {% endif %}
 
 

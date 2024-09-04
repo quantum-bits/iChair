@@ -27,7 +27,25 @@
 {% if not printer_friendly %}
 <!-- spinner help from W3schools: https://www.w3schools.com/howto/howto_css_loader.asp -->
 
+<!-- https://www.w3schools.com/css/css_border_color.asp -->
 <style>
+
+.input-text-box {
+	display: inline-block;
+	height: 20px;
+	padding: 4px 6px;
+	margin-bottom: 2px;
+	font-size: 14px;
+	line-height: 20px;
+	color: #888888;
+	vertical-align: middle;
+	border-radius: 4px;
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	width: 500px;
+	border-color: #555555;
+	border-width: 1px;
+}
+
 .alert-student-info {
 	width: 100%!important;
 }
@@ -301,8 +319,15 @@
 
 {% endif %}
 
+
+<div class="span12" style="margin-left: 0px;">
+	<!-- https://developer.mozilla.org/en-US/docs/Web/API/Element/input_event -->
+	<input class="input-text-box" placeholder="Search (e.g., 16142, PHY 311, Smith, Calculus II or Reade 240)" name="search" />
+	<p id="search-string"></p>
+</div>
+
 <div class="content-center">
-  
+	
 <table class="table table-striped table-bordered table-hover">
 	     <thead>
 	       <tr>
@@ -341,7 +366,7 @@
 	     </thead>
 	     <tbody>
 {% for course in registrar_data_list %}
-    <tr>
+    <tr id="{{course.course_offering_id}}">
       <td> 
 	{% if not printer_friendly and can_edit %}
 	  <a href="{% url 'update_semester_for_course_offering' course.course_offering_id %}?next={{ request.path|urlencode }}">{{course.semester}} - {{course.semester_fraction}}</a>
@@ -354,15 +379,10 @@
 	   		{{course.crn}}
 	   {% endif %}
 	  </td>
-      <td>
-	{% if not printer_friendly and can_edit and course.can_edit %}
-	<a href="{% url 'update_course' course.course_id %}?next={{ request.path|urlencode }}">{{course.number}}</a>
-	   {% else %} {{course.number}} {% endif %}
-      </td>
+      <td>{{course.number}}</td>
       <td title="{{course.banner_titles}}"> {{course.name}}</td>
-      <td style="text-align: center"> {% if not printer_friendly and can_edit and course.can_edit%}
-	<a href="{% url 'update_course' course.course_id %}?next={{ request.path|urlencode }}">{{course.credit_hours}}</a>
-           {% else %} {{course.credit_hours}} {% endif %}
+      <td style="text-align: center"> 
+				{{course.credit_hours}}
       </td>
       <td style="text-align: center"> {% if not printer_friendly and can_edit %}
 	<a href="{% url 'update_course_offering' course.course_offering_id 0 %}?next={{ request.path|urlencode }}">{{course.cap}}</a>
@@ -439,7 +459,6 @@
 
 function unhideErrorMessages() {
 	document.getElementById('error-messages').style.display = 'block';
-	console.log('got here');
 	document.getElementById('message-about-errors').style.display = 'none';
 };
 
@@ -457,6 +476,83 @@ function launchSpinner() {
 }
 
 	
+</script>
+
+<script>
+	var courseOfferingData = {{json_registrar_data_list|safe}};
+	// https://developer.mozilla.org/en-US/docs/Web/API/Element/input_event
+	const input = document.querySelector("input");
+	input.addEventListener("input", updateValue);
+
+	// the following function is borrowed from purchase tracker....
+	function stringInList(search, searchStringArray) {
+		let stringMatches = false;
+		searchStringArray.forEach((element) => {
+			if (!((element === null) || (element === ''))) {
+				if (element.toLowerCase().indexOf(search) > -1) {
+					stringMatches = true;
+				}
+			}
+		});
+		return stringMatches;
+	}
+
+	function updateValue(e) {
+		let search;
+		let inputVal = e.target.value;
+		if ((inputVal === null) || (typeof inputVal === 'undefined')) {
+			search = '';
+		} else {
+			search = inputVal.toLowerCase();
+		}
+		// https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_split4
+    // the following splits the search string and keeps the parts that are separated by one or more spaces
+    let searchTerms = search.split(" ").filter((newString) => newString!=="");
+
+		courseOfferingData.forEach(courseOffering => {
+			// https://stackoverflow.com/questions/47573098/how-do-i-search-through-multiple-fields-in-vue-js-2
+			let searchStringArray = [
+				// https://www.w3schools.com/jsref/jsref_tostring_number.asp
+				courseOffering.semester.toLowerCase()
+			];
+			if (courseOffering.crn !== null) {
+				searchStringArray.push(courseOffering.crn);
+			}
+			courseOffering.instructor_list.forEach(instructor => {
+				let instructorList = instructor.split(" ").filter((newString) => newString!=="");
+				instructorList.forEach(instructorElement => {
+					searchStringArray.push(instructorElement.toLowerCase());
+				});
+			});
+			courseOffering.room_list.forEach(room => {
+				searchStringArray.push(room.toLowerCase());
+			});
+			let courseNumberArray = courseOffering.number.split(" ").filter((newString) => newString!=="");
+			courseNumberArray.forEach(courseNumber => {
+				searchStringArray.push(courseNumber.toLowerCase());
+			});
+			let courseNameArray = courseOffering.name.split(" ").filter((newString) => newString!=="");
+			courseNameArray.forEach(courseName => {
+				searchStringArray.push(courseName.toLowerCase());
+			});
+
+			let allSearchTermsInRequestData = true;
+			searchTerms.forEach((searchTerm) => {
+				if (!stringInList(searchTerm, searchStringArray)) {
+					allSearchTermsInRequestData = false;
+				}
+			});
+
+			// https://stackoverflow.com/questions/6242976/javascript-hide-show-element
+			// https://stackoverflow.com/questions/19797064/show-hide-table-rows-using-javascript-classes
+			let courseOfferingRow = document.getElementById(courseOffering.course_offering_id);
+			if (allSearchTermsInRequestData) {
+				courseOfferingRow.style.display = 'table-row';
+			} else {
+				courseOfferingRow.style.display = 'none';
+			}
+		});
+	}
 </script>
 
 <script>

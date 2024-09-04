@@ -1,0 +1,30 @@
+from rest_framework import serializers
+
+#from django.contrib.auth.models import User
+from .models import SemesterCodeToImport
+#from django.contrib.auth import  authenticate
+
+class SubAccountSerializer(serializers.ModelSerializer):
+    year_text = serializers.SerializerMethodField()
+    owners = serializers.SerializerMethodField()
+    number_ebls = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SubAccount
+        fields = ('id', 'name', 'abbrev', 'amount_available', 'fiscal_year', 'year_text',\
+            'owners', 'number_ebls', 'is_available_via_api', 'organization',)
+
+
+class FiscalYearSubAccountView(generics.ListAPIView):
+    serializer_class = SubAccountSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    lookup_url_kwarg = "fyid"
+
+    def get_queryset(self):
+        # https://stackoverflow.com/questions/21292646/capture-parameters-in-django-rest-framework
+        # assumes that users each have exactly ONE UserPreferences object
+        user = self.request.user
+        user_preferences = user.user_preferences.all()[0]
+        organization = user_preferences.organization_to_view
+        fyid = self.kwargs.get(self.lookup_url_kwarg)
+        return SubAccount.objects.filter(Q(fiscal_year__id=fyid)&Q(organization = organization))

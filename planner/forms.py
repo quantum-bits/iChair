@@ -582,6 +582,7 @@ class UpdateFacultyMemberForm(forms.ModelForm):
             print('has a pidm!')
             self.fields.pop('first_name')
             self.fields.pop('last_name')
+        self.fields['inactive_starting'].queryset = AcademicYear.objects.filter(department = None)
 
     class Meta:
         model = FacultyMember

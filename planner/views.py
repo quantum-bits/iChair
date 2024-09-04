@@ -4005,6 +4005,7 @@ def registrar_schedule(request, printer_friendly_flag, check_conflicts_flag='0')
                 )
 
     context={
+        'json_registrar_data_list': simplejson.dumps(registrar_data_list),
         'registrar_data_list':registrar_data_list, 
         'department': department, 
         'check_conflicts': check_conflicts,
@@ -4548,7 +4549,8 @@ def copy_course_offering(request, id):
                                                 semester_fraction = co.semester_fraction,
                                                 load_available = co.load_available,
                                                 max_enrollment = co.max_enrollment,
-                                                comment = co.comment
+                                                comment = co.comment,
+                                                delivery_method = co.delivery_method
                                                 )
         new_co.save()
 

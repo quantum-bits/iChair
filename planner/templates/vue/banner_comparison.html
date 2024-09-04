@@ -1744,13 +1744,12 @@
                                                             <span
                                                                 v-if="item.delta.semester_fraction.was == semesterFractions.first_half">
                                                                 First Half
-                                                                </<a>
-                                                                <span
-                                                                    v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
-                                                                    Second Half
-                                                                </span>
                                                             </span>
-
+                                                            <span
+                                                                v-if="item.delta.semester_fraction.was == semesterFractions.second_half">
+                                                                Second Half
+                                                            </span>
+                                                        </span>
                                                     </div>
                                                     <div>
                                                         <strong
@@ -1769,7 +1768,6 @@
                                                         <span
                                                             v-if="item.delta.semester_fraction.change_to == semesterFractions.second_half">
                                                             Second Half
-                                                        </span>
                                                         </span>
                                                     </div>
                                                 </td>

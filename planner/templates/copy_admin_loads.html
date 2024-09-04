@@ -107,6 +107,12 @@
 </div>
 
  <script>
+    // https://overtag.dk/v2/blog/duplicate-form-submissions-and-how-to-handle-them-in-django/
+    $(document).ready(function() {
+      $('form').submit( function(event) {
+          $(this).find(':submit').attr('disabled', true);
+      });
+    });
   $(window).load(function(){
   $("#nav-deptloadsummary").addClass("current");
   $('.page-name').find('h1').replaceWith('<h1>Copy Admin Loads</h1><h2>from {{academic_year_copy_from}} to {{academic_year_copy_to}}</h2>');
