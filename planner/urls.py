@@ -1,8 +1,8 @@
 from django.conf.urls import include, url
 
 from planner import views as myapp_views
-from planner import api_views, api_viewsets
-from banner import api_viewsets as banner_api_viewsets
+from planner import api_views#add-back , api_viewsets
+# add-back from banner import api_viewsets as banner_api_viewsets
 
 from django.contrib.auth import views as auth_views
 from django.urls import path
@@ -12,8 +12,8 @@ from rest_framework import routers
 
 router = routers.DefaultRouter()
 #router.register(r'api/users', api_viewsets.UserViewSet)
-router.register(r'api/delta-course-offerings', api_viewsets.DeltaCourseOfferingViewSet)
-router.register(r'api/rooms', api_viewsets.RoomViewSet)
+#add-back router.register(r'api/delta-course-offerings', api_viewsets.DeltaCourseOfferingViewSet)
+#add-back router.register(r'api/rooms', api_viewsets.RoomViewSet)
 
 urlpatterns = [
     #'planner.views',
@@ -128,9 +128,9 @@ urlpatterns = [
     path('password/reset/done/',
          auth_views.PasswordResetDoneView.as_view(),
          name='auth_password_reset_done'),
-    path(r'api/semester-code-to-imports/', banner_api_viewsets.SemesterCodeToImportView.as_view(), name='semester_code_to_imports'),
-    path('api/departments/', api_viewsets.DepartmentView.as_view(), name='departments'),
-    path('api/filtered-delta-course-offerings/', api_viewsets.DeltaCourseOfferingList.as_view(), name='delta_course_offerings'),
+    #add-back path(r'api/semester-code-to-imports/', banner_api_viewsets.SemesterCodeToImportView.as_view(), name='semester_code_to_imports'),
+    #add-back path('api/departments/', api_viewsets.DepartmentView.as_view(), name='departments'),
+    #add-back path('api/filtered-delta-course-offerings/', api_viewsets.DeltaCourseOfferingList.as_view(), name='delta_course_offerings'),
     
 ]
 
