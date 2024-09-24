@@ -61,7 +61,7 @@ class DeltaCourseOfferingList(generics.ListAPIView):
             BannerCourseOffering.objects.filter(course__subject__id__in=banner_subject_ids)\
             .filter(term_code=semester.banner_code)]
         
-        queryset_by_crns = DeltaCourseOffering.objects.filter(crn__in=crns)
+        queryset_by_crns = DeltaCourseOffering.objects.filter(crn__in=crns).filter(semester__id=semester_id)
         #print('crns:', crns)
         #print(' ')
         #print('queryset:', queryset)
