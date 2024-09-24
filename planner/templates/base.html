@@ -142,6 +142,7 @@ div.page-name h1 {
 		<li><a href="{% url 'export_summary_data' %}" download>Export Summary Data</a></li>
 		<li><a href="{% url 'search_form' %}">Search by Course Name</a></li>
 		<li><a href="{% url 'search_form_time' %}">Search by Course Time</a></li>
+		<li><a href="{% url 'search_form_time' 0 %}">Search Courses by Department</a></li>
 	      </ul>
 	    </li>
 	    <li title = "View the loads assigned to faculty members" id="nav-deptloadsummary"><a href="{% url 'department_load_summary' %}">Faculty Loads</a><i></i></li>

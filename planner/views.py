@@ -5271,10 +5271,13 @@ def search_form(request):
         return render(request, 'search_form.html', context)
 
 @login_required
-def search_form_time(request):
+def search_form_time(request, restrict_by_time_interval='1'):
     """
     Allows the user to search for offerings of one or more courses.
     """
+    # restrict_by_time_interval == 0 => don't restrict the search by day of week and time of day
+    # restrict_by_time_interval == 1 => restrict the search by day of week and time of day
+
     close_all_divs(request)
     user = request.user
 # assumes that users each have exactly ONE UserPreferences object
@@ -5282,6 +5285,9 @@ def search_form_time(request):
     department = user_preferences.department_to_view
     academic_year = user_preferences.academic_year_to_view
     faculty_to_view = user_preferences.faculty_to_view.all()
+
+    restrict_by_time_interval = int(restrict_by_time_interval)==1
+    print('restrict by time interval: ', restrict_by_time_interval)
 
     request.session["return_to_page"] = "/planner/search-form-time/"
 
@@ -5320,12 +5326,23 @@ def search_form_time(request):
                                   'selected': selected})
     
     #print(semester_list)
+    if restrict_by_time_interval:
+        page_title = 'Search for Course(s) by Time'
+    else:
+        page_title = 'Search for Course(s) by Department'
 
     if request.method == 'POST':
         depts_for_search= request.POST.getlist('depts_for_search')
-        start_hour_string= request.POST.getlist('start_time')[0]
-        time_interval= request.POST.getlist('time_interval')[0]
-        days_for_search = request.POST.getlist('days_for_search')
+        if restrict_by_time_interval:
+            start_hour_string= request.POST.getlist('start_time')[0]
+            time_interval= request.POST.getlist('time_interval')[0]
+            days_for_search = request.POST.getlist('days_for_search')
+            #print(start_hour_string, time_interval, days_for_search)
+        else:
+            start_hour_string='7' # search starts at 7:00
+            time_interval='1019'# search ends at 23:59
+            days_for_search = ['0', '1', '2', '3', '4']
+            #print(start_hour_string, time_interval, days_for_search)
         semester_id = int(request.POST.getlist('semester')[0])
         semester = Semester.objects.get(pk = semester_id)
         #year_for_search = semester.year.begin_on.year
@@ -5344,6 +5361,7 @@ def search_form_time(request):
 
         start_string = start_hour_string+':00'
         end_string = str(int(start_hour_string)+num_hours)+':'+str(num_minutes)
+        #print(start_string, end_string)
 
         course_offering_list=[]
         for dept_id in depts_for_search:
@@ -5395,7 +5413,7 @@ def search_form_time(request):
         
         search_details = 'courses in '+semester.__str__()+' that occur between '+start_string+' and '+end_string+' on the following day(s): '+day_string
         context = {'search_term': search_details, 'course_offering_list':course_offering_list,
-                   'next':'search-form-time'}
+                   'next':'search-form-time', 'restrict_by_time_interval': restrict_by_time_interval}
         return render(request, 'search_results.html', context)
     else:
         start_time_list=[]
@@ -5405,7 +5423,9 @@ def search_form_time(request):
         context = {'academic_year': academic_year, 
                    'semester_list':semester_list,
                    'start_time_list':start_time_list,
-                   'dept_list':all_depts_list}
+                   'dept_list':all_depts_list,
+                   'restrict_by_time_interval': restrict_by_time_interval,
+                   'page_title': page_title}
         return render(request, 'search_form_time.html', context)
 
 @login_required

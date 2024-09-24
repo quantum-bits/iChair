@@ -99,6 +99,7 @@ urlpatterns = [
     url(r'^exportsummarydata/$', myapp_views.export_summary_data, name='export_summary_data'),
     url(r'^search-form/$', myapp_views.search_form, name='search_form'),
     url(r'^search-form-time/$', myapp_views.search_form_time, name='search_form_time'),
+    url(r'^search-form-time/(\d+)/$', myapp_views.search_form_time, name='search_form_time'),
     url(r'^gettingstarted/$', myapp_views.getting_started, name='getting_started'),
     url(r'^divtracker/(\d+)/$', myapp_views.open_close_div_tracker, name='open_close_div_tracker'),
     url(r'^alertregister/$', myapp_views.alert_register, name='alert_register'),
