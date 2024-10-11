@@ -274,6 +274,11 @@ class Command(BaseCommand):
                         part_of_term_OK = False
                         number_part_of_term_not_OK += 1
                         print('  >>> This is an online June/July course section and is excluded from Schedule Edits (for now).')
+                    elif (co.part_of_term == 'WS'): # 'WS' is used for online courses that run mid-December to the end of January (according to the registrar's office);
+                        # at this point, we are simply ignoring these course offerings and not using them for schedule edits
+                        part_of_term_OK = False
+                        number_part_of_term_not_OK += 1
+                        print('  >>> This is an online mid-December to end-of-January course section and is excluded from Schedule Edits (for now).')
                     else:
                         # this exits the course_offerings loop....
                         number_errors = number_errors +1
@@ -787,7 +792,7 @@ class Command(BaseCommand):
                     print(mtg)
 
             print(' ')
-            print('Number of course offerings being offered as online classes during June/July (these are being ignored): ', number_part_of_term_not_OK)
+            print('Number of course offerings being offered as online classes during June/July or December/January (these are being ignored): ', number_part_of_term_not_OK)
             print(' ')
             print('total number of errors encountered: ', number_errors)
 
@@ -1012,7 +1017,7 @@ Number of meetings scheduled on Saturday or Sunday: {}
     """.format(context["number_non_M_F_meetings"])
 
     plaintext_message += """
-Number of course offerings being offered as online classes during June/July (these are being ignored): {}
+Number of course offerings being offered as online classes during June/July or December/January (these are being ignored): {}
     """.format(context["number_part_of_term_not_OK"])
 
     plaintext_message += """
