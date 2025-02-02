@@ -184,6 +184,29 @@ def profile(request):
     return render(request, 'profile.html', context)
 
 @login_required
+def view_excel(request, uuid_string):
+    print('value: ', uuid_string)
+    print('type: ', type(uuid_string))
+
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    department = user_preferences.department_to_view
+    department_name = department.name
+
+    # https://www.programiz.com/python-programming/datetime/strftime
+    file_name_time_string = datetime.datetime.now().strftime("%m-%d-%Y-%H%M%S")
+    # https://stackoverflow.com/questions/1007481/how-do-i-replace-whitespaces-with-underscore-and-vice-versa
+    file_name = "ScheduleEdits-"+department_name.replace(" ", "-")+"-"+file_name_time_string+".xls"
+
+    # https://stackoverflow.com/questions/11779246/how-to-show-a-pdf-file-in-a-django-view
+    try:
+        # can put it in the user's downloads as follows; could also make a name that has a time stamp or something....(look in api_views.py for a way to do that)
+        return FileResponse(open('excel/'+uuid_string+'.xls', 'rb'), as_attachment=True, filename=file_name)
+        #return FileResponse(open('pdf/'+uuid_string+'.pdf', 'rb'), content_type='application/pdf')
+    except FileNotFoundError:
+        raise Http404()
+
+@login_required
 def view_pdf(request, uuid_string):
     print('value: ', uuid_string)
     print('type: ', type(uuid_string))
@@ -4036,7 +4059,7 @@ def compare_with_banner(request):
 
     user = request.user
     user_preferences = user.user_preferences.all()[0]
-    if (user_preferences.permission_level == UserPreferences.VIEW_ONLY) or (user_preferences.permission_level == UserPreferences.SUPER):
+    if (user_preferences.permission_level == UserPreferences.VIEW_ONLY):# or (user_preferences.permission_level == UserPreferences.SUPER):
         return redirect("department_load_summary")
 
     department = user_preferences.department_to_view
@@ -4045,7 +4068,8 @@ def compare_with_banner(request):
 
     data = {
         'departmentId': department.id,
-        'yearId': user_preferences.academic_year_to_view.id
+        'yearId': user_preferences.academic_year_to_view.id,
+        'isSuper': user_preferences.permission_level == UserPreferences.SUPER
     }
 
     json_data = json.dumps(data)

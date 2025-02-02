@@ -76,7 +76,9 @@ urlpatterns = [
     url(r'^ajax/copy-course-offering-data-to-ichair/$', api_views.copy_course_offering_data_to_ichair, name='copy_course_offering_data_to_ichair'),
     url(r'^ajax/update-instructors-for-course-offering/$', api_views.update_instructors_for_course_offering, name='update_instructors_for_course_offering'),
     url(r'^ajax/generate-pdf/$', api_views.generate_pdf, name='generate_pdf'),
+    url(r'^ajax/generate-excel/$', api_views.generate_excel, name='generate_excel'),
     url(r'^scheduleeditspdf/(\d+)/$', myapp_views.view_pdf, name='view_pdf'),
+    url(r'^scheduleeditsexcel/(\d+)/$', myapp_views.view_excel, name='view_excel'),
 
     url(r'^copycourses/(\d+)/(\d+)/$', myapp_views.copy_courses, name='copy_courses'),
     url(r'^copyadminloads/(\d+)/(\d+)/$', myapp_views.copy_admin_loads, name='copy_admin_loads'),

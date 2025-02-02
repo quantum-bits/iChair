@@ -34,6 +34,8 @@ import json
 import re
 import uuid
 
+import xlwt
+
 import collections
 from .constants import DAY_SORTER_DICT
 
@@ -1798,6 +1800,417 @@ def delta_no_action_status(bco, ico, delta, check_rooms = False):
     else:
         # should never get here
         return {}
+
+@login_required
+@csrf_exempt
+def generate_excel(request):
+    # generates an Excel file with the same data that is in the schedule edits pdf
+
+    user = request.user
+    user_preferences = user.user_preferences.all()[0]
+    year = user_preferences.academic_year_to_view
+    department = user_preferences.department_to_view
+
+    year_text = '{0}-{1}'.format(year.begin_on.year, year.end_on.year)
+
+    json_data = json.loads(request.body)
+    course_data = json_data['courseData']
+
+    for course in course_data:
+        print(" ")
+        print(course)
+
+    #print('course data:', course_data)
+
+    data = {
+        'department': department,
+        'course_data': course_data
+    }
+
+    # https://www.geeksforgeeks.org/generating-random-ids-using-uuid-python/
+    uuid_int = uuid.uuid1().int
+    
+    #https://stackoverflow.com/questions/961632/converting-integer-to-string
+    uuid_string = '{}'.format(uuid_int) # str(...) seems to turn the long string into a string of a real....
+    
+    file_name = 'excel/'+uuid_string+'.xls'
+
+    book = prepare_excel_workbook(data)
+    book.save(file_name)
+
+    data = {
+        'UUID': uuid_string
+    }
+    return JsonResponse(data)
+
+def prepare_excel_workbook(data):
+    """
+    Prepares some content for an Excel file based on data contained in two lists of dictionaries.
+    """
+
+    one_inch = 3333
+    styles = dict(
+        bold = 'font: bold 1',
+        italic = 'font: italic 1',
+        # Wrap text in the cell
+        wrap_bold = 'font: bold 1; align: wrap 1;',
+        # White text on a blue background
+        reversed = 'pattern: pattern solid, fore_color blue; font: color white;',
+        # Light orange checkered background
+        light_orange_bg = 'pattern: pattern fine_dots, fore_color white, back_color orange;',
+        # Heavy borders
+        bordered = 'border: top thick, right thick, bottom thick, left thick;',
+        # 16 pt red text
+        big_red = 'font: height 320, color red;',
+        calibri_font = 'font: height 220, color black, name Calibri;',
+        calibri_bold = 'font: height 220, color black, name Calibri, bold 1;',
+        calibri_bold_bordered = 'font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bordered = 'font: height 220, color black, name Calibri;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bold_bordered_centered = 'alignment: horizontal center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bordered_centered = 'alignment: horizontal center; font: height 220, color black, name Calibri;border: top thin, right thin, bottom thin, left thin;',
+        calibri_bold_bordered_centered_v_h = 'alignment: horizontal center, vertical center; font: height 220, color black, name Calibri, bold 1;border: top thin, right thin, bottom thin, left thin;',
+        calibri_centered = 'font: height 220, color black, name Calibri; alignment:horizontal center;',
+        bold_title = 'alignment:horizontal center; font: height 240, color black, name Calibri, bold 1;',
+        bold_title_red = 'alignment:horizontal center; font: height 240, color red, name Calibri, bold 1;',
+        bold_title_green = 'alignment:horizontal center; font: height 240, color green, name Calibri, bold 1;',
+        )
+
+    column_widths = [int(1.41*one_inch),
+                     int(0.81*one_inch),
+                     int(2.11*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(2.58*one_inch)]
+
+    # note: row heights are set automatically by the font size
+    
+    book = xlwt.Workbook()
+    style_calibri_bordered = xlwt.easyxf(styles['calibri_bordered'])
+    style_calibri_bordered_grey = xlwt.easyxf(styles['calibri_bordered']+'pattern: pattern solid, fore_color 22')
+    style_calibri_centered = xlwt.easyxf(styles['calibri_centered'])
+    style_calibri_bordered_centered = xlwt.easyxf(styles['calibri_bordered_centered'])
+    style_calibri = xlwt.easyxf(styles['calibri_font'])
+    style_calibri_bold = xlwt.easyxf(styles['calibri_bold'])
+    style_calibri_bold_bordered = xlwt.easyxf(styles['calibri_bold_bordered'])
+    style_calibri_bold_bordered_centered = xlwt.easyxf(styles['calibri_bold_bordered_centered'])
+    style_calibri_bold_bordered_centered_grey = xlwt.easyxf(styles['calibri_bold_bordered_centered']+'pattern: pattern solid, fore_color 22')
+
+    sheet = book.add_sheet('Schedule Edits')
+    sheet.portrait = False
+
+    column_widths = [int(0.2*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(2.0*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(0.7*one_inch),
+                     int(2.5*one_inch), # instructors
+                     int(2.5*one_inch),
+                     int(2.0*one_inch), # meeting times/rooms
+                     int(2.0*one_inch),
+                     int(0.7*one_inch), # enrollment caps
+                     int(0.7*one_inch),
+                     int(1.4*one_inch), # semester fraction
+                     int(1.4*one_inch),
+                     int(1.4*one_inch), # delivery method
+                     int(1.4*one_inch),
+                     int(4.0*one_inch), # website comments
+                     int(4.0*one_inch),
+                     int(2.5*one_inch), # comments for registrar
+                     int(2.5*one_inch)  # registrar's use
+                     ]
+    
+    col = 0
+    for width in column_widths:
+        sheet.col(col).width = width
+        col = col+1
+
+    time_stamp = datetime.datetime.now().strftime("%m-%d-%Y-%H:%M:%S")
+
+    sheet.write_merge(1,1,1,7,'Department: '+data['department'].name, style_calibri_bold)
+    sheet.write_merge(2,2,1,7,'Date and time: '+time_stamp, style_calibri_bold)
+    #sheet.write_merge(3,3,0,7,'Department: '+global_data['department'],style_calibri_centered)
+
+    crn_col = 1
+    term_col = 2
+    course_col = 3
+    title_col = 4
+    credits_col = 5
+    action_col = 6
+    owner_col = 7
+    change_requests_col_start = 8
+    instructors_order = 0
+    meeting_times_order = 1
+    cap_order = 2
+    semester_fraction_order = 3
+    delivery_method_order = 4
+    website_comments_order = 5
+    header_row = [
+        {
+            'value': 'CRN',
+            'col': crn_col
+        },
+        {
+            'value': 'Term',
+            'col': term_col
+        },
+        {
+            'value': 'Number',
+            'col': course_col
+        },
+        {
+            'value': 'Title',
+            'col': title_col
+        },
+        {
+            'value': 'Credits',
+            'col': credits_col
+        },
+        {
+            'value': 'Action',
+            'col': action_col
+        },
+        {
+            'value': 'Owner?',
+            'col': owner_col
+        },
+        {
+            'value': 'Comments for Registrar',
+            'col': change_requests_col_start + 2*website_comments_order + 2
+        },
+        {
+            'value': "Registrar's Use",
+            'col': change_requests_col_start + 2*website_comments_order + 3
+        },
+    ]
+
+    request_types = [
+        {
+            'value': 'Instructors',
+            'order': instructors_order,
+            'expect_list': True,
+            #'expect_number': False,
+            'is_semester_fraction': False,
+            'key': 'instructors'
+        },
+        {
+            'value': 'Meeting Times/Rooms',
+            'order': meeting_times_order,
+            'expect_list': True,
+            #'expect_number': False,
+            'is_semester_fraction': False,
+            'key': 'meeting_times'
+        },
+        {
+            'value': 'Enrollment Cap',
+            'order': cap_order,
+            'expect_list': False,
+            #'expect_number': True,
+            'is_semester_fraction': False,
+            'key': 'max_enrollment'
+        },
+        {
+            'value': 'Semester Fraction',
+            'order': semester_fraction_order,
+            'expect_list': False,
+            #'expect_number': True,
+            'is_semester_fraction': True,
+            'key': 'semester_fraction'
+        },
+        {
+            'value': 'Delivery Method',
+            'order': delivery_method_order,
+            'expect_list': False,
+            #'expect_number': False,
+            'is_semester_fraction': False,
+            'key': 'delivery_method'
+        },
+        {
+            'value': 'Website Comments',
+            'order': website_comments_order,
+            'expect_list': True,
+            #'expect_number': False,
+            'is_semester_fraction': False,
+            'key': 'public_comments'
+        }
+    ]
+
+    for header_item in header_row:
+        sheet.write(4,header_item['col'], header_item['value'], style_calibri_bold_bordered_centered)
+
+    for request_item in request_types:
+        col = change_requests_col_start + 2*request_item['order']
+        sheet.write_merge(3,3,col,col+1, request_item['value'], style_calibri_bold_bordered_centered)
+        sheet.write(4,col, 'Was', style_calibri_bold_bordered_centered)
+        sheet.write(4,col+1, 'Change to', style_calibri_bold_bordered_centered_grey)
+
+    row_number = 5
+    # https://stackoverflow.com/questions/24974472/freeze-cells-in-excel-using-xlwt
+    sheet.set_horz_split_pos(row_number)
+    sheet.set_vert_split_pos(change_requests_col_start)
+    sheet.panes_frozen = True
+
+    processed_data = []
+    for item in data['course_data']:
+        if (item['crn'] == '') or (item['crn'] is None):
+            crn = ''
+        else:
+            crn = int(item['crn'])
+
+        if item["delta"]["requested_action"] == 'update' or item["delta"]["requested_action"] == 'delete':
+            course = item["banner"]["course"]
+            print(course)
+            course_title = item["banner"]["course_title"]
+            credit_hours = item["banner"]["credit_hours"]
+            if item["delta"]["requested_action"] == 'update':
+                action = 'Update'
+            else:
+                action = 'Delete'
+
+        elif item["delta"]["requested_action"] == 'create':
+            course = item["ichair"]["course"]
+            course_title = item["ichair"]["course_title"]
+            credit_hours = item["ichair"]["credit_hours"]
+            action = 'Create'
+
+        change_requests = []
+        for request in request_types:
+            col = change_requests_col_start + 2*request['order']
+            key = request['key']
+            style = style_calibri_bordered
+            style_change_to = style_calibri_bordered_grey
+            if item["delta"][key] is None:
+                was = None
+                change_to = None
+            else:
+                if not request['expect_list']:
+                    was = item["delta"][key]["was"]
+                    change_to = item["delta"][key]["change_to"]
+                    if request['is_semester_fraction']:
+                        # note: semester fraction is never going to be in a list, so don't need to check for this if we are expecting a list....
+                        if was is not None:
+                            was = CourseOffering.semester_fraction_long_name(was)
+                        if change_to is not None:
+                            change_to = CourseOffering.semester_fraction_long_name(change_to)
+                else:
+                    style.alignment.wrap = 1 # https://stackoverflow.com/questions/18822440/writing-multi-line-strings-to-cells-using-xlwt-module
+                    style_change_to.alignment.wrap = 1
+                    was_list = item["delta"][key]["was"]
+                    if was_list is None:
+                        was = None
+                    else:
+                        was = ''
+                        for was_item in was_list:
+                            if was == '':
+                                was = str(was_item)
+                            else:
+                                was += '\n'+str(was_item)# just in case it's an int, although this probably can't happen....
+                    
+                    change_to_list = item["delta"][key]["change_to"]
+                    if change_to_list is None:
+                        change_to = None
+                    else:
+                        change_to = ''
+                        for change_to_item in change_to_list:
+                            if change_to == '':
+                                change_to = str(change_to_item)
+                            else:
+                                change_to += '\n'+str(change_to_item)# just in case it's an int, although this probably can't happen....
+
+            change_requests.append(
+                {
+                    'value': was,
+                    'column': col,
+                    'row': row_number,
+                    'style': style
+                }
+            )
+            change_requests.append(
+                {
+                    'value': change_to,
+                    'column': col + 1,
+                    'row': row_number,
+                    'style': style_change_to
+                }
+            )
+        if item["courseOwnedByUser"]:
+            owner = 'Yes'
+            owner_style = style_calibri_bordered
+        else:
+            owner = 'No'
+            owner_style = style_calibri_bordered_grey
+        course_row = [
+            {
+                'value': crn,
+                'column': crn_col,
+                'row': row_number,
+                'style': style_calibri_bordered_centered
+            },
+            {
+                'value': int(item['term_code']),
+                'column': term_col,
+                'row': row_number,
+                'style': style_calibri_bordered_centered
+            },
+            {
+                'value': course,
+                'column': course_col,
+                'row': row_number,
+                'style': style_calibri_bordered_centered
+            },
+            {
+                'value': course_title,
+                'column': title_col,
+                'row': row_number,
+                'style': style_calibri_bordered
+            },
+            {
+                'value': credit_hours,
+                'column': credits_col,
+                'row': row_number,
+                'style': style_calibri_bordered_centered
+            },
+            {
+                'value': action,
+                'column': action_col,
+                'row': row_number,
+                'style': style_calibri_bordered_centered
+            },
+            {
+                'value': owner,
+                'column': owner_col,
+                'row': row_number,
+                'style': owner_style
+            },
+            {
+                'value': item["delta"]["registrar_comment"],
+                'column': change_requests_col_start + 2*website_comments_order + 2,
+                'row': row_number,
+                'style': style_calibri_bordered
+            },
+            {
+                'value': '',
+                'column': change_requests_col_start + 2*website_comments_order + 3,
+                'row': row_number,
+                'style': style_calibri_bordered
+            }
+        ]
+
+        for cr in change_requests:
+            course_row.append(cr)
+
+        processed_data.append(course_row)
+        row_number += 1
+
+    for course in processed_data:
+        for item in course:
+            sheet.write(item['row'], item['column'], item['value'], item['style'])
+
+    return book
 
 @login_required
 @csrf_exempt

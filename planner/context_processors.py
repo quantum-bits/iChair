@@ -18,15 +18,19 @@ def add_variable_to_context(request):
     if user.is_anonymous:
         # in this case, the user is AnonymousUser (i.e., not logged in)
         user_is_dept_scheduler = False
+        user_is_super = False
     else:
         if len(user.user_preferences.all()) == 1: # have to be careful here, or can crash the admin site...!
             user_preferences = user.user_preferences.all()[0]
             user_is_dept_scheduler = user_preferences.permission_level == UserPreferences.DEPT_SCHEDULER
+            user_is_super = user_preferences.permission_level == UserPreferences.SUPER
             is_sandbox_year = user_preferences.academic_year_to_view.is_sandbox
         else:
             user_is_dept_scheduler = False
+            user_is_super = False
 
     return {
         'can_edit': user_is_dept_scheduler,
+        'is_super': user_is_super,
         'is_sandbox_year': is_sandbox_year
     }

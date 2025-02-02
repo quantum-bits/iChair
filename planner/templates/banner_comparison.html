@@ -19,7 +19,7 @@
 {% block content %}
 {% load static %}
 
-{% if can_edit %}
+{% if can_edit or is_super %}
 <style>
     * {
         outline
@@ -50,10 +50,17 @@
 <!-- https://www.w3schools.com/css/css3_borders.asp -->
 <!-- https://www.w3schools.com/css/css_max-width.asp -->
 <!-- https://www.geeksforgeeks.org/how-to-apply-important-in-css/ -->
+<!-- https://stackoverflow.com/questions/63992114/vuejs-disable-anchor-link-while-processing-an-async-function -->
+<!-- https://stackoverflow.com/questions/20954715/how-to-override-the-properties-of-a-css-class-to-avoid-copying-and-renaming-styl -->
 <style scoped>
     
     .v-application--wrap {
         min-height: 300px;
+    }
+
+    .isDisabled {
+        pointer-events: none;
+        color: black !important
     }
 
     .undo-icon-container {

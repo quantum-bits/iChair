@@ -165,7 +165,7 @@
                                                 <template v-slot:activator="{ on }">
                                                     <v-icon class="include-pointer" color="primary"
                                                         @click="deleteNoteForRegistrar(item)"
-                                                        v-on="on">
+                                                        v-on="on" >
                                                         mdi-delete
                                                     </v-icon>
                                                 </template>
@@ -357,7 +357,7 @@
                 >
                 <v-spacer></v-spacer>
 
-                <v-tooltip v-if="staleMessages.length > 0" max-width="400" top>
+                <v-tooltip v-if="(staleMessages.length > 0) && (!isSuper())" max-width="400" top>
                     <template v-slot:activator="{ on }">
                         <span 
                             class="pr-5" 
@@ -391,6 +391,15 @@
                         </span>
                     </template>
                     <span>Check the box to include room requests in your schedule edits -- this may only be allowed for certain semesters</span>
+                </v-tooltip>
+
+                <v-tooltip v-if="isSuper()" top>
+                    <template v-slot:activator="{ on }">
+                        <span v-on="on">
+                            <v-btn color="primary" class="mt-2 mr-2" @click="generateExcel()">Generate Excel</v-btn>
+                        </span>
+                    </template>
+                    <span>Generate an Excel file with the requested edits</span>
                 </v-tooltip>
 
                 <v-tooltip top>
@@ -1100,7 +1109,7 @@
                                     <v-radio-group v-model="item.ichairChoice"
                                         v-on:change="onCourseOfferingOptionChosen(item)">
                                         <v-radio v-for="choiceItem in item.ichairChoices" :key="choiceItem.selectionId"
-                                            :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
+                                            :label="choiceItem.text" :value="choiceItem.selectionId" color="success" :disabled="isSuper()">
                                         </v-radio>
                                     </v-radio-group>
                                 </v-flex>
@@ -1113,7 +1122,7 @@
                                     <v-radio-group v-model="item.bannerChoice"
                                         v-on:change="onBannerCourseOfferingOptionChosen(item)">
                                         <v-radio v-for="choiceItem in item.bannerChoices" :key="choiceItem.selectionId"
-                                            :label="choiceItem.text" :value="choiceItem.selectionId" color="success">
+                                            :label="choiceItem.text" :value="choiceItem.selectionId" color="success" :disabled="isSuper()">
                                         </v-radio>
                                     </v-radio-group>
                                 </v-flex>
@@ -1141,7 +1150,7 @@
                                                             <div class="text-center">
                                                                 <v-icon class="include-pointer" color="primary"
                                                                     @click="launchDeleteIChairCourseOfferingDialog(item)"
-                                                                    v-on="on">
+                                                                    v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-delete
                                                                 </v-icon>
                                                             </div>
@@ -1187,7 +1196,7 @@
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
-                                                                    @click="deleteDelta(item)" v-on="on">
+                                                                    @click="deleteDelta(item)" v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -1201,7 +1210,7 @@
                                                         <template v-slot:activator="{ on }">
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
-                                                                    @click="deleteDelta(item)" v-on="on">
+                                                                    @click="deleteDelta(item)" v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -1215,7 +1224,7 @@
                                             <tr>
                                                 <td>Meeting Times</td>
                                                 <td v-if="item.hasIChair" class="text-center">
-                                                    <a @click="editMeetingTimes(item)">
+                                                    <a @click="editMeetingTimes(item)" :class="{isDisabled: isSuper()}">
                                                         <div v-if="item.ichair.meeting_times.length > 0">
                                                             <div
                                                                 v-for="(meetingTime, index) in item.ichair.meeting_times">
@@ -1352,7 +1361,7 @@
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_MEETING_TIMES, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
+                                                                    v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -1372,7 +1381,7 @@
                                             <tr>
                                                 <td>Instructor(s)</td>
                                                 <td v-if="item.hasIChair" class="text-center">
-                                                    <a @click="editOfferingInstructors(item)">
+                                                    <a @click="editOfferingInstructors(item)" :class="{isDisabled: isSuper()}">
                                                         <div v-if="item.ichair.instructors.length > 0">
                                                             <div v-for="instructor in item.ichair.instructors">
                                                                 [[instructor]]
@@ -1494,7 +1503,7 @@
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_INSTRUCTORS, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
+                                                                    v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -1512,7 +1521,7 @@
                                             <tr>
                                                 <td>Enrollment Cap</td>
                                                 <td v-if="item.hasIChair" class="text-center">
-                                                    <a @click="editMeetingTimes(item)">
+                                                    <a @click="editMeetingTimes(item)" :class="{isDisabled: isSuper()}">
                                                         [[item.ichair.max_enrollment]]
                                                     </a>
                                                 </td>
@@ -1618,7 +1627,7 @@
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_ENROLLMENT_CAP, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
+                                                                    v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -1636,7 +1645,7 @@
                                             <tr>
                                                 <td>Semester Fraction</td>
                                                 <td v-if="item.hasIChair" class="text-center">
-                                                    <a @click="editMeetingTimes(item)">
+                                                    <a @click="editMeetingTimes(item)" :class="{isDisabled: isSuper()}">
                                                         <div
                                                             v-if="item.ichair.semester_fraction == semesterFractions.full">
                                                             Full Semester
@@ -1783,7 +1792,7 @@
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_SEMESTER_FRACTION, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
+                                                                    v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -1802,7 +1811,7 @@
                                                 <!-- DELIVERY METHOD -->
                                                 <td>Delivery Method</td>
                                                 <td v-if="item.hasIChair" class="text-center">
-                                                    <a @click="editMeetingTimes(item)">
+                                                    <a @click="editMeetingTimes(item)" :class="{isDisabled: isSuper()}">
                                                         <div v-if="item.ichair.delivery_method.description ===''">
                                                             ---
                                                         </div>
@@ -1913,7 +1922,7 @@
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_DELIVERY_METHOD, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
+                                                                    v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -1935,7 +1944,8 @@
                                                 <td>Public Comments</td>
                                                 <td v-if="item.hasIChair" class="text-center">
                                                     <div v-if="item.ichair.comments.summary_contains_all_text">
-                                                        <a @click="editPublicComments(item)">
+                                                        <!-- https://stackoverflow.com/questions/63992114/vuejs-disable-anchor-link-while-processing-an-async-function -->
+                                                        <a @click="editPublicComments(item)" :class="{isDisabled: isSuper()}">
                                                             <div v-if="item.ichair.comments.summary ===''">
                                                                 ---
                                                             </div>
@@ -1946,7 +1956,7 @@
 
                                                     </div>
                                                     <div v-else-if="item.showAllIChairComments">
-                                                        <a @click="editPublicComments(item)">
+                                                        <a @click="editPublicComments(item)" :class="{isDisabled: isSuper()}">
                                                             <div v-for="comment in item.ichair.comments.comment_list"
                                                                 class="caption text-left">
                                                                 [[comment.text]]
@@ -1963,7 +1973,7 @@
                                                             <v-tooltip top>
                                                                 <template v-slot:activator="{ on }">
                                                                     <div class="float-left include-pointer" v-on="on">
-                                                                        <a @click="editPublicComments(item)">
+                                                                        <a @click="editPublicComments(item)" :class="{isDisabled: isSuper()}">
                                                                             [[item.ichair.comments.summary]]
                                                                         </a>
                                                                     </div>
@@ -2114,7 +2124,7 @@
                                                             <span class="float-right">
                                                                 <v-icon class="include-pointer" color="primary"
                                                                     @click="deltaUpdate(item, DELTA_UPDATE_TYPE_COMMENTS, DELTA_ACTION_UNSET)"
-                                                                    v-on="on">
+                                                                    v-on="on" :class="{isDisabled: isSuper()}">
                                                                     mdi-close-circle
                                                                 </v-icon>
                                                             </span>
@@ -2159,7 +2169,7 @@
                                         <template v-slot:activator="{ on }">
                                             <span class="float-left">
                                                 <v-icon class="include-pointer icon-padding-top" color="primary"
-                                                    @click="deleteNoteForRegistrarOrSelf(item, true)" v-on="on">
+                                                    @click="deleteNoteForRegistrarOrSelf(item, true)" v-on="on" :class="{isDisabled: isSuper()}">
                                                     mdi-close-circle
                                                 </v-icon>
                                             </span>
@@ -2170,7 +2180,7 @@
                                         <template v-slot:activator="{ on }">
                                             <span class="float-left pl-3">
                                                 <v-icon class="include-pointer icon-padding-top" color="primary"
-                                                    @click="displayNoteDialog(item, true)" v-on="on">
+                                                    @click="displayNoteDialog(item, true)" v-on="on" :class="{isDisabled: isSuper()}">
                                                     mdi-pencil
                                                 </v-icon>
                                             </span>
@@ -2180,7 +2190,7 @@
                                 </v-flex>
                             </v-layout>
                             <!--WORKING HERE-->
-                            <v-layout v-if="!displayAddNoteToSelfButton(item)">
+                            <v-layout v-if="(!displayAddNoteToSelfButton(item)) && (!isSuper())">
                                 <v-flex xs9 offset-xs1>
                                     <v-alert border="left" colored-border color="primary" elevation="1" class="body-2">
                                         <strong>Note to Self:</strong> [[item.delta.note_to_self]]
@@ -2213,7 +2223,7 @@
                             </v-layout>
                             <v-layout v-if="displayAddNoteButton(item)">
                                 <v-flex xs4 offset-xs1 class="pb-2">
-                                    <v-btn small class="ml-4" color="primary"
+                                    <v-btn small class="ml-4" color="primary" :disabled="isSuper()"
                                         @click="displayNoteDialog(item, true)">
                                         Add Note for Registrar</v-btn>
                                     <v-icon 
@@ -2225,7 +2235,7 @@
                             </v-layout>
                             <v-layout v-if="displayAddNoteToSelfButton(item)">
                                 <v-flex xs4 offset-xs1 class="pb-2">
-                                    <v-btn small class="ml-4" color="primary"
+                                    <v-btn small class="ml-4" color="primary" :disabled="isSuper()"
                                         @click="displayNoteDialog(item, false)">
                                         Add Note to Self</v-btn>
                                     <v-icon 

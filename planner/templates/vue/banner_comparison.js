@@ -177,6 +177,9 @@ var app = new Vue({
     };
   },
   methods: {
+    isSuper() {
+      return json_data.isSuper;
+    },
     launchHelpDialog(helpDialogType) {
       if (helpDialogType === HELP_MESSAGE_MANUAL_MARK_OK) {
         this.helpDialogTitle = "Manually mark as OK";
@@ -692,6 +695,9 @@ var app = new Vue({
     },
 
     deactivateScheduleRightArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       if (item.delta !== null) {
         if (
           item.delta.requested_action === DELTA_ACTION_CREATE &&
@@ -710,9 +716,15 @@ var app = new Vue({
       return item.schedulesMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateScheduleLeftArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       return item.schedulesMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateInstructorsRightArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       if (item.delta !== null) {
         if (
           item.delta.requested_action === DELTA_ACTION_CREATE &&
@@ -724,9 +736,15 @@ var app = new Vue({
       return item.instructorsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateInstructorsLeftArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       return item.instructorsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateMaxEnrollmentRightArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       if (item.delta !== null) {
         if (
           item.delta.requested_action === DELTA_ACTION_CREATE &&
@@ -738,9 +756,15 @@ var app = new Vue({
       return item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateMaxEnrollmentLeftArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       return item.enrollmentCapsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateDeliveryMethodRightArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       if (item.delta !== null) {
         if (
           item.delta.requested_action === DELTA_ACTION_CREATE &&
@@ -752,9 +776,15 @@ var app = new Vue({
       return item.deliveryMethodsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateDeliveryMethodLeftArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       return item.deliveryMethodsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateSemesterFractionRightArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       if (item.delta !== null) {
         if (
           item.delta.requested_action === DELTA_ACTION_CREATE &&
@@ -766,9 +796,15 @@ var app = new Vue({
       return item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivateSemesterFractionLeftArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       return item.semesterFractionsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivatePublicCommentsRightArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       if (item.delta !== null) {
         if (
           item.delta.requested_action === DELTA_ACTION_CREATE &&
@@ -780,6 +816,9 @@ var app = new Vue({
       return item.publicCommentsMatch || !item.hasIChair || !item.hasBanner;
     },
     deactivatePublicCommentsLeftArrow(item) {
+      if (this.isSuper()) {
+        return true;
+      }
       return item.publicCommentsMatch || !item.hasIChair || !item.hasBanner;
     },
 
@@ -2014,7 +2053,7 @@ var app = new Vue({
     },
 
     disableManuallyMarkAsOKOption(courseInfo) {
-      return courseInfo.allOK;
+      return courseInfo.allOK || this.isSuper();
     },
 
     displayNote(courseInfo) {
@@ -3338,6 +3377,53 @@ var app = new Vue({
           var url = '/planner/scheduleeditspdf/'+response.UUID+'/';
           window.open(url, "_blank");
           //window.location = url;
+        },
+        error: function(jqXHR, exception) {
+          // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
+          console.log(jqXHR);
+          //_this.meetingFormErrorMessage =
+          //  "Sorry, there appears to have been an error.";
+        }
+      });
+    },
+
+    generateExcel() {
+      let courseData = [];
+      this.courseOfferings.forEach(item => {
+        if (item.delta !== null) {
+          if (item.delta.messages_exist) {
+            courseData.push({
+              term_code: item.termCode,
+              term_name: item.semester,
+              crn: item.crn,
+              campus: item.campus,
+              banner: item.banner,
+              ichair: item.ichair,
+              delta: item.delta,
+              courseOwnedByUser: item.courseOwnedByUser,
+              includeRoomComparisons: item.includeRoomComparisons
+            })
+          }
+        }
+      });
+
+      dataForPost = {
+        courseData: courseData
+      }
+
+      console.log(dataForPost);
+
+      $.ajax({
+        // initialize an AJAX request
+        type: "POST",
+        url: "/planner/ajax/generate-excel/",
+        dataType: "json",
+        data: JSON.stringify(dataForPost),
+        success: function(response) {
+          //console.log("response: ", response);
+          //console.log("response url", response.UUID);
+          var url = '/planner/scheduleeditsexcel/'+response.UUID+'/';
+          window.location = url;
         },
         error: function(jqXHR, exception) {
           // https://stackoverflow.com/questions/6792878/jquery-ajax-error-function
