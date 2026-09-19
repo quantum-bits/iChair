@@ -437,6 +437,18 @@ var app = new Vue({
       });
       this.cancelExtraCoursesDialog();
     },
+
+    selectAllCourses() {
+      this.chosenExtraCourses = [];
+      this.extraDepartmentalCourseChoices.forEach(course => {
+        this.chosenExtraCourses.push(course.id);
+      });
+    },
+
+    deselectAllCourses() {
+      this.chosenExtraCourses = [];
+    },
+
     clearFromExtraCourseList(courseId) {
       let newArray = this.selectedExtraCoursesInDialog.filter( course => course.id !== courseId );
       this.selectedExtraCoursesInDialog = JSON.parse(JSON.stringify(newArray));
@@ -3596,9 +3608,9 @@ var app = new Vue({
           id: Number.NEGATIVE_INFINITY,
           abbrev: '-----'
         }];
-        _this.extraDepartmentalCourseChoices.forEach(course => {
-          _this.chosenExtraCourses.push(course.id);
-        });
+        //_this.extraDepartmentalCourseChoices.forEach(course => {
+        //  _this.chosenExtraCourses.push(course.id);
+        //});
         _this.extraDepartmentalSubjectAndCourseChoices = incomingData.extra_departmental_course_choices;
         _this.extraDepartmentalSubjectAndCourseChoices.forEach(subject => {
           _this.extraDepartmentalSubjectChoices.push({

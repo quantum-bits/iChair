@@ -42,11 +42,26 @@
             <v-flex xs9 offset-xs1 class="subtitle-1 mt-2">
                 2. Please select which courses from other departments you might want to edit:
             </v-flex>
-
+            <v-flex v-if="extraDepartmentalCourseChoices.length > 4 && chosenExtraCourses.length == 0" offset-xs2 mt-2>
+                <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
+                <v-btn outlined color="success" @click="selectAllCourses()">Select All</v-btn>
+            </v-flex>
+            <v-flex v-if="extraDepartmentalCourseChoices.length > 4 && chosenExtraCourses.length > 0" offset-xs2 mt-2>
+                <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
+                <v-btn outlined color="success" @click="deselectAllCourses()">Deselect All</v-btn>
+            </v-flex>
             <v-flex xs10 offset-xs2 class="my-0" class="mt-n12" v-for="course in extraDepartmentalCourseChoices"
                 :key="course.id">
                 <v-checkbox class="mb-0" color="success" :label="course.name" :value="course.id"
                     v-model="chosenExtraCourses" hide-details></v-checkbox>
+            </v-flex>
+            <v-flex v-if="extraDepartmentalCourseChoices.length > 1 && chosenExtraCourses.length == 0" offset-xs2 mt-2>
+                <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
+                <v-btn outlined color="success" @click="selectAllCourses()">Select All</v-btn>
+            </v-flex>
+            <v-flex v-if="extraDepartmentalCourseChoices.length > 1 && chosenExtraCourses.length > 0" offset-xs2 mt-2>
+                <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
+                <v-btn outlined color="success" @click="deselectAllCourses()">Deselect All</v-btn>
             </v-flex>
             <v-flex xs10 offset-xs2 mt-2>
                 <!--<v-btn color="primary" @click="alignCourses()">Get Started</v-btn>-->
